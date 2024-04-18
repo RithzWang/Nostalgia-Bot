@@ -12,8 +12,6 @@
   "dependencies": {
     "@discordjs/rest": "^2.0.1",
     "axios": "^1.6.1",
-    "canvas": "^2.11.2",
-    "chatgpt": "^5.2.5",
     "discord-api-types": "^0.37.61",
     "discord.js": "^12.5.3",
     "discord.js-commando": "^0.12.3",

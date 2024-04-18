@@ -209,42 +209,5 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
 
 
 
-// ---------- bs role verify -------- //
-client.on('guildMemberUpdate', (oldMember, newMember) => {
-  if (newMember.user.bot) return;
-
-  const specifiedRoleID = '1230212146437165207'; // Specify the ID of the role you're interested in
-  const logChannelID = '1230213741023330426'; // Specify the ID of the log channel
-  const messageChannelID = '1230397328012349482'; // Specify the ID of the channel containing the recent message
-
-  const addedRoles = newMember.roles.cache.filter(role => role.id === specifiedRoleID && !oldMember.roles.cache.has(role.id));
-
-  if (addedRoles.size > 0) {
-    const logChannel = newMember.guild.channels.cache.get(logChannelID);
-    const messageChannel = newMember.guild.channels.cache.get(messageChannelID);
-
-    if (logChannel && messageChannel) {
-      messageChannel.messages.fetch({ limit: 1 }) // Fetch the recent message in the specific channel
-        .then(messages => {
-          const recentMessage = messages.first();
-
-          if (recentMessage) {
-            logChannel.messages.fetch({ around: roleupdateMessage, limit: 1 }) // Fetch the log message
-              .then(messages => {
-                const logMessage = messages.first();
-                
-                if (logMessage) {
-                  logMessage.edit(recentMessage.content); // Edit the log message to match the recent message content
-                }
-              })
-              .catch(console.error);
-          }
-        })
-        .catch(console.error);
-    }
-  }
-});
-// ---------------------------------- //
-
 
 client.login(process.env.TOKEN);

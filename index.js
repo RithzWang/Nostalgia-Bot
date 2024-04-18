@@ -247,7 +247,7 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
   let roleUpdateMessage = '';
 
   if (addedRoles.size > 0) {
-    roleUpdateMessage = `**${newMember.user}** has been added **${addedRoles.map(role => `${role.name}`).join(', ')}** role(s) !`;
+    roleUpdateMessage = `**${newMember.user}**’s verification is completed!`;
     editMessage(roleUpdateMessage);
   }
 });

@@ -209,16 +209,17 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
 
 
 
-
-// ------- bs verify log ----------- //
+// ------ role update log ------ //
 client.on('guildMemberUpdate', (oldMember, newMember) => {
   if (newMember.user.bot) return;
 
-  const BSVerifyRole = new Set(BSVerifyRole);
+  const BSVerifyRole = '1230212146437165207';
+  const BSVerifyLog = '1230205392273805392';
+  let BSVerifyMessage = '1230397328012349482';
 
-  const addedRoles = newMember.roles.cache.filter(role => BSVerifyRole.has(role.id) && !oldMember.roles.cache.has(role.id));
+  const addedRoles = newMember.roles.cache.filter(role => role.id === BSVerifyRole && !oldMember.roles.cache.has(role.id));
 
-  const logChannel = newMember.guild.channels.cache.get(BSVerifyRoleupdateLog);
+  const logChannel = newMember.guild.channels.cache.get(BSVerifyLog);
 
   const silentMessageOptions = {
     allowedMentions: {
@@ -227,8 +228,8 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
   };
 
   const editMessage = (messageContent) => {
-    if (BSVerifyRoleUpdateMessage && messageContent.trim() !== '') {
-      logChannel.messages.fetch(BSVerifyRoleUpdateMessage)
+    if (BSVerifyMessage && messageContent.trim() !== '') {
+      logChannel.messages.fetch(BSVerifyMessage)
         .then(message => {
           message.edit(messageContent, silentMessageOptions)
             .catch(console.error);
@@ -237,21 +238,20 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
     } else if (messageContent.trim() !== '') {
       logChannel.send(messageContent, silentMessageOptions)
         .then(message => {
-          BSVerifyRoleUpdateMessage = message.id;
+          BSVerifyMessage = message.id;
         })
         .catch(console.error);
     }
   };
 
-  let BSVerifyRoleUpdateMessage = '';
+  let roleUpdateMessage = '';
 
   if (addedRoles.size > 0) {
     roleUpdateMessage = `**${newMember.user}** has been added **${addedRoles.map(role => `${role.name}`).join(', ')}** role(s) !`;
-    editMessage(BSVerifyRoleUpdateMessage);
+    editMessage(roleUpdateMessage);
   }
 });
 // ----------------------------- //
-
 
 
 

@@ -6,7 +6,7 @@ const axios = require('axios');
 
 const keep_alive = require('./keep_alive.js')
 
-const { prefix, serverID, boosterLog, welcomeLog, roleupdateLog, roleupdateMessage, roleforLog, colourEmbed, auditLogChannel } = require("./config.json")
+const { prefix, serverID, boosterLog, welcomeLog, roleupdateLog, roleupdateMessage, roleforLog, colourEmbed, auditLogChannel, BSVerifyRole, BSVerifyRoleupdateLog, BSVerifyRoleUpdateMessage } = require("./config.json")
 const config = require('./config.json');
 
 
@@ -210,27 +210,49 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
 
 
 
-// --------- bs verify message ------- //
-client.on('guildMemberAdd', async member => {
-    // Check if the member has the specific role
-    if (member.roles.cache.some(role => role.id === '1230212146437165207')) {
-        // Fetch the specific message by its ID
-        const channelId = '1230205392273805392';
-        const messageId = '1230397328012349482';
-        try {
-            const channel = await member.guild.channels.fetch(channelId);
-            const message = await channel.messages.fetch(messageId);
-            // Edit the message to mention the user
-            await message.edit(`**${member}**’s verification is completed`);
-        } catch (error) {
-            console.error('Error fetching/editing message:', error);
-        }
-    } else {
-        // If the message doesn't exist, send a new one
-        const welcomeMessage = `**${member}**’s verification is completed`;
-        member.guild.systemChannel.send(welcomeMessage);
+// ------- bs verify log ----------- //
+client.on('guildMemberUpdate', (oldMember, newMember) => {
+  if (newMember.user.bot) return;
+
+  const BSVerifyRole = new Set(BSVerifyRole);
+
+  const addedRoles = newMember.roles.cache.filter(role => BSVerifyRole.has(role.id) && !oldMember.roles.cache.has(role.id));
+
+  const logChannel = newMember.guild.channels.cache.get(BSVerifyRoleupdateLog);
+
+  const silentMessageOptions = {
+    allowedMentions: {
+      parse: [], // Don't parse any mentions
+    },
+  };
+
+  const editMessage = (messageContent) => {
+    if (BSVerifyRoleUpdateMessage && messageContent.trim() !== '') {
+      logChannel.messages.fetch(BSVerifyRoleUpdateMessage)
+        .then(message => {
+          message.edit(messageContent, silentMessageOptions)
+            .catch(console.error);
+        })
+        .catch(console.error);
+    } else if (messageContent.trim() !== '') {
+      logChannel.send(messageContent, silentMessageOptions)
+        .then(message => {
+          BSVerifyRoleUpdateMessage = message.id;
+        })
+        .catch(console.error);
     }
+  };
+
+  let BSVerifyRoleUpdateMessage = '';
+
+  if (addedRoles.size > 0) {
+    roleUpdateMessage = `**${newMember.user}** has been added **${addedRoles.map(role => `${role.name}`).join(', ')}** role(s) !`;
+    editMessage(BSVerifyRoleUpdateMessage);
+  }
 });
+// ----------------------------- //
+
+
 
 
 

@@ -210,4 +210,29 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
 
 
 
+// --------- bs verify message ------- //
+client.on('guildMemberAdd', async member => {
+    // Check if the member has the specific role
+    if (member.roles.cache.some(role => role.id === '1230212146437165207')) {
+        // Fetch the specific message by its ID
+        const channelId = '1230205392273805392';
+        const messageId = '1230397328012349482';
+        try {
+            const channel = await member.guild.channels.fetch(channelId);
+            const message = await channel.messages.fetch(messageId);
+            // Edit the message to mention the user
+            await message.edit(`**${member}**’s verification is completed`);
+        } catch (error) {
+            console.error('Error fetching/editing message:', error);
+        }
+    } else {
+        // If the message doesn't exist, send a new one
+        const welcomeMessage = `**${member}**’s verification is completed`;
+        member.guild.systemChannel.send(welcomeMessage);
+    }
+});
+
+
+
+
 client.login(process.env.TOKEN);

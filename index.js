@@ -137,7 +137,9 @@ client.on('guildMemberAdd', async (member) => {
         `Hey **<@${memberName}>**, hope you enjoy your stay !\n\n<:i_:1230749121611304970> **→** <#1167046828802445353> \n<:r_:1230749926648975370> **→** <#1167394553020559420> \n<:c_:1230749152422531072> **→** <#1167046828978614347>\n<:l_:1230749184135790652> Invited by **@${inviterName}** (**${inviteCode}**)\n\nNow we have **${memberCount}** members 🎉 \n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
       )
       .setColor(colourEmbed);
-      .setFooter(`• ${memberName}`)
+      .setFooter(`• ${memberName}`, memberAvatarURL)
+      .setTimestamp()
+
 
     client.channels.cache.get(welcomeLog).send(embed);
   }

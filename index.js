@@ -6,7 +6,7 @@ const axios = require('axios');
 
 const keep_alive = require('./keep_alive.js')
 
-const { prefix, serverID, boosterLog, welcomeLog, roleupdateLog, roleupdateMessage, roleforLog, colourEmbed, auditLogChannel, BSVerifyRole, BSVerifyRoleupdateLog, BSVerifyRoleUpdateMessage } = require("./config.json")
+const { prefix, serverID, boosterLog, welcomeLog, roleupdateLog, roleupdateMessage, roleforLog, colourEmbed, BSVerifyRole, BSVerifyRoleupdateLog, BSVerifyRoleUpdateMessage } = require("./config.json")
 const config = require('./config.json');
 
 
@@ -85,18 +85,6 @@ client.on('message', message => {
 
 
 
-// -------- Audit Log -------- //
-client.on('auditLog', (log) => {
-  const guild = log.guild;
-  const channel = guild.channels.cache.get(auditLogChannel);
-
-  if (channel) {
-    channel.send(`${log.reason || 'No reason provided'}`);
-  }
-});
-// --------------------------- //
-
-
 // -------- Booster Log ------- //
 client.on('boost', (boostingUser) => {
   const guild = boostingUser.guild;
@@ -104,7 +92,7 @@ client.on('boost', (boostingUser) => {
   const channel = guild.channels.cache.get(boosterLog);
 
   if (channel) {
-    channel.send(` Thanks <@${boostingUser.id}>  for boosting the server! We appreciate your support.`);
+    channel.send(` Thanks <@${boostingUser.id}> for boosting the server! We appreciate your support.`);
   }
 });
 // --------------------------- //

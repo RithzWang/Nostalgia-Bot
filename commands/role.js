@@ -1,7 +1,6 @@
 module.exports = {
     name: 'role',
     execute(message, args) {
-        const prefix = '!'; // Change this to your command prefix
 
         // Step 1: Check if the command starts with the correct prefix and the correct command name
         if (!message.content.startsWith(prefix) || !message.content.startsWith(`${prefix}role`)) {

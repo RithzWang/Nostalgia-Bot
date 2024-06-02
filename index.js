@@ -1,6 +1,5 @@
 const fs = require('fs');
 const Discord = require('discord.js');
-Discord.Constants.DefaultOptions.ws.properties.$browser = "Discord Android";
 const client = new Discord.Client();
 const axios = require('axios');
 

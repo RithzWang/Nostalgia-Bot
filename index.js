@@ -235,56 +235,6 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
 
 
 
-// --- remove and recover roles ---- //
-
-client.on('messageReactionAdd', async (reaction, user) => {
-  // Fetch the message if it's a partial
-  if (reaction.message.partial) await reaction.message.fetch();
-  // Fetch the reaction if it's a partial
-  if (reaction.partial) await reaction.fetch();
-  // Fetch the member if it's a partial
-  if (!reaction.message.guild) return;
-  const member = reaction.message.guild.members.cache.get(user.id);
-
-  if (reaction.emoji.id === "1255097130859892766" && member) {
-    const rolesToRemove = [];
-    roleforLog.forEach((roleId) => {
-      if (member.roles.cache.has(roleId)) {
-        rolesToRemove.push(roleId);
-      }
-    });
-
-    if (rolesToRemove.length > 0) {
-      roleHistory.set(member.id, rolesToRemove);
-      rolesToRemove.forEach(async (roleId) => {
-        await member.roles.remove(roleId).catch(console.error);
-        console.log(`Removed role ${roleId} from ${user.tag}`);
-      });
-    }
-  }
-});
-
-client.on('messageReactionRemove', async (reaction, user) => {
-  // Fetch the message if it's a partial
-  if (reaction.message.partial) await reaction.message.fetch();
-  // Fetch the reaction if it's a partial
-  if (reaction.partial) await reaction.fetch();
-  // Fetch the member if it's a partial
-  if (!reaction.message.guild) return;
-  const member = reaction.message.guild.members.cache.get(user.id);
-
-  if (reaction.emoji.id === "1255097130859892766" && member) {
-    const rolesToRestore = roleHistory.get(member.id) || [];
-    rolesToRestore.forEach(async (roleId) => {
-      await member.roles.add(roleId).catch(console.error);
-      console.log(`Restored role ${roleId} to ${user.tag}`);
-    });
-    roleHistory.delete(member.id);
-  }
-});
-
-
-
 
 
 client.login(process.env.TOKEN);

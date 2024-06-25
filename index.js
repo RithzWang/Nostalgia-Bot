@@ -3,6 +3,7 @@ const Discord = require('discord.js');
 Discord.Constants.DefaultOptions.ws.properties.$browser = "Discord Android";
 const client = new Discord.Client();
 const axios = require('axios');
+const roleHistory = new Collection();
 
 const keep_alive = require('./keep_alive.js')
 
@@ -233,7 +234,8 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
 // ----------------------------- //
 
 
-// ---------- remove role ----------- //
+
+// --- remove and recover roles ---- //
 
 client.on('messageReactionAdd', async (reaction, user) => {
   // Fetch the message if it's a partial
@@ -245,18 +247,22 @@ client.on('messageReactionAdd', async (reaction, user) => {
   const member = reaction.message.guild.members.cache.get(user.id);
 
   if (reaction.emoji.id === "1255097130859892766" && member) {
-    roleforLog.forEach(async (roleId) => {
+    const rolesToRemove = [];
+    roleforLog.forEach((roleId) => {
       if (member.roles.cache.has(roleId)) {
-        await member.roles.remove(roleId).catch(console.error);
-        console.log(`Removed role ${roleId} from ${user.tag}`);
+        rolesToRemove.push(roleId);
       }
     });
+
+    if (rolesToRemove.length > 0) {
+      roleHistory.set(member.id, rolesToRemove);
+      rolesToRemove.forEach(async (roleId) => {
+        await member.roles.remove(roleId).catch(console.error);
+        console.log(`Removed role ${roleId} from ${user.tag}`);
+      });
+    }
   }
 });
-
-// ----------------------------------- //
-
-// ----- recover the removed role ---- //
 
 client.on('messageReactionRemove', async (reaction, user) => {
   // Fetch the message if it's a partial

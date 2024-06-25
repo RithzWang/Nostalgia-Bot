@@ -244,7 +244,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
   if (!reaction.message.guild) return;
   const member = reaction.message.guild.members.cache.get(user.id);
 
-  if (reaction.emoji.id === EMOTE_ID && member) {
+  if (reaction.emoji.id === "1255097130859892766" && member) {
     roleforLog.forEach(async (roleId) => {
       if (member.roles.cache.has(roleId)) {
         await member.roles.remove(roleId).catch(console.error);

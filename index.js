@@ -254,6 +254,29 @@ client.on('messageReactionAdd', async (reaction, user) => {
   }
 });
 
+// ----------------------------------- //
+
+// ----- recover the removed role ---- //
+
+client.on('messageReactionRemove', async (reaction, user) => {
+  // Fetch the message if it's a partial
+  if (reaction.message.partial) await reaction.message.fetch();
+  // Fetch the reaction if it's a partial
+  if (reaction.partial) await reaction.fetch();
+  // Fetch the member if it's a partial
+  if (!reaction.message.guild) return;
+  const member = reaction.message.guild.members.cache.get(user.id);
+
+  if (reaction.emoji.id === "1255097130859892766" && member) {
+    const rolesToRestore = roleHistory.get(member.id) || [];
+    rolesToRestore.forEach(async (roleId) => {
+      await member.roles.add(roleId).catch(console.error);
+      console.log(`Restored role ${roleId} to ${user.tag}`);
+    });
+    roleHistory.delete(member.id);
+  }
+});
+
 
 
 

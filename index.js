@@ -233,6 +233,28 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
 // ----------------------------- //
 
 
+// ---------- remove role ----------- //
+
+client.on('messageReactionAdd', async (reaction, user) => {
+  // Fetch the message if it's a partial
+  if (reaction.message.partial) await reaction.message.fetch();
+  // Fetch the reaction if it's a partial
+  if (reaction.partial) await reaction.fetch();
+  // Fetch the member if it's a partial
+  if (!reaction.message.guild) return;
+  const member = reaction.message.guild.members.cache.get(user.id);
+
+  if (reaction.emoji.id === EMOTE_ID && member) {
+    roleforLog.forEach(async (roleId) => {
+      if (member.roles.cache.has(roleId)) {
+        await member.roles.remove(roleId).catch(console.error);
+        console.log(`Removed role ${roleId} from ${user.tag}`);
+      }
+    });
+  }
+});
+
+
 
 
 

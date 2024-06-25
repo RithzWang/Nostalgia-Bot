@@ -249,6 +249,10 @@ client.on('messageReactionAdd', async (reaction, user) => {
             // Add the role to the member
             await member.roles.add(role);
             console.log(`Added role ${role.name} to user ${user.tag}`);
+
+            // Remove the reaction
+            await reaction.users.remove(user.id);
+            console.log(`Removed reaction from user ${user.tag}`);
         }
     }
 });

@@ -3,7 +3,6 @@ const Discord = require('discord.js');
 Discord.Constants.DefaultOptions.ws.properties.$browser = "Discord Android";
 const client = new Discord.Client();
 const axios = require('axios');
-const roleHistory = new Collection();
 
 const keep_alive = require('./keep_alive.js')
 

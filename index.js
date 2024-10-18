@@ -44,9 +44,9 @@ client.on('ready', () => {
   //  let emoji = '';
 
    // if (minutes >= 0 && minutes < 30) {
-      emoji = '🕐';
+    //  emoji = '🕐';
   //  } else {
-      emoji = '🕜';
+    //  emoji = '🕜';
   //  } 
 
     const thailandTime = currentTime.format(`h:mm A`);

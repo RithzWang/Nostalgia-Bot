@@ -41,15 +41,15 @@ client.on('ready', () => {
     const hours = currentTime.format('HH');
     const minutes = currentTime.format('mm');
 
-    let emoji = '';
+  //----  let emoji = '';
 
     if (minutes >= 0 && minutes < 30) {
       emoji = '🕐';
     } else {
       emoji = '🕜';
-    }
+    } -----//
 
-    const thailandTime = currentTime.format(`[${emoji}] h:mm A`);
+    const thailandTime = currentTime.format(`h:mm A`);
 
     client.user.setActivity('customstatus', {
       type: 'CUSTOM_STATUS',
@@ -81,21 +81,6 @@ client.on('message', message => {
     }
   
 });
-
-
-
-
-// -------- Booster Log ------- //
-client.on('boost', (boostingUser) => {
-  const guild = boostingUser.guild;
-
-  const channel = guild.channels.cache.get(boosterLog);
-
-  if (channel) {
-    channel.send(` Thanks <@${boostingUser.id}> for boosting the server! We appreciate your support.`);
-  }
-});
-// --------------------------- //
 
 
 

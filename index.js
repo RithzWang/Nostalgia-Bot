@@ -41,13 +41,13 @@ client.on('ready', () => {
     const hours = currentTime.format('HH');
     const minutes = currentTime.format('mm');
 
-  //----  let emoji = '';
+  //  let emoji = '';
 
-    if (minutes >= 0 && minutes < 30) {
+   // if (minutes >= 0 && minutes < 30) {
       emoji = '🕐';
-    } else {
+  //  } else {
       emoji = '🕜';
-    } -----//
+  //  } 
 
     const thailandTime = currentTime.format(`h:mm A`);
 

@@ -254,7 +254,7 @@ client.on('message', async message => {
         // Create the embed
         const embed = new Discord.MessageEmbed()
             .setColor(colourEmbed) // Set the color of the embed
-            .setTitle('Suggestions') // Set the title
+            .setTitle('📥︰suggestions') // Set the title
             .setDescription(message.content) // Set the description to the original message
             .setFooter(`By: ${message.author.tag}`, message.author.displayAvatarURL()) // Set the footer with the user's mention
 

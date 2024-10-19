@@ -245,16 +245,22 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
 
 // ------- suggestions channel ------- //
 
-client.on('message', message => {
+client.on('message', async message => {
     // Check if the message is from the specific channel and not from the bot itself
     if (message.channel.id === SuggestionChannelId && !message.author.bot) {
         // Delete the original message
-        message.delete().then(() => {
-            // Create the formatted message
-            const formattedMessage = ` ${message.content}\nBy: <@${message.author.id}>`;
-            // Send the formatted message back to the channel
-            message.channel.send(formattedMessage);
-        });
+        await message.delete();
+
+        // Create the embed
+        const embed = new Discord.EmbedBuilder()
+            .setColor(colourEmbed) // Set the color of the embed
+            .setTitle('Suggestions') // Set the title
+            .setDescription(message.content) // Set the description to the original message
+            .setFooter({ text: `by <@${message.author.id}>` }) // Set the footer with the user's mention
+            .setTimestamp(); // Add the timestamp
+
+        // Send the embed back to the channel
+        message.channel.send({ embeds: [embed] });
     }
 });
 

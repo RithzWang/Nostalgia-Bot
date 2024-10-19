@@ -6,7 +6,7 @@ const axios = require('axios');
 
 const keep_alive = require('./keep_alive.js')
 
-const { prefix, serverID, boosterLog, welcomeLog, roleupdateLog, roleupdateMessage, roleforLog, colourEmbed, BSVerifyRole, BSVerifyRoleupdateLog, BSVerifyRoleUpdateMessage } = require("./config.json")
+const { prefix, serverID, boosterLog, welcomeLog, roleupdateLog, roleupdateMessage, roleforLog, colourEmbed, BSVerifyRole, BSVerifyRoleupdateLog, BSVerifyRoleUpdateMessage, boosterRoleId, boosterChannelId } = require("./config.json")
 const config = require('./config.json');
 
 
@@ -217,8 +217,25 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
 });
 // ----------------------------- //
 
-// ------ temporary available ------ //
+// ------ thank you booster ------ //
 
+client.on('guildMemberUpdate', (oldMember, newMember) => {
+    // Check if the specific role was added
+    const oldRoles = oldMember.roles.cache;
+    const newRoles = newMember.roles.cache;
+
+    if (!oldRoles.has(boosterRoleId) && newRoles.has(boosterRoleId)) {
+        // Get the specific channel
+        const channel = newMember.guild.channels.cache.get(boosterChannelId);
+
+        if (channel) {
+            // Send a message to the channel
+            channel.send(`Hey, ${newMember.user.username}, thank you for supporting us!`);
+        } else {
+            console.log('Channel not found!');
+        }
+    }
+});
 
 // ----------------------------------- //
 

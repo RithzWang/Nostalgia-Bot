@@ -57,7 +57,7 @@ client.on('ready', () => {
       type: 'CUSTOM_STATUS',
       state: `${thailandTime} (UTC+7)`
     });
-  }, 1000); // Update every second
+  }, 1000);
 });
 // ----------------------------- //
 

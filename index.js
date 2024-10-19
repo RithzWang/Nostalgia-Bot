@@ -41,13 +41,13 @@ client.on('ready', () => {
     const hours = currentTime.format('HH');
     const minutes = currentTime.format('mm');
 
-    let emoji = '';
+  //  let emoji = '';
 
-    if (minutes >= 0 && minutes < 30) {
-      emoji = '🕐';
-    } else {
-      emoji = '🕜';
-    } 
+  //  if (minutes >= 0 && minutes < 30) {
+   //   emoji = '🕐';
+  //  } else {
+  //    emoji = '🕜';
+  //  } 
 
     // const thailandTime = currentTime.format(`h:mm A`);
 
@@ -55,7 +55,7 @@ client.on('ready', () => {
 
     client.user.setActivity('customstatus', {
       type: 'CUSTOM_STATUS',
-      state: `[${emoji}] ${thailandTime} (UTC+7)`
+      state: `⏳ ${thailandTime} (UTC+7)`
     });
   }, 1000);
 });

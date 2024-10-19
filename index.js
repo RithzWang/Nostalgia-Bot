@@ -260,7 +260,7 @@ client.on('message', async message => {
 
         // Send the embed back to the channel
         message.channel.send(embed)
-        message.channel.send(`-# type messages in this channel to suggest. do not send other messages than suggestions!`);
+        message.channel.send(`-# send a message in this channel to suggest. do not send anything other than suggestions!`);
     }
 });
 

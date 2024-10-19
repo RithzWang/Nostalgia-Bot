@@ -259,7 +259,8 @@ client.on('message', async message => {
             .setFooter(`By: ${message.author.tag}`, message.author.displayAvatarURL()) // Set the footer with the user's mention
 
         // Send the embed back to the channel
-        message.channel.send(`${embed} -# just send message in this channel to suggest. do not send other messagea and suggestions!`);
+        message.channel.send(embed);
+        message.channel.send(`-# just send message in this channel to suggest. do not send other messages and suggestions!`);
     }
 });
 

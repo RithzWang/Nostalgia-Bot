@@ -49,7 +49,9 @@ client.on('ready', () => {
     //  emoji = '🕜';
   //  } 
 
-    const thailandTime = currentTime.format(`h:mm A`);
+    // const thailandTime = currentTime.format(`h:mm A`);
+
+    const thailandTime = currentTime.format(`HH:mm`);
 
     client.user.setActivity('customstatus', {
       type: 'CUSTOM_STATUS',

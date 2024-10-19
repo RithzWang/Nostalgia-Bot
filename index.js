@@ -260,8 +260,8 @@ client.on('message', async message => {
 
         // Send the embed back to the channel
         message.channel.send(embed);
-        message.react('<:yee:1297271543398662265>');
-        message.react('<:naw:1297271574399025193>');
+        message.channel.react('<:yee:1297271543398662265>');
+        message.channel.react('<:naw:1297271574399025193>');
     }
 });
 

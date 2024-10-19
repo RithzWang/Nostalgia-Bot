@@ -219,25 +219,6 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
 
 // ------ temporary available ------ //
 
-client.on('messageReactionAdd', async (reaction, user) => {
-    // Check if the reaction is the correct emote
-    if (reaction.emoji.id === '1255104967082246165') {
-        const guild = reaction.message.guild;
-
-        // Fetch the member who reacted
-        const member = await guild.members.fetch(user.id);
-
-        // Fetch the role
-        const role = guild.roles.cache.get('1241435660397707264');
-
-        if (role && member) {
-            // Add the role to the member
-            await member.roles.add(role);
-            console.log(`Added role ${role.name} to user ${user.tag}`);
-
-        }
-    }
-});
 
 // ----------------------------------- //
 

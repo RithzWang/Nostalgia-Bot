@@ -252,7 +252,7 @@ client.on('message', async message => {
         await message.delete();
 
         // Create the embed
-        const embed = new Discord.EmbedBuilder()
+        const embed = new Discord.MessageEmbed()
             .setColor(colourEmbed) // Set the color of the embed
             .setTitle('Suggestions') // Set the title
             .setDescription(message.content) // Set the description to the original message

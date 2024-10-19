@@ -260,7 +260,7 @@ client.on('message', async message => {
             .setTimestamp(); // Add the timestamp
 
         // Send the embed back to the channel
-        message.channel.send({ embeds: [embed] });
+        message.channel.send(embed);
     }
 });
 

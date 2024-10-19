@@ -257,7 +257,6 @@ client.on('message', async message => {
             .setTitle('Suggestions') // Set the title
             .setDescription(message.content) // Set the description to the original message
             .setFooter(`By: ${message.author.tag}`, message.author.displayAvatarURL()) // Set the footer with the user's mention
-            .setTimestamp(); // Add the timestamp
 
         // Send the embed back to the channel
         message.channel.send(embed);

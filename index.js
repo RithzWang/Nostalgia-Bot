@@ -259,9 +259,7 @@ client.on('message', async message => {
             .setFooter(`By: ${message.author.tag}`, message.author.displayAvatarURL()) // Set the footer with the user's mention
 
         // Send the embed back to the channel
-        const sentEmbed = await message.channel.send(embed);
-        await sentEmbed.react('<:yee:1297271543398662265>');
-        await sentEmbed.react('<:naw:1297271574399025193>');
+        message.channel.send(embed);
     }
 });
 

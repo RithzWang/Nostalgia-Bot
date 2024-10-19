@@ -6,7 +6,7 @@ const axios = require('axios');
 
 const keep_alive = require('./keep_alive.js')
 
-const { prefix, serverID, boosterLog, welcomeLog, roleupdateLog, roleupdateMessage, roleforLog, colourEmbed, BSVerifyRole, BSVerifyRoleupdateLog, BSVerifyRoleUpdateMessage, boosterRoleId, boosterChannelId } = require("./config.json")
+const { prefix, serverID, boosterLog, welcomeLog, roleupdateLog, roleupdateMessage, roleforLog, colourEmbed, BSVerifyRole, BSVerifyRoleupdateLog, BSVerifyRoleUpdateMessage, boosterRoleId, boosterChannelId, SuggestionChannelId } = require("./config.json")
 const config = require('./config.json');
 
 
@@ -241,6 +241,22 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
 
 // ----------------------------------- //
 
+
+
+// ------- suggestions channel ------- //
+
+client.on('message', message => {
+    // Check if the message is from the specific channel and not from the bot itself
+    if (message.channel.id === SuggestionChannelId && !message.author.bot) {
+        // Delete the original message
+        message.delete().then(() => {
+            // Create the formatted message
+            const formattedMessage = ` ${message.content}\nBy: <@${message.author.id}>`;
+            // Send the formatted message back to the channel
+            message.channel.send(formattedMessage);
+        });
+    }
+});
 
 
 

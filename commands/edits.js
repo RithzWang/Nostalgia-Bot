@@ -3,7 +3,7 @@ module.exports = {
     execute(message, args) {
         if (message.member.permissions.has('ADMINISTRATOR')) {
             message.delete();
-            const channelId = args[0]; // The ID of the channel where the message is located
+            const channelMention = args[0]; // The channel mention
             const messageId = args[1]; // The ID of the message to edit
             const newContent = args.slice(2).join(' '); // New content for the message
 
@@ -13,8 +13,10 @@ module.exports = {
                 },
             };
 
-            // Fetch the channel using the provided channel ID
+            // Extract the channel ID from the mention
+            const channelId = channelMention.replace(/<#(\d+)>/g, '$1');
             const targetChannel = message.client.channels.cache.get(channelId);
+
             if (!targetChannel) {
                 return message.channel.send('Channel not found.');
             }

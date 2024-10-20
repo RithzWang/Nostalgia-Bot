@@ -1,50 +1,42 @@
 module.exports = {
-    name: 'send',
+    name: 'say2',
     execute(message, args) {
-        // Check if the user has the ADMINISTRATOR permission
+        // Check if the user has administrator permissions
         if (message.member.permissions.has('ADMINISTRATOR')) {
-            const channelMention = args[0]; // The channel mention
-            const content = args.slice(channelMention ? 1 : 0).join(' '); // Join the arguments to form the message content
+            // Check if the first argument is a channel mention
+            const channelMention = args[0];
+            const targetChannel = message.mentions.channels.first() || message.guild.channels.cache.get(channelMention.replace(/<#(\d+)>/, '$1'));
+
+            // If the channel is not found or the mention is invalid
+            if (!targetChannel) {
+                return message.channel.send('Please mention a valid channel.');
+            }
+
+            // Join the remaining arguments as the message content
+            const content = args.slice(1).join(' ');
             const silentMessageOptions = {
                 allowedMentions: {
                     parse: [], // Don't parse any mentions
                 },
             };
 
-            // Delete the command message
-            message.delete()
-                .catch(error => {
-                    console.error('Error deleting command message:', error);
-                    // No message sent to the channel
-                });
+            // Attempt to delete the original message
+            message.delete().catch(err => {
+                console.error('Failed to delete message:', err);
+            });
 
-            let targetChannel;
-
-            // Check if a channel mention was provided
-            if (channelMention) {
-                // Extract the channel ID from the mention
-                const channelId = channelMention.replace(/<#(\d+)>/g, '$1');
-                targetChannel = message.client.channels.cache.get(channelId);
-
-                if (!targetChannel) {
-                    console.error('Channel not found:', channelMention);
-                    return; // Exit the function
-                }
-            } else {
-                // Use the current channel if no mention is provided
-                targetChannel = message.channel;
-            }
-
-            // Send the message to the specified channel
+            // Send the new message to the target channel
             targetChannel.send(content, silentMessageOptions)
-                .catch(error => {
-                    console.error('Error sending message:', error);
-                    // No message sent to the channel
+                .then(() => {
+                    // Optionally, send a confirmation message in the original channel
+                    message.channel.send('Message sent successfully to ' + targetChannel.toString() + '!');
+                })
+                .catch(err => {
+                    console.error('Failed to send message:', err);
+                    message.channel.send('Failed to send message to the specified channel.');
                 });
         } else {
-            // If the user does not have permission, log the error and do not send a message
-            console.error('Permission denied for user:', message.member.user.tag);
-            return; // Exit the function
+            message.channel.send('You do not have permission to use this command.');
         }
     }
 };

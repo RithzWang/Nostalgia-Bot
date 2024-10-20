@@ -92,45 +92,6 @@ client.on('message', message => {
 
 // -------- auto translation -------- //
 
-// Replace with your category ID
-const CATEGORY_ID = '1246789681018966150'; // Change to your category ID
-const MOD_ROLE_ID = modRole; // Change to your mod role ID
-
-
-client.on('message', async message => {
-  // Handle direct messages
-  if (message.channel.type === 'dm') {
-    const guild = client.guilds.cache.get('1167046828043276379'); // Replace with your guild ID
-    const category = guild.channels.cache.find(channel => channel.id === CATEGORY_ID && channel.type === 'category');
-    const channelName = `modmail-${message.author.id}`; // Use user ID for uniqueness
-    let channel = guild.channels.cache.find(channel => channel.name === channelName);
-    
-    // Create a new channel if it doesn't exist
-    if (!channel) {
-      channel = await guild.channels.create(channelName, {
-        type: 'text',
-        parent: category,
-      });
-    }
-    await channel.send(`**${message.author}:** ${message.content}`);
-  }
-
-  // Handle messages in modmail channels
-  if (message.channel.name.startsWith('modmail-')) {
-    // Check for the close command
-    if (message.content === '.close') {
-      await message.channel.send("This modmail has been closed."); // Optional message
-      await message.channel.delete(); // Delete the channel
-      return;
-    }
-
-    const userId = message.channel.name.split('-')[1];
-    const user = client.users.cache.get(userId);
-    if (user) {
-      await user.send(`**Admin/Mod:** ${message.content}`);
-    }
-  }
-});
 
 
 // ----------------------------------- //

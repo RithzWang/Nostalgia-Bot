@@ -109,17 +109,17 @@ client.on('message', async (message) => {
   if (message.channel.id !== chatGptChannelId) return; // Check if the message is sent in the specified channel
 
   try {
-    const response = await openai.createCompletion({
-      model: 'text-davinci-003',
-      prompt: message.content,
-      temperature: 0.5,
-      max_tokens: 2048,
-    });
-    message.reply(response.data.choices[0].text);
-  } catch (error) {
-    console.error(error);
-    message.reply('Error generating response. Please try again!');
-  }
+  const response = await openai.createCompletion({
+    model: 'text-davinci-003',
+    prompt: prompt,
+    temperature: 0.5,
+    max_tokens: 150,
+  });
+  message.channel.send(response.data.choices[0].text.trim());
+} catch (error) {
+  console.error('OpenAI API error:', error); // Log the error
+  message.reply('Error generating response. Please try again!');
+}
 });
 
 

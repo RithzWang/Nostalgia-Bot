@@ -262,8 +262,8 @@ client.on('message', async message => {
         const suggestion = await message.channel.send(embed);
 
         // Add reactions to the embed message
-        await suggestion.react('👍'); server-specific emojis
-        await suggestion.react('👎');
+        await suggestion.react('<:yee:1297271543398662265>');
+await suggestion.react('<:naw:1297271574399025193>');
 
         message.channel.send(`-# send a message in this channel to suggest. do not send anything other than suggestions!`);
     }

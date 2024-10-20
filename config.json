@@ -12,5 +12,9 @@
     "BSVerifyRoleUpdateMessage" : "1230397328012349482",
     "boosterChannelId" : "1187766948159832135",
     "boosterRoleId" : "1173818638382420080",
-    "SuggestionChannelId" : "1187681506525728778"
+    "SuggestionChannelId" : "1187681506525728778",
+    "modules": [],
+  "modID": ["1167046828190085170", "1168598936630599710"],
+  "ticketCategoryID": "1246789681018966150"
 }
+

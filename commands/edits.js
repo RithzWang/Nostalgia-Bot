@@ -2,7 +2,7 @@ module.exports = {
     name: 'edits',
     execute(message, args) {
         if (message.member.permissions.has('ADMINISTRATOR')) {
-            message.delete();
+            message.delete(); // Delete the command message
             const channelMention = args[0]; // The channel mention
             const messageId = args[1]; // The ID of the message to edit
             const newContent = args.slice(2).join(' '); // New content for the message
@@ -13,30 +13,40 @@ module.exports = {
                 },
             };
 
-            // Extract the channel ID from the mention
-            const channelId = channelMention.replace(/<#(\d+)>/g, '$1');
-            const targetChannel = message.client.channels.cache.get(channelId);
+            let targetChannel;
 
-            if (!targetChannel) {
-                return message.channel.send('Channel not found.');
+            // Check if a channel mention was provided
+            if (channelMention) {
+                // Extract the channel ID from the mention
+                const channelId = channelMention.replace(/<#(\d+)>/g, '$1');
+                targetChannel = message.client.channels.cache.get(channelId);
+
+                if (!targetChannel) {
+                    console.error('Channel not found:', channelMention);
+                    return; // Exit the function
+                }
+            } else {
+                // Use the current channel if no mention is provided
+                targetChannel = message.channel;
             }
 
             // Fetch the message from the specified channel
             targetChannel.messages.fetch(messageId)
                 .then(msg => {
                     msg.edit(newContent, silentMessageOptions)
-                       
                         .catch(error => {
                             console.error('Error editing message:', error);
-                            message.channel.send('Failed to edit the message.');
+                            // No message sent to the channel
                         });
                 })
                 .catch(error => {
                     console.error('Error fetching message:', error);
-                    message.channel.send('Failed to fetch the message.');
+                    // No message sent to the channel
                 });
         } else {
-            message.channel.send('You do not have permission to use this command.');
+            // If the user does not have permission, do not send a message
+            console.error('Permission denied for user:', message.member.user.tag);
+            return; // Exit the function
         }
     }
 };

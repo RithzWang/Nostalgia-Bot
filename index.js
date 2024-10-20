@@ -3,8 +3,6 @@ const Discord = require('discord.js');
 Discord.Constants.DefaultOptions.ws.properties.$browser = "Discord Android";
 const client = new Discord.Client();
 const axios = require('axios');
-const langDetector = require('lang-detector');
-const googleTranslate = require('google-translate');
 
 const keep_alive = require('./keep_alive.js')
 
@@ -91,16 +89,7 @@ client.on('message', message => {
 // -------- auto translation -------- //
 
 
-client.on('message', (message) => {
-  const detectedLanguage = langDetector.detect(message.content);
 
-  if (detectedLanguage !== 'en') {
-    const targetLanguage = 'en';
-    googleTranslate.translate(message.content, targetLanguage, (err, translation) => {
-      message.channel.send(`**Translation:** ${translation}`);
-    });
-  }
-});
 
 
 // ----------------------------------- //

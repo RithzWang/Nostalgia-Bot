@@ -265,7 +265,7 @@ client.on('message', async message => {
             .setColor(colourEmbed) // Set the color of the embed
             .setTitle('📥︰suggestions') // Set the title
             .setDescription(message.content) // Set the description to the original message
-            .setFooter(`By: ${message.author.name} (ID: ${message.author.id})`, message.author.displayAvatarURL()) // Set the footer with the user's mention
+            .setFooter(`By: ${message.author.tag} (ID: ${message.author.id})`, message.author.displayAvatarURL()) // Set the footer with the user's mention
 
         // Send the embed back to the channel
         const suggestion = await message.channel.send(embed);

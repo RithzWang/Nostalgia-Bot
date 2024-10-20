@@ -112,7 +112,7 @@ client.on('message', async message => {
         parent: category,
       });
     }
-    await channel.send(`New message from ${message.author}: ${message.content}`);
+    await channel.send(`**${message.author}:** ${message.content}`);
   }
 
   // Handle messages in modmail channels
@@ -127,7 +127,7 @@ client.on('message', async message => {
     const userId = message.channel.name.split('-')[1];
     const user = client.users.cache.get(userId);
     if (user) {
-      await user.send(`Mod response: ${message.content}`);
+      await user.send(`**Admin/Mod:** ${message.content}`);
     }
   }
 });

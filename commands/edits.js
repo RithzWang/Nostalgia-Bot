@@ -25,9 +25,7 @@ module.exports = {
             targetChannel.messages.fetch(messageId)
                 .then(msg => {
                     msg.edit(newContent, silentMessageOptions)
-                        .then(() => {
-                            message.channel.send('Message edited successfully.');
-                        })
+                       
                         .catch(error => {
                             console.error('Error editing message:', error);
                             message.channel.send('Failed to edit the message.');

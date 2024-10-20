@@ -1,33 +1,32 @@
 module.exports = {
-    name: 'edits',
+    name: 'edit2',
     execute(message, args) {
-        // Check if the user has the ADMINISTRATOR permission
         if (message.member.permissions.has('ADMINISTRATOR')) {
-            const channelId = args[0]; // The channel ID or mention
-            const messageId = args[1]; // The message ID
-            const content = args.slice(2).join(' '); // Join the arguments to form the message content
+            message.delete(); // Delete the command message
+            const channelMention = args[0]; // The channel mention
+            const messageId = args[1]; // The ID of the message to edit
+            const newContent = args.slice(2).join(' '); // New content for the message
 
-            let targetChannel;
+            const silentMessageOptions = {
+                allowedMentions: {
+                    parse: [], // Don't parse any mentions
+                },
+            };
 
-            // Check if a channel mention was provided
-            if (channelId.startsWith('<#')) {
-                // Extract the channel ID from the mention
-                const channelIdExtracted = channelId.replace(/<#(\d+)>/g, '$1');
-                targetChannel = message.client.channels.cache.get(channelIdExtracted);
+            // Extract the channel ID from the mention
+            const channelId = channelMention.replace(/<#(\d+)>/g, '$1');
+            const targetChannel = message.client.channels.cache.get(channelId);
 
-                if (!targetChannel) {
-                    console.error('Channel not found:', channelId);
-                    return; // Exit the function
-                }
-            } else {
-                // Use the current channel if no mention is provided
-                targetChannel = message.channel;
+            if (!targetChannel) {
+                // If the channel is not found, simply log the error
+                console.error('Channel not found:', channelMention);
+                return; // Exit the function
             }
 
-            // Edit the message in the specified channel
+            // Fetch the message from the specified channel
             targetChannel.messages.fetch(messageId)
-                .then(messageToEdit => {
-                    messageToEdit.edit(content)
+                .then(msg => {
+                    msg.edit(newContent, silentMessageOptions)
                         .catch(error => {
                             console.error('Error editing message:', error);
                             // No message sent to the channel
@@ -38,7 +37,7 @@ module.exports = {
                     // No message sent to the channel
                 });
         } else {
-            // If the user does not have permission, log the error and do not send a message
+            // If the user does not have permission, do not send a message
             console.error('Permission denied for user:', message.member.user.tag);
             return; // Exit the function
         }

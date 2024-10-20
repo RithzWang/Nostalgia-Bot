@@ -4,6 +4,8 @@ Discord.Constants.DefaultOptions.ws.properties.$browser = "Discord Android";
 const client = new Discord.Client();
 const axios = require('axios');
 
+const { Configuration, OpenAIApi } = require('openai');
+
 const keep_alive = require('./keep_alive.js')
 
 const { prefix, serverID, boosterLog, welcomeLog, roleupdateLog, roleupdateMessage, roleforLog, colourEmbed, BSVerifyRole, BSVerifyRoleupdateLog, BSVerifyRoleUpdateMessage, boosterRoleId, boosterChannelId, SuggestionChannelId } = require("./config.json")
@@ -69,7 +71,6 @@ client.on('ready', () => {
 
 
 
-
 client.on('message', message => {
     if (!message.content.startsWith(prefix) || message.author.bot) return;
 
@@ -94,7 +95,32 @@ client.on('message', message => {
 // -------- auto translation -------- //
 
 
+const configuration = new Configuration({
+  apiKey: process.env.apiKey,
+  organization: process.env.organization, // Replace with your actual organization ID
+});
 
+const openai = new OpenAIApi(configuration);
+
+const chatGptChannelId = '1297645718613393550'; // Replace with the ID of the channel where you want the ChatGPT feature to be available
+
+client.on('message', async (message) => {
+  if (message.author.bot) return; // Ignore messages from bots
+  if (message.channel.id !== chatGptChannelId) return; // Check if the message is sent in the specified channel
+
+  try {
+    const response = await openai.createCompletion({
+      model: 'text-davinci-003',
+      prompt: message.content,
+      temperature: 0.5,
+      max_tokens: 2048,
+    });
+    message.reply(response.data.choices[0].text);
+  } catch (error) {
+    console.error(error);
+    message.reply('Error generating response. Please try again!');
+  }
+});
 
 
 // ----------------------------------- //

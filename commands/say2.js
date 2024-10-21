@@ -16,11 +16,13 @@ module.exports = {
 
             // Join the remaining arguments as the message content
             const content = args.slice(1).join(' ');
+            
             const silentMessageOptions = {
-                allowedMentions: {
-                    parse: [], // Don't parse any mentions
-                },
-            };
+    allowedMentions: {
+        parse: ['users', 'roles', 'everyone'].map(x => ({ [x]: false })),
+        repliedUser: false,
+    },
+};
 
             // Attempt to delete the original message
             message.delete().catch(err => {

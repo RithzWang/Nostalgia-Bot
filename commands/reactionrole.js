@@ -1,73 +1,49 @@
-const { MessageEmbed } = require('discord.js'); // Import MessageEmbed
-const enabledReactionRoles = new Map(); // To keep track of channels with enabled reaction roles
+const Discord = require('discord.js');
+const { Message } = require('discord.js');
 
 module.exports = {
-    name: 'reactionrole',
-    aliases: ['rr'],
+    name: 'rr',
+    description: 'Manage reaction roles',
     async execute(message, args) {
-        // Check if the user has the required permissions
-        if (!message.member.permissions.has('MANAGE_ROLES')) {
-            return message.channel.send('You do not have permission to use this command.');
-        }
+        if (!message.guild) return; // Ensure the command is used in a guild
 
-        // Check if the correct number of arguments is provided
-        if (args.length < 4) {
-            return message.channel.send('Usage: !reactionrole [channel mention] [message ID] [role mention/id] [emoji]');
-        }
+        const command = args[0];
+        const targetChannelId = args[1].replace(/<|#|>/g, ''); // Extract channel ID
+        const targetChannel = message.guild.channels.cache.get(targetChannelId);
+        const messageId = args[2];
+        const role = message.mentions.roles.first();
+        const emoji = args[3];
 
-        const channelMention = args[0]; // The channel mention
-        const messageId = args[1]; // The message ID as the 2nd argument
-        const roleArg = args[2]; // The role mention or ID
-        const emoji = args[3]; // The emoji to react with
-
-        // Fetch the target channel
-        const targetChannel = message.mentions.channels.first() || message.guild.channels.cache.get(channelMention.replace(/[<#>]/g, ''));
-        if (!targetChannel) {
-            return message.channel.send('Channel not found. Please mention a valid channel.');
-        }
-
-        // Fetch the message by ID in the specified channel
-        let targetMessage;
-        try {
-            targetMessage = await targetChannel.messages.fetch(messageId);
-        } catch (error) {
-            return message.channel.send('Message not found. Please check the message ID.');
-        }
-
-        // Find the role by mention or ID
-        const role = message.mentions.roles.first() || message.guild.roles.cache.get(roleArg);
-        if (!role) {
-            return message.channel.send('Role not found.');
-        }
-
-        // Add the reaction to the specified message
-        await targetMessage.react(emoji);
-
-        // Store the reaction role in a map for this channel
-        if (!enabledReactionRoles.has(targetChannel.id)) {
-            enabledReactionRoles.set(targetChannel.id, []);
-        }
-        enabledReactionRoles.get(targetChannel.id).push({ role, emoji });
-
-        // Create a reaction collector
-        const filter = (reaction, user) => {
-            return reaction.emoji.name === emoji && !user.bot && enabledReactionRoles.has(targetChannel.id); // Only collect if enabled
-        };
-
-        const collector = targetMessage.createReactionCollector(filter, { dispose: true });
-
-        collector.on('collect', (reaction, user) => {
-            const member = message.guild.members.cache.get(user.id);
-            if (member) {
-                member.roles.add(role).catch(err => console.error(err));
+        if (command === '!rr') {
+            if (!targetChannel || !messageId || !role || !emoji) {
+                return message.reply('Usage: !rr #channel <message id> @role-name :emoji:');
             }
-        });
 
-        collector.on('remove', (reaction, user) => {
-            const member = message.guild.members.cache.get(user.id);
-            if (member) {
-                member.roles.remove(role).catch(err => console.error(err));
+            const targetMessage = await targetChannel.messages.fetch(messageId).catch(err => {
+                return message.reply('Could not find the message. Please check the message ID.');
+            });
+
+            if (!targetMessage) return;
+
+            await targetMessage.react(emoji).catch(err => {
+                return message.reply('Failed to add reaction. Please check the emoji.');
+            });
+
+            // Store the reaction role in a database or an in-memory structure
+            // Example: roles[messageId] = { roleId: role.id, emoji: emoji, channelId: targetChannelId };
+
+            message.channel.send(`Reaction role set in ${targetChannel}! React to the message with ${emoji} to get the ${role.name} role.`);
+        } else if (command === '.rr-remove') {
+            if (!targetChannel || !messageId || !role || !emoji) {
+                return message.reply('Usage: !rr-remove #channel <message id> @role-name :emoji:');
             }
-        });
+
+            // Logic to remove the role from the stored reaction role
+            // Example: delete roles[messageId];
+
+            message.channel.send(`Reaction role removed for ${role.name} with ${emoji} in ${targetChannel}.`);
+        } else {
+            message.reply('Invalid command. Use "!rr" or "!rr-remove".');
+        }
     }
 };

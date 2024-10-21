@@ -26,6 +26,10 @@ module.exports = {
             targetChannel.messages.fetch(messageId)
                 .then(msg => {
                     msg.edit(newContent, silentMessageOptions)
+                .then(() => {
+                    // Optionally, send a confirmation message in the original channel
+                    message.channel.send('Message edited successfully!');
+                })
                         .catch(error => {
                             console.error('Error editing message:', error);
                             // No message sent to the channel

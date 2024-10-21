@@ -92,8 +92,10 @@ client.on('message', message => {
 
 // -------- ticket system -------- //
 
-const ticketEmoji = '🎟️'; // Emoji to open a ticket
-const closeEmoji = '❌'; // Emoji to close a ticket
+const ticketEmoji = '🎟️';
+const closeEmoji = '❌';
+const categoryId = '1246789681018966150';
+const modRoleId = ['1167046828190085170', '1168598936630599710'];
 
 // Create a new ticket channel when the emoji is reacted
 client.on('message', async message => {
@@ -128,17 +130,22 @@ client.on('messageReactionAdd', async (reaction, user) => {
       return user.send('You already have a ticket open!');
     }
 
-    // Create a new ticket channel
+    // Create a new ticket channel in the specified category
     guild.channels.create(channelName, {
       type: 'text',
+      parent: categoryId, // Set the category ID
       permissionOverwrites: [
         {
           id: guild.id,
-          deny: ['VIEW_CHANNEL'],
+          deny: ['VIEW_CHANNEL'], // Deny everyone from viewing by default
         },
         {
           id: member.id,
-          allow: ['VIEW_CHANNEL', 'SEND_MESSAGES'],
+          allow: ['VIEW_CHANNEL', 'SEND_MESSAGES'], // Allow the member to view and send messages
+        },
+        {
+          id: modRoleId, // Allow the mod role to view the channel
+          allow: ['VIEW_CHANNEL'],
         },
       ],
     })

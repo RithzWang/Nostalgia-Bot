@@ -12,10 +12,11 @@ module.exports = {
             const newContent = args.slice(1).join(' ');
 
             const silentMessageOptions = {
-                allowedMentions: {
-                    parse: [], // Don't parse any mentions
-                },
-            };
+    allowedMentions: {
+        parse: ['users', 'roles', 'everyone'].map(x => ({ [x]: false })),
+        repliedUser: false,
+    },
+};
 
             // Fetch the message to edit
             message.channel.messages.fetch(messageId)

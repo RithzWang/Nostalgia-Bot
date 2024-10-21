@@ -11,10 +11,11 @@ module.exports = {
             const newContent = args.slice(2).join(' '); // New content for the message
 
             const silentMessageOptions = {
-                allowedMentions: {
-                    parse: [], // Don't parse any mentions
-                },
-            };
+    allowedMentions: {
+        parse: ['users', 'roles', 'everyone'].map(x => ({ [x]: false })),
+        repliedUser: false,
+    },
+};
 
             // Extract the channel ID from the mention
             const channelId = channelMention.replace(/<#(\d+)>/g, '$1');

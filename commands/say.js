@@ -7,10 +7,11 @@ module.exports = {
         if (message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
             const content = args.join(' ');
             const silentMessageOptions = {
-                allowedMentions: {
-                    parse: [], // Don't parse any mentions
-                },
-            };
+    allowedMentions: {
+        parse: ['users', 'roles', 'everyone'].map(x => ({ [x]: false })),
+        repliedUser: false,
+    },
+};
 
             // Delete the command message
             message.delete();

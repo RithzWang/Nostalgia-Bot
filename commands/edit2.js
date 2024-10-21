@@ -2,7 +2,6 @@ module.exports = {
     name: 'edit2',
     execute(message, args) {
         if (message.member.permissions.has('ADMINISTRATOR')) {
-            message.delete(); // Delete the command message
             const channelMention = args[0]; // The channel mention
             const messageId = args[1]; // The ID of the message to edit
             const newContent = args.slice(2).join(' '); // New content for the message

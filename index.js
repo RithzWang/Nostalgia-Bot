@@ -113,10 +113,11 @@ client.on(Events.GuildMemberUpdate, (oldMember, newMember) => {
     const logChannel = newMember.guild.channels.cache.get(roleupdateLog);
 
     const silentMessageOptions = {
-        allowedMentions: {
-            parse: [], // Don't parse any mentions
-        },
-    };
+    allowedMentions: {
+        parse: ['users', 'roles', 'everyone'].map(x => ({ [x]: false })),
+        repliedUser: false,
+    },
+};
 
     const editMessage = (messageContent) => {
         if (roleupdateMessage && messageContent.trim() !== '') {

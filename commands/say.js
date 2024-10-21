@@ -1,17 +1,31 @@
+const { PermissionsBitField } = require('discord.js');
+
 module.exports = {
     name: 'say',
     execute(message, args) {
-        if (message.member.permissions.has('ADMINISTRATOR')) {
+        // Check if the user has administrator permissions
+        if (message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
             const content = args.join(' ');
             const silentMessageOptions = {
                 allowedMentions: {
                     parse: [], // Don't parse any mentions
                 },
             };
+
+            // Delete the command message
             message.delete();
-            message.channel.send(content, silentMessageOptions);
+
+            // Send the message with the specified content
+            message.channel.send(content, silentMessageOptions)
+                .catch(error => {
+                    console.error('Error sending message:', error);
+                });
         } else {
-            message.channel.send('You do not have permission to use this command.');
+            // If the user does not have permission, send a message
+            message.channel.send('You do not have permission to use this command.')
+                .catch(error => {
+                    console.error('Error sending permission denied message:', error);
+                });
         }
     }
 };

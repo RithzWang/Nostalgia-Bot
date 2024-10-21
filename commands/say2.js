@@ -20,10 +20,6 @@ module.exports = {
                 },
             };
 
-            // Attempt to delete the original message
-            message.delete().catch(err => {
-                console.error('Failed to delete message:', err);
-            });
 
             // Send the new message to the target channel
             targetChannel.send(content, silentMessageOptions)

@@ -1,7 +1,10 @@
+const { PermissionsBitField } = require('discord.js');
+
 module.exports = {
     name: 'edit2',
     execute(message, args) {
-        if (message.member.permissions.has('ADMINISTRATOR')) {
+        // Check if the user has administrator permissions
+        if (message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
             message.delete(); // Delete the command message
             const channelMention = args[0]; // The channel mention
             const messageId = args[1]; // The ID of the message to edit
@@ -18,7 +21,7 @@ module.exports = {
             const targetChannel = message.client.channels.cache.get(channelId);
 
             if (!targetChannel) {
-                // If the channel is not found, simply log the error
+                // If the channel is not found, log the error
                 console.error('Channel not found:', channelMention);
                 return; // Exit the function
             }
@@ -29,15 +32,13 @@ module.exports = {
                     msg.edit(newContent, silentMessageOptions)
                         .catch(error => {
                             console.error('Error editing message:', error);
-                            // No message sent to the channel
                         });
                 })
                 .catch(error => {
                     console.error('Error fetching message:', error);
-                    // No message sent to the channel
                 });
         } else {
-            // If the user does not have permission, do not send a message
+            // If the user does not have permission, log the error
             console.error('Permission denied for user:', message.member.user.tag);
             return; // Exit the function
         }

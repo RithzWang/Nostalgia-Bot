@@ -1,8 +1,13 @@
+const { PermissionsBitField } = require('discord.js');
+
 module.exports = {
     name: 'edit',
     execute(message, args) {
-        if (message.member.permissions.has('ADMINISTRATOR')) {
-            message.delete()
+        // Check if the user has administrator permissions
+        if (message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+            // Delete the command message
+            message.delete();
+
             const messageId = args[0];
             const newContent = args.slice(1).join(' ');
 
@@ -12,6 +17,7 @@ module.exports = {
                 },
             };
 
+            // Fetch the message to edit
             message.channel.messages.fetch(messageId)
                 .then(msg => {
                     msg.edit(newContent, silentMessageOptions)
@@ -27,4 +33,3 @@ module.exports = {
         }
     }
 };
-                          

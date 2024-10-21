@@ -90,11 +90,96 @@ client.on('message', message => {
 
 
 
-// -------- auto translation -------- //
+// -------- ticket system -------- //
 
+const ticketEmoji = '🎟️'; // Emoji to open a ticket
+const closeEmoji = '❌'; // Emoji to close a ticket
 
+// Create a new ticket channel when the emoji is reacted
+client.on('message', async message => {
+  if (message.author.bot) return;
+
+  // Send a message prompting users to react to open a ticket
+  if (message.content === '!setup') {
+    const embed = new Discord.MessageEmbed()
+      .setColor(colourEmbed)
+      .setTitle('Open a Ticket')
+      .setDescription('React with 🎟️ to open a ticket!')
+      .setFooter('Click the emoji below to get support.');
+
+    const setupMessage = await message.channel.send(embed);
+    await setupMessage.react(ticketEmoji);
+  }
+});
+
+// Listen for reaction add events
+client.on('messageReactionAdd', async (reaction, user) => {
+  if (user.bot) return; // Ignore bot reactions
+
+  // Check if the emoji is the ticket emoji for opening a ticket
+  if (reaction.emoji.name === ticketEmoji) {
+    const guild = reaction.message.guild;
+    const member = guild.members.cache.get(user.id);
+    const channelName = `ticket-${member.user.username}`;
+
+    // Check if a ticket channel already exists for the member
+    const existingChannel = guild.channels.cache.find(channel => channel.name === channelName);
+    if (existingChannel) {
+      return user.send('You already have a ticket open!');
+    }
+
+    // Create a new ticket channel
+    guild.channels.create(channelName, {
+      type: 'text',
+      permissionOverwrites: [
+        {
+          id: guild.id,
+          deny: ['VIEW_CHANNEL'],
+        },
+        {
+          id: member.id,
+          allow: ['VIEW_CHANNEL', 'SEND_MESSAGES'],
+        },
+      ],
+    })
+    .then(channel => {
+      const ticketEmbed = new Discord.MessageEmbed()
+        .setColor(colourEmbed)
+        .setTitle('New Ticket Created')
+        .setDescription(`Hello ${member.user.username}! Please describe your issue below.`)
+        .setFooter('React with ❌ to close this ticket.');
+
+      channel.send(ticketEmbed).then(msg => {
+        msg.react(closeEmoji); // React to the ticket message with the close emoji
+      });
+    })
+    .catch(error => console.error(error));
+  }
+
+  // Check if the emoji is the close emoji for closing a ticket
+  if (reaction.emoji.name === closeEmoji) {
+    const channel = reaction.message.channel;
+
+    // Check if the channel is a ticket channel
+    if (!channel.name.startsWith('ticket-')) return;
+
+    const closeEmbed = new Discord.MessageEmbed()
+      .setColor(colourEmbed)
+      .setTitle('Ticket Closed')
+      .setDescription('This ticket has been closed. Thank you for reaching out!')
+      .setFooter('If you need further assistance, please open a new ticket.');
+
+    channel.send(closeEmbed).then(() => {
+      channel.delete()
+        .then(() => console.log(`Deleted ticket channel ${channel.name}`))
+        .catch(error => console.error(error));
+    });
+  }
+});
 
 // ----------------------------------- //
+
+
 
 
 // --------- welcomer --------- //

@@ -74,8 +74,7 @@ module.exports = {
 
 // Command to list all reaction roles
 module.exports.listReactionRoles = {
-    name: 'reactionrole-list',
-    aliases: ['rr-list'],
+    name: 'rr-list',
     async execute(message) {
         const roles = enabledReactionRoles.get(message.channel.id);
         if (!roles || roles.length === 0) {
@@ -94,8 +93,7 @@ module.exports.listReactionRoles = {
 
 // Command to disable a reaction role by index
 module.exports.disableReactionRole = {
-    name: 'disable-reactionrole',
-    aliases: ['disable-rr'],
+    name: 'disable-rr',
     async execute(message, args) {
         // Check if the user has the required permissions
         if (!message.member.permissions.has('ADMINISTRATOR')) {

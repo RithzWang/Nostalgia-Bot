@@ -265,11 +265,11 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
   let roleUpdateMessage = '';
 
   if (addedRoles.size > 0 && removedRoles.size > 0) {
-    roleUpdateMessage = `<a:success:1297818086463770695> | **${newMember.user}** has been added **${addedRoles.map(role => `${role.name}`).join(', ')}** role(s) and removed **${removedRoles.map(role => `${role.name}`).join(', ')}** role(s) !`;
+    roleUpdateMessage = `<a:success:1297818086463770695> **${newMember.user}** has been added **${addedRoles.map(role => `${role.name}`).join(', ')}** role(s) and removed **${removedRoles.map(role => `${role.name}`).join(', ')}** role(s) !`;
   } else if (addedRoles.size > 0) {
-    roleUpdateMessage = `<a:success:1297818086463770695> | **${newMember.user}** has been added **${addedRoles.map(role => `${role.name}`).join(', ')}** role(s) !`;
+    roleUpdateMessage = `<a:success:1297818086463770695> **${newMember.user}** has been added **${addedRoles.map(role => `${role.name}`).join(', ')}** role(s) !`;
   } else if (removedRoles.size > 0) {
-    roleUpdateMessage = `<a:success:1297818086463770695> | **${newMember.user}** has been removed **${removedRoles.map(role => `${role.name}`).join(', ')}** role(s) !`;
+    roleUpdateMessage = `<a:success:1297818086463770695> **${newMember.user}** has been removed **${removedRoles.map(role => `${role.name}`).join(', ')}** role(s) !`;
   }
 
   editMessage(roleUpdateMessage);

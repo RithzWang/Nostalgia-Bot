@@ -222,6 +222,7 @@ const { MessageEmbed } = require('discord.js');
 // Define an array of staff role IDs
 const staffRoleIds = ['1247033789046067281', '1246342030758645822', '1246345136401551400', '1167046828190085170', '1168598936630599710']; // Replace with actual role IDs
 
+
 client.on('message', async message => {
     // Check if the message is from the specific suggestion channel and not from the bot itself
     if (message.channel.id === SuggestionChannelId && !message.author.bot) {
@@ -249,11 +250,11 @@ client.on('message', async message => {
             // Check if the user has any of the staff roles
             const hasStaffRole = message.member.roles.cache.some(role => staffRoleIds.includes(role.id));
             if (hasStaffRole) {
-                // Send the reply as a new message
+                // Create a reply embed that references the original suggestion
                 const replyEmbed = new MessageEmbed()
                     .setColor('BLUE')
                     .setTitle('🗨️ Staff Reply')
-                    .setDescription(message.content)
+                    .setDescription(`Replying to suggestion: "${referencedMessage.embeds[0].description}"\n\n**Response:** ${message.content}`)
                     .setFooter(`By: ${message.author.tag}`, message.author.displayAvatarURL());
 
                 await message.channel.send(replyEmbed);
@@ -264,7 +265,6 @@ client.on('message', async message => {
         }
     }
 });
-
 
 
 client.login(process.env.TOKEN);

@@ -6,7 +6,7 @@ const axios = require('axios');
 
 const keep_alive = require('./keep_alive.js')
 
-const { prefix, serverID, boosterLog, welcomeLog, roleupdateLog, roleupdateMessage, roleforLog, colourEmbed, BSVerifyRole, BSVerifyRoleupdateLog, BSVerifyRoleUpdateMessage, boosterRoleId, boosterChannelId, SuggestionChannelId, modRole } = require("./config.json")
+const { prefix, serverID, boosterLog, welcomeLog, roleupdateLog, roleupdateMessage, roleforLog, colourEmbed, BSVerifyRole, BSVerifyRoleupdateLog, BSVerifyRoleUpdateMessage, boosterRoleId, boosterChannelId, SuggestionChannelId, staffRole } = require("./config.json")
 const config = require('./config.json');
 
 
@@ -246,35 +246,51 @@ await suggestion.react('<:naw:1297271574399025193>');
 
 // -------- suggestion accept -------- //
 
-client.on('message', async (message) => {
-    // Ignore messages from bots
-    if (message.author.bot) return;
+client.on('message', async message => {
 
-    // Check if the message starts with !accept
-    if (message.content.startsWith('!accept')) {
-        // Extract the message ID from the command
-        const args = message.content.split(' ');
-        const messageId = args[1];
+    // Check if the message is from the specific channel and not from the bot itself
+    if (message.channel.id === SuggestionChannelId && !message.author.bot) {
+        // Check if the message author has the staff role
+        const hasStaffRole = message.member.roles.cache.has(staffRole);
 
-        if (!messageId) {
-            return message.reply('Please provide a message ID.');
+        // If the author has the staff role, ignore their message
+        if (hasStaffRole) {
+            return; // Exit early, do not process staff messages
+        }
+
+        // Check if the message content is not empty
+        if (!message.content.trim()) {
+            return; // Ignore empty messages
         }
 
         try {
-            // Fetch the target channel
-            const targetChannel = await client.channels.fetch(SuggestionChannelId);
-            if (!targetChannel || targetChannel.type !== 'text') {
-                return message.reply('Invalid target channel.');
-            }
+            // Delete the original message
+            await message.delete();
 
-            // Fetch the message using the ID from the specified channel
-            const targetMessage = await targetChannel.messages.fetch(messageId);
-            // React to the message with the check emoji
-            await targetMessage.react('<:check:1255094364343107616>');
-            message.channel.send('Suggestion Accepted!');
+            // Create the embed
+            const embed = new Discord.MessageEmbed()
+                .setColor(colourEmbed) // Set the color of the embed
+                .setTitle('📥︰suggestions') // Set the title
+                .setDescription(message.content) // Set the description to the original message
+                .setFooter(`By: ${message.author.tag} (ID: ${message.author.id})`, message.author.displayAvatarURL()); // Set the footer with the user's mention
+
+            // Send the embed back to the channel
+            const suggestion = await message.channel.send(embed);
+
+            // Add reactions to the embed message
+            await suggestion.react('<:yee:1297271543398662265>');
+            await suggestion.react('<:naw:1297271574399025193>');
+
+            // Send a reminder message if it hasn't been sent recently
+            const reminderMessage = `-# send a message in this channel to suggest. do not send anything other than suggestions!`;
+            const sentMessages = await message.channel.messages.fetch({ limit: 5 });
+            const recentReminder = sentMessages.some(msg => msg.content === reminderMessage);
+
+            if (!recentReminder) {
+                await message.channel.send(reminderMessage);
+            }
         } catch (error) {
-            console.error('Error fetching message:', error);
-            message.reply('Could not find a message with that ID in the specified channel.');
+            console.error('Error handling message:', error);
         }
     }
 });

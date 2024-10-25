@@ -194,19 +194,13 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
 // ------ thank you booster ------ //
 
 client.on('guildMemberUpdate', (oldMember, newMember) => {
-    // Check if the specific role was added
-    const oldRoles = oldMember.roles.cache;
-    const newRoles = newMember.roles.cache;
-
-    if (!oldRoles.has(boosterRoleId) && newRoles.has(boosterRoleId)) {
-        // Get the specific channel
-        const channel = newMember.guild.channels.cache.get(boosterChannelId);
-
+    // Check if the member has boosted the server
+    if (newMember.premiumSince && !oldMember.premiumSince) {
+        const channel = client.channels.cache.get(boosterChannelId);
         if (channel) {
-            // Send a message to the channel
-            channel.send(`Hey, ${newMember.user.username}, thank you for supporting us!`);
+            channel.send(` <@${newMember.user.id}>, Thank you for boosting the server! 🎉`);
         } else {
-            console.log('Channel not found!');
+            console.error('Booster channel not found!');
         }
     }
 });

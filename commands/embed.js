@@ -16,8 +16,7 @@ module.exports = {
         const channelCollector = message.channel.createMessageCollector({ filter, max: 1, time: 30000 });
 
         channelCollector.on('collect', async response => {
-            const channelMention = response.content;
-            const targetChannel = message.mentions.channels.first() || message.guild.channels.cache.get(channelMention.replace(/<#(\d+)>/, '$1'));
+            const targetChannel = message.mentions.channels.first() || message.guild.channels.cache.get(response.content.replace(/<#(\d+)>/, '$1'));
 
             if (!targetChannel) {
                 return message.channel.send('Please mention a valid channel.');

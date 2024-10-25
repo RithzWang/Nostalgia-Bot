@@ -41,7 +41,7 @@ module.exports = {
                     const embed = new MessageEmbed()
                         .setTitle(embedTitle)
                         .setDescription(embedDescription)
-                        .setColor('#0099ff'); // You can customize the color
+                        .setColor('#888888'); // You can customize the color
 
                     // Send the embed to the target channel
                     targetChannel.send({ embeds: [embed] })

@@ -246,54 +246,31 @@ await suggestion.react('<:naw:1297271574399025193>');
 
 // -------- suggestion accept -------- //
 
-client.on('message', async message => {
-
+client.on('message', async (message) => {
     // Check if the message is from the specific channel and not from the bot itself
     if (message.channel.id === SuggestionChannelId && !message.author.bot) {
-        // Check if the message author has the staff role
-        const hasStaffRole = message.member.roles.cache.has(staffRole);
+        // Delete the original message
+        await message.delete();
 
-        // If the author has the staff role, ignore their message
-        if (hasStaffRole) {
-            return; // Exit early, do not process staff messages
-        }
+        // Create the embed
+        const embed = new Discord.MessageEmbed()
+            .setColor(colourEmbed) // Set the color of the embed
+            .setTitle('📥︰suggestions') // Set the title
+            .setDescription(message.content) // Set the description to the original message content
+            .setFooter(`By: ${message.author.tag} (ID: ${message.author.id})`, message.author.displayAvatarURL()); // Set the footer with user info
 
-        // Check if the message content is not empty
-        if (!message.content.trim()) {
-            return; // Ignore empty messages
-        }
+        // Send the embed to the channel
+        const suggestion = await message.channel.send(embed);
 
-        try {
-            // Delete the original message
-            await message.delete();
+        // Add reactions to the embed message
+        await suggestion.react('<:yee:1297271543398662265>');
+        await suggestion.react('<:naw:1297271574399025193>');
 
-            // Create the embed
-            const embed = new Discord.MessageEmbed()
-                .setColor(colourEmbed) // Set the color of the embed
-                .setTitle('📥︰suggestions') // Set the title
-                .setDescription(message.content) // Set the description to the original message
-                .setFooter(`By: ${message.author.tag} (ID: ${message.author.id})`, message.author.displayAvatarURL()); // Set the footer with the user's mention
-
-            // Send the embed back to the channel
-            const suggestion = await message.channel.send(embed);
-
-            // Add reactions to the embed message
-            await suggestion.react('<:yee:1297271543398662265>');
-            await suggestion.react('<:naw:1297271574399025193>');
-
-            // Send a reminder message if it hasn't been sent recently
-            const reminderMessage = `-# send a message in this channel to suggest. do not send anything other than suggestions!`;
-            const sentMessages = await message.channel.messages.fetch({ limit: 5 });
-            const recentReminder = sentMessages.some(msg => msg.content === reminderMessage);
-
-            if (!recentReminder) {
-                await message.channel.send(reminderMessage);
-            }
-        } catch (error) {
-            console.error('Error handling message:', error);
-        }
+        // Send a reminder message
+        message.channel.send(`-# send a message in this channel to suggest. do not send anything other than suggestions!`);
     }
 });
+
 
 
 client.login(process.env.TOKEN);

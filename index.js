@@ -239,7 +239,7 @@ await suggestion.react('<:naw:1297271574399025193>');
 
         message.channel.send(`-# send a message in this channel to suggest. do not send anything other than suggestions!`);
     }
-});```
+});
 
 
 client.login(process.env.TOKEN);

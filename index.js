@@ -126,7 +126,6 @@ client.on('guildMemberAdd', async (member) => {
       )
       .setColor(colourEmbed)
       .setFooter(`• ${member.user.tag}`, member.user.displayAvatarURL())
-      .setTimestamp();
 
 
     client.channels.cache.get(welcomeLog).send(embed);

@@ -44,7 +44,7 @@ module.exports = {
                         .setColor('#888888'); // You can customize the color
 
                     // Send the embed to the target channel
-                    targetChannel.send({ embeds: [embed] })
+                    targetChannel.send(embed)
                         .then(() => {
                             message.channel.send(`Embed sent successfully to ${targetChannel.toString()}!`);
                         })

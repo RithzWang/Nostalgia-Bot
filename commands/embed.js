@@ -2,78 +2,59 @@ const { MessageEmbed } = require('discord.js');
 
 module.exports = {
     name: 'embed',
-    async execute(message, args) {
-        // Check if the user has administrator permissions
-        if (!message.member.permissions.has('ADMINISTRATOR')) {
-            return message.channel.send('You do not have permission to use this command.');
-        }
+    async execute(message) {
+        // Create a filter to only collect messages from the command author
+        const filter = response => response.author.id === message.author.id;
 
         // Ask for the channel to send the embed
-        const channelPrompt = await message.channel.send('Please mention the channel you want to send the embed to:');
-        
-        // Wait for a response
-        const filter = response => response.author.id === message.author.id;
-        const channelCollector = message.channel.createMessageCollector({ filter, max: 1, time: 30000 });
+        message.channel.send('Please mention the channel where you want to send the embed (e.g., #general):');
+        const channelResponse = await message.channel.awaitMessages({ filter, max: 1, time: 30000 });
+        const channelMention = channelResponse.first().content;
 
-        channelCollector.on('collect', async response => {
-            const targetChannel = message.mentions.channels.first() || message.guild.channels.cache.get(response.content.replace(/<#(\d+)>/, '$1'));
+        // Get the channel object from the mention
+        const targetChannel = message.guild.channels.cache.find(channel => channel.name === channelMention.replace('#', ''));
 
-            if (!targetChannel) {
-                return message.channel.send('Please mention a valid channel.');
-            }
+        if (!targetChannel || targetChannel.type !== 'text') {
+            return message.channel.send('Invalid channel. Please make sure to mention a valid text channel.');
+        }
 
-            // Ask for the title of the embed
-            const titlePrompt = await message.channel.send('Please provide the title for the embed:');
-            const titleCollector = message.channel.createMessageCollector({ filter, max: 1, time: 30000 });
+        // Ask for the title
+        message.channel.send('What is the title of the embed?');
+        const titleResponse = await message.channel.awaitMessages({ filter, max: 1, time: 30000 });
+        const title = titleResponse.first().content;
 
-            titleCollector.on('collect', async titleResponse => {
-                const embedTitle = titleResponse.content;
+        // Ask for the description
+        message.channel.send('What is the description of the embed?');
+        const descriptionResponse = await message.channel.awaitMessages({ filter, max: 1, time: 30000 });
+        const description = descriptionResponse.first().content;
 
-                // Ask for the description of the embed
-                const descriptionPrompt = await message.channel.send('Please provide the description for the embed:');
-                const descriptionCollector = message.channel.createMessageCollector({ filter, max: 1, time: 30000 });
+        // Ask for the color
+        message.channel.send('What color would you like for the embed? (hex code, e.g., #ff0000)');
+        const colorResponse = await message.channel.awaitMessages({ filter, max: 1, time: 30000 });
+        const color = colorResponse.first().content;
 
-                descriptionCollector.on('collect', async descriptionResponse => {
-                    const embedDescription = descriptionResponse.content;
+        // Ask for an optional image URL
+        message.channel.send('Would you like to add an image URL? (Type "no" to skip)');
+        const imageResponse = await message.channel.awaitMessages({ filter, max: 1, time: 30000 });
+        const imageUrl = imageResponse.first().content.toLowerCase() === 'no' ? null : imageResponse.first().content;
 
-                    // Create the embed
-                    const embed = new MessageEmbed()
-                        .setTitle(embedTitle)
-                        .setDescription(embedDescription)
-                        .setColor('#888888'); // You can customize the color
+        // Create the embed
+        const embed = new MessageEmbed()
+            .setColor(color)
+            .setTitle(title)
+            .setDescription(description);
 
-                    // Send the embed to the target channel
-                    targetChannel.send(embed)
-                        .then(() => {
-                            message.channel.send(`Embed sent successfully to ${targetChannel.toString()}!`);
-                        })
-                        .catch(err => {
-                            console.error('Failed to send embed:', err);
-                            message.channel.send('Failed to send the embed to the specified channel.');
-                        });
-                });
+        // Add the image if provided
+        if (imageUrl) {
+            embed.setImage(imageUrl);
+        }
 
-                // Handle timeout for description
-                descriptionCollector.on('end', collected => {
-                    if (collected.size === 0) {
-                        message.channel.send('You did not provide a description in time.');
-                    }
-                });
-            });
-
-            // Handle timeout for title
-            titleCollector.on('end', collected => {
-                if (collected.size === 0) {
-                    message.channel.send('You did not provide a title in time.');
-                }
-            });
-        });
-
-        // Handle timeout for channel
-        channelCollector.on('end', collected => {
-            if (collected.size === 0) {
-                message.channel.send('You did not mention a channel in time.');
-            }
+        // Send the embed to the specified channel
+        targetChannel.send(embed).then(() => {
+            message.channel.send('Your custom embed has been created and sent to ' + targetChannel.toString() + '!');
+        }).catch(err => {
+            console.error(err);
+            message.channel.send('There was an error sending the embed. Please check the provided information.');
         });
     }
 };

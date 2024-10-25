@@ -241,5 +241,43 @@ await suggestion.react('<:naw:1297271574399025193>');
     }
 });
 
+// ----------------------------------- //
+
+
+// -------- suggestion accept -------- //
+
+client.on('message', async (message) => {
+    // Ignore messages from bots
+    if (message.author.bot) return;
+
+    // Check if the message starts with !accept
+    if (message.content.startsWith('!accept')) {
+        // Extract the message ID from the command
+        const args = message.content.split(' ');
+        const messageId = args[1];
+
+        if (!messageId) {
+            return message.reply('Please provide a message ID.');
+        }
+
+        try {
+            // Fetch the target channel
+            const targetChannel = await client.channels.fetch(SuggestionChannelId);
+            if (!targetChannel || targetChannel.type !== 'text') {
+                return message.reply('Invalid target channel.');
+            }
+
+            // Fetch the message using the ID from the specified channel
+            const targetMessage = await targetChannel.messages.fetch(messageId);
+            // React to the message with the check emoji
+            await targetMessage.react('<:check:1255094364343107616>');
+            message.channel.send('Suggestion Accepted!');
+        } catch (error) {
+            console.error('Error fetching message:', error);
+            message.reply('Could not find a message with that ID in the specified channel.');
+        }
+    }
+});
+
 
 client.login(process.env.TOKEN);

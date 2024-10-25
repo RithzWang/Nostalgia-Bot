@@ -217,54 +217,29 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
 
 // ------- suggestions channel ------- //
 
-const { MessageEmbed } = require('discord.js');
-
-// Define an array of staff role IDs
-const staffRoleIds = ['1247033789046067281', '1246342030758645822', '1246345136401551400', '1167046828190085170', '1168598936630599710']; // Replace with actual role IDs
-
-
 client.on('message', async message => {
-    // Check if the message is from the specific suggestion channel and not from the bot itself
+       // Check if the message is from the specific channel and not from the bot itself
     if (message.channel.id === SuggestionChannelId && !message.author.bot) {
-        // Process suggestion...
+        // Delete the original message
         await message.delete();
 
-        const embed = new MessageEmbed()
-            .setColor(colourEmbed)
-            .setTitle('📥︰suggestions')
-            .setDescription(message.content)
-            .setFooter(`By: ${message.author.tag} (ID: ${message.author.id})`, message.author.displayAvatarURL());
+        // Create the embed
+        const embed = new Discord.MessageEmbed()
+            .setColor(colourEmbed) // Set the color of the embed
+            .setTitle('📥︰suggestions') // Set the title
+            .setDescription(message.content) // Set the description to the original message
+            .setFooter(`By: ${message.author.tag} (ID: ${message.author.id})`, message.author.displayAvatarURL()) // Set the footer with the user's mention
 
+        // Send the embed back to the channel
         const suggestion = await message.channel.send(embed);
+
+        // Add reactions to the embed message
         await suggestion.react('<:yee:1297271543398662265>');
-        await suggestion.react('<:naw:1297271574399025193>');
-        await message.channel.send(`-# send a message in this channel to suggest. do not send anything other than suggestions!`);
+await suggestion.react('<:naw:1297271574399025193>');
+
+        message.channel.send(`-# send a message in this channel to suggest. do not send anything other than suggestions!`);
     }
-
-    // Check if the message is a reply from a staff member
-    if (message.channel.id === SuggestionChannelId && !message.author.bot && message.reference) {
-        const referencedMessage = await message.channel.messages.fetch(message.reference.messageId);
-
-        // Check if the referenced message is an embed suggestion
-        if (referencedMessage.embeds.length > 0 && referencedMessage.embeds[0].title === '📥︰suggestions') {
-            // Check if the user has any of the staff roles
-            const hasStaffRole = message.member.roles.cache.some(role => staffRoleIds.includes(role.id));
-            if (hasStaffRole) {
-                // Create a reply embed that references the original suggestion
-                const replyEmbed = new MessageEmbed()
-                    .setColor('BLUE')
-                    .setTitle('🗨️ Staff Reply')
-                    .setDescription(`Replying to suggestion: "${referencedMessage.embeds[0].description}"\n\n**Response:** ${message.content}`)
-                    .setFooter(`By: ${message.author.tag}`, message.author.displayAvatarURL());
-
-                await message.channel.send(replyEmbed);
-            } else {
-                // Inform the user they don't have permission
-                await message.reply("You don't have permission to reply to suggestions.");
-            }
-        }
-    }
-});
+});```
 
 
 client.login(process.env.TOKEN);

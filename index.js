@@ -42,7 +42,7 @@ const moment = require('moment-timezone');
 client.on('ready', () => {
   console.log ('Bot is ready')
   setInterval(() => {
-    const currentTime = moment().tz('Asia/Bangkok');
+    const currentTime = moment().tz('Europe/London');
     const hours = currentTime.format('HH');
     const minutes = currentTime.format('mm');
 

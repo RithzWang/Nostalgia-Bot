@@ -240,30 +240,7 @@ await suggestion.react('<:naw:1297271574399025193>');
 
 // -------- suggestion accept -------- //
 
-client.on('message', async (message) => {
-    // Check if the message is from the specific channel and not from the bot itself
-    if (message.channel.id === SuggestionChannelId && !message.author.bot) {
-        // Delete the original message
-        await message.delete();
 
-        // Create the embed
-        const embed = new Discord.MessageEmbed()
-            .setColor(colourEmbed) // Set the color of the embed
-            .setTitle('📥︰suggestions') // Set the title
-            .setDescription(message.content) // Set the description to the original message content
-            .setFooter(`By: ${message.author.tag} (ID: ${message.author.id})`, message.author.displayAvatarURL()); // Set the footer with user info
-
-        // Send the embed to the channel
-        const suggestion = await message.channel.send(embed);
-
-        // Add reactions to the embed message
-        await suggestion.react('<:yee:1297271543398662265>');
-        await suggestion.react('<:naw:1297271574399025193>');
-
-        // Send a reminder message
-        message.channel.send(`-# send a message in this channel to suggest. do not send anything other than suggestions!`);
-    }
-});
 
 
 

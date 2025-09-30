@@ -64,9 +64,9 @@ module.exports = {
                 { name: 'Roles', value: roles, inline: false },
                 { name: 'Permissions', value: perms, inline: false }
             )
-            .setFooter({ text: `Requested by ${message.author.tag}` })
+            .setFooter(`Requested by ${message.author.tag}`)
             .setTimestamp();
 
-        message.channel.send({ embeds: [embed] });
+        message.channel.send(embed);
     },
 };

@@ -32,6 +32,6 @@ module.exports = {
         const fortune = fortunes[Math.floor(Math.random() * fortunes.length)];
 
         // Send plain message
-        message.channel.send(`💌 **<@${target.userid}>**, your fortune is:\n${fortune}`);
+        message.channel.send(`💌 **<@${target.id}>**, your fortune is:\n${fortune}`);
     },
 };

@@ -25,12 +25,14 @@ module.exports = {
             user = message.author;
         }
 
+       const target = message.mentions.members.first() || message.member;
+
         // If user is already known (mentioned or self)
         if (user) sendAvatarEmbed(user);
 
         function sendAvatarEmbed(user) {
             const embed = new Discord.MessageEmbed()
-                .setTitle(`## Avatar For ${user.nickname}`)
+                .setTitle(`Avatar For ${target.nickname}`)
                 .setImage(user.displayAvatarURL({ dynamic: true, size: 1024 }))
                 .setColor('#888888')
                 .setTimestamp();

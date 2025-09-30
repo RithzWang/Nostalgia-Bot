@@ -47,7 +47,7 @@ module.exports = {
         const embed = new Discord.MessageEmbed()  
             .setTitle('User Information')  
             .setDescription(  
-                `👤 **Username:** ${user.tag}\n` +  
+                `👤 **Username:** ${user.username}\n` +  
                 `🆔 **ID:** ${user.id}\n` +  
                 `📛 **Nickname:** ${target.nickname || 'None'}\n` +  
                 `🤖 **Bot?:** ${user.bot ? 'Yes' : 'No'}\n` +  
@@ -61,8 +61,7 @@ module.exports = {
                 `🛡️ **Roles:** ${roles}`  
             )  
             .setColor(colourEmbed)  
-            .setThumbnail(user.displayAvatarURL())
-            .setFooter(`${user.tag}`)  
+            .setThumbnail(user.displayAvatarURL())  
             .setTimestamp();  
   
         message.channel.send(embed);  

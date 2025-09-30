@@ -1,7 +1,7 @@
 const Discord = require('discord.js');
 
 module.exports = {
-    name: 'info',
+    name: 'userinfo',
     description: 'Displays detailed information about a user.',
     execute(message, args) {
         const target = message.mentions.members.first() || message.member;
@@ -11,11 +11,11 @@ module.exports = {
         // Status mapping
         const statusMap = {
             online: '🟢 Online',
-            idle: '🌙 Idle',
-            dnd: '⛔ Do Not Disturb',
-            offline: '⚫ Offline / Invisible'
+            idle: '🟡 Idle',
+            dnd: '🔴 Do Not Disturb',
+            offline: '⚫ Offline'
         };
-        const status = presence ? statusMap[presence.status] : '⚫ Offline / Invisible';
+        const status = presence ? statusMap[presence.status] : statusMap.offline;
 
         // Activity
         let activity = 'None';
@@ -32,14 +32,11 @@ module.exports = {
         const roles = target.roles.cache
             .filter(r => r.id !== message.guild.id)
             .map(r => r.toString())
-            .join(', ') || 'None';
+            .join(' ') || 'None';
         const highestRole = target.roles.highest.name || 'None';
 
-        // Permissions
-        const perms = target.permissions.toArray().join(', ') || 'None';
-
         // Boosting info
-        const isBoosting = target.premiumSince ? `Yes (since <t:${Math.floor(target.premiumSinceTimestamp / 1000)}:R>)` : 'No';
+        const isBoosting = target.premiumSince ? `Yes (since ${target.premiumSince.toDateString()})` : 'No';
 
         // Voice channel
         const voiceChannel = target.voice.channel ? target.voice.channel.name : 'Not connected';
@@ -48,24 +45,24 @@ module.exports = {
         const colourEmbed = '#888888';
 
         const embed = new Discord.MessageEmbed()
-            .setTitle(`━━━━━━ User Info ━━━━━━`)
+            .setTitle('━━━━━━<:userinfo:123456789012345682> User Info ━━━━━━')
             .setDescription(
-                `**Username:** ${user.tag}\n` +
-                `**User ID:** ${user.id}\n` +
-                `**Nickname:** ${target.nickname || 'None'}\n` +
-                `**Bot?:** ${user.bot ? 'Yes 🤖' : 'No'}\n` +
-                `**Status:** ${status}\n` +
-                `**Activity:** ${activity}\n` +
-                `**Account Created:** ${user.createdAt.toDateString()}\n` +
-                `**Joined Server:** ${target.joinedAt ? target.joinedAt.toDateString() : 'N/A'}\n` +
-                `**Boosting:** ${isBoosting}\n` +
-                `**Voice Channel:** ${voiceChannel}\n` +
-                `**Highest Role:** ${highestRole}\n` +
-                `**Roles:** ${roles}\n` +
-                `**Permissions:** ${perms}`
+                `👤 **Username:** ${user.tag}\n` +
+                `🆔 **ID:** ${user.id}\n` +
+                `📛 **Nickname:** ${target.nickname || 'None'}\n` +
+                `🤖 **Bot?:** ${user.bot ? 'Yes' : 'No'}\n` +
+                `💠 **Status:** ${status}\n` +
+                `🎮 **Activity:** ${activity}\n` +
+                `📅 **Account Created:** ${user.createdAt.toDateString()}\n` +
+                `⏰ **Joined Server:** ${target.joinedAt ? target.joinedAt.toDateString() : 'N/A'}\n` +
+                `✨ **Boosting:** ${isBoosting}\n` +
+                `🎤 **Voice Channel:** ${voiceChannel}\n` +
+                `🏅 **Highest Role:** ${highestRole}\n` +
+                `🛡️ **Roles:** ${roles}`
             )
             .setColor(colourEmbed)
-            .setFooter(`• ${user.tag}`, user.displayAvatarURL());
+            .setFooter(`• ${user.tag}`, user.displayAvatarURL())
+            .setTimestamp();
 
         message.channel.send(embed);
     },

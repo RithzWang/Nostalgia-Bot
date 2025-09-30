@@ -3,6 +3,12 @@ module.exports = {
     description: 'Gives a random fortune message.',
     execute(message, args, client) {
         const target = message.mentions.users.first() || message.author;
+        
+        const silentMessageOptions = {
+    allowedMentions: {
+      parse: [], // Don't parse any mentions
+    },
+  };
 
         // Array of 20 unique fortunes
         const fortunes = [

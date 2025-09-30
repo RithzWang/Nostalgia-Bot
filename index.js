@@ -238,8 +238,30 @@ await suggestion.react('<:naw:1297271574399025193>');
 // ----------------------------------- //
 
 
-// -------- suggestion accept -------- //
+// ---- red / white colours role ---- //
 
+
+const guildId = "1167046828043276379";
+  const roleId = "1422365756498251796";
+
+  const guild = client.guilds.cache.get(guildId);
+  if (!guild) return console.log("Guild not found!");
+
+  const role = guild.roles.cache.get(roleId);
+  if (!role) return console.log("Role not found!");
+
+  const colors = ["#FF0000", "#FFFFFF"]; // Red, White
+  let index = 0;
+
+  setInterval(async () => {
+    try {
+      index = (index + 1) % colors.length; // switch between 0 and 1
+      await role.setColor(colors[index]);
+    } catch (err) {
+      console.error("Failed to change role color:", err);
+    }
+  }, 5000); // every 1 second
+});
 
 
 

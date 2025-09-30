@@ -33,7 +33,7 @@ module.exports = {
             .filter(r => r.id !== message.guild.id)
             .map(r => r.toString())
             .join(' ') || 'None';
-        const highestRole = target.roles.highest.name || 'None';
+        const highestRole = target.roles.highest.id || 'None';
 
         // Boosting info
         const isBoosting = target.premiumSince ? `Yes (since ${target.premiumSince.toDateString()})` : 'No';
@@ -45,7 +45,7 @@ module.exports = {
         const colourEmbed = '#888888';
 
         const embed = new Discord.MessageEmbed()
-            .setTitle('━━━━━━<:userinfo:123456789012345682> User Info ━━━━━━')
+            .setTitle('𝐔𝐬𝐞𝐫 𝐈𝐧𝐟𝐨𝐫𝐦𝐚𝐭𝐢𝐨𝐧')
             .setDescription(
                 `👤 **Username:** ${user.tag}\n` +
                 `🆔 **ID:** ${user.id}\n` +

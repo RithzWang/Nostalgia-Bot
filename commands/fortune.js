@@ -4,13 +4,6 @@ module.exports = {
     execute(message, args, client) {
         const target = message.mentions.users.first() || message.author;
         
-        const silentMessageOptions = {
-    allowedMentions: {
-      parse: [], // Don't parse any mentions
-    },
-  };
-
-        // Array of 20 unique fortunes
         const fortunes = [
             '🌟 Today is your lucky day!',
             '⚡ A surprise is waiting for you soon.',
@@ -34,10 +27,12 @@ module.exports = {
             '🌌 Adventure awaits if you take the leap.'
         ];
 
-        // Pick a random fortune
         const fortune = fortunes[Math.floor(Math.random() * fortunes.length)];
 
-        // Send plain message
-        message.channel.send(`💌 **<@${target.id}>**, your fortune is:\n${fortune}`);
+        // Send message with <@id> format but no ping
+        message.channel.send({
+            content: `💌 **<@${target.id}>**, your fortune is:\n${fortune}`,
+            allowedMentions: { users: [] } // disables pings
+        });
     },
 };

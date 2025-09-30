@@ -57,7 +57,7 @@ module.exports = {
                 `⏰ **Joined Server:** ${target.joinedAt ? target.joinedAt.toDateString() : 'N/A'}\n` +
                 `✨ **Boosting:** ${isBoosting}\n` +
                 `🎤 **Voice Channel:** ${voiceChannel}\n` +
-                `🏅 **Highest Role:** ${highestRole}\n` +
+                `🏅 **Highest Role:** <@&${highestRole}>\n` +
                 `🛡️ **Roles:** ${roles}`
             )
             .setColor(colourEmbed)

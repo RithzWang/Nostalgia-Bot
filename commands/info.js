@@ -1,4 +1,4 @@
-const { EmbedBuilder, PermissionsBitField } = require('discord.js');
+const Discord = require('discord.js');
 
 module.exports = {
     name: 'info',
@@ -21,7 +21,7 @@ module.exports = {
         let activity = 'None';
         if (presence && presence.activities.length > 0) {
             const act = presence.activities[0];
-            if (act.type === 4) {
+            if (act.type === 'CUSTOM_STATUS') {
                 activity = act.state || 'Custom Status';
             } else {
                 activity = `${act.type.toLowerCase()} ${act.name}`;
@@ -44,28 +44,28 @@ module.exports = {
         // Voice channel
         const voiceChannel = target.voice.channel ? target.voice.channel.name : 'Not connected';
 
-        const embed = new EmbedBuilder()
-            .setColor('#888888')
-            .setTitle(`${user.username}'s Full Info`)
-            .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 1024 }))
-            .setImage(user.bannerURL({ dynamic: true, size: 1024 }) || null)
-            .addFields(
-                { name: 'Username', value: `${user.tag}`, inline: true },
-                { name: 'User ID', value: `${user.id}`, inline: true },
-                { name: 'Nickname', value: target.nickname || 'None', inline: true },
-                { name: 'Bot?', value: user.bot ? 'Yes 🤖' : 'No', inline: true },
-                { name: 'Status', value: status, inline: true },
-                { name: 'Activity', value: activity, inline: true },
-                { name: 'Account Created', value: `<t:${Math.floor(user.createdTimestamp / 1000)}:R>`, inline: false },
-                { name: 'Joined Server', value: target.joinedTimestamp ? `<t:${Math.floor(target.joinedTimestamp / 1000)}:R>` : 'N/A', inline: false },
-                { name: 'Boosting', value: isBoosting, inline: true },
-                { name: 'Voice Channel', value: voiceChannel, inline: true },
-                { name: 'Highest Role', value: highestRole, inline: true },
-                { name: 'Roles', value: roles, inline: false },
-                { name: 'Permissions', value: perms, inline: false }
+        // Color
+        const colourEmbed = '#888888';
+
+        const embed = new Discord.MessageEmbed()
+            .setTitle(`━━━━━━ User Info ━━━━━━`)
+            .setDescription(
+                `**Username:** ${user.tag}\n` +
+                `**User ID:** ${user.id}\n` +
+                `**Nickname:** ${target.nickname || 'None'}\n` +
+                `**Bot?:** ${user.bot ? 'Yes 🤖' : 'No'}\n` +
+                `**Status:** ${status}\n` +
+                `**Activity:** ${activity}\n` +
+                `**Account Created:** ${user.createdAt.toDateString()}\n` +
+                `**Joined Server:** ${target.joinedAt ? target.joinedAt.toDateString() : 'N/A'}\n` +
+                `**Boosting:** ${isBoosting}\n` +
+                `**Voice Channel:** ${voiceChannel}\n` +
+                `**Highest Role:** ${highestRole}\n` +
+                `**Roles:** ${roles}\n` +
+                `**Permissions:** ${perms}`
             )
-            .setFooter(`Requested by ${message.author.tag}`)
-            .setTimestamp();
+            .setColor(colourEmbed)
+            .setFooter(`• ${user.tag}`, user.displayAvatarURL());
 
         message.channel.send(embed);
     },

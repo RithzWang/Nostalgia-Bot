@@ -36,10 +36,14 @@ module.exports = {
         const highestRole = target.roles.highest.id || 'None';
 
         // Boosting info
-        const isBoosting = target.premiumSince ? `Yes (since ${target.premiumSince.toDateString()})` : 'No';
+        const isBoosting = target.premiumSince ? `Yes (since <t:${Math.floor(target.premiumSince.getTime() / 1000)}:f>)` : 'No';
 
         // Voice channel
         const voiceChannel = target.voice.channel ? target.voice.channel.name : 'Not connected';
+
+        // Timestamps
+        const createdTimestamp = `<t:${Math.floor(user.createdAt.getTime() / 1000)}:f>`;
+        const joinedTimestamp = target.joinedAt ? `<t:${Math.floor(target.joinedAt.getTime() / 1000)}:f>` : 'N/A';
 
         // Color
         const colourEmbed = '#888888';
@@ -53,8 +57,8 @@ module.exports = {
                 `🤖 **Bot?:** ${user.bot ? 'Yes' : 'No'}\n` +
                 `💠 **Status:** ${status}\n` +
                 `🎮 **Activity:** ${activity}\n` +
-                `📅 **Account Created:** ${user.createdAt.toDateString()}\n` +
-                `⏰ **Joined Server:** ${target.joinedAt ? target.joinedAt.toDateString() : 'N/A'}\n` +
+                `📅 **Account Created:** ${createdTimestamp}\n` +
+                `⏰ **Joined Server:** ${joinedTimestamp}\n` +
                 `✨ **Boosting:** ${isBoosting}\n` +
                 `🎤 **Voice Channel:** ${voiceChannel}\n` +
                 `🏅 **Highest Role:** <@&${highestRole}>\n` +
@@ -64,6 +68,6 @@ module.exports = {
             .setFooter(`• ${user.tag}`, user.displayAvatarURL())
             .setTimestamp();
 
-        message.channel.send(embed);
+        message.channel.send({ embeds: [embed] });
     },
 };

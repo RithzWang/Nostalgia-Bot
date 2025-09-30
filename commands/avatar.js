@@ -30,10 +30,9 @@ module.exports = {
 
         function sendAvatarEmbed(user) {
             const embed = new Discord.MessageEmbed()
-                .setTitle(`𝐀𝐯𝐚𝐭𝐚𝐫`)
+                .setTitle(`## Avatar For ${user.nickname}`)
                 .setImage(user.displayAvatarURL({ dynamic: true, size: 1024 }))
                 .setColor('#888888')
-                .setFooter(`• ${user.tag}`, user.displayAvatarURL())
                 .setTimestamp();
 
             message.channel.send(embed);

@@ -240,7 +240,18 @@ await suggestion.react('<:naw:1297271574399025193>');
 
 // ---- red / white colours role ---- //
 
-
+ cron.schedule('0 0 * * 5', () => {
+        const channel = client.channels.cache.get('1169184684945707068');
+        if (channel) {
+            channel.send('https://cdn.discordapp.com/attachments/853503167706693632/1438964868739891210/IMG_20251115_014800.jpg?ex=6918cbf7&is=69177a77&hm=9a7543b16c459dafc25a69332c6a008f29207b3653a44575517c29b78b7a60b5&');
+        } else {
+            console.log('Channel not found!');
+        }
+    }, {
+        scheduled: true,
+        timezone: "Asia/Riyadh" // Saudi time
+    });
+});
 
 
 

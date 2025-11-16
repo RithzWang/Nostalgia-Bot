@@ -61,7 +61,7 @@ client.on('ready', () => {
 
     client.user.setActivity('customstatus', {
       type: 'CUSTOM_STATUS',
-      state: `⏳ ${thailandTime} (UTC+7)`
+      state: `⏳ ${thailandTime} (GMT+7)`
     });
   }, 1000);
 });

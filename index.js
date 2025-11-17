@@ -129,7 +129,7 @@ client.on('guildMemberAdd', async (member) => {
         `-# **<@${memberName}>** [\`${memberID}\`]\nMember Count: ${memberCount}\n-# Account Created: ${accountCreated}\n-# Invited by **@${inviterName}** (**[${inviteCode}](https://discord.gg/${inviteCode}**)`
       )
       .setColor(colourEmbed)
-      .setFooter(`• ${member.user.tag}`, member.user.displayAvatarURL())
+      .setFooter(`• ${member.user.username}`, member.user.displayAvatarURL())
 
 
     client.channels.cache.get(welcomeLog).send(embed);

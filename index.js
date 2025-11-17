@@ -132,7 +132,7 @@ client.on('guildMemberAdd', async (member) => {
       .setThumbnail(member.user.displayAvatarURL())
       .setImage('https://cdn.discordapp.com/attachments/853503167706693632/1439971676883259442/20251117_203245_0000.png')
       .setColor(colourEmbed)
-      .setFooter(`• ${member.user.username}`, member.user.displayAvatarURL())
+     // .setFooter(`• ${member.user.username}`, member.user.displayAvatarURL()) //
 
 
     client.channels.cache.get(welcomeLog).send(embed);

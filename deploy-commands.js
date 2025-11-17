@@ -1,5 +1,5 @@
 // This script registers the command with the Discord API. 
-// Run this *once* after adding or changing slash commands.
+// It needs to be run *once* when you add/change slash commands.
 
 const { SlashCommandBuilder, Routes, PermissionFlagsBits } = require('discord.js');
 const { REST } = require('@discordjs/rest');
@@ -8,14 +8,16 @@ const { REST } = require('@discordjs/rest');
 // Replace with your actual IDs and Token
 const BOT_TOKEN = process.env.TOKEN; 
 const CLIENT_ID = '1167109778175168554'; 
-const GUILD_ID = '1167046828043276379'; 
+const GUILD_ID = '1167046828043276379'; // Guild ID is recommended for faster testing
 // ---------------------------------
 
-// --- 1. /createembed Command Definition ---
 const embedCommand = new SlashCommandBuilder()
     .setName('createembed')
     .setDescription('Creates a rich, custom message embed.')
+    // Restrict use to Administrators only
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator) 
+    
+    // --- REQUIRED OPTIONS ---
     .addStringOption(option =>
         option.setName('title')
             .setDescription('The main title of the embed.')
@@ -24,6 +26,8 @@ const embedCommand = new SlashCommandBuilder()
         option.setName('description')
             .setDescription('The main content/description of the embed.')
             .setRequired(true))
+
+    // --- OPTIONAL OPTIONS ---
     .addStringOption(option =>
         option.setName('color')
             .setDescription('The hex color code (e.g., #FF0000).')
@@ -45,14 +49,7 @@ const embedCommand = new SlashCommandBuilder()
             .setDescription('A direct URL for the thumbnail image (small image in the corner).')
             .setRequired(false));
 
-// --- 2. /ping Command Definition (NEW) ---
-const pingCommand = new SlashCommandBuilder()
-    .setName('ping')
-    .setDescription('Checks the bot\'s latency to Discord and response time.');
-
-
-// --- 3. Assemble all commands (Overwrite current list) ---
-const commands = [embedCommand, pingCommand].map(command => command.toJSON());
+const commands = [embedCommand].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(BOT_TOKEN);
 
@@ -60,6 +57,7 @@ const rest = new REST({ version: '10' }).setToken(BOT_TOKEN);
     try {
         console.log(`Started refreshing ${commands.length} application (/) commands.`);
 
+        // Register commands to a specific guild (faster deployment)
         const data = await rest.put(
             Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
             { body: commands },

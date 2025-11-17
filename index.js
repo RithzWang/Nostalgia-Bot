@@ -111,6 +111,8 @@ client.on('guildMemberAdd', async (member) => {
     let memberUserName = member.user.username;
     let memberCount = member.guild.memberCount;
 
+    const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:D>`;
+
     // Fetch invites for the guild
     const guildInvites = await member.guild.fetchInvites();
 
@@ -124,7 +126,7 @@ client.on('guildMemberAdd', async (member) => {
     const embed = new Discord.MessageEmbed()
       .setTitle('Welcome to A2-Q Server')
       .setDescription(
-        `**<@${memberName}>** [\`${memberID}\`]\nInvited by **@${inviterName}** (**[${inviteCode}](https://discord.gg/${inviteCode}**)\n\nNow we have **${memberCount}** members 🎉`
+        `-# **<@${memberName}>** [\`${memberID}\`]\nMember Count: ${memberCount}\n-# Account Created: ${accountCreated}\n-# Invited by **@${inviterName}** (**[${inviteCode}](https://discord.gg/${inviteCode}**)`
       )
       .setColor(colourEmbed)
       .setFooter(`• ${member.user.tag}`, member.user.displayAvatarURL())

@@ -15,7 +15,7 @@ module.exports = {
         // 2. Create the Main Embed (mimicking the style of your image)
         const welcomeEmbed = new EmbedBuilder()
             // Set Color using your configured hex color
-            .setColor(message.client.config.colourEmbed)
+            .setColor(colourEmbed)
             
             // Set the title and flags (you can use custom emoji IDs here)
             .setTitle('👋 Welcome to 🇸🇦 KSA Community!') 

@@ -54,7 +54,7 @@ for (const file of commandFiles) {
 // ----------------------------  //
 
 // ------- custom status ------- //
-client.on('ready', () => {
+client.on('clientReady', () => {
     console.log('Bot is ready');
     setInterval(() => {
         const currentTime = moment().tz('Asia/Bangkok');

@@ -70,4 +70,3 @@ const rest = new REST({ version: '10' }).setToken(BOT_TOKEN);
         console.error(error);
     }
 })();
-```eof

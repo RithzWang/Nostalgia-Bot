@@ -1,18 +1,36 @@
 const fs = require('fs');
-// Update imports for v14 syntax
+// ... other imports
 const { Client, GatewayIntentBits, Partials, Collection, EmbedBuilder, ActivityType } = require('discord.js');
-const axios = require('axios');
-const cron = require('node-cron');
+// ... other imports
 const keep_alive = require('./keep_alive.js');
 const moment = require('moment-timezone');
 
 const { prefix, serverID, boosterLog, welcomeLog, roleupdateLog, roleupdateMessage, roleforLog, colourEmbed, BSVerifyRole, BSVerifyRoleupdateLog, BSVerifyRoleUpdateMessage, boosterRoleId, boosterChannelId, SuggestionChannelId, staffRole } = require("./config.json");
 const config = require('./config.json');
 
-// --- 1. INITIALIZE COMMAND COLLECTIONS ---
-// Use a separate collection for prefix commands
+// ---------------------------- //
+
+// CRITICAL FIX: The client object MUST be initialized before being used.
+const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.DirectMessages,
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildMessageReactions
+    ],
+    partials: [
+        Partials.Channel,
+        Partials.Message,
+        Partials.Reaction,
+        Partials.GuildMember,
+        Partials.User
+    ]
+});
+
+// --- 1. INITIALIZE COMMAND COLLECTIONS (Now uses the defined 'client') ---
 client.prefixCommands = new Collection();
-// Use a separate collection for slash commands (interactions)
 client.slashCommands = new Collection(); 
 
 // --- 2. LOAD PREFIX COMMANDS (from ./commands) ---

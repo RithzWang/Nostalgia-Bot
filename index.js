@@ -111,7 +111,7 @@ client.on('guildMemberAdd', async (member) => {
     let memberUserName = member.user.username;
     let memberCount = member.guild.memberCount;
 
-    const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:D>`;
+    const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
 
     // Fetch invites for the guild
     const guildInvites = await member.guild.fetchInvites();

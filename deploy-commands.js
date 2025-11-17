@@ -6,9 +6,9 @@ const { REST } = require('@discordjs/rest');
 
 // --- IMPORTANT: CONFIGURE THESE ---
 // Replace with your actual IDs and Token
-const BOT_TOKEN = 'YOUR_BOT_TOKEN_HERE'; 
-const CLIENT_ID = 'YOUR_CLIENT_ID_HERE'; 
-const GUILD_ID = 'YOUR_SERVER_ID_HERE'; // Guild ID is recommended for faster testing
+const BOT_TOKEN = process.env.TOKEN; 
+const CLIENT_ID = '1167109778175168554'; 
+const GUILD_ID = '1167046828043276379'; // Guild ID is recommended for faster testing
 // ---------------------------------
 
 const embedCommand = new SlashCommandBuilder()

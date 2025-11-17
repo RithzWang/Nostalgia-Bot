@@ -1,93 +1,104 @@
 const fs = require('fs');
-// CRITICAL: Update the Discord.js import to destructure required classes and enums.
-const { Client, GatewayIntentBits, Partials, Collection, EmbedBuilder } = require('discord.js');
+// Update imports for v14 syntax
+const { Client, GatewayIntentBits, Partials, Collection, EmbedBuilder, ActivityType } = require('discord.js');
 const axios = require('axios');
 const cron = require('node-cron');
 const keep_alive = require('./keep_alive.js');
 const moment = require('moment-timezone');
 
-// The config destructuring remains the same
 const { prefix, serverID, boosterLog, welcomeLog, roleupdateLog, roleupdateMessage, roleforLog, colourEmbed, BSVerifyRole, BSVerifyRoleupdateLog, BSVerifyRoleUpdateMessage, boosterRoleId, boosterChannelId, SuggestionChannelId, staffRole } = require("./config.json");
 const config = require('./config.json');
 
-// ---------------------------- //
+// --- 1. INITIALIZE COMMAND COLLECTIONS ---
+// Use a separate collection for prefix commands
+client.prefixCommands = new Collection();
+// Use a separate collection for slash commands (interactions)
+client.slashCommands = new Collection(); 
 
-// CRITICAL: Update Client Constructor
-// 1. You must pass explicit Intents for the bot to receive events.
-// 2. Partials are required for certain events (like fetching cached data).
-const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,           // Guild/Server events (ready, guildMemberAdd, guildMemberUpdate)
-        GatewayIntentBits.GuildMessages,    // Receiving messages in channels
-        GatewayIntentBits.MessageContent,   // CRITICAL for reading prefix commands (your command handler, suggestions)
-        GatewayIntentBits.DirectMessages,   // For DMs if needed
-        GatewayIntentBits.GuildMembers,     // Required for member events (guildMemberAdd, guildMemberUpdate, fetching members)
-        GatewayIntentBits.GuildMessageReactions // If you handle reactions (e.g., in a ticket system)
-    ],
-    partials: [
-        Partials.Channel,
-        Partials.Message,
-        Partials.Reaction,
-        Partials.GuildMember,
-        Partials.User
-    ]
-});
+// --- 2. LOAD PREFIX COMMANDS (from ./commands) ---
+const prefixCommandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 
-// Setting $browser property is no longer necessary or recommended in v14
-// Discord.Constants.DefaultOptions.ws.properties.$browser = "Discord Android"; // REMOVED
-
-// ---------------------------- //
-// Collection import updated for v14 (imported above)
-client.commands = new Collection();
-const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
-
-for (const file of commandFiles) {
+for (const file of prefixCommandFiles) {
     const command = require(`./commands/${file}`);
-    // V14 note: Ensure your command files export an object with `name` and `execute`
-    client.commands.set(command.name, command);
+    client.prefixCommands.set(command.name, command);
     if (command.aliases) {
         for (const alias of command.aliases) {
-            client.commands.set(alias, command);
+            client.prefixCommands.set(alias, command);
         }
     }
 }
-// ----------------------------  //
 
-// ------- custom status ------- //
-client.on('clientReady', () => {
+// --- 3. LOAD SLASH COMMANDS (from ./slash commands) ---
+// Note the space in the folder name requires quotes when reading the directory
+const slashCommandFiles = fs.readdirSync('./slash commands').filter(file => file.endsWith('.js'));
+
+for (const file of slashCommandFiles) {
+    // We expect slash command files to be in the new directory
+    const command = require(`./slash commands/${file}`);
+    client.slashCommands.set(command.name, command);
+}
+// ----------------------------------------------------
+
+
+// CRITICAL FIX: Changed 'ready' to 'clientReady'
+client.on('clientReady', (readyClient) => {
     console.log('Bot is ready');
     setInterval(() => {
         const currentTime = moment().tz('Asia/Bangkok');
         const thailandTime = currentTime.format(`HH:mm`);
 
-        client.user.setActivity('customstatus', {
-            type: 4, // 4 corresponds to ActivityType.Custom, which is the correct way in v14
+        readyClient.user.setActivity('customstatus', {
+            type: ActivityType.Custom, 
             state: `⏳ ${thailandTime} (GMT+7)`
         });
     }, 1000);
 });
-// ----------------------------- //
 
+// --- EXECUTION HANDLERS ---
 
-// CRITICAL: Replace 'message' event with 'messageCreate'
+// A. PREFIX COMMAND HANDLER (messageCreate)
 client.on('messageCreate', message => {
-    // Command handler logic remains mostly the same, as the 'message' object structure is similar.
     if (!message.content.startsWith(prefix) || message.author.bot) return;
 
     const args = message.content.slice(prefix.length).split(/ +/);
     const commandName = args.shift().toLowerCase();
 
-    const command = client.commands.get(commandName);
+    // Use prefixCommands collection
+    const command = client.prefixCommands.get(commandName);
 
     if (!command) return;
 
     try {
-        // Your command execution logic (command.execute(message, args)) should be checked for v14 changes
         command.execute(message, args);
     } catch (error) {
         console.error(error);
-        // Ensure you use the v14 structure for message replies
         message.reply({ content: 'There was an error executing the command.', ephemeral: true, })
+    }
+});
+
+
+// B. SLASH COMMAND HANDLER (interactionCreate) - NEW!
+client.on('interactionCreate', async interaction => {
+    // Only handle chat input (slash) commands
+    if (!interaction.isChatInputCommand()) return;
+
+    // Use slashCommands collection
+    const command = client.slashCommands.get(interaction.commandName);
+
+    if (!command) {
+        console.error(`No slash command matching ${interaction.commandName} was found.`);
+        return;
+    }
+
+    try {
+        await command.execute(interaction);
+    } catch (error) {
+        console.error(error);
+        if (interaction.replied || interaction.deferred) {
+            await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
+        } else {
+            await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+        }
     }
 });
 

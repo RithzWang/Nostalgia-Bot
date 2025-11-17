@@ -121,13 +121,12 @@ client.on('guildMemberAdd', async (member) => {
 
     // Get inviter's name, invite code, and type
     const inviterName = usedInvite ? usedInvite.inviter.username : 'Unknown';
+    const inviterId = usedInvite ? usedInvite.inviter.id : 'Unknown';
     const inviteCode = usedInvite ? usedInvite.code : 'Unknown';
 
     const embed = new Discord.MessageEmbed()
       .setTitle('👋 Welcome to A2-Q Server')
-      .setDescription(
-        `-# ⭑ **<@${memberName}>** [\`${memberID}\`]\n-# ⭑ Account Created: ${accountCreated}\n-# ⭑ Member Count: \`${memberCount}\`\n-# ⭑ Invited by **\`${inviterName}\`** (**[\`${inviteCode}\`](https://discord.gg/${inviteCode}**)`
-      )
+      .setDescription(`-# ⭑ <@${memberName}> [\`${memberID}\`]\n-# ⭑ Account Created: ${accountCreated}\n-# ⭑ Member Count: \`${memberCount}\`\n-# ⭑ Invited by <@${inviterId}>\`** (**[\`${inviteCode}\`](https://discord.gg/${inviteCode}**)`)
       .setColor(colourEmbed)
       .setFooter(`• ${member.user.username}`, member.user.displayAvatarURL())
 

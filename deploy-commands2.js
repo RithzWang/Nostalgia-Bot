@@ -1,6 +1,3 @@
-
-
-
 // This script registers the command with the Discord API. 
 // It needs to be run *once* when you add/change slash commands.
 

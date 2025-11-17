@@ -127,7 +127,7 @@ client.on('guildMemberAdd', async (member) => {
     const embed = new Discord.MessageEmbed()
       .setTitle('Welcome to A2-Q Server')
       .setDescription(
-  `-# <@${memberId}> \`(${memberUserName})\`\n-# <:calendar:1439970556534329475> Account Created: \`${accountCreated}\`\n-# <:users:1439970561953501214> Member Count: \`${memberCount}\`\n-# <:chain:1439970559105564672> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`
+  `-# <@${memberId}> \`(${memberUserName})\`\n-# <:calendar:1439970556534329475> Account Created: ${accountCreated}\n-# <:users:1439970561953501214> Member Count: \`${memberCount}\`\n-# <:chain:1439970559105564672> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`
 )
       .setThumbnail(member.user.displayAvatarURL())
       .setImage('https://cdn.discordapp.com/attachments/853503167706693632/1439971676883259442/20251117_203245_0000.png')

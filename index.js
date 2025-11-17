@@ -108,6 +108,7 @@ client.on('guildMemberAdd', async (member) => {
 
   if (member.guild.id === serverID) {
     let memberName = member.user.id;
+    let memberUserName = member.username;
     let memberCount = member.guild.memberCount;
 
     // Fetch invites for the guild
@@ -121,9 +122,9 @@ client.on('guildMemberAdd', async (member) => {
     const inviteCode = usedInvite ? usedInvite.code : 'Unknown';
 
     const embed = new Discord.MessageEmbed()
-      .setTitle('━━━━━━<a:color_w:1167081298821656676><a:color_e:1167080532463587440><a:color_l:1167080793777131602><a:color_c:1167080361063358536><a:color_o:1167081021355864164><a:color_m:1167080841000796160><a:color_e:1167080532463587440>━━━━━━')
+      .setTitle('Welcome to A2-Q Server')
       .setDescription(
-        `Hey **<@${memberName}>**!\n\n<:i_:1230749121611304970> **→** <#1167046828802445353> \n<:r_:1230749926648975370> **→** <#1167394553020559420> \n<:c_:1230749152422531072> **→** <#1167046828978614347>\n<:l_:1230749184135790652> Invited by **@${inviterName}** (**${inviteCode}**)\n\nNow we have **${memberCount}** members 🎉 \n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+        `**<@${memberName}>** [`${memberID}\nInvited by **@${inviterName}** (**[${inviteCode}](https://discord.gg/${inviteCode}**)\n\nNow we have **${memberCount}** members 🎉`
       )
       .setColor(colourEmbed)
       .setFooter(`• ${member.user.tag}`, member.user.displayAvatarURL())

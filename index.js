@@ -129,6 +129,7 @@ client.on('guildMemberAdd', async (member) => {
       .setDescription(
   `-# <@${memberId}> [\`${memberUserName}\`]\n-# 📅 Account Created: ${accountCreated}\n-# 🔢 Member Count: \`${memberCount}\`\n-# 🔗 Invited by <@${inviterId}> (${inviterName}) using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`
 )
+      .setThumbnail(member.user.displayAvatarURL())
       .setColor(colourEmbed)
       .setFooter(`• ${member.user.username}`, member.user.displayAvatarURL())
 

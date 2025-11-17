@@ -11,6 +11,17 @@ const CLIENT_ID = '1167109778175168554';
 const GUILD_ID = '1167046828043276379'; 
 // ---------------------------------
 
+rest
+	.put(Routes.applicationGuildCommands(clientId, guildId), { body: [] })
+	.then(() => console.log('Successfully deleted all guild commands.'))
+	.catch(console.error);
+// for global commands
+rest
+	.put(Routes.applicationCommands(clientId), { body: [] })
+	.then(() => console.log('Successfully deleted all application commands.'))
+	.catch(console.error);
+
+
 // --- 1. /createembed Command Definition ---
 const embedCommand = new SlashCommandBuilder()
     .setName('createembed')

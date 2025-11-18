@@ -111,7 +111,7 @@ async function createWelcomeImage(member) {
     ctx.fillRect(0, 0, dim.width, dim.height);
 
     // --- 3. Main Avatar (Foreground) ---
-    const avatarSize = 400; 
+    const avatarSize = 380; 
     const avatarX = dim.margin + 50; 
     const avatarY = (dim.height - avatarSize) / 2;
     const avatarRadius = avatarSize / 2;

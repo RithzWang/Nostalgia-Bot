@@ -30,7 +30,7 @@ const client = new Client({
     // ----------------------------------------
     // THIS LINE MAKES THE BOT APPEAR MOBILE/ONLINE
     ws: {
-        properties: { $browser: 'Discord Android' } 
+        properties: { $browser: 'Discord iOS' } 
     },
     // ----------------------------------------
 });

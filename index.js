@@ -141,33 +141,28 @@ async function createWelcomeImage(member) {
     ctx.restore(); 
 
 
-// 4. Text - Position and Styling (Scaled up)
+    // --- 4. Text ---
     const textX = avatarX + avatarSize + dim.margin; 
     let currentY = dim.height / 2 - 40; 
 
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#ffffff'; 
 
-    // FIX: Remove Emojis/Special Characters from DisplayName
-    // This regex removes most Discord-specific markdown and common control characters
-    const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>|[\u200b-\u200f\uFEFF]/g, '').trim();
-
-    // Display Name (Large, Bold)
-    const displayName = cleanedDisplayName || member.user.username; // Use username as fallback if name was only emojis
+    // Display Name
+    const displayName = member.displayName;
     ctx.font = 'bold 100px sans-serif'; 
     ctx.fillText(displayName, textX, currentY);
 
-    // Username (Smaller, Subdued font)
+    // Username
     currentY += 120; 
-    
-    // FIX: Remove Emojis/Special Characters from Username as well
-    const cleanedUsername = member.user.username.replace(/<a?:\w+:\d+>|[\u200b-\u200f\uFEFF]/g, '').trim();
-    
-    const usernameText = `@${cleanedUsername}`;
+    const usernameText = `@${member.user.username}`;
     ctx.font = '50px sans-serif'; 
     ctx.fillStyle = '#b9bbbe'; 
     ctx.fillText(usernameText, textX, currentY);
 
-// ...
+    // Output
+    return canvas.toBuffer('image/png');
+}
+
 
 
 // ----------------------------------- //

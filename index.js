@@ -26,7 +26,10 @@ const client = new Client({
         Partials.Reaction,
         Partials.GuildMember,
         Partials.User
-    ]
+    ],
+        ws: {
+        properties: { $browser: 'Discord iOS' } // Use 'Discord iOS' or 'Discord Android'
+    },
 });
 
 // --- 1. INITIALIZE COMMAND COLLECTIONS (Now uses the defined 'client') ---

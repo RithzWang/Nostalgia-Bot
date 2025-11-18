@@ -198,7 +198,7 @@ async function createWelcomeImage(member) {
 // ----------------------------------- //
 
 // A. READY EVENT
-client.on('ready', (readyClient) => {
+client.on('clientReady', (readyClient) => {
     console.log(`Logged in as ${readyClient.user.tag}`);
     setInterval(() => {
         const currentTime = moment().tz('Asia/Bangkok');

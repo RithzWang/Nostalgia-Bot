@@ -1,7 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 const { Client, GatewayIntentBits, Partials, Collection, EmbedBuilder, ActivityType, AttachmentBuilder } = require('discord.js');
-// Using @napi-rs/canvas for better font support
 const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
 const moment = require('moment-timezone');
 const keep_alive = require('./keep_alive.js');
@@ -13,10 +12,19 @@ const { prefix, serverID, welcomeLog, roleupdateLog, roleupdateMessage, roleforL
 // ---------- FONT REGISTRATION ------ //
 // ----------------------------------- //
 try {
+    // 1. English (Standard)
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoSans-VariableFont.ttf'), 'Noto Sans');
+    
+    // 2. Arabic
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoNaskhArabic.ttf'), 'Naskh');
+    
+    // 3. Math Symbols (For names like 𝐇𝐞𝐥𝐥𝐨) <--- NEW
+    GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoSansMath-Regular.ttf'), 'Math');
+
+    // 4. Emoji
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoColorEmoji-Regular.ttf'), 'Emoji');
-    console.log("✅ Fonts registered successfully from 'fontss' folder.");
+    
+    console.log("✅ Fonts registered successfully.");
 } catch (error) {
     console.error("❌ Error registering fonts. Check folder name 'fontss' and filenames.", error);
 }
@@ -93,11 +101,10 @@ async function createWelcomeImage(member) {
     const backgroundAvatar = await loadImage(backgroundAvatarURL).catch(() => null);
 
     if (backgroundAvatar) {
-        // Simple stretch to fill for background
         ctx.drawImage(backgroundAvatar, 0, 0, dim.width, dim.height);
         
-        // --- BLUR ADJUSTMENT HERE ---
-        ctx.filter = 'blur(50px)'; // Increased blur from 25px to 50px
+        // Heavy Blur (50px)
+        ctx.filter = 'blur(50px)';
         ctx.drawImage(canvas, 0, 0); 
         ctx.filter = 'none'; 
     } else {
@@ -132,17 +139,23 @@ async function createWelcomeImage(member) {
 
     ctx.fillStyle = '#ffffff'; 
 
+    // Clean only Discord emojis, keep everything else (including fancy text)
     const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>/g, '').trim();
     const displayName = cleanedDisplayName || member.user.username;
 
-    ctx.font = 'bold 120px "Noto Sans", "Naskh", "Emoji"'; 
+    // UPDATED FONT STACK:
+    // 1. Noto Sans (English)
+    // 2. Naskh (Arabic)
+    // 3. Math (Fancy Text like 𝐇𝐞𝐥𝐥𝐨)
+    // 4. Emoji (🥺)
+    ctx.font = 'bold 120px "Noto Sans", "Naskh", "Math", "Emoji"'; 
     ctx.fillText(displayName, textX, currentY);
 
     // Username
     currentY += 130; 
     const cleanedUsername = member.user.username.replace(/<a?:\w+:\d+>/g, '').trim();
     
-    ctx.font = '80px "Noto Sans", "Naskh", "Emoji"'; 
+    ctx.font = '80px "Noto Sans", "Naskh", "Math", "Emoji"'; 
     ctx.fillStyle = '#b9bbbe'; 
     ctx.fillText(`@${cleanedUsername}`, textX, currentY);
 
@@ -213,6 +226,7 @@ client.on('guildMemberAdd', async (member) => {
         }
     }
 });
+
 
 
 // ------ role update log ------ //

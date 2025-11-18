@@ -124,7 +124,7 @@ async function createWelcomeImage(member) {
 
 
 // A. READY EVENT AND ACTIVITY STATUS
-client.on('ready', (readyClient) => {
+client.on('clientReady', (readyClient) => {
     console.log('Bot is ready');
     setInterval(() => {
         const currentTime = moment().tz('Asia/Bangkok');

@@ -1,17 +1,27 @@
 const fs = require('fs');
 const { Client, GatewayIntentBits, Partials, Collection, EmbedBuilder, ActivityType, AttachmentBuilder } = require('discord.js');
-const { createCanvas, loadImage } = require('canvas');
+const { createCanvas, loadImage, registerFont } = require('canvas'); // <-- Added registerFont import
 const moment = require('moment-timezone');
 const keep_alive = require('./keep_alive.js');
 
+// --- Register Arabic Font (MUST BE UPDATED BY YOU) ---
+/*
+* ⚠️ IMPORTANT: To fix goofy Arabic script, you must register a suitable font file.
+* 1. Download a font like 'Noto Sans Arabic' or 'Vazirmatn'.
+* 2. Save it in your bot's folder (e.g., in ./fonts/ArabicFont.ttf).
+* 3. Uncomment and adjust the line below with your file path and preferred font name:
+*/
+// registerFont('./fonts/YOUR_ARABIC_FONT_FILE.ttf', { family: 'Arabic Font' });
+// ----------------------------------------------------
+
+
 // --- Configuration Imports ---
-// REMOVED: boosterChannelId, SuggestionChannelId
 const { prefix, serverID, welcomeLog, roleupdateLog, roleupdateMessage, roleforLog, colourEmbed, BSVerifyRole, BSVerifyRoleupdateLog, BSVerifyRoleUpdateMessage, staffRole } = require("./config.json");
 const config = require('./config.json');
 
 // ---------------------------- //
 
-// --- Client Initialization ---
+// --- Client Initialization (omitted for brevity) ---
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -33,7 +43,7 @@ const client = new Client({
     },
 });
 
-// --- Command and File Loading ---
+// --- Command and File Loading (omitted for brevity) ---
 client.prefixCommands = new Collection();
 client.slashCommands = new Collection(); 
 
@@ -72,7 +82,7 @@ async function createWelcomeImage(member) {
     const canvas = createCanvas(dim.width, dim.height);
     const ctx = canvas.getContext('2d');
 
-    // --- Rounded Rectangle Clip Path ---
+    // --- Rounded Rectangle Clip Path (omitted for brevity) ---
     const cornerRadius = 50; 
     const imageWidth = dim.width;
     const imageHeight = dim.height;
@@ -160,9 +170,8 @@ async function createWelcomeImage(member) {
     const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>|[\u200b-\u200f\uFEFF]/g, '').trim();
     const displayName = cleanedDisplayName || member.user.username;
 
-    // UPDATED FONT: GG Sans (with robust fallbacks)
-    // NOTE: 'gg sans' must be registered or installed on the system to work.
-    ctx.font = 'bold 110px "gg sans", "Noto Sans", sans-serif'; 
+    // 🏆 FONT FIX: Put the registered Arabic font first for best rendering of Arabic script
+    ctx.font = 'bold 110px "Noto Sans Arabic", "gg sans", "Noto Sans", sans-serif'; 
     ctx.fillText(displayName, textX, currentY);
 
     // Username
@@ -170,8 +179,8 @@ async function createWelcomeImage(member) {
     const cleanedUsername = member.user.username.replace(/<a?:\w+:\d+>|[\u200b-\u200f\uFEFF]/g, '').trim();
     const usernameText = `@${cleanedUsername}`;
     
-    // UPDATED FONT: GG Sans (with robust fallbacks)
-    ctx.font = '70px "gg sans", "Noto Sans", sans-serif'; 
+    // 🏆 FONT FIX: Put the registered Arabic font first for best rendering of Arabic script
+    ctx.font = '70px "Noto Sans Arabic", "gg sans", "Noto Sans", sans-serif'; 
     ctx.fillStyle = '#b9bbbe'; 
     ctx.fillText(usernameText, textX, currentY);
 
@@ -182,9 +191,8 @@ async function createWelcomeImage(member) {
 }
 
 // ----------------------------------- //
-// ---------- Event Handlers ---------- //
+// ---------- Event Handlers (omitted for brevity) ---------- //
 // ----------------------------------- //
-
 
 // A. READY EVENT AND ACTIVITY STATUS
 client.on('clientReady', (readyClient) => {

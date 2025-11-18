@@ -1,5 +1,5 @@
 module.exports = {
-    name: 'edit2',
+    name: 'edit3',
     async execute(message, args) {
         if (!message.member.permissions.has('Administrator')) {
             console.error('Permission denied for user:', message.member.user.tag);

@@ -72,47 +72,59 @@ async function createWelcomeImage(member) {
     const canvas = createCanvas(dim.width, dim.height);
     const ctx = canvas.getContext('2d');
 
+    // --- NEW: Rounded Rectangle Clip Path ---
+    const cornerRadius = 50; // Adjust this value for sharper or rounder corners
+    const imageWidth = dim.width;
+    const imageHeight = dim.height;
+
+    ctx.save(); // Save the context state before clipping
+
+    // Create the rounded rectangle path
+    ctx.beginPath();
+    ctx.moveTo(cornerRadius, 0);
+    ctx.lineTo(imageWidth - cornerRadius, 0);
+    ctx.quadraticCurveTo(imageWidth, 0, imageWidth, cornerRadius);
+    ctx.lineTo(imageWidth, imageHeight - cornerRadius);
+    ctx.quadraticCurveTo(imageWidth, imageHeight, imageWidth - cornerRadius, imageHeight);
+    ctx.lineTo(cornerRadius, imageHeight);
+    ctx.quadraticCurveTo(0, imageHeight, 0, imageHeight - cornerRadius);
+    ctx.lineTo(0, cornerRadius);
+    ctx.quadraticCurveTo(0, 0, cornerRadius, 0);
+    ctx.closePath();
+    ctx.clip(); // Apply the clip path: all subsequent drawings will be confined to this shape
+
     // --- 1. Draw Blurred Avatar Background (using 'cover' effect) ---
     
-    // Get a high-res avatar for the background
     const backgroundAvatarURL = member.user.displayAvatarURL({ extension: 'png', size: 1024 }); 
     const backgroundAvatar = await loadImage(backgroundAvatarURL).catch(e => {
         console.error("Error loading background avatar:", e);
-        return null; // Return null if loading fails
+        return null; 
     });
 
     if (backgroundAvatar) {
-        // Calculate aspect ratio to emulate 'background-size: cover'
-        // This ensures the image covers the entire canvas, potentially cropping edges,
-        // rather than just stretching it to fit.
         const imgAspectRatio = backgroundAvatar.width / backgroundAvatar.height;
         const canvasAspectRatio = dim.width / dim.height;
 
-        let sx, sy, sWidth, sHeight; // Source rectangle (portion of image to draw)
+        let sx, sy, sWidth, sHeight; 
 
         if (imgAspectRatio > canvasAspectRatio) {
-            // Image is wider than canvas, crop left/right
             sHeight = backgroundAvatar.height;
             sWidth = sHeight * canvasAspectRatio;
             sx = (backgroundAvatar.width - sWidth) / 2;
             sy = 0;
         } else {
-            // Image is taller than canvas, crop top/bottom
             sWidth = backgroundAvatar.width;
             sHeight = sWidth / canvasAspectRatio;
             sx = 0;
             sy = (backgroundAvatar.height - sHeight) / 2;
         }
 
-        // Draw the background avatar using the calculated source rectangle
         ctx.drawImage(backgroundAvatar, sx, sy, sWidth, sHeight, 0, 0, dim.width, dim.height);
 
-        // Apply a blur effect
         ctx.filter = 'blur(25px)';
-        ctx.drawImage(canvas, 0, 0); // Re-draw to apply filter
-        ctx.filter = 'none'; // Reset filter
+        ctx.drawImage(canvas, 0, 0); 
+        ctx.filter = 'none'; 
     } else {
-        // Fallback: Solid dark background if avatar fails to load
         ctx.fillStyle = '#1e1e1e';
         ctx.fillRect(0, 0, dim.width, dim.height);
     }
@@ -131,15 +143,14 @@ async function createWelcomeImage(member) {
     const mainAvatar = await loadImage(mainAvatarURL);
 
     // Create a circular clip path for the main avatar
-    ctx.save();
+    ctx.save(); // Save again, before clipping for the avatar
     ctx.beginPath();
     ctx.arc(avatarX + avatarRadius, avatarY + avatarRadius, avatarRadius, 0, Math.PI * 2, true);
     ctx.closePath();
     ctx.clip();
 
     ctx.drawImage(mainAvatar, avatarX, avatarY, avatarSize, avatarSize);
-    ctx.restore(); 
-
+    ctx.restore(); // Restore context for avatar clip
 
     // --- 4. Text ---
     const textX = avatarX + avatarSize + dim.margin; 
@@ -147,23 +158,26 @@ async function createWelcomeImage(member) {
 
     ctx.fillStyle = '#ffffff'; 
 
-    // Display Name
-    const displayName = member.displayName;
+    // FIX: Remove Emojis/Special Characters from DisplayName
+    const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>|[\u200b-\u200f\uFEFF]/g, '').trim();
+    const displayName = cleanedDisplayName || member.user.username;
+
     ctx.font = 'bold 100px sans-serif'; 
     ctx.fillText(displayName, textX, currentY);
 
     // Username
     currentY += 120; 
-    const usernameText = `@${member.user.username}`;
+    const cleanedUsername = member.user.username.replace(/<a?:\w+:\d+>|[\u200b-\u200f\uFEFF]/g, '').trim();
+    const usernameText = `@${cleanedUsername}`;
     ctx.font = '50px sans-serif'; 
     ctx.fillStyle = '#b9bbbe'; 
     ctx.fillText(usernameText, textX, currentY);
 
+    ctx.restore(); // Restore context for the main rounded rectangle clip
+
     // Output
     return canvas.toBuffer('image/png');
 }
-
-
 
 // ----------------------------------- //
 // ---------- Event Handlers ---------- //

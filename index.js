@@ -214,27 +214,61 @@ client.on('guildMemberAdd', async (member) => {
     }
 });
 
+
+// ------ role update log ------ //
+// 'guildMemberUpdate' event name remains the same
 client.on('guildMemberUpdate', (oldMember, newMember) => {
     if (newMember.user.bot) return;
+
     const specifiedRolesSet = new Set(roleforLog);
+
+    // .cache access is correct here
     const addedRoles = newMember.roles.cache.filter(role => specifiedRolesSet.has(role.id) && !oldMember.roles.cache.has(role.id));
     const removedRoles = oldMember.roles.cache.filter(role => specifiedRolesSet.has(role.id) && !newMember.roles.cache.has(role.id));
 
     const logChannel = newMember.guild.channels.cache.get(roleupdateLog);
     if (!logChannel) return;
 
+    const silentMessageOptions = {
+        allowedMentions: { parse: [] },
+    };
+
+    const editMessage = (messageContent) => {
+        if (!messageContent.trim()) return;
+        if (roleupdateMessage) {
+            logChannel.messages.fetch(roleupdateMessage)
+                // CRITICAL: message.edit in v14 requires an object for content/embeds/etc.
+                .then(msg => msg.edit({ content: messageContent, ...silentMessageOptions })) 
+                .catch(console.error);
+        } else {
+            // CRITICAL: channel.send in v14 requires an object for content/embeds/etc.
+            logChannel.send({ content: messageContent, ...silentMessageOptions })
+                .then(msg => { roleupdateMessage = msg.id; })
+                .catch(console.error);
+        }
+    };
+
     const formatRoles = (roles) => {
         const roleNames = roles.map(role => `**${role.name}**`);
         if (roleNames.length === 1) return roleNames[0];
+        if (roleNames.length === 2) return `${roleNames[0]} and ${roleNames[1]}`;
         return `${roleNames.slice(0, -1).join(', ')}, and ${roleNames.slice(-1)}`;
     };
 
-    let msg = '';
-    if (addedRoles.size > 0 && removedRoles.size > 0) msg = `<a:success:1297818086463770695> ${newMember.user} has been added ${formatRoles(addedRoles)} and removed ${formatRoles(removedRoles)}!`;
-    else if (addedRoles.size > 0) msg = `<a:success:1297818086463770695> ${newMember.user} has been added ${formatRoles(addedRoles)}!`;
-    else if (removedRoles.size > 0) msg = `<a:success:1297818086463770695> ${newMember.user} has been removed ${formatRoles(removedRoles)}!`;
+    const plural = (roles) => roles.size === 1 ? 'role' : 'roles';
+    let roleUpdateMessage = '';
 
-    if (msg) logChannel.send({ content: msg, allowedMentions: { parse: [] } }).catch(console.error);
+    if (addedRoles.size > 0 && removedRoles.size > 0) {
+        roleUpdateMessage = `<a:success:1297818086463770695> ${newMember.user} has been added ${formatRoles(addedRoles)} ${plural(addedRoles)} and removed ${formatRoles(removedRoles)} ${plural(removedRoles)}!`;
+    } else if (addedRoles.size > 0) {
+        roleUpdateMessage = `<a:success:1297818086463770695> ${newMember.user} has been added ${formatRoles(addedRoles)} ${plural(addedRoles)}!`;
+    } else if (removedRoles.size > 0) {
+        roleUpdateMessage = `<a:success:1297818086463770695> ${newMember.user} has been removed ${formatRoles(removedRoles)} ${plural(removedRoles)}!`;
+    }
+
+    editMessage(roleUpdateMessage);
 });
+
+
 
 client.login(process.env.TOKEN);

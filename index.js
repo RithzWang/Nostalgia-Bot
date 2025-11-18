@@ -148,7 +148,7 @@ async function createWelcomeImage(member) {
     // 2. Naskh (Arabic)
     // 3. Math (Fancy Text like 𝐇𝐞𝐥𝐥𝐨)
     // 4. Emoji (🥺)
-    ctx.font = 'bold 120px "Noto Sans", "Naskh", "Math", "Emoji"'; 
+    ctx.font = 'bold 115px "Noto Sans", "Naskh", "Math", "Emoji"'; 
     ctx.fillText(displayName, textX, currentY);
 
     // Username

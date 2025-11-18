@@ -92,7 +92,6 @@ async function createWelcomeImage(member) {
     ctx.clip(); 
 
     // --- 1. Draw Blurred Avatar Background (using 'cover' effect) ---
-    
     const backgroundAvatarURL = member.user.displayAvatarURL({ extension: 'png', size: 1024 }); 
     const backgroundAvatar = await loadImage(backgroundAvatarURL).catch(e => {
         console.error("Error loading background avatar:", e);
@@ -132,8 +131,9 @@ async function createWelcomeImage(member) {
     ctx.fillRect(0, 0, dim.width, dim.height);
 
     // --- 3. Main Avatar (Foreground) ---
-    const avatarSize = 350; 
-    const avatarX = dim.margin;
+    // UPDATED: Avatar is bigger and moved more to the right
+    const avatarSize = 400; // Increased from 350 to 400
+    const avatarX = dim.margin + 50; // Shifted right by 50px from the original margin
     const avatarY = (dim.height - avatarSize) / 2;
     const avatarRadius = avatarSize / 2;
 
@@ -151,8 +151,9 @@ async function createWelcomeImage(member) {
     ctx.restore(); 
 
     // --- 4. Text ---
-    const textX = avatarX + avatarSize + dim.margin; 
-    let currentY = dim.height / 2 - 40; 
+    // Text position adjusted based on new avatar size and position
+    const textX = avatarX + avatarSize + 60; // Increased gap to 60px
+    let currentY = dim.height / 2 - 50; // Adjusted initial vertical position for larger avatar and better balance
 
     ctx.fillStyle = '#ffffff'; 
 
@@ -160,18 +161,17 @@ async function createWelcomeImage(member) {
     const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>|[\u200b-\u200f\uFEFF]/g, '').trim();
     const displayName = cleanedDisplayName || member.user.username;
 
-    // UPDATED FONT: GG Sans (with robust fallbacks)
-    // NOTE: 'gg sans' must be registered or installed on the system to work.
-    ctx.font = 'bold 110px "gg sans", "Noto Sans", sans-serif'; 
+    // UPDATED FONT SIZE for balance with larger avatar
+    ctx.font = 'bold 120px "Noto Sans Arabic", "gg sans", "Noto Sans", sans-serif'; // Increased to 120px
     ctx.fillText(displayName, textX, currentY);
 
     // Username
-    currentY += 120; 
+    currentY += 130; // Increased vertical spacing for larger text
     const cleanedUsername = member.user.username.replace(/<a?:\w+:\d+>|[\u200b-\u200f\uFEFF]/g, '').trim();
     const usernameText = `@${cleanedUsername}`;
     
-    // UPDATED FONT: GG Sans (with robust fallbacks)
-    ctx.font = '75px "gg sans", "Noto Sans", sans-serif'; 
+    // UPDATED FONT SIZE for balance with larger avatar
+    ctx.font = '80px "Noto Sans Arabic", "gg sans", "Noto Sans", sans-serif'; // Increased to 80px
     ctx.fillStyle = '#b9bbbe'; 
     ctx.fillText(usernameText, textX, currentY);
 
@@ -180,6 +180,7 @@ async function createWelcomeImage(member) {
     // Output
     return canvas.toBuffer('image/png');
 }
+
 
 // ----------------------------------- //
 // ---------- Event Handlers ---------- //

@@ -1,50 +1,44 @@
 const fs = require('fs');
-// ... other imports
 const { Client, GatewayIntentBits, Partials, Collection, EmbedBuilder, ActivityType, AttachmentBuilder } = require('discord.js');
-// ... other imports
-const keep_alive = require('./keep_alive.js');
-const moment = require('moment-timezone');
-
 const { createCanvas, loadImage } = require('canvas');
+const moment = require('moment-timezone');
+const keep_alive = require('./keep_alive.js');
 
-
-const { prefix, serverID, boosterLog, welcomeLog, roleupdateLog, roleupdateMessage, roleforLog, colourEmbed, BSVerifyRole, BSVerifyRoleupdateLog, BSVerifyRoleUpdateMessage, boosterRoleId, boosterChannelId, SuggestionChannelId, staffRole } = require("./config.json");
+// --- Configuration Imports ---
+// REMOVED: boosterChannelId, SuggestionChannelId
+const { prefix, serverID, welcomeLog, roleupdateLog, roleupdateMessage, roleforLog, colourEmbed, BSVerifyRole, BSVerifyRoleupdateLog, BSVerifyRoleUpdateMessage, staffRole } = require("./config.json");
 const config = require('./config.json');
 
 // ---------------------------- //
 
+// --- Client Initialization ---
 const client = new Client({
     intents: [
-        // Ensure ALL these lines have a comma at the end!
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent, 
         GatewayIntentBits.DirectMessages,
-        GatewayIntentBits.GuildMembers, // <- Ensure comma here
-        GatewayIntentBits.GuildMessageReactions // <- Ensure comma here if more follow
-    ], // <--- Comma separating intents and partials is NOT needed here
+        GatewayIntentBits.GuildMembers, 
+        GatewayIntentBits.GuildMessageReactions 
+    ], 
     partials: [
         Partials.Channel,
         Partials.Message,
         Partials.Reaction,
         Partials.GuildMember,
-        Partials.User, // <- Ensure comma here
-    ], // <--- This comma is necessary to separate partials and ws!
-    // ----------------------------------------
-    // THIS LINE MAKES THE BOT APPEAR MOBILE/ONLINE
+        Partials.User, 
+    ], 
     ws: {
         properties: { $browser: 'Discord iOS' } 
     },
-    // ----------------------------------------
 });
 
-// --- 1. INITIALIZE COMMAND COLLECTIONS (Now uses the defined 'client') ---
+// --- Command and File Loading ---
 client.prefixCommands = new Collection();
 client.slashCommands = new Collection(); 
 
-// --- 2. LOAD PREFIX COMMANDS (from ./commands) ---
+// Load Prefix Commands
 const prefixCommandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
-
 for (const file of prefixCommandFiles) {
     const command = require(`./commands/${file}`);
     client.prefixCommands.set(command.name, command);
@@ -55,20 +49,82 @@ for (const file of prefixCommandFiles) {
     }
 }
 
-// --- 3. LOAD SLASH COMMANDS (from ./slash commands) ---
-// Note the space in the folder name requires quotes when reading the directory
+// Load Slash Commands
 const slashCommandFiles = fs.readdirSync('./slash commands').filter(file => file.endsWith('.js'));
-
 for (const file of slashCommandFiles) {
-    // We expect slash command files to be in the new directory
     const command = require(`./slash commands/${file}`);
     client.slashCommands.set(command.name, command);
 }
 // ----------------------------------------------------
 
 
-// CRITICAL FIX: Changed 'ready' to 'clientReady'
-client.on('clientReady', (readyClient) => {
+// ----------------------------------- //
+// ---------- Canvas Image Function ---------- //
+// ----------------------------------- //
+
+async function createWelcomeImage(member) {
+    const dim = {
+        height: 200,
+        width: 600,
+        margin: 50
+    };
+
+    // Canvas Setup
+    const canvas = createCanvas(dim.width, dim.height);
+    const ctx = canvas.getContext('2d');
+
+    // Background (Dark Grey)
+    ctx.fillStyle = '#36393f';
+    ctx.fillRect(0, 0, dim.width, dim.height);
+
+    // Avatar
+    const avatarSize = 128;
+    const avatarX = dim.margin;
+    const avatarY = (dim.height - avatarSize) / 2;
+    const avatarRadius = avatarSize / 2;
+
+    const avatarURL = member.user.displayAvatarURL({ extension: 'png', size: 128 });
+    const avatar = await loadImage(avatarURL);
+
+    // Circular clip path for the avatar
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(avatarX + avatarRadius, avatarY + avatarRadius, avatarRadius, 0, Math.PI * 2, true);
+    ctx.closePath();
+    ctx.clip();
+
+    ctx.drawImage(avatar, avatarX, avatarY, avatarSize, avatarSize);
+    ctx.restore();
+
+    // Text - Position and Styling
+    const textX = avatarX + avatarSize + dim.margin / 2;
+    let currentY = dim.height / 2 - 20; 
+
+    ctx.fillStyle = '#ffffff';
+
+    // Display Name (Large, Bold)
+    const displayName = member.displayName;
+    ctx.font = 'bold 30px sans-serif';
+    ctx.fillText(displayName, textX, currentY);
+
+    // Username (Smaller, Subdued)
+    currentY += 40; 
+    const usernameText = `@${member.user.username}`;
+    ctx.font = '20px sans-serif';
+    ctx.fillStyle = '#b9bbbe'; 
+    ctx.fillText(usernameText, textX, currentY);
+
+    // Output
+    return canvas.toBuffer('image/png');
+}
+
+// ----------------------------------- //
+// ---------- Event Handlers ---------- //
+// ----------------------------------- //
+
+
+// A. READY EVENT AND ACTIVITY STATUS
+client.on('ready', (readyClient) => {
     console.log('Bot is ready');
     setInterval(() => {
         const currentTime = moment().tz('Asia/Bangkok');
@@ -81,16 +137,13 @@ client.on('clientReady', (readyClient) => {
     }, 1000);
 });
 
-// --- EXECUTION HANDLERS ---
-
-// A. PREFIX COMMAND HANDLER (messageCreate)
+// B. PREFIX COMMAND HANDLER (messageCreate)
 client.on('messageCreate', message => {
     if (!message.content.startsWith(prefix) || message.author.bot) return;
 
     const args = message.content.slice(prefix.length).split(/ +/);
     const commandName = args.shift().toLowerCase();
 
-    // Use prefixCommands collection
     const command = client.prefixCommands.get(commandName);
 
     if (!command) return;
@@ -104,12 +157,10 @@ client.on('messageCreate', message => {
 });
 
 
-// B. SLASH COMMAND HANDLER (interactionCreate) - NEW!
+// C. SLASH COMMAND HANDLER (interactionCreate)
 client.on('interactionCreate', async interaction => {
-    // Only handle chat input (slash) commands
     if (!interaction.isChatInputCommand()) return;
 
-    // Use slashCommands collection
     const command = client.slashCommands.get(interaction.commandName);
 
     if (!command) {
@@ -130,79 +181,7 @@ client.on('interactionCreate', async interaction => {
 });
 
 
-// ----------------------------------- //
-
-
-// ---------- canvas image ---------- //
-
-
-async function createWelcomeImage(member) {
-    const dim = {
-        height: 200,
-        width: 600,
-        margin: 50
-    };
-
-    // 1. Canvas Setup
-    const canvas = createCanvas(dim.width, dim.height);
-    const ctx = canvas.getContext('2d');
-
-    // 2. Background (Example: Dark Grey)
-    ctx.fillStyle = '#36393f';
-    ctx.fillRect(0, 0, dim.width, dim.height);
-
-    // 3. Avatar
-    const avatarSize = 128;
-    const avatarX = dim.margin;
-    const avatarY = (dim.height - avatarSize) / 2;
-    const avatarRadius = avatarSize / 2;
-
-    // Fetch avatar image
-    const avatarURL = member.user.displayAvatarURL({ extension: 'png', size: 128 });
-    const avatar = await loadImage(avatarURL);
-
-    // Create a circular clip path for the avatar
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(avatarX + avatarRadius, avatarY + avatarRadius, avatarRadius, 0, Math.PI * 2, true);
-    ctx.closePath();
-    ctx.clip();
-
-    // Draw the avatar
-    ctx.drawImage(avatar, avatarX, avatarY, avatarSize, avatarSize);
-    ctx.restore(); // Restore context to draw outside the clip
-
-    // 4. Text - Position and Styling
-    const textX = avatarX + avatarSize + dim.margin / 2;
-    let currentY = dim.height / 2 - 20; // Starting point for display name
-
-    ctx.fillStyle = '#ffffff';
-
-    // Display Name (Large, Bold)
-    const displayName = member.displayName; // Use displayName which can be the nickname
-    ctx.font = 'bold 30px sans-serif';
-    ctx.fillText(displayName, textX, currentY);
-
-    // Username (Smaller, Subdued)
-    currentY += 40; // Move down for the username
-    const usernameText = `@${member.user.username}`;
-    ctx.font = '20px sans-serif';
-    ctx.fillStyle = '#b9bbbe'; // Discord light grey
-    ctx.fillText(usernameText, textX, currentY);
-
-    // Output
-    return canvas.toBuffer('image/png');
-}
-
-
-// ----------------------------------  //
-
-
-
-
-
-// --------- welcomer --------- //
-// 'guildMemberAdd' event name remains the same
+// D. WELCOMER EVENT (guildMemberAdd)
 client.on('guildMemberAdd', async (member) => {
     if (member.user.bot) {
         return;
@@ -211,56 +190,48 @@ client.on('guildMemberAdd', async (member) => {
     if (member.guild.id === serverID) {
         let memberId = member.user.id;
         let memberUserName = member.user.username;
-        let memberCount = member.guild.memberCount; // Remains the same
+        let memberCount = member.guild.memberCount; 
 
-        // Timestamp remains the same
         const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
 
-        // Fetch invites for the guild (remains the same)
-        const guildInvites = await member.guild.invites.fetch(); // Using .fetch() instead of deprecated property
+        const guildInvites = await member.guild.invites.fetch(); 
 
-        // Find the invite that has a use and track the inviter
         const usedInvite = guildInvites.find((invite) => invite.uses > 0 && invite.inviter && invite.inviter.id !== client.user.id);
         
-        // Get inviter's name, invite code, and type
         const inviterName = usedInvite ? usedInvite.inviter.username : 'Unknown';
         const inviterId = usedInvite ? usedInvite.inviter.id : 'Unknown';
         const inviteCode = usedInvite ? usedInvite.code : 'Unknown';
 
 
-         const welcomeImageBuffer = await createWelcomeImage(member);
+        // --- Image Generation and Attachment ---
+        const welcomeImageBuffer = await createWelcomeImage(member);
         const attachment = new AttachmentBuilder(welcomeImageBuffer, { name: 'welcome-image.png' });
-        // The URL for the image within the message
         const imageURL = 'attachment://welcome-image.png'; 
+        // ---------------------------------------
 
 
-        // CRITICAL: MessageEmbed is replaced by EmbedBuilder in v14
         const embed = new EmbedBuilder()
-           // .setTitle('Welcome to A2-Q Server')
             .setDescription(
                 `### <a:wave:1440327983326822400> Welcome to A2-Q Server\n-# <@${memberId}> \`(${memberUserName})\`\n-# <:calendar:1439970556534329475> Account Created: ${accountCreated}\n-# <:users:1439970561953501214> Member Count: \`${memberCount}\`\n-# <:chain:1439970559105564672> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`
             )
-            // CRITICAL: displayAvatarURL must be called as a method
             .setThumbnail(member.user.displayAvatarURL())
             .setImage(imageURL)
-            .setColor(colourEmbed) // colourEmbed should be a number or a hex string (e.g., 0xHEX, '#HEX')
-        // .setFooter(`• ${member.user.username}`, member.user.displayAvatarURL()) // Footer is still valid
+            .setColor(colourEmbed) 
 
-        // client.channels.cache.get(welcomeLog).send(embed); // v14 sends require an object
-        client.channels.cache.get(welcomeLog).send({ embeds: [embed] });
+        client.channels.cache.get(welcomeLog).send({ 
+            embeds: [embed],
+            files: [attachment] 
+        });
     }
 });
-// ----------------------------- //
 
 
-// ------ role update log ------ //
-// 'guildMemberUpdate' event name remains the same
+// E. ROLE UPDATE LOG (guildMemberUpdate)
 client.on('guildMemberUpdate', (oldMember, newMember) => {
     if (newMember.user.bot) return;
 
     const specifiedRolesSet = new Set(roleforLog);
 
-    // .cache access is correct here
     const addedRoles = newMember.roles.cache.filter(role => specifiedRolesSet.has(role.id) && !oldMember.roles.cache.has(role.id));
     const removedRoles = oldMember.roles.cache.filter(role => specifiedRolesSet.has(role.id) && !newMember.roles.cache.has(role.id));
 
@@ -275,11 +246,9 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
         if (!messageContent.trim()) return;
         if (roleupdateMessage) {
             logChannel.messages.fetch(roleupdateMessage)
-                // CRITICAL: message.edit in v14 requires an object for content/embeds/etc.
                 .then(msg => msg.edit({ content: messageContent, ...silentMessageOptions })) 
                 .catch(console.error);
         } else {
-            // CRITICAL: channel.send in v14 requires an object for content/embeds/etc.
             logChannel.send({ content: messageContent, ...silentMessageOptions })
                 .then(msg => { roleupdateMessage = msg.id; })
                 .catch(console.error);
@@ -306,59 +275,7 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
 
     editMessage(roleUpdateMessage);
 });
-// ----------------------------- //
 
 
-// ------ thank you booster ------ //
-
-client.on('guildMemberUpdate', (oldMember, newMember) => {
-    // Check if the member has boosted the server (property names remain the same)
-    if (newMember.premiumSince && !oldMember.premiumSince) {
-        const channel = client.channels.cache.get(boosterChannelId);
-        if (channel) {
-            // CRITICAL: channel.send in v14 requires an object for content/embeds/etc.
-            channel.send({ content: `<@${newMember.user.id}>, Thank you for boosting the server! 🎉` });
-        } else {
-            console.error('Booster channel not found!');
-        }
-    }
-});
-
-// ----------------------------------- //
-
-
-// ------- suggestions channel ------- //
-
-// CRITICAL: Replace 'message' event with 'messageCreate'
-client.on('messageCreate', async message => {
-    // Check if the message is from the specific channel and not from the bot itself
-    if (message.channel.id === SuggestionChannelId && !message.author.bot) {
-        // Delete the original message (remains the same)
-        await message.delete();
-
-        // CRITICAL: Use EmbedBuilder for creating the embed
-        const embed = new EmbedBuilder()
-            .setColor(colourEmbed) // Set the color of the embed
-            .setTitle('📥︰suggestions') // Set the title
-            .setDescription(message.content) // Set the description to the original message
-            // CRITICAL: displayAvatarURL must be called as a method
-            .setFooter({ text: `By: ${message.author.tag} (ID: ${message.author.id})`, iconURL: message.author.displayAvatarURL() });
-
-        // CRITICAL: Send the embed back to the channel using an object
-        const suggestion = await message.channel.send({ embeds: [embed] });
-
-        // Add reactions to the embed message (remains the same)
-        await suggestion.react('<:yee:1297271543398662265>');
-        await suggestion.react('<:naw:1297271574399025193>');
-
-        // CRITICAL: Send a regular message using an object
-        message.channel.send({ content: `-# send a message in this channel to suggest. do not send anything other than suggestions!` });
-    }
-});
-
-// ----------------------------------- //
-
-
-// ---- red / white colours role ---- //
-
+// --- Start Bot ---
 client.login(process.env.TOKEN);

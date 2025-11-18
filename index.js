@@ -4,6 +4,7 @@ const { Client, GatewayIntentBits, Partials, Collection, EmbedBuilder, ActivityT
 // ... other imports
 const keep_alive = require('./keep_alive.js');
 const moment = require('moment-timezone');
+
 const { createCanvas, loadImage } = require('canvas');
 const { /* other imports */, AttachmentBuilder } = require('discord.js');
 

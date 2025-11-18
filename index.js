@@ -161,7 +161,7 @@ async function createWelcomeImage(member) {
 
 
     // --- C. Draw Avatar Decoration (Drawn LAST to sit on top of everything) ---
-    const decoURL = member.user.avatarDecorationURL({ extension: 'png', size: 512 });
+    const decoURL = member.user.avatarDecorationURL({ extension: 'png', size: 517 });
     if (decoURL) {
         const decoImage = await loadImage(decoURL).catch(e => null);
         if (decoImage) {

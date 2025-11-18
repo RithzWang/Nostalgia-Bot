@@ -63,63 +63,87 @@ for (const file of slashCommandFiles) {
 // ----------------------------------- //
 
 async function createWelcomeImage(member) {
-    // UPDATED DIMENSIONS: 1770x606
     const dim = {
         height: 606,
         width: 1770,
-        margin: 100 // Increased margin
+        margin: 100 
     };
 
-    // 1. Canvas Setup
     const canvas = createCanvas(dim.width, dim.height);
     const ctx = canvas.getContext('2d');
 
-    // 2. Background (Example: Dark Grey)
-    ctx.fillStyle = '#36393f';
+    // --- NEW: BLURRED AVATAR BACKGROUND ---
+    const backgroundAvatarURL = member.user.displayAvatarURL({ extension: 'png', size: 1024 }); // Get a high-res avatar for background
+    const backgroundAvatar = await loadImage(backgroundAvatarURL);
+
+    // 1. Draw the background avatar, covering the whole canvas
+    // Calculate aspect ratio to cover the canvas without stretching
+    const hRatio = dim.width / backgroundAvatar.width;
+    const vRatio = dim.height / backgroundAvatar.height;
+    const ratio = Math.max(hRatio, vRatio);
+    const centerShiftX = (dim.width - backgroundAvatar.width * ratio) / 2;
+    const centerShiftY = (dim.height - backgroundAvatar.height * ratio) / 2;
+    
+    ctx.drawImage(
+        backgroundAvatar, 
+        0, 0, backgroundAvatar.width, backgroundAvatar.height, // Source image (entire avatar)
+        centerShiftX, centerShiftY, dim.width, dim.height // Destination on canvas (covering it)
+    );
+    
+    // 2. Apply a blur effect to the entire canvas (which now has the background avatar)
+    ctx.filter = 'blur(25px)'; // Adjust blur strength as needed (e.g., 'blur(15px)', 'blur(30px)')
+    ctx.drawImage(canvas, 0, 0); // Re-draw the blurred content back onto itself
+    ctx.filter = 'none'; // Reset filter so subsequent drawings are not blurred
+
+    // 3. Add a semi-transparent overlay to make text more readable
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'; // Dark semi-transparent overlay (adjust alpha as needed)
     ctx.fillRect(0, 0, dim.width, dim.height);
 
-    // 3. Avatar (Scaled up)
-    const avatarSize = 350; // Increased avatar size
+    // --- END NEW BACKGROUND LOGIC ---
+
+
+    // 4. Main Avatar (Scaled up, positioned on top of the blurred background)
+    const avatarSize = 350; 
     const avatarX = dim.margin;
     const avatarY = (dim.height - avatarSize) / 2;
     const avatarRadius = avatarSize / 2;
 
-    // Fetch avatar image (using higher resolution size)
-    const avatarURL = member.user.displayAvatarURL({ extension: 'png', size: 512 });
-    const avatar = await loadImage(avatarURL);
+    const mainAvatarURL = member.user.displayAvatarURL({ extension: 'png', size: 512 }); // Get a high-res avatar for foreground
+    const mainAvatar = await loadImage(mainAvatarURL);
 
-    // Create a circular clip path for the avatar
+    // Create a circular clip path for the main avatar
     ctx.save();
     ctx.beginPath();
     ctx.arc(avatarX + avatarRadius, avatarY + avatarRadius, avatarRadius, 0, Math.PI * 2, true);
     ctx.closePath();
     ctx.clip();
 
-    // Draw the avatar
-    ctx.drawImage(avatar, avatarX, avatarY, avatarSize, avatarSize);
-    ctx.restore(); // Restore context to draw outside the clip
+    ctx.drawImage(mainAvatar, avatarX, avatarY, avatarSize, avatarSize);
+    ctx.restore(); 
 
-    // 4. Text - Position and Styling (Scaled up)
-    const textX = avatarX + avatarSize + dim.margin; // Increased spacing
-    let currentY = dim.height / 2 - 40; // Starting point for display name
 
-    ctx.fillStyle = '#ffffff';
+    // 5. Text - Position and Styling (Scaled up, positioned on top of the blurred background)
+    const textX = avatarX + avatarSize + dim.margin; 
+    let currentY = dim.height / 2 - 40; 
+
+    ctx.fillStyle = '#ffffff'; // White text for good contrast
 
     // Display Name (Larger font)
     const displayName = member.displayName;
-    ctx.font = 'bold 100px sans-serif'; // Increased font size
+    ctx.font = 'bold 100px sans-serif'; 
     ctx.fillText(displayName, textX, currentY);
 
     // Username (Smaller, Subdued font)
-    currentY += 120; // Increased vertical spacing
+    currentY += 120; 
     const usernameText = `@${member.user.username}`;
-    ctx.font = '50px sans-serif'; // Increased font size
+    ctx.font = '50px sans-serif'; 
     ctx.fillStyle = '#b9bbbe'; 
     ctx.fillText(usernameText, textX, currentY);
 
     // Output
     return canvas.toBuffer('image/png');
 }
+
 
 
 // ----------------------------------- //

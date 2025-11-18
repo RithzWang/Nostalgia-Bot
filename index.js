@@ -160,8 +160,9 @@ async function createWelcomeImage(member) {
     const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>|[\u200b-\u200f\uFEFF]/g, '').trim();
     const displayName = cleanedDisplayName || member.user.username;
 
-    // UPDATED FONT: San Francisco (with fallback)
-    ctx.font = 'bold 120px "San Francisco", sans-serif'; 
+    // UPDATED FONT: GG Sans (with robust fallbacks)
+    // NOTE: 'gg sans' must be registered or installed on the system to work.
+    ctx.font = 'bold 110px "gg sans", "Noto Sans", sans-serif'; 
     ctx.fillText(displayName, textX, currentY);
 
     // Username
@@ -169,8 +170,8 @@ async function createWelcomeImage(member) {
     const cleanedUsername = member.user.username.replace(/<a?:\w+:\d+>|[\u200b-\u200f\uFEFF]/g, '').trim();
     const usernameText = `@${cleanedUsername}`;
     
-    // UPDATED FONT: San Francisco (with fallback)
-    ctx.font = '80px "San Francisco", sans-serif'; 
+    // UPDATED FONT: GG Sans (with robust fallbacks)
+    ctx.font = '70px "gg sans", "Noto Sans", sans-serif'; 
     ctx.fillStyle = '#b9bbbe'; 
     ctx.fillText(usernameText, textX, currentY);
 

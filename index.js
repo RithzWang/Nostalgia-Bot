@@ -72,43 +72,46 @@ async function createWelcomeImage(member) {
     const canvas = createCanvas(dim.width, dim.height);
     const ctx = canvas.getContext('2d');
 
-    // --- NEW: BLURRED AVATAR BACKGROUND ---
-    const backgroundAvatarURL = member.user.displayAvatarURL({ extension: 'png', size: 1024 }); // Get a high-res avatar for background
-    const backgroundAvatar = await loadImage(backgroundAvatarURL);
-
-    // 1. Draw the background avatar, covering the whole canvas
-    // Calculate aspect ratio to cover the canvas without stretching
-    const hRatio = dim.width / backgroundAvatar.width;
-    const vRatio = dim.height / backgroundAvatar.height;
-    const ratio = Math.max(hRatio, vRatio);
-    const centerShiftX = (dim.width - backgroundAvatar.width * ratio) / 2;
-    const centerShiftY = (dim.height - backgroundAvatar.height * ratio) / 2;
+    // --- 1. Draw Blurred Avatar Background ---
     
-    ctx.drawImage(
-        backgroundAvatar, 
-        0, 0, backgroundAvatar.width, backgroundAvatar.height, // Source image (entire avatar)
-        centerShiftX, centerShiftY, dim.width, dim.height // Destination on canvas (covering it)
-    );
-    
-    // 2. Apply a blur effect to the entire canvas (which now has the background avatar)
-    ctx.filter = 'blur(25px)'; // Adjust blur strength as needed (e.g., 'blur(15px)', 'blur(30px)')
-    ctx.drawImage(canvas, 0, 0); // Re-draw the blurred content back onto itself
-    ctx.filter = 'none'; // Reset filter so subsequent drawings are not blurred
+    // Get a high-res avatar for the background
+    const backgroundAvatarURL = member.user.displayAvatarURL({ extension: 'png', size: 1024 }); 
+    const backgroundAvatar = await loadImage(backgroundAvatarURL).catch(e => {
+        console.error("Error loading background avatar:", e);
+        return null; // Return null if loading fails
+    });
 
-    // 3. Add a semi-transparent overlay to make text more readable
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'; // Dark semi-transparent overlay (adjust alpha as needed)
+    if (backgroundAvatar) {
+        // Draw the background avatar to fill the canvas area.
+        // We use a simple stretch/crop method since it will be blurred anyway.
+        ctx.drawImage(backgroundAvatar, 0, 0, dim.width, dim.height);
+
+        // Apply a blur effect
+        ctx.filter = 'blur(25px)';
+        
+        // Re-draw the canvas contents onto itself to apply the filter
+        // Note: Drawing the canvas onto itself with a filter is a common way to apply the filter to the entire surface.
+        ctx.drawImage(canvas, 0, 0); 
+
+        // Reset the filter immediately so text and main avatar are crisp
+        ctx.filter = 'none'; 
+    } else {
+        // Fallback: If the avatar fails to load, use a solid dark background
+        ctx.fillStyle = '#1e1e1e';
+        ctx.fillRect(0, 0, dim.width, dim.height);
+    }
+    
+    // 2. Add Semi-Transparent Overlay (Drawn AFTER the background and blur)
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'; 
     ctx.fillRect(0, 0, dim.width, dim.height);
 
-    // --- END NEW BACKGROUND LOGIC ---
-
-
-    // 4. Main Avatar (Scaled up, positioned on top of the blurred background)
+    // --- 3. Main Avatar (Foreground) ---
     const avatarSize = 350; 
     const avatarX = dim.margin;
     const avatarY = (dim.height - avatarSize) / 2;
     const avatarRadius = avatarSize / 2;
 
-    const mainAvatarURL = member.user.displayAvatarURL({ extension: 'png', size: 512 }); // Get a high-res avatar for foreground
+    const mainAvatarURL = member.user.displayAvatarURL({ extension: 'png', size: 512 }); 
     const mainAvatar = await loadImage(mainAvatarURL);
 
     // Create a circular clip path for the main avatar
@@ -122,18 +125,18 @@ async function createWelcomeImage(member) {
     ctx.restore(); 
 
 
-    // 5. Text - Position and Styling (Scaled up, positioned on top of the blurred background)
+    // --- 4. Text ---
     const textX = avatarX + avatarSize + dim.margin; 
     let currentY = dim.height / 2 - 40; 
 
-    ctx.fillStyle = '#ffffff'; // White text for good contrast
+    ctx.fillStyle = '#ffffff'; 
 
-    // Display Name (Larger font)
+    // Display Name
     const displayName = member.displayName;
     ctx.font = 'bold 100px sans-serif'; 
     ctx.fillText(displayName, textX, currentY);
 
-    // Username (Smaller, Subdued font)
+    // Username
     currentY += 120; 
     const usernameText = `@${member.user.username}`;
     ctx.font = '50px sans-serif'; 
@@ -143,8 +146,6 @@ async function createWelcomeImage(member) {
     // Output
     return canvas.toBuffer('image/png');
 }
-
-
 
 // ----------------------------------- //
 // ---------- Event Handlers ---------- //

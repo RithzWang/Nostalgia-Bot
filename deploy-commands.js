@@ -65,7 +65,7 @@ const editEmbedCommand = new SlashCommandBuilder()
 
 // --- 3. Assemble and Deploy ---
 // This list overwrites all existing commands on the server.
-const commands = [embedCommand, addButtonCommand, editEmbedCommand].map(command => command.toJSON());
+const commands = [embedCommand,editEmbedCommand].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(BOT_TOKEN);
 

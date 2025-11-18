@@ -12,16 +12,9 @@ const { prefix, serverID, welcomeLog, roleupdateLog, roleupdateMessage, roleforL
 // ---------- FONT REGISTRATION ------ //
 // ----------------------------------- //
 try {
-    // 1. English (Standard)
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoSans-VariableFont.ttf'), 'Noto Sans');
-    
-    // 2. Arabic
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoNaskhArabic.ttf'), 'Naskh');
-    
-    // 3. Math Symbols (For names like 𝐇𝐞𝐥𝐥𝐨) <--- NEW
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoSansMath-Regular.ttf'), 'Math');
-
-    // 4. Emoji
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoColorEmoji-Regular.ttf'), 'Emoji');
     
     console.log("✅ Fonts registered successfully.");
@@ -39,7 +32,8 @@ const client = new Client({
         GatewayIntentBits.MessageContent, 
         GatewayIntentBits.DirectMessages,
         GatewayIntentBits.GuildMembers, 
-        GatewayIntentBits.GuildMessageReactions 
+        GatewayIntentBits.GuildMessageReactions,
+        GatewayIntentBits.GuildPresences // <--- NEW: REQUIRED FOR STATUS
     ], 
     partials: [
         Partials.Channel,
@@ -125,6 +119,7 @@ async function createWelcomeImage(member) {
     const mainAvatarURL = member.user.displayAvatarURL({ extension: 'png', size: 512 }); 
     const mainAvatar = await loadImage(mainAvatarURL);
 
+    // A. Draw the User Avatar (Clipped to Circle)
     ctx.save(); 
     ctx.beginPath();
     ctx.arc(avatarX + avatarRadius, avatarY + avatarRadius, avatarRadius, 0, Math.PI * 2, true);
@@ -133,22 +128,60 @@ async function createWelcomeImage(member) {
     ctx.drawImage(mainAvatar, avatarX, avatarY, avatarSize, avatarSize);
     ctx.restore(); 
 
+    // --- B. DRAW STATUS (NEW) ---
+    // Determine Status Color
+    const status = member.presence ? member.presence.status : 'offline';
+    let statusColor = '#747f8d'; // Default Grey (offline)
+
+    switch (status) {
+        case 'online': statusColor = '#3ba55c'; break; // Green
+        case 'idle':   statusColor = '#faa61a'; break; // Yellow
+        case 'dnd':    statusColor = '#ed4245'; break; // Red
+        case 'streaming': statusColor = '#593695'; break; // Purple
+        case 'offline':   statusColor = '#747f8d'; break; // Grey
+    }
+
+    // Calculate Status Position (Bottom Right of Avatar)
+    // We offset it slightly inward so it sits nicely on the curve
+    const statusRadius = 45; 
+    const offset = 15; // How far inside the circle it sits
+    const statusX = avatarX + avatarSize - (statusRadius * 2) + offset;
+    const statusY = avatarY + avatarSize - (statusRadius * 2) + offset;
+
+    ctx.beginPath();
+    ctx.arc(statusX, statusY, statusRadius, 0, Math.PI * 2);
+    ctx.fillStyle = statusColor;
+    ctx.fill();
+    
+    // Add a "Cutout" border (Stroke) to separate status from avatar
+    ctx.strokeStyle = '#1e1e1e'; // Dark color matching generic background to fake a cut
+    ctx.lineWidth = 10;
+    ctx.stroke();
+    ctx.closePath();
+
+
+    // --- C. Draw Avatar Decoration (Drawn LAST to sit on top of everything) ---
+    const decoURL = member.user.avatarDecorationURL({ extension: 'png', size: 512 });
+    if (decoURL) {
+        const decoImage = await loadImage(decoURL).catch(e => null);
+        if (decoImage) {
+            // Standard decoration fits 1:1 with avatar, but sometimes needs a tiny scale up to frame perfectly
+            const decoSize = avatarSize * 1.1; 
+            const decoOffset = (decoSize - avatarSize) / 2;
+            ctx.drawImage(decoImage, avatarX - decoOffset, avatarY - decoOffset, decoSize, decoSize);
+        }
+    }
+
     // --- 4. Text ---
     const textX = avatarX + avatarSize + 60; 
     let currentY = dim.height / 2 - 50; 
 
     ctx.fillStyle = '#ffffff'; 
 
-    // Clean only Discord emojis, keep everything else (including fancy text)
     const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>/g, '').trim();
     const displayName = cleanedDisplayName || member.user.username;
 
-    // UPDATED FONT STACK:
-    // 1. Noto Sans (English)
-    // 2. Naskh (Arabic)
-    // 3. Math (Fancy Text like 𝐇𝐞𝐥𝐥𝐨)
-    // 4. Emoji (🥺)
-    ctx.font = 'bold 115px "Noto Sans", "Naskh", "Math", "Emoji"'; 
+    ctx.font = 'bold 120px "Noto Sans", "Naskh", "Math", "Emoji"'; 
     ctx.fillText(displayName, textX, currentY);
 
     // Username
@@ -169,7 +202,7 @@ async function createWelcomeImage(member) {
 // ---------- Event Handlers ---------- //
 // ----------------------------------- //
 
-client.on('clientReady', (readyClient) => {
+client.on('ready', (readyClient) => {
     console.log(`Logged in as ${readyClient.user.tag}`);
     setInterval(() => {
         const currentTime = moment().tz('Asia/Bangkok');

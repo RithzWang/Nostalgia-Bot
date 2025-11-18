@@ -1,13 +1,27 @@
 const fs = require('fs');
+const path = require('path'); // Import path for safe file loading
 const { Client, GatewayIntentBits, Partials, Collection, EmbedBuilder, ActivityType, AttachmentBuilder } = require('discord.js');
-const { createCanvas, loadImage } = require('canvas');
+// ✅ FIX: Added registerFont to imports
+const { createCanvas, loadImage, registerFont } = require('canvas');
 const moment = require('moment-timezone');
 const keep_alive = require('./keep_alive.js');
 
 // --- Configuration Imports ---
-// REMOVED: boosterChannelId, SuggestionChannelId
-const { prefix, serverID, welcomeLog, roleupdateLog, roleupdateMessage, roleforLog, colourEmbed, BSVerifyRole, BSVerifyRoleupdateLog, BSVerifyRoleUpdateMessage, staffRole } = require("./config.json");
-const config = require('./config.json');
+const { prefix, serverID, welcomeLog, roleupdateLog, roleupdateMessage, roleforLog, colourEmbed } = require("./config.json");
+// Note: You can access config.token if needed, or use process.env.TOKEN
+
+// ----------------------------------- //
+// ---------- FONT REGISTRATION ------ //
+// ----------------------------------- //
+// ✅ FIX: Register the fonts before the bot starts
+// Ensure you have a folder named 'fonts' with these exact file names
+try {
+    registerFont(path.join(__dirname, 'fonts', 'AmiriQuran-Regular.ttf'), { family: 'Amiri' });
+    registerFont(path.join(__dirname, 'fonts', 'NotoColorEmoji-Regular.ttf'), { family: 'Emoji' });
+    console.log("✅ Fonts registered successfully.");
+} catch (error) {
+    console.error("❌ Error registering fonts. Check your 'fonts' folder path.", error);
+}
 
 // ---------------------------- //
 
@@ -55,11 +69,9 @@ for (const file of slashCommandFiles) {
     const command = require(`./slash commands/${file}`);
     client.slashCommands.set(command.name, command);
 }
-// ----------------------------------------------------
-
 
 // ----------------------------------- //
-// ---------- Canvas Image Function ---------- //
+// ---------- Canvas Image Function -- //
 // ----------------------------------- //
 
 async function createWelcomeImage(member) {
@@ -91,7 +103,7 @@ async function createWelcomeImage(member) {
     ctx.closePath();
     ctx.clip(); 
 
-    // --- 1. Draw Blurred Avatar Background (using 'cover' effect) ---
+    // --- 1. Draw Blurred Avatar Background ---
     const backgroundAvatarURL = member.user.displayAvatarURL({ extension: 'png', size: 1024 }); 
     const backgroundAvatar = await loadImage(backgroundAvatarURL).catch(e => {
         console.error("Error loading background avatar:", e);
@@ -126,9 +138,8 @@ async function createWelcomeImage(member) {
         ctx.fillRect(0, 0, dim.width, dim.height);
     }
     
-    // 2. Add Semi-Transparent Overlay (Drawn AFTER the background and blur)
-    // UPDATED: Increased opacity to 0.7 for a darker background
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; // Changed from 0.5 to 0.7
+    // 2. Add Semi-Transparent Overlay
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; 
     ctx.fillRect(0, 0, dim.width, dim.height);
 
     // --- 3. Main Avatar (Foreground) ---
@@ -140,7 +151,7 @@ async function createWelcomeImage(member) {
     const mainAvatarURL = member.user.displayAvatarURL({ extension: 'png', size: 512 }); 
     const mainAvatar = await loadImage(mainAvatarURL);
 
-    // Circular clip path for the main avatar
+    // Circular clip path
     ctx.save(); 
     ctx.beginPath();
     ctx.arc(avatarX + avatarRadius, avatarY + avatarRadius, avatarRadius, 0, Math.PI * 2, true);
@@ -156,24 +167,28 @@ async function createWelcomeImage(member) {
 
     ctx.fillStyle = '#ffffff'; 
 
-    const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>|[\u200b-\u200f\uFEFF]/g, '').trim();
+    // ✅ FIX: Only remove Discord custom emojis (<:name:id>), keep Unicode emojis (🥺)
+    const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>/g, '').trim();
     const displayName = cleanedDisplayName || member.user.username;
 
-    ctx.font = 'bold 120px "Noto Sans Arabic", "gg sans", "Noto Sans", sans-serif'; 
+    // ✅ FIX: Define the font Fallback Stack
+    // 1. "sans-serif" (Standard English)
+    // 2. "Amiri" (Your Arabic Font)
+    // 3. "Emoji" (Your Emoji Font)
+    ctx.font = 'bold 120px sans-serif, "Amiri", "Emoji"'; 
     ctx.fillText(displayName, textX, currentY);
 
     // Username
     currentY += 130; 
-    const cleanedUsername = member.user.username.replace(/<a?:\w+:\d+>|[\u200b-\u200f\uFEFF]/g, '').trim();
+    const cleanedUsername = member.user.username.replace(/<a?:\w+:\d+>/g, '').trim();
     const usernameText = `@${cleanedUsername}`;
     
-    ctx.font = '80px "Noto Sans Arabic", "gg sans", "Noto Sans", sans-serif'; 
+    ctx.font = '80px sans-serif, "Amiri", "Emoji"'; 
     ctx.fillStyle = '#b9bbbe'; 
     ctx.fillText(usernameText, textX, currentY);
 
     ctx.restore(); 
 
-    // Output
     return canvas.toBuffer('image/png');
 }
 
@@ -182,10 +197,9 @@ async function createWelcomeImage(member) {
 // ---------- Event Handlers ---------- //
 // ----------------------------------- //
 
-
-// A. READY EVENT AND ACTIVITY STATUS
-client.on('clientReady', (readyClient) => {
-    console.log('Bot is ready');
+// A. READY EVENT
+client.on('ready', (readyClient) => {
+    console.log(`Logged in as ${readyClient.user.tag}`);
     setInterval(() => {
         const currentTime = moment().tz('Asia/Bangkok');
         const thailandTime = currentTime.format(`HH:mm`);
@@ -194,10 +208,10 @@ client.on('clientReady', (readyClient) => {
             type: ActivityType.Custom, 
             state: `⏳ ${thailandTime} (GMT+7)`
         });
-    }, 1000);
+    }, 60000); // Changed to 60000 (1 minute) to avoid rate limits, 1 second is too fast for status updates
 });
 
-// B. PREFIX COMMAND HANDLER (messageCreate)
+// B. PREFIX COMMAND HANDLER
 client.on('messageCreate', message => {
     if (!message.content.startsWith(prefix) || message.author.bot) return;
 
@@ -217,7 +231,7 @@ client.on('messageCreate', message => {
 });
 
 
-// C. SLASH COMMAND HANDLER (interactionCreate)
+// C. SLASH COMMAND HANDLER
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
@@ -241,11 +255,9 @@ client.on('interactionCreate', async interaction => {
 });
 
 
-// D. WELCOMER EVENT (guildMemberAdd)
+// D. WELCOMER EVENT
 client.on('guildMemberAdd', async (member) => {
-    if (member.user.bot) {
-        return;
-    }
+    if (member.user.bot) return;
 
     if (member.guild.id === serverID) {
         let memberId = member.user.id;
@@ -254,39 +266,40 @@ client.on('guildMemberAdd', async (member) => {
 
         const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
 
-        const guildInvites = await member.guild.invites.fetch(); 
-
+        // Fetch invites to see who invited
+        const guildInvites = await member.guild.invites.fetch().catch(() => new Collection()); 
         const usedInvite = guildInvites.find((invite) => invite.uses > 0 && invite.inviter && invite.inviter.id !== client.user.id);
         
         const inviterName = usedInvite ? usedInvite.inviter.username : 'Unknown';
         const inviterId = usedInvite ? usedInvite.inviter.id : 'Unknown';
         const inviteCode = usedInvite ? usedInvite.code : 'Unknown';
 
-
-        // --- Image Generation and Attachment ---
+        // --- Image Generation ---
         const welcomeImageBuffer = await createWelcomeImage(member);
         const attachment = new AttachmentBuilder(welcomeImageBuffer, { name: 'welcome-image.png' });
-        const imageURL = 'attachment://welcome-image.png'; 
-        // ---------------------------------------
-
-
+        
         const embed = new EmbedBuilder()
             .setDescription(
                 `### <a:wave:1440327983326822400> Welcome to A2-Q Server\n-# <@${memberId}> \`(${memberUserName})\`\n-# <:calendar:1439970556534329475> Account Created: ${accountCreated}\n-# <:users:1439970561953501214> Member Count: \`${memberCount}\`\n-# <:chain:1439970559105564672> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`
             )
             .setThumbnail(member.user.displayAvatarURL())
-            .setImage(imageURL)
+            .setImage('attachment://welcome-image.png')
             .setColor(colourEmbed) 
 
-        client.channels.cache.get(welcomeLog).send({ 
-            embeds: [embed],
-            files: [attachment] 
-        });
+        const channel = client.channels.cache.get(welcomeLog);
+        if (channel) {
+            channel.send({ 
+                embeds: [embed],
+                files: [attachment] 
+            });
+        } else {
+            console.log("Welcome Channel ID not found or invalid.");
+        }
     }
 });
 
 
-// E. ROLE UPDATE LOG (guildMemberUpdate)
+// E. ROLE UPDATE LOG
 client.on('guildMemberUpdate', (oldMember, newMember) => {
     if (newMember.user.bot) return;
 
@@ -304,15 +317,9 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
 
     const editMessage = (messageContent) => {
         if (!messageContent.trim()) return;
-        if (roleupdateMessage) {
-            logChannel.messages.fetch(roleupdateMessage)
-                .then(msg => msg.edit({ content: messageContent, ...silentMessageOptions })) 
-                .catch(console.error);
-        } else {
-            logChannel.send({ content: messageContent, ...silentMessageOptions })
-                .then(msg => { roleupdateMessage = msg.id; })
-                .catch(console.error);
-        }
+        // Note: 'roleupdateMessage' is a const import from config, so we can't update it in this file permanently.
+        // Logic handles sending a new message if one doesn't exist in this session.
+        logChannel.send({ content: messageContent, ...silentMessageOptions }).catch(console.error);
     };
 
     const formatRoles = (roles) => {
@@ -323,17 +330,17 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
     };
 
     const plural = (roles) => roles.size === 1 ? 'role' : 'roles';
-    let roleUpdateMessage = '';
+    let roleUpdateMessageStr = '';
 
     if (addedRoles.size > 0 && removedRoles.size > 0) {
-        roleUpdateMessage = `<a:success:1297818086463770695> ${newMember.user} has been added ${formatRoles(addedRoles)} ${plural(addedRoles)} and removed ${formatRoles(removedRoles)} ${plural(removedRoles)}!`;
+        roleUpdateMessageStr = `<a:success:1297818086463770695> ${newMember.user} has been added ${formatRoles(addedRoles)} ${plural(addedRoles)} and removed ${formatRoles(removedRoles)} ${plural(removedRoles)}!`;
     } else if (addedRoles.size > 0) {
-        roleUpdateMessage = `<a:success:1297818086463770695> ${newMember.user} has been added ${formatRoles(addedRoles)} ${plural(addedRoles)}!`;
+        roleUpdateMessageStr = `<a:success:1297818086463770695> ${newMember.user} has been added ${formatRoles(addedRoles)} ${plural(addedRoles)}!`;
     } else if (removedRoles.size > 0) {
-        roleUpdateMessage = `<a:success:1297818086463770695> ${newMember.user} has been removed ${formatRoles(removedRoles)} ${plural(removedRoles)}!`;
+        roleUpdateMessageStr = `<a:success:1297818086463770695> ${newMember.user} has been removed ${formatRoles(removedRoles)} ${plural(removedRoles)}!`;
     }
 
-    editMessage(roleUpdateMessage);
+    editMessage(roleUpdateMessageStr);
 });
 
 

@@ -72,7 +72,7 @@ async function createWelcomeImage(member) {
     const canvas = createCanvas(dim.width, dim.height);
     const ctx = canvas.getContext('2d');
 
-    // --- NEW: Rounded Rectangle Clip Path ---
+    // --- Rounded Rectangle Clip Path ---
     const cornerRadius = 50; 
     const imageWidth = dim.width;
     const imageHeight = dim.height;
@@ -89,7 +89,7 @@ async function createWelcomeImage(member) {
     ctx.lineTo(0, cornerRadius);
     ctx.quadraticCurveTo(0, 0, cornerRadius, 0);
     ctx.closePath();
-    ctx.clip(); // Apply the clip path
+    ctx.clip(); 
 
     // --- 1. Draw Blurred Avatar Background (using 'cover' effect) ---
     const backgroundAvatarURL = member.user.displayAvatarURL({ extension: 'png', size: 1024 }); 
@@ -100,7 +100,6 @@ async function createWelcomeImage(member) {
         const canvasAspectRatio = dim.width / dim.height;
         let sx, sy, sWidth, sHeight; 
 
-        // Calculate source rectangle for 'cover' effect
         if (imgAspectRatio > canvasAspectRatio) {
             sHeight = backgroundAvatar.height;
             sWidth = sHeight * canvasAspectRatio;
@@ -113,15 +112,12 @@ async function createWelcomeImage(member) {
             sy = (backgroundAvatar.height - sHeight) / 2;
         }
 
-        // Draw the background avatar using the calculated source rectangle
         ctx.drawImage(backgroundAvatar, sx, sy, sWidth, sHeight, 0, 0, dim.width, dim.height);
 
-        // Apply a blur effect
         ctx.filter = 'blur(25px)';
-        ctx.drawImage(canvas, 0, 0); // Re-draw to apply filter
-        ctx.filter = 'none'; // Reset filter
+        ctx.drawImage(canvas, 0, 0); 
+        ctx.filter = 'none'; 
     } else {
-        // Fallback: Solid dark background if avatar fails to load
         ctx.fillStyle = '#1e1e1e';
         ctx.fillRect(0, 0, dim.width, dim.height);
     }
@@ -131,9 +127,9 @@ async function createWelcomeImage(member) {
     ctx.fillRect(0, 0, dim.width, dim.height);
 
     // --- 3. Main Avatar (Foreground) ---
-    // Reduced avatar size and shifted left to make room for text
-    const avatarSize = 300; 
-    const avatarX = 40; // Closer to the left edge
+    // UPDATED: Increased avatar size and moved right
+    const avatarSize = 350; 
+    const avatarX = 80; 
     const avatarY = (dim.height - avatarSize) / 2;
     const avatarRadius = avatarSize / 2;
 
@@ -152,28 +148,26 @@ async function createWelcomeImage(member) {
 
 
     // --- 4. Text ---
-    // Set starting text position closer to the avatar
-    const textX = avatarX + avatarSize + 40; // Closer to the avatar
+    // UPDATED: Text starts further right to accommodate the larger avatar
+    const textX = avatarX + avatarSize + 40; 
     let currentY = dim.height / 2 - 40; 
 
-    // FIX: Remove Discord Emojis/Special Characters from DisplayName to prevent rendering errors
     const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>|[\u200b-\u200f\uFEFF]/g, '').trim();
     const displayName = cleanedDisplayName || member.user.username;
 
-
-    // Display Name (Large and Bold)
+    // Display Name
     ctx.fillStyle = '#ffffff'; 
     ctx.font = '90px sans-serif'; 
     ctx.fillText(displayName, textX, currentY);
 
 
-    // Username (Smaller and Faded)
-    currentY += 100; // Vertical spacing from Display Name
+    // Username
+    currentY += 100; 
     const cleanedUsername = member.user.username.replace(/<a?:\w+:\d+>|[\u200b-\u200f\uFEFF]/g, '').trim();
     const usernameText = `@${cleanedUsername}`;
     
     ctx.font = '60px sans-serif'; 
-    ctx.fillStyle = '#b9bbbe'; // Faded gray (Discord-like)
+    ctx.fillStyle = '#b9bbbe'; 
     ctx.fillText(usernameText, textX, currentY);
     
     // Optional: Example of adding a join date
@@ -191,6 +185,7 @@ async function createWelcomeImage(member) {
     // Output
     return canvas.toBuffer('image/png');
 }
+
 
 // ----------------------------------- //
 // ---------- Event Handlers ---------- //

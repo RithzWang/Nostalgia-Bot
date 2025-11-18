@@ -1,64 +1,59 @@
-const { createCanvas, loadImage } = require('canvas');
+const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
+// ... other imports and your client setup
 
-/**
- * Creates a custom welcome image for the new member.
- * @param {import('discord.js').GuildMember} member
- * @returns {Promise<Buffer>} The image buffer.
- */
-async function createWelcomeImage(member) {
-    const dim = {
-        height: 200,
-        width: 600,
-        margin: 50
-    };
+// Make sure your createWelcomeImage function is available here
+// (e.g., pasted above this code block or imported from another file)
 
-    // 1. Canvas Setup
-    const canvas = createCanvas(dim.width, dim.height);
-    const ctx = canvas.getContext('2d');
+client.on('guildMemberAdd', async (member) => {
+    // ... (Your existing checks and invite fetching logic) ...
+    if (member.user.bot) {
+        return;
+    }
 
-    // 2. Background (Example: Dark Grey)
-    ctx.fillStyle = '#36393f';
-    ctx.fillRect(0, 0, dim.width, dim.height);
+    // Assuming serverID, welcomeLog, colourEmbed are defined in your scope
+    if (member.guild.id === serverID) {
+        let memberId = member.user.id;
+        let memberUserName = member.user.username;
+        let memberCount = member.guild.memberCount;
 
-    // 3. Avatar
-    const avatarSize = 128;
-    const avatarX = dim.margin;
-    const avatarY = (dim.height - avatarSize) / 2;
-    const avatarRadius = avatarSize / 2;
+        const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
 
-    // Fetch avatar image
-    const avatarURL = member.user.displayAvatarURL({ extension: 'png', size: 128 });
-    const avatar = await loadImage(avatarURL);
+        // Fetch invites for the guild
+        // NOTE: In a real-world bot, you should cache invites and update on GUEST_JOIN
+        // to reliably track the specific invite used. For simplicity, this is kept here.
+        const guildInvites = await member.guild.invites.fetch();
 
-    // Create a circular clip path for the avatar
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(avatarX + avatarRadius, avatarY + avatarRadius, avatarRadius, 0, Math.PI * 2, true);
-    ctx.closePath();
-    ctx.clip();
+        // Find the invite that has a use and track the inviter
+        // In a real bot, you'd compare current uses to cached uses to find the delta
+        const usedInvite = guildInvites.find((invite) => invite.uses > 0 && invite.inviter && invite.inviter.id !== client.user.id);
+        
+        // Get inviter's name, invite code, and type
+        const inviterName = usedInvite ? usedInvite.inviter.username : 'Unknown';
+        const inviterId = usedInvite ? usedInvite.inviter.id : 'Unknown';
+        const inviteCode = usedInvite ? usedInvite.code : 'Unknown';
 
-    // Draw the avatar
-    ctx.drawImage(avatar, avatarX, avatarY, avatarSize, avatarSize);
-    ctx.restore(); // Restore context to draw outside the clip
 
-    // 4. Text - Position and Styling
-    const textX = avatarX + avatarSize + dim.margin / 2;
-    let currentY = dim.height / 2 - 20; // Starting point for display name
+        // --- CUSTOM IMAGE GENERATION & ATTACHMENT ---
+        const welcomeImageBuffer = await createWelcomeImage(member);
+        const attachment = new AttachmentBuilder(welcomeImageBuffer, { name: 'welcome-image.png' });
+        // The URL for the image within the message
+        const imageURL = 'attachment://welcome-image.png'; 
+        // ---------------------------------------------
 
-    ctx.fillStyle = '#ffffff';
 
-    // Display Name (Large, Bold)
-    const displayName = member.displayName; // Use displayName which can be the nickname
-    ctx.font = 'bold 30px sans-serif';
-    ctx.fillText(displayName, textX, currentY);
+        const embed = new EmbedBuilder()
+            .setDescription(
+                `### <a:wave:1440327983326822400> Welcome to A2-Q Server\n-# <@${memberId}> \`(${memberUserName})\`\n-# <:calendar:1439970556534329475> Account Created: ${accountCreated}\n-# <:users:1439970561953501214> Member Count: \`${memberCount}\`\n-# <:chain:1439970559105564672> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`
+            )
+            .setThumbnail(member.user.displayAvatarURL())
+            // Use the attachment URL in .setImage()
+            .setImage(imageURL) 
+            .setColor(colourEmbed);
 
-    // Username (Smaller, Subdued)
-    currentY += 40; // Move down for the username
-    const usernameText = `@${member.user.username}`;
-    ctx.font = '20px sans-serif';
-    ctx.fillStyle = '#b9bbbe'; // Discord light grey
-    ctx.fillText(usernameText, textX, currentY);
-
-    // Output
-    return canvas.toBuffer('image/png');
-}
+        // Send the message with both the embed and the attachment
+        client.channels.cache.get(welcomeLog).send({ 
+            embeds: [embed],
+            files: [attachment] // CRITICAL: Send the AttachmentBuilder here
+        });
+    }
+});

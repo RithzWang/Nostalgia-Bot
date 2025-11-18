@@ -173,7 +173,7 @@ async function createWelcomeImage(member) {
     const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>/g, '').trim();
     const displayName = cleanedDisplayName || member.user.username;
 
-    ctx.font = '700 110px "Noto Sans", "Naskh", "Math", "Emoji"'; 
+    ctx.font = 'bold 110px "Noto Sans", "Naskh", "Math", "Emoji"'; 
     ctx.fillText(displayName, textX, currentY);
 
     // Username

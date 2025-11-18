@@ -72,7 +72,7 @@ async function createWelcomeImage(member) {
     const canvas = createCanvas(dim.width, dim.height);
     const ctx = canvas.getContext('2d');
 
-    // --- 1. Draw Blurred Avatar Background ---
+    // --- 1. Draw Blurred Avatar Background (using 'cover' effect) ---
     
     // Get a high-res avatar for the background
     const backgroundAvatarURL = member.user.displayAvatarURL({ extension: 'png', size: 1024 }); 
@@ -82,21 +82,37 @@ async function createWelcomeImage(member) {
     });
 
     if (backgroundAvatar) {
-        // Draw the background avatar to fill the canvas area.
-        // We use a simple stretch/crop method since it will be blurred anyway.
-        ctx.drawImage(backgroundAvatar, 0, 0, dim.width, dim.height);
+        // Calculate aspect ratio to emulate 'background-size: cover'
+        // This ensures the image covers the entire canvas, potentially cropping edges,
+        // rather than just stretching it to fit.
+        const imgAspectRatio = backgroundAvatar.width / backgroundAvatar.height;
+        const canvasAspectRatio = dim.width / dim.height;
+
+        let sx, sy, sWidth, sHeight; // Source rectangle (portion of image to draw)
+
+        if (imgAspectRatio > canvasAspectRatio) {
+            // Image is wider than canvas, crop left/right
+            sHeight = backgroundAvatar.height;
+            sWidth = sHeight * canvasAspectRatio;
+            sx = (backgroundAvatar.width - sWidth) / 2;
+            sy = 0;
+        } else {
+            // Image is taller than canvas, crop top/bottom
+            sWidth = backgroundAvatar.width;
+            sHeight = sWidth / canvasAspectRatio;
+            sx = 0;
+            sy = (backgroundAvatar.height - sHeight) / 2;
+        }
+
+        // Draw the background avatar using the calculated source rectangle
+        ctx.drawImage(backgroundAvatar, sx, sy, sWidth, sHeight, 0, 0, dim.width, dim.height);
 
         // Apply a blur effect
         ctx.filter = 'blur(25px)';
-        
-        // Re-draw the canvas contents onto itself to apply the filter
-        // Note: Drawing the canvas onto itself with a filter is a common way to apply the filter to the entire surface.
-        ctx.drawImage(canvas, 0, 0); 
-
-        // Reset the filter immediately so text and main avatar are crisp
-        ctx.filter = 'none'; 
+        ctx.drawImage(canvas, 0, 0); // Re-draw to apply filter
+        ctx.filter = 'none'; // Reset filter
     } else {
-        // Fallback: If the avatar fails to load, use a solid dark background
+        // Fallback: Solid dark background if avatar fails to load
         ctx.fillStyle = '#1e1e1e';
         ctx.fillRect(0, 0, dim.width, dim.height);
     }

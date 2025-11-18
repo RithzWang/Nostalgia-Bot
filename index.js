@@ -228,6 +228,13 @@ client.on('guildMemberAdd', async (member) => {
         const inviterId = usedInvite ? usedInvite.inviter.id : 'Unknown';
         const inviteCode = usedInvite ? usedInvite.code : 'Unknown';
 
+
+         const welcomeImageBuffer = await createWelcomeImage(member);
+        const attachment = new AttachmentBuilder(welcomeImageBuffer, { name: 'welcome-image.png' });
+        // The URL for the image within the message
+        const imageURL = 'attachment://welcome-image.png'; 
+
+
         // CRITICAL: MessageEmbed is replaced by EmbedBuilder in v14
         const embed = new EmbedBuilder()
            // .setTitle('Welcome to A2-Q Server')
@@ -236,7 +243,7 @@ client.on('guildMemberAdd', async (member) => {
             )
             // CRITICAL: displayAvatarURL must be called as a method
             .setThumbnail(member.user.displayAvatarURL())
-            .setImage('https://cdn.discordapp.com/attachments/853503167706693632/1439971676883259442/20251117_203245_0000.png')
+            .setImage(imageURL)
             .setColor(colourEmbed) // colourEmbed should be a number or a hex string (e.g., 0xHEX, '#HEX')
         // .setFooter(`• ${member.user.username}`, member.user.displayAvatarURL()) // Footer is still valid
 

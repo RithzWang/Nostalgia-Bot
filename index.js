@@ -72,14 +72,12 @@ async function createWelcomeImage(member) {
     const canvas = createCanvas(dim.width, dim.height);
     const ctx = canvas.getContext('2d');
 
-    // --- NEW: Rounded Rectangle Clip Path ---
-    const cornerRadius = 50; // Adjust this value for sharper or rounder corners
+    // --- Rounded Rectangle Clip Path ---
+    const cornerRadius = 50; 
     const imageWidth = dim.width;
     const imageHeight = dim.height;
 
-    ctx.save(); // Save the context state before clipping
-
-    // Create the rounded rectangle path
+    ctx.save(); 
     ctx.beginPath();
     ctx.moveTo(cornerRadius, 0);
     ctx.lineTo(imageWidth - cornerRadius, 0);
@@ -91,7 +89,7 @@ async function createWelcomeImage(member) {
     ctx.lineTo(0, cornerRadius);
     ctx.quadraticCurveTo(0, 0, cornerRadius, 0);
     ctx.closePath();
-    ctx.clip(); // Apply the clip path: all subsequent drawings will be confined to this shape
+    ctx.clip(); 
 
     // --- 1. Draw Blurred Avatar Background (using 'cover' effect) ---
     
@@ -142,15 +140,15 @@ async function createWelcomeImage(member) {
     const mainAvatarURL = member.user.displayAvatarURL({ extension: 'png', size: 512 }); 
     const mainAvatar = await loadImage(mainAvatarURL);
 
-    // Create a circular clip path for the main avatar
-    ctx.save(); // Save again, before clipping for the avatar
+    // Circular clip path for the main avatar
+    ctx.save(); 
     ctx.beginPath();
     ctx.arc(avatarX + avatarRadius, avatarY + avatarRadius, avatarRadius, 0, Math.PI * 2, true);
     ctx.closePath();
     ctx.clip();
 
     ctx.drawImage(mainAvatar, avatarX, avatarY, avatarSize, avatarSize);
-    ctx.restore(); // Restore context for avatar clip
+    ctx.restore(); 
 
     // --- 4. Text ---
     const textX = avatarX + avatarSize + dim.margin; 
@@ -162,14 +160,17 @@ async function createWelcomeImage(member) {
     const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>|[\u200b-\u200f\uFEFF]/g, '').trim();
     const displayName = cleanedDisplayName || member.user.username;
 
-    ctx.font = 'bold 100px sans-serif'; 
+    // UPDATED FONT: San Francisco (with fallback)
+    ctx.font = 'bold 120px "San Francisco", sans-serif'; 
     ctx.fillText(displayName, textX, currentY);
 
     // Username
     currentY += 120; 
     const cleanedUsername = member.user.username.replace(/<a?:\w+:\d+>|[\u200b-\u200f\uFEFF]/g, '').trim();
     const usernameText = `@${cleanedUsername}`;
-    ctx.font = '50px sans-serif'; 
+    
+    // UPDATED FONT: San Francisco (with fallback)
+    ctx.font = '80px "San Francisco", sans-serif'; 
     ctx.fillStyle = '#b9bbbe'; 
     ctx.fillText(usernameText, textX, currentY);
 
@@ -178,7 +179,6 @@ async function createWelcomeImage(member) {
     // Output
     return canvas.toBuffer('image/png');
 }
-
 
 // ----------------------------------- //
 // ---------- Event Handlers ---------- //

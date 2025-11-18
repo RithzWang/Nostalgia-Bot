@@ -4,7 +4,7 @@ const { REST } = require('@discordjs/rest');
 // --- ⚠️ IMPORTANT: CONFIGURE THESE ---
 // Replace with your actual IDs and Token
 const BOT_TOKEN = process.env.TOKEN; 
-const CLIENT_ID = 1167109778175168554'; 
+const CLIENT_ID = '1167109778175168554'; 
 const GUILD_ID = '1167046828043276379'; 
 // ---------------------------------
 

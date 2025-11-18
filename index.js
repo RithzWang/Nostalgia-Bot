@@ -16,7 +16,6 @@ try {
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoNaskhArabic.ttf'), 'Naskh');
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoSansMath-Regular.ttf'), 'Math');
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoColorEmoji-Regular.ttf'), 'Emoji');
-    
     console.log("✅ Fonts registered successfully.");
 } catch (error) {
     console.error("❌ Error registering fonts. Check folder name 'fontss' and filenames.", error);
@@ -33,7 +32,7 @@ const client = new Client({
         GatewayIntentBits.DirectMessages,
         GatewayIntentBits.GuildMembers, 
         GatewayIntentBits.GuildMessageReactions,
-        GatewayIntentBits.GuildPresences // <--- NEW: REQUIRED FOR STATUS
+        GatewayIntentBits.GuildPresences 
     ], 
     partials: [
         Partials.Channel,
@@ -91,14 +90,12 @@ async function createWelcomeImage(member) {
     ctx.clip(); 
 
     // --- 1. Draw Blurred Avatar Background ---
-    const backgroundAvatarURL = member.user.displayAvatarURL({ extension: 'png', size: 1024 }); 
+    const backgroundAvatarURL = member.displayAvatarURL({ extension: 'png', size: 1024 }); 
     const backgroundAvatar = await loadImage(backgroundAvatarURL).catch(() => null);
 
     if (backgroundAvatar) {
         ctx.drawImage(backgroundAvatar, 0, 0, dim.width, dim.height);
-        
-        // Heavy Blur (50px)
-        ctx.filter = 'blur(50px)';
+        ctx.filter = 'blur(50px)'; // Heavy Blur
         ctx.drawImage(canvas, 0, 0); 
         ctx.filter = 'none'; 
     } else {
@@ -111,15 +108,15 @@ async function createWelcomeImage(member) {
     ctx.fillRect(0, 0, dim.width, dim.height);
 
     // --- 3. Main Avatar (Foreground) ---
-    const avatarSize = 380; 
+    const avatarSize = 400; 
     const avatarX = dim.margin + 50; 
     const avatarY = (dim.height - avatarSize) / 2;
     const avatarRadius = avatarSize / 2;
 
-    const mainAvatarURL = member.user.displayAvatarURL({ extension: 'png', size: 512 }); 
+    const mainAvatarURL = member.displayAvatarURL({ extension: 'png', size: 512 }); 
     const mainAvatar = await loadImage(mainAvatarURL);
 
-    // A. Draw the User Avatar (Clipped to Circle)
+    // A. Draw User Avatar (Clipped)
     ctx.save(); 
     ctx.beginPath();
     ctx.arc(avatarX + avatarRadius, avatarY + avatarRadius, avatarRadius, 0, Math.PI * 2, true);
@@ -128,23 +125,18 @@ async function createWelcomeImage(member) {
     ctx.drawImage(mainAvatar, avatarX, avatarY, avatarSize, avatarSize);
     ctx.restore(); 
 
-    // --- B. DRAW STATUS (NEW) ---
-    // Determine Status Color
+    // B. Draw Status Circle
     const status = member.presence ? member.presence.status : 'offline';
-    let statusColor = '#747f8d'; // Default Grey (offline)
-
+    let statusColor = '#747f8d'; // Offline (Grey)
     switch (status) {
         case 'online': statusColor = '#3ba55c'; break; // Green
         case 'idle':   statusColor = '#faa61a'; break; // Yellow
         case 'dnd':    statusColor = '#ed4245'; break; // Red
         case 'streaming': statusColor = '#593695'; break; // Purple
-        case 'offline':   statusColor = '#747f8d'; break; // Grey
     }
 
-    // Calculate Status Position (Bottom Right of Avatar)
-    // We offset it slightly inward so it sits nicely on the curve
     const statusRadius = 45; 
-    const offset = 15; // How far inside the circle it sits
+    const offset = 15; 
     const statusX = avatarX + avatarSize - (statusRadius * 2) + offset;
     const statusY = avatarY + avatarSize - (statusRadius * 2) + offset;
 
@@ -152,23 +144,23 @@ async function createWelcomeImage(member) {
     ctx.arc(statusX, statusY, statusRadius, 0, Math.PI * 2);
     ctx.fillStyle = statusColor;
     ctx.fill();
-    
-    // Add a "Cutout" border (Stroke) to separate status from avatar
-    ctx.strokeStyle = '#1e1e1e'; // Dark color matching generic background to fake a cut
+    ctx.strokeStyle = '#1e1e1e'; // Cutout effect
     ctx.lineWidth = 10;
     ctx.stroke();
     ctx.closePath();
 
-
-    // --- C. Draw Avatar Decoration (Drawn LAST to sit on top of everything) ---
-    const decoURL = member.user.avatarDecorationURL({ extension: 'png', size: 517 });
+    // C. Draw Avatar Decoration (Adjusted for better fit)
+    const decoURL = member.user.avatarDecorationURL({ extension: 'png', size: 512 });
     if (decoURL) {
         const decoImage = await loadImage(decoURL).catch(e => null);
         if (decoImage) {
-            // Standard decoration fits 1:1 with avatar, but sometimes needs a tiny scale up to frame perfectly
-            const decoSize = avatarSize * 1.1; 
-            const decoOffset = (decoSize - avatarSize) / 2;
-            ctx.drawImage(decoImage, avatarX - decoOffset, avatarY - decoOffset, decoSize, decoSize);
+            // Discord decorations are often slightly larger and centered on the avatar.
+            // Adjust scale and position to make it frame the avatar well.
+            const decoScale = 1.2; // Increase this value to make the decoration larger
+            const scaledDecoSize = avatarSize * decoScale;
+            const decoOffsetX = avatarX - (scaledDecoSize - avatarSize) / 2;
+            const decoOffsetY = avatarY - (scaledDecoSize - avatarSize) / 2;
+            ctx.drawImage(decoImage, decoOffsetX, decoOffsetY, scaledDecoSize, scaledDecoSize);
         }
     }
 
@@ -187,13 +179,19 @@ async function createWelcomeImage(member) {
     // Username
     currentY += 130; 
     const cleanedUsername = member.user.username.replace(/<a?:\w+:\d+>/g, '').trim();
+    let usernameText;
+    
+    if (member.user.discriminator && member.user.discriminator !== '0') {
+        usernameText = `${cleanedUsername}#${member.user.discriminator}`;
+    } else {
+        usernameText = `@${cleanedUsername}`;
+    }
     
     ctx.font = '80px "Noto Sans", "Naskh", "Math", "Emoji"'; 
     ctx.fillStyle = '#b9bbbe'; 
-    ctx.fillText(`@${cleanedUsername}`, textX, currentY);
+    ctx.fillText(usernameText, textX, currentY);
 
     ctx.restore(); 
-
     return canvas.toBuffer('image/png');
 }
 
@@ -239,7 +237,6 @@ client.on('guildMemberAdd', async (member) => {
             
             const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
             const memberCount = member.guild.memberCount;
-            
             const guildInvites = await member.guild.invites.fetch().catch(() => new Collection()); 
             const usedInvite = guildInvites.find((invite) => invite.uses > 0 && invite.inviter && invite.inviter.id !== client.user.id);
             const inviterName = usedInvite ? usedInvite.inviter.username : 'Unknown';

@@ -66,18 +66,20 @@ async function createWelcomeImage(member) {
     const dim = {
         height: 606,
         width: 1770,
-        margin: 100 // Outer boundary/margin
+        margin: 100 
     };
 
     const canvas = createCanvas(dim.width, dim.height);
     const ctx = canvas.getContext('2d');
 
-    // --- Rounded Rectangle Clip Path ---
-    const cornerRadius = 50; 
+    // --- NEW: Rounded Rectangle Clip Path ---
+    const cornerRadius = 50; // Adjust this value for sharper or rounder corners
     const imageWidth = dim.width;
     const imageHeight = dim.height;
 
-    ctx.save(); 
+    ctx.save(); // Save the context state before clipping
+
+    // Create the rounded rectangle path
     ctx.beginPath();
     ctx.moveTo(cornerRadius, 0);
     ctx.lineTo(imageWidth - cornerRadius, 0);
@@ -89,15 +91,20 @@ async function createWelcomeImage(member) {
     ctx.lineTo(0, cornerRadius);
     ctx.quadraticCurveTo(0, 0, cornerRadius, 0);
     ctx.closePath();
-    ctx.clip(); 
+    ctx.clip(); // Apply the clip path: all subsequent drawings will be confined to this shape
 
     // --- 1. Draw Blurred Avatar Background (using 'cover' effect) ---
+    
     const backgroundAvatarURL = member.user.displayAvatarURL({ extension: 'png', size: 1024 }); 
-    const backgroundAvatar = await loadImage(backgroundAvatarURL).catch(e => null);
+    const backgroundAvatar = await loadImage(backgroundAvatarURL).catch(e => {
+        console.error("Error loading background avatar:", e);
+        return null; 
+    });
 
     if (backgroundAvatar) {
         const imgAspectRatio = backgroundAvatar.width / backgroundAvatar.height;
         const canvasAspectRatio = dim.width / dim.height;
+
         let sx, sy, sWidth, sHeight; 
 
         if (imgAspectRatio > canvasAspectRatio) {
@@ -122,63 +129,49 @@ async function createWelcomeImage(member) {
         ctx.fillRect(0, 0, dim.width, dim.height);
     }
     
-    // 2. Add Semi-Transparent Overlay
+    // 2. Add Semi-Transparent Overlay (Drawn AFTER the background and blur)
     ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'; 
     ctx.fillRect(0, 0, dim.width, dim.height);
 
     // --- 3. Main Avatar (Foreground) ---
-    // UPDATED: Increased avatar size and moved right
     const avatarSize = 350; 
-    const avatarX = 80; 
+    const avatarX = dim.margin;
     const avatarY = (dim.height - avatarSize) / 2;
     const avatarRadius = avatarSize / 2;
 
     const mainAvatarURL = member.user.displayAvatarURL({ extension: 'png', size: 512 }); 
     const mainAvatar = await loadImage(mainAvatarURL);
 
-    // Circular clip path for the main avatar
-    ctx.save(); 
+    // Create a circular clip path for the main avatar
+    ctx.save(); // Save again, before clipping for the avatar
     ctx.beginPath();
     ctx.arc(avatarX + avatarRadius, avatarY + avatarRadius, avatarRadius, 0, Math.PI * 2, true);
     ctx.closePath();
     ctx.clip();
 
     ctx.drawImage(mainAvatar, avatarX, avatarY, avatarSize, avatarSize);
-    ctx.restore(); 
-
+    ctx.restore(); // Restore context for avatar clip
 
     // --- 4. Text ---
-    // UPDATED: Text starts further right to accommodate the larger avatar
-    const textX = avatarX + avatarSize + 40; 
+    const textX = avatarX + avatarSize + dim.margin; 
     let currentY = dim.height / 2 - 40; 
 
+    ctx.fillStyle = '#ffffff'; 
+
+    // FIX: Remove Emojis/Special Characters from DisplayName
     const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>|[\u200b-\u200f\uFEFF]/g, '').trim();
     const displayName = cleanedDisplayName || member.user.username;
 
-    // Display Name
-    ctx.fillStyle = '#ffffff'; 
-    ctx.font = '90px sans-serif'; 
+    ctx.font = 'bold 100px sans-serif'; 
     ctx.fillText(displayName, textX, currentY);
 
-
     // Username
-    currentY += 100; 
+    currentY += 120; 
     const cleanedUsername = member.user.username.replace(/<a?:\w+:\d+>|[\u200b-\u200f\uFEFF]/g, '').trim();
     const usernameText = `@${cleanedUsername}`;
-    
-    ctx.font = '60px sans-serif'; 
+    ctx.font = '50px sans-serif'; 
     ctx.fillStyle = '#b9bbbe'; 
     ctx.fillText(usernameText, textX, currentY);
-    
-    // Optional: Example of adding a join date
-    /*
-    currentY += 60;
-    const joinDate = member.joinedAt.toLocaleDateString('en-US'); 
-    ctx.font = '30px sans-serif'; 
-    ctx.fillStyle = '#b9bbbe'; 
-    ctx.fillText(`Joined: ${joinDate}`, textX, currentY);
-    */
-
 
     ctx.restore(); // Restore context for the main rounded rectangle clip
 

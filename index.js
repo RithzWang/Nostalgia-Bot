@@ -63,60 +63,64 @@ for (const file of slashCommandFiles) {
 // ----------------------------------- //
 
 async function createWelcomeImage(member) {
+    // UPDATED DIMENSIONS: 1770x606
     const dim = {
-        height: 200,
-        width: 600,
-        margin: 50
+        height: 606,
+        width: 1770,
+        margin: 100 // Increased margin
     };
 
-    // Canvas Setup
+    // 1. Canvas Setup
     const canvas = createCanvas(dim.width, dim.height);
     const ctx = canvas.getContext('2d');
 
-    // Background (Dark Grey)
+    // 2. Background (Example: Dark Grey)
     ctx.fillStyle = '#36393f';
     ctx.fillRect(0, 0, dim.width, dim.height);
 
-    // Avatar
-    const avatarSize = 128;
+    // 3. Avatar (Scaled up)
+    const avatarSize = 350; // Increased avatar size
     const avatarX = dim.margin;
     const avatarY = (dim.height - avatarSize) / 2;
     const avatarRadius = avatarSize / 2;
 
-    const avatarURL = member.user.displayAvatarURL({ extension: 'png', size: 128 });
+    // Fetch avatar image (using higher resolution size)
+    const avatarURL = member.user.displayAvatarURL({ extension: 'png', size: 512 });
     const avatar = await loadImage(avatarURL);
 
-    // Circular clip path for the avatar
+    // Create a circular clip path for the avatar
     ctx.save();
     ctx.beginPath();
     ctx.arc(avatarX + avatarRadius, avatarY + avatarRadius, avatarRadius, 0, Math.PI * 2, true);
     ctx.closePath();
     ctx.clip();
 
+    // Draw the avatar
     ctx.drawImage(avatar, avatarX, avatarY, avatarSize, avatarSize);
-    ctx.restore();
+    ctx.restore(); // Restore context to draw outside the clip
 
-    // Text - Position and Styling
-    const textX = avatarX + avatarSize + dim.margin / 2;
-    let currentY = dim.height / 2 - 20; 
+    // 4. Text - Position and Styling (Scaled up)
+    const textX = avatarX + avatarSize + dim.margin; // Increased spacing
+    let currentY = dim.height / 2 - 40; // Starting point for display name
 
     ctx.fillStyle = '#ffffff';
 
-    // Display Name (Large, Bold)
+    // Display Name (Larger font)
     const displayName = member.displayName;
-    ctx.font = 'bold 30px sans-serif';
+    ctx.font = 'bold 100px sans-serif'; // Increased font size
     ctx.fillText(displayName, textX, currentY);
 
-    // Username (Smaller, Subdued)
-    currentY += 40; 
+    // Username (Smaller, Subdued font)
+    currentY += 120; // Increased vertical spacing
     const usernameText = `@${member.user.username}`;
-    ctx.font = '20px sans-serif';
+    ctx.font = '50px sans-serif'; // Increased font size
     ctx.fillStyle = '#b9bbbe'; 
     ctx.fillText(usernameText, textX, currentY);
 
     // Output
     return canvas.toBuffer('image/png');
 }
+
 
 // ----------------------------------- //
 // ---------- Event Handlers ---------- //

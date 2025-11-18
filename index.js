@@ -11,7 +11,7 @@ const keep_alive = require('./keep_alive.js');
 * 2. Save it in your bot's folder (e.g., in ./fonts/ArabicFont.ttf).
 * 3. Uncomment and adjust the line below with your file path and preferred font name:
 */
-// registerFont('./fonts/YOUR_ARABIC_FONT_FILE.ttf', { family: 'Arabic Font' });
+ registerFont('AmiriQuran-Regular.ttf', { family: 'Arabic Font' });
 // ----------------------------------------------------
 
 

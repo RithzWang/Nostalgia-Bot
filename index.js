@@ -28,7 +28,7 @@ const client = new Client({
         Partials.User
     ],
         ws: {
-        properties: { $browser: 'Discord iOS' } // Use 'Discord iOS' or 'Discord Android'
+        properties: { $browser: 'Discord iOS' } // Use 'Discord Android' or 'Discord Android'
     },
 });
 

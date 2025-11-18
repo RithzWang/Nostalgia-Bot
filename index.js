@@ -10,26 +10,29 @@ const config = require('./config.json');
 
 // ---------------------------- //
 
-// CRITICAL FIX: The client object MUST be initialized before being used.
 const client = new Client({
     intents: [
+        // Ensure ALL these lines have a comma at the end!
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.MessageContent, 
         GatewayIntentBits.DirectMessages,
-        GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildMessageReactions
-    ],
+        GatewayIntentBits.GuildMembers, // <- Ensure comma here
+        GatewayIntentBits.GuildMessageReactions // <- Ensure comma here if more follow
+    ], // <--- Comma separating intents and partials is NOT needed here
     partials: [
         Partials.Channel,
         Partials.Message,
         Partials.Reaction,
         Partials.GuildMember,
-        Partials.User
-    ],
-        ws: {
-        properties: { $browser: 'Discord iOS' } // Use 'Discord Android' or 'Discord Android'
+        Partials.User, // <- Ensure comma here
+    ], // <--- This comma is necessary to separate partials and ws!
+    // ----------------------------------------
+    // THIS LINE MAKES THE BOT APPEAR MOBILE/ONLINE
+    ws: {
+        properties: { $browser: 'Discord Android' } 
     },
+    // ----------------------------------------
 });
 
 // --- 1. INITIALIZE COMMAND COLLECTIONS (Now uses the defined 'client') ---

@@ -16,8 +16,8 @@ const { prefix, serverID, welcomeLog, roleupdateLog, roleupdateMessage, roleforL
 // ✅ FIX: Register the fonts before the bot starts
 // Ensure you have a folder named 'fonts' with these exact file names
 try {
-    registerFont(path.join(__dirname, 'fonts', 'AmiriQuran-Regular.ttf'), { family: 'Amiri' });
-    registerFont(path.join(__dirname, 'fonts', 'NotoColorEmoji-Regular.ttf'), { family: 'Emoji' });
+    registerFont(path.join(__dirname, 'fontss', 'AmiriQuran-Regular.ttf'), { family: 'Amiri' });
+    registerFont(path.join(__dirname, 'fontss', 'NotoColorEmoji-Regular.ttf'), { family: 'Emoji' });
     console.log("✅ Fonts registered successfully.");
 } catch (error) {
     console.error("❌ Error registering fonts. Check your 'fonts' folder path.", error);

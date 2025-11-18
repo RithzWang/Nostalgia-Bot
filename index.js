@@ -127,13 +127,13 @@ async function createWelcomeImage(member) {
     }
     
     // 2. Add Semi-Transparent Overlay (Drawn AFTER the background and blur)
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'; 
+    // UPDATED: Increased opacity to 0.7 for a darker background
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; // Changed from 0.5 to 0.7
     ctx.fillRect(0, 0, dim.width, dim.height);
 
     // --- 3. Main Avatar (Foreground) ---
-    // UPDATED: Avatar is bigger and moved more to the right
-    const avatarSize = 400; // Increased from 350 to 400
-    const avatarX = dim.margin + 50; // Shifted right by 50px from the original margin
+    const avatarSize = 400; 
+    const avatarX = dim.margin + 50; 
     const avatarY = (dim.height - avatarSize) / 2;
     const avatarRadius = avatarSize / 2;
 
@@ -151,31 +151,27 @@ async function createWelcomeImage(member) {
     ctx.restore(); 
 
     // --- 4. Text ---
-    // Text position adjusted based on new avatar size and position
-    const textX = avatarX + avatarSize + 60; // Increased gap to 60px
-    let currentY = dim.height / 2 - 50; // Adjusted initial vertical position for larger avatar and better balance
+    const textX = avatarX + avatarSize + 60; 
+    let currentY = dim.height / 2 - 50; 
 
     ctx.fillStyle = '#ffffff'; 
 
-    // FIX: Remove Emojis/Special Characters from DisplayName
     const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>|[\u200b-\u200f\uFEFF]/g, '').trim();
     const displayName = cleanedDisplayName || member.user.username;
 
-    // UPDATED FONT SIZE for balance with larger avatar
-    ctx.font = 'bold 120px "Noto Sans Arabic", "gg sans", "Noto Sans", sans-serif'; // Increased to 120px
+    ctx.font = 'bold 120px "Noto Sans Arabic", "gg sans", "Noto Sans", sans-serif'; 
     ctx.fillText(displayName, textX, currentY);
 
     // Username
-    currentY += 130; // Increased vertical spacing for larger text
+    currentY += 130; 
     const cleanedUsername = member.user.username.replace(/<a?:\w+:\d+>|[\u200b-\u200f\uFEFF]/g, '').trim();
     const usernameText = `@${cleanedUsername}`;
     
-    // UPDATED FONT SIZE for balance with larger avatar
-    ctx.font = '80px "Noto Sans Arabic", "gg sans", "Noto Sans", sans-serif'; // Increased to 80px
+    ctx.font = '80px "Noto Sans Arabic", "gg sans", "Noto Sans", sans-serif'; 
     ctx.fillStyle = '#b9bbbe'; 
     ctx.fillText(usernameText, textX, currentY);
 
-    ctx.restore(); // Restore context for the main rounded rectangle clip
+    ctx.restore(); 
 
     // Output
     return canvas.toBuffer('image/png');

@@ -1,10 +1,5 @@
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 
-/**
- * Generates the welcome card buffer.
- * @param {GuildMember} member - The discord.js GuildMember object
- * @returns {Promise<Buffer>} - The PNG image buffer
- */
 async function createWelcomeImage(member) {
     const dim = {
         height: 606,

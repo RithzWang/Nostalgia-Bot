@@ -193,7 +193,7 @@ async function createWelcomeImage(member) {
     const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>/g, '').trim();
     const displayName = cleanedDisplayName || member.user.username;
 
-    ctx.font = '700 110px "Noto Sans", "Naskh", "Kanit", "Math", "Emoji"';
+    ctx.font = 'bold 100px "Noto Sans", "Naskh", "Kanit", "Math", "Emoji"';
     ctx.textAlign = 'left'; // Ensure alignment is reset to left for the name
     ctx.fillText(displayName, textX, currentY);
 

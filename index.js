@@ -55,8 +55,7 @@ const client = new Client({
 
 // ------ Command Loading ------ //
 
-client.prefixCommands = new Collection();
-client.slashCommands = new Collection(); 
+client.prefixCommands = new Collection(); 
 
 const prefixCommandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 for (const file of prefixCommandFiles) {

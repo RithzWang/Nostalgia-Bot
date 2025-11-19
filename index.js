@@ -217,6 +217,11 @@ async function createWelcomeImage(member) {
     const cleanedUsername = member.user.username.replace(/<a?:\w+:\d+>/g, '').trim();
     let usernameText;
 
+    ctx.shadowColor = "rgba(0, 0, 0, 0.75)"; // Black with 75% opacity
+    ctx.shadowBlur = 15;                     // How "soft" the shadow is
+    ctx.shadowOffsetX = 5;                   // Horizontal distance
+    ctx.shadowOffsetY = 5;
+
     if (member.user.discriminator && member.user.discriminator !== '0') {
         usernameText = `${cleanedUsername}#${member.user.discriminator}`;
     } else {
@@ -226,6 +231,12 @@ async function createWelcomeImage(member) {
     ctx.font = '80px "Noto Sans", "Naskh", "Kanit", "Math", "Emoji"';
     ctx.fillStyle = '#b9bbbe';
     ctx.fillText(usernameText, textX, currentY);
+
+      // IMPORTANT: Reset shadow after drawing text so it doesn't affect future drawings
+    ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
 
     ctx.restore();
     return canvas.toBuffer('image/png');

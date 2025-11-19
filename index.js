@@ -190,12 +190,22 @@ async function createWelcomeImage(member) {
 
     ctx.fillStyle = '#ffffff';
 
+    ctx.shadowColor = "rgba(0, 0, 0, 0.75)"; // Black with 75% opacity
+    ctx.shadowBlur = 15;                     // How "soft" the shadow is
+    ctx.shadowOffsetX = 5;                   // Horizontal distance
+    ctx.shadowOffsetY = 5;
+
     const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>/g, '').trim();
     const displayName = cleanedDisplayName || member.user.username;
 
     ctx.font = 'bold 100px "Noto Sans", "Naskh", "Kanit", "Math", "Emoji"';
     ctx.textAlign = 'left'; // Ensure alignment is reset to left for the name
     ctx.fillText(displayName, textX, currentY);
+
+    ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
 
     // Username
     currentY += 130;

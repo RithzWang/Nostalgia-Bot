@@ -96,24 +96,12 @@ async function createWelcomeImage(member) {
     const backgroundAvatar = await loadImage(backgroundAvatarURL).catch(() => null);
 
     if (backgroundAvatar) {
-        // Calculate aspect ratios
         const canvasRatio = dim.width / dim.height;
-
-        // To "fit the edge horizontal", we use the full width of the source image
         const sWidth = backgroundAvatar.width;
-        
-        // Calculate the necessary height to maintain the correct aspect ratio
-        // sWidth / sHeight must equal canvasWidth / canvasHeight
         const sHeight = sWidth / canvasRatio;
-
-        // Start at X=0 (left edge)
         const sx = 0;
-        
-        // Calculate Y to center the crop vertically (middle strip of the avatar)
         const sy = (backgroundAvatar.height - sHeight) / 2;
 
-        // Draw the cropped portion to fill the canvas exactly
-        // params: image, sourceX, sourceY, sourceWidth, sourceHeight, destX, destY, destWidth, destHeight
         ctx.drawImage(backgroundAvatar, sx, sy, sWidth, sHeight, 0, 0, dim.width, dim.height);
         
         // Apply blur
@@ -149,12 +137,12 @@ async function createWelcomeImage(member) {
 
     // B. Draw Status Circle
     const status = member.presence ? member.presence.status : 'offline';
-    let statusColor = '#747f8d'; // Offline (Grey)
+    let statusColor = '#747f8d';
     switch (status) {
-        case 'online': statusColor = '#3ba55c'; break; // Green
-        case 'idle':   statusColor = '#faa61a'; break; // Yellow
-        case 'dnd':    statusColor = '#ed4245'; break; // Red
-        case 'streaming': statusColor = '#593695'; break; // Purple
+        case 'online': statusColor = '#3ba55c'; break;
+        case 'idle':   statusColor = '#faa61a'; break;
+        case 'dnd':    statusColor = '#ed4245'; break;
+        case 'streaming': statusColor = '#593695'; break;
     }
 
     const statusRadius = 45;
@@ -166,18 +154,16 @@ async function createWelcomeImage(member) {
     ctx.arc(statusX, statusY, statusRadius, 0, Math.PI * 2);
     ctx.fillStyle = statusColor;
     ctx.fill();
-    ctx.strokeStyle = '#1e1e1e'; // Cutout effect
+    ctx.strokeStyle = '#1e1e1e';
     ctx.lineWidth = 10;
     ctx.stroke();
     ctx.closePath();
 
-    // C. Draw Avatar Decoration (Adjusted for better fit)
+    // C. Draw Avatar Decoration
     const decoURL = member.user.avatarDecorationURL({ extension: 'png', size: 512 });
     if (decoURL) {
         const decoImage = await loadImage(decoURL).catch(e => null);
         if (decoImage) {
-            // Discord decorations are often slightly larger and centered on the avatar.
-            // Adjust scale and position to make it frame the avatar well.
             const decoScale = 1.2; 
             const scaledDecoSize = avatarSize * decoScale;
             const decoOffsetX = avatarX - (scaledDecoSize - avatarSize) / 2;
@@ -186,7 +172,19 @@ async function createWelcomeImage(member) {
         }
     }
 
-    // --- 4. Text ---
+    // --- 4. Text (Server Name Top Right) ---
+    // We do this before the user name to keep the code organized
+    ctx.save(); 
+    ctx.font = 'bold 50px "Noto Sans", "Naskh", "Kanit", "Math", "Emoji"';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'; // Slightly transparent white
+    ctx.textAlign = 'right'; 
+    ctx.textBaseline = 'top'; 
+    // Draw at Width - 60px padding
+    ctx.fillText("A2-Q Server", dim.width - 60, 60);
+    ctx.restore(); 
+
+
+    // --- 5. User Text ---
     const textX = avatarX + avatarSize + 60;
     let currentY = dim.height / 2 - 50;
 
@@ -196,6 +194,7 @@ async function createWelcomeImage(member) {
     const displayName = cleanedDisplayName || member.user.username;
 
     ctx.font = '700 110px "Noto Sans", "Naskh", "Kanit", "Math", "Emoji"';
+    ctx.textAlign = 'left'; // Ensure alignment is reset to left for the name
     ctx.fillText(displayName, textX, currentY);
 
     // Username

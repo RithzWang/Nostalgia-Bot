@@ -306,14 +306,15 @@ client.on('guildMemberAdd', async (member) => {
                 .setImage('attachment://welcome-image.png')
                 .setColor(colourEmbed);
 
-    const linkButton = new ButtonBuilder()
-               .setLabel('Say Hello') // Text on the button
-                .setURL('https://discord.com/') // Your URL here
-                .setStyle(ButtonStyle.Link)
-                .setEmoji('🦭'); // Optional: Add an emoji to the button
+    const unclickableButton = new ButtonBuilder()
+    .setLabel('Don’t Forget To Save Your Card')
+    .setStyle(ButtonStyle.Secondary) // Sets color to Gray (neutral)
+    .setEmoji('‼️')
+    .setCustomId('hello_button_disabled') // Required for non-link buttons
+    .setDisabled(true); // This makes the button unclickable (grayed out)
 
-            const row = new ActionRowBuilder()
-                .addComponents(linkButton);
+const row = new ActionRowBuilder()
+    .addComponents(unclickableButton);
 
             const channel = client.channels.cache.get(welcomeLog);
             if (channel) {

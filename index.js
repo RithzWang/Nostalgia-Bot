@@ -13,6 +13,8 @@ const { prefix, serverID, welcomeLog, roleupdateLog, roleupdateMessage, roleforL
 // ----------------------------------- //
 try {
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoSans-Bold.ttf'), 'Noto Sans');
+
+GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'SF Pro - Semibold.otf'), 'SF Pro');
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoNaskhArabic.ttf'), 'Naskh');
 
 GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'Kanit-SemiBold.ttf'), 'Kanit');
@@ -228,7 +230,7 @@ async function createWelcomeImage(member) {
         usernameText = `@${cleanedUsername}`;
     }
 
-    ctx.font = '80px "Noto Sans", "Naskh", "Kanit", "Math", "Emoji"';
+    ctx.font = '80px "SF Pro"';
     ctx.fillStyle = '#b9bbbe';
     ctx.fillText(usernameText, textX, currentY);
 

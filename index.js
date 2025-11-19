@@ -12,8 +12,10 @@ const { prefix, serverID, welcomeLog, roleupdateLog, roleupdateMessage, roleforL
 // ---------- FONT REGISTRATION ------ //
 // ----------------------------------- //
 try {
-    GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoSans-VariableFont.ttf'), 'Noto Sans');
+    GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoSans-Bold.ttf'), 'Noto Sans');
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoNaskhArabic.ttf'), 'Naskh');
+
+GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'Kanit-SemiBold.ttf'), 'Kanit');
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoSansMath-Regular.ttf'), 'Math');
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'Twemoji.ttf'), 'Emoji');
     console.log("✅ Fonts registered successfully.");
@@ -173,7 +175,7 @@ async function createWelcomeImage(member) {
     const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>/g, '').trim();
     const displayName = cleanedDisplayName || member.user.username;
 
-    ctx.font = '700 110px "Noto Sans", "Naskh", "Math", "Emoji"'; 
+    ctx.font = '700 110px "Noto Sans", "Naskh", "Kanit", "Math", "Emoji"'; 
     ctx.fillText(displayName, textX, currentY);
 
     // Username
@@ -187,7 +189,7 @@ async function createWelcomeImage(member) {
         usernameText = `@${cleanedUsername}`;
     }
     
-    ctx.font = '80px "Noto Sans", "Naskh", "Math", "Emoji"'; 
+    ctx.font = '80px "Noto Sans", "Naskh", "Kanit", "Math", "Emoji"'; 
     ctx.fillStyle = '#b9bbbe'; 
     ctx.fillText(usernameText, textX, currentY);
 

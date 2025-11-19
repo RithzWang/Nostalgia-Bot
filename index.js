@@ -5,12 +5,12 @@ const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
 const moment = require('moment-timezone');
 const keep_alive = require('./keep_alive.js');
 
-// --- Configuration Imports ---
+// ----- Configuration Imports ----- //
+
 const { prefix, serverID, welcomeLog, roleupdateLog, roleupdateMessage, roleforLog, colourEmbed } = require("./config.json");
 
-// ----------------------------------- //
 // ---------- FONT REGISTRATION ------ //
-// ----------------------------------- //
+
 try {
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoSans-Bold.ttf'), 'Noto Sans');
 
@@ -27,9 +27,10 @@ GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'Kanit-SemiBold.ttf'
     console.error("❌ Error registering fonts. Check folder name 'fontss' and filenames.", error);
 }
 
-// ---------------------------- //
+// ---------------------------------- //
 
-// --- Client Initialization ---
+// ----- Client Initialization ----- //
+
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -52,7 +53,8 @@ const client = new Client({
     },
 });
 
-// --- Command Loading ---
+// -------- Command Loading -------- //
+
 client.prefixCommands = new Collection();
 client.slashCommands = new Collection(); 
 
@@ -93,7 +95,7 @@ client.on('clientReady', (readyClient) => {
 });
 
 client.on('messageCreate', message => {
-    if (!message.content.startsWith(prefix) || message.author.bot) return;
+    if (!message.content.startsWith(prefixed) || message.author.bot) return;
     const args = message.content.slice(prefix.length).split(/ +/);
     const commandName = args.shift().toLowerCase();
     const command = client.prefixCommands.get(commandName);
@@ -131,10 +133,10 @@ client.on('guildMemberAdd', async (member) => {
 
     const unclickableButton = new ButtonBuilder()
     .setLabel('I Hope You Enjoy Your Stay')
-    .setStyle(ButtonStyle.Secondary) // Sets color to Gray (neutral)
+    .setStyle(ButtonStyle.Secondary)
     .setEmoji('‼️')
-    .setCustomId('hello_button_disabled') // Required for non-link buttons
-    .setDisabled(true); // This makes the button unclickable (grayed out)
+    .setCustomId('hello_button_disabled') 
+    .setDisabled(true); 
 
 const row = new ActionRowBuilder()
     .addComponents(unclickableButton);
@@ -162,7 +164,6 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
 
     const specifiedRolesSet = new Set(roleforLog);
 
-    // .cache access is correct here
     const addedRoles = newMember.roles.cache.filter(role => specifiedRolesSet.has(role.id) && !oldMember.roles.cache.has(role.id));
     const removedRoles = oldMember.roles.cache.filter(role => specifiedRolesSet.has(role.id) && !newMember.roles.cache.has(role.id));
 
@@ -177,11 +178,11 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
         if (!messageContent.trim()) return;
         if (roleupdateMessage) {
             logChannel.messages.fetch(roleupdateMessage)
-                // CRITICAL: message.edit in v14 requires an object for content/embeds/etc.
+                
                 .then(msg => msg.edit({ content: messageContent, ...silentMessageOptions })) 
                 .catch(console.error);
         } else {
-            // CRITICAL: channel.send in v14 requires an object for content/embeds/etc.
+           
             logChannel.send({ content: messageContent, ...silentMessageOptions })
                 .then(msg => { roleupdateMessage = msg.id; })
                 .catch(console.error);

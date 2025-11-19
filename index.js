@@ -290,12 +290,17 @@ client.on('guildMemberAdd', async (member) => {
                 .addComponents(linkButton);
 
             const channel = client.channels.cache.get(welcomeLog);
-            if (channel) channel.send({ embeds: [embed], files: [attachment] });
+            if (channel) {
+                channel.send({ 
+                    embeds: [embed], 
+                    files: [attachment],
+                    components: [row] // Add the row here
+                });
+            }
         } catch (err) {
             console.error("Error in Welcomer:", err);
         }
     }
-});
 
 
 

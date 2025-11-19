@@ -307,10 +307,10 @@ client.on('guildMemberAdd', async (member) => {
                 .setColor(colourEmbed);
 
     const linkButton = new ButtonBuilder()
-                .setLabel('Say Hi') // Text on the button
-                .setURL('https://discord.com/channels/1167046828043276379/1167046828978614347') // Your URL here
+                .setLabel('Download Your Card') // Text on the button
+                .setURL('attachment://welcome-image.png') // Your URL here
                 .setStyle(ButtonStyle.Link)
-                .setEmoji('👋'); // Optional: Add an emoji to the button
+                .setEmoji('📥'); // Optional: Add an emoji to the button
 
             const row = new ActionRowBuilder()
                 .addComponents(linkButton);

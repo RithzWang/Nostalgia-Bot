@@ -49,7 +49,7 @@ async function createWelcomeImage(member) {
     // Note: Because of the clip at the top, half of this line is cut off.
     // 30px width = 15px visible inner border.
     ctx.lineWidth = 30; 
-    ctx.strokeStyle = 'rgba(128, 128, 128, 0.5)'; // Grey, 0.5 opacity
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)'; // Grey, 0.5 opacity
     ctx.beginPath();
     ctx.roundRect(0, 0, dim.width, dim.height, cornerRadius);
     ctx.stroke();

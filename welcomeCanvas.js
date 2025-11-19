@@ -40,9 +40,20 @@ async function createWelcomeImage(member) {
         ctx.fillRect(0, 0, dim.width, dim.height);
     }
 
-    // 2. Overlay
+    // --- 2. Overlay ---
     ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
     ctx.fillRect(0, 0, dim.width, dim.height);
+
+    // --- 2.5 NEW: Inner Frame (Grey Transparent) ---
+    ctx.save();
+    // Note: Because of the clip at the top, half of this line is cut off.
+    // 30px width = 15px visible inner border.
+    ctx.lineWidth = 30; 
+    ctx.strokeStyle = 'rgba(128, 128, 128, 0.5)'; // Grey, 0.5 opacity
+    ctx.beginPath();
+    ctx.roundRect(0, 0, dim.width, dim.height, cornerRadius);
+    ctx.stroke();
+    ctx.restore();
 
     // --- 3. Main Avatar (Foreground) ---
     const avatarSize = 400;
@@ -105,7 +116,8 @@ async function createWelcomeImage(member) {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'; 
     ctx.textAlign = 'right'; 
     ctx.textBaseline = 'bottom'; 
-    ctx.fillText("A2-Q Server", dim.width - 60, dim.height - 60);
+    // Moved padding slightly to account for the new frame
+    ctx.fillText("A2-Q Server", dim.width - 70, dim.height - 70);
     ctx.restore(); 
 
     // --- 5. User Text ---

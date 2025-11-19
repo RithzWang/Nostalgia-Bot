@@ -69,11 +69,6 @@ for (const file of prefixCommandFiles) {
     }
 }
 
-const slashCommandFiles = fs.readdirSync('./slash commands').filter(file => file.endsWith('.js'));
-for (const file of slashCommandFiles) {
-    const command = require(`./slash commands/${file}`);
-    client.slashCommands.set(command.name, command);
-}
 
 // ----------------------------------- //
 

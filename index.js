@@ -70,8 +70,7 @@ for (const file of prefixCommandFiles) {
 
 
 // ----------------------------------- //
-
-const { createWelcomeImage } = require('./welcomeCanvas.js'); 
+ 
 
 
 // --------- Event Handlers ---------- //
@@ -105,6 +104,9 @@ client.on('interactionCreate', async interaction => {
 });
 
 // ------- welcome message ------- //
+
+const { createWelcomeImage } = require('./welcomeCanvas.js');
+
 
 client.on('guildMemberAdd', async (member) => {
     if (member.user.bot) return;

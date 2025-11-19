@@ -177,13 +177,19 @@ async function createWelcomeImage(member) {
     // --- 4. Text (Server Name Top Right) ---
     // We do this before the user name to keep the code organized
     ctx.save(); 
-    ctx.font = 'bold 50px "Noto Sans", "Naskh", "Kanit", "Math", "Emoji"';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'; // Slightly transparent white
-    ctx.textAlign = 'right'; 
-    ctx.textBaseline = 'top'; 
-    // Draw at Width - 60px padding
-    ctx.fillText("A2-Q Server", dim.width - 60, 60);
-    ctx.restore(); 
+ctx.font = 'bold 50px "SF Pro"';
+ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'; 
+ctx.textAlign = 'right'; 
+
+// 1. Change baseline to 'bottom' so coordinates anchor to the bottom of the text
+ctx.textBaseline = 'bottom'; 
+
+// 2. Change Y coordinate to (Canvas Height - Padding)
+// This places the text 60px from the right and 60px from the bottom
+ctx.fillText("A2-Q Server", dim.width - 60, dim.height - 60);
+
+ctx.restore(); 
+
 
 
     // --- 5. User Text ---

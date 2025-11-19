@@ -308,7 +308,8 @@ client.on('guildMemberAdd', async (member) => {
 
     const linkButton = new ButtonBuilder()
     const imageUrl = sentMessage.attachments.first()?.url;
-                .setLabel('Download Your Card') // Text on the button
+
+                .setLabel('Download Your Card'); // Text on the button
                 .setURL(imageUrl) // Your URL here
                 .setStyle(ButtonStyle.Link)
                 .setEmoji('📥'); // Optional: Add an emoji to the button

@@ -17,7 +17,7 @@ try {
 
 GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'Kanit-SemiBold.ttf'), 'Kanit');
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoSansMath-Regular.ttf'), 'Math');
-    GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'Twemoji.ttf'), 'Emoji');
+    GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoColorEmoji-Regular.ttf'), 'Emoji');
     console.log("✅ Fonts registered successfully.");
 } catch (error) {
     console.error("❌ Error registering fonts. Check folder name 'fontss' and filenames.", error);

@@ -272,7 +272,7 @@ client.on('guildMemberAdd', async (member) => {
 
     const linkButton = new ButtonBuilder()
                 .setLabel('Say Hi') // Text on the button
-                .setURL('https://your-website-link.com') // Your URL here
+                .setURL('https://discord.com/channels/1167046828043276379/1167046828978614347') // Your URL here
                 .setStyle(ButtonStyle.Link)
                 .setEmoji('👋'); // Optional: Add an emoji to the button
 

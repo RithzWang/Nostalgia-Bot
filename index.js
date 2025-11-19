@@ -77,55 +77,71 @@ async function createWelcomeImage(member) {
     const dim = {
         height: 606,
         width: 1770,
-        margin: 100 
+        margin: 100
     };
 
     const canvas = createCanvas(dim.width, dim.height);
     const ctx = canvas.getContext('2d');
 
     // --- Rounded Rectangle Clip Path ---
-    const cornerRadius = 50; 
-    ctx.save(); 
+    const cornerRadius = 50;
+    ctx.save();
     ctx.beginPath();
     ctx.roundRect(0, 0, dim.width, dim.height, cornerRadius);
     ctx.closePath();
-    ctx.clip(); 
+    ctx.clip();
 
-    // --- 1. Draw Blurred Avatar Background ---
-    const backgroundAvatarURL = member.displayAvatarURL({ extension: 'png', size: 1024 }); 
+    // --- 1. Draw Blurred Avatar Background (Close-up Crop) ---
+    // We request a larger size for better quality when zooming/cropping
+    const backgroundAvatarURL = member.displayAvatarURL({ extension: 'png', size: 2048 });
     const backgroundAvatar = await loadImage(backgroundAvatarURL).catch(() => null);
 
     if (backgroundAvatar) {
-        ctx.drawImage(backgroundAvatar, 0, 0, dim.width, dim.height);
-        ctx.filter = 'blur(30px)'; // Heavy Blur
+        // SETTINGS: How much to zoom in?
+        // 0.4 means we only take the center 40% of the image (High Zoom)
+        // 0.6 means we take the center 60% (Medium Zoom)
+        const zoomLevel = 0.5; 
+
+        // Calculate the crop rectangle (Source X, Y, Width, Height)
+        const sWidth = backgroundAvatar.width * zoomLevel;
+        const sHeight = backgroundAvatar.height * zoomLevel;
+        const sx = (backgroundAvatar.width - sWidth) / 2;
+        const sy = (backgroundAvatar.height - sHeight) / 2;
+
+        // Draw the cropped center portion to the full canvas size
+        // params: image, sourceX, sourceY, sourceWidth, sourceHeight, destX, destY, destWidth, destHeight
+        ctx.drawImage(backgroundAvatar, sx, sy, sWidth, sHeight, 0, 0, dim.width, dim.height);
+        
+        // Apply blur
+        ctx.filter = 'blur(30px)'; 
         ctx.drawImage(canvas, 0, 0); 
-        ctx.filter = 'none'; 
+        ctx.filter = 'none';
     } else {
         ctx.fillStyle = '#1e1e1e';
         ctx.fillRect(0, 0, dim.width, dim.height);
     }
-    
+
     // 2. Overlay
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; 
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
     ctx.fillRect(0, 0, dim.width, dim.height);
 
     // --- 3. Main Avatar (Foreground) ---
-    const avatarSize = 400; 
-    const avatarX = dim.margin + 50; 
+    const avatarSize = 400;
+    const avatarX = dim.margin + 50;
     const avatarY = (dim.height - avatarSize) / 2;
     const avatarRadius = avatarSize / 2;
 
-    const mainAvatarURL = member.displayAvatarURL({ extension: 'png', size: 512 }); 
+    const mainAvatarURL = member.displayAvatarURL({ extension: 'png', size: 512 });
     const mainAvatar = await loadImage(mainAvatarURL);
 
     // A. Draw User Avatar (Clipped)
-    ctx.save(); 
+    ctx.save();
     ctx.beginPath();
     ctx.arc(avatarX + avatarRadius, avatarY + avatarRadius, avatarRadius, 0, Math.PI * 2, true);
     ctx.closePath();
     ctx.clip();
     ctx.drawImage(mainAvatar, avatarX, avatarY, avatarSize, avatarSize);
-    ctx.restore(); 
+    ctx.restore();
 
     // B. Draw Status Circle
     const status = member.presence ? member.presence.status : 'offline';
@@ -137,8 +153,8 @@ async function createWelcomeImage(member) {
         case 'streaming': statusColor = '#593695'; break; // Purple
     }
 
-    const statusRadius = 45; 
-    const offset = 15; 
+    const statusRadius = 45;
+    const offset = 15;
     const statusX = avatarX + avatarSize - (statusRadius * 2) + offset;
     const statusY = avatarY + avatarSize - (statusRadius * 2) + offset;
 
@@ -158,7 +174,7 @@ async function createWelcomeImage(member) {
         if (decoImage) {
             // Discord decorations are often slightly larger and centered on the avatar.
             // Adjust scale and position to make it frame the avatar well.
-            const decoScale = 1.2; // Increase this value to make the decoration larger
+            const decoScale = 1.2; 
             const scaledDecoSize = avatarSize * decoScale;
             const decoOffsetX = avatarX - (scaledDecoSize - avatarSize) / 2;
             const decoOffsetY = avatarY - (scaledDecoSize - avatarSize) / 2;
@@ -167,33 +183,33 @@ async function createWelcomeImage(member) {
     }
 
     // --- 4. Text ---
-    const textX = avatarX + avatarSize + 60; 
-    let currentY = dim.height / 2 - 50; 
+    const textX = avatarX + avatarSize + 60;
+    let currentY = dim.height / 2 - 50;
 
-    ctx.fillStyle = '#ffffff'; 
+    ctx.fillStyle = '#ffffff';
 
     const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>/g, '').trim();
     const displayName = cleanedDisplayName || member.user.username;
 
-    ctx.font = '700 110px "Noto Sans", "Naskh", "Kanit", "Math", "Emoji"'; 
+    ctx.font = '700 110px "Noto Sans", "Naskh", "Kanit", "Math", "Emoji"';
     ctx.fillText(displayName, textX, currentY);
 
     // Username
-    currentY += 130; 
+    currentY += 130;
     const cleanedUsername = member.user.username.replace(/<a?:\w+:\d+>/g, '').trim();
     let usernameText;
-    
+
     if (member.user.discriminator && member.user.discriminator !== '0') {
         usernameText = `${cleanedUsername}#${member.user.discriminator}`;
     } else {
         usernameText = `@${cleanedUsername}`;
     }
-    
-    ctx.font = '80px "Noto Sans", "Naskh", "Kanit", "Math", "Emoji"'; 
-    ctx.fillStyle = '#b9bbbe'; 
+
+    ctx.font = '80px "Noto Sans", "Naskh", "Kanit", "Math", "Emoji"';
+    ctx.fillStyle = '#b9bbbe';
     ctx.fillText(usernameText, textX, currentY);
 
-    ctx.restore(); 
+    ctx.restore();
     return canvas.toBuffer('image/png');
 }
 

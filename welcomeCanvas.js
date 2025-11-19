@@ -113,7 +113,7 @@ async function createWelcomeImage(member) {
     // --- 4. Text (Server Name Top Right) ---
     ctx.save(); 
     ctx.font = 'bold 50px "Noto Sans"';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'; 
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; 
     ctx.textAlign = 'right'; 
     ctx.textBaseline = 'bottom'; 
     // Moved padding slightly to account for the new frame

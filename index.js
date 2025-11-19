@@ -315,6 +315,7 @@ client.on('guildMemberAdd', async (member) => {
             console.error("Error in Welcomer:", err);
         }
     }
+});
 
 
 

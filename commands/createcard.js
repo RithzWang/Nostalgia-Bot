@@ -1,5 +1,5 @@
 const { AttachmentBuilder } = require('discord.js');
-const { createWelcomeImage } = require('../utils/welcomeCanvas'); // Ensure this path is correct based on your folder structure
+const { createWelcomeImage } = require('./welcomeCanvas.js'); // Ensure this path is correct based on your folder structure
 
 module.exports = {
     name: 'createcard',

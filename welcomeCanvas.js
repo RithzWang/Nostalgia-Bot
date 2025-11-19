@@ -41,7 +41,7 @@ async function createWelcomeImage(member) {
     }
 
     // 2. Overlay
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
     ctx.fillRect(0, 0, dim.width, dim.height);
 
     // --- 3. Main Avatar (Foreground) ---

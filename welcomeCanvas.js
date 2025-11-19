@@ -105,7 +105,7 @@ async function createWelcomeImage(member) {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'; 
     ctx.textAlign = 'right'; 
     ctx.textBaseline = 'bottom'; 
-    ctx.fillText("a2q-server.card", dim.width - 60, dim.height - 60);
+    ctx.fillText("A2-Q Server", dim.width - 60, dim.height - 60);
     ctx.restore(); 
 
     // --- 5. User Text ---

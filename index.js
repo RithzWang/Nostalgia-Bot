@@ -5,11 +5,11 @@ const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
 const moment = require('moment-timezone');
 const keep_alive = require('./keep_alive.js');
 
-// ----- Configuration Imports ----- //
+// ---- Configuration Imports ---- //
 
 const { prefix, serverID, welcomeLog, roleupdateLog, roleupdateMessage, roleforLog, colourEmbed } = require("./config.json");
 
-// ---------- FONT REGISTRATION ------ //
+// ------ FONT REGISTRATION ------ //
 
 try {
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoSans-Bold.ttf'), 'Noto Sans');
@@ -27,9 +27,9 @@ GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'Kanit-SemiBold.ttf'
     console.error("❌ Error registering fonts. Check folder name 'fontss' and filenames.", error);
 }
 
-// ---------------------------------- //
+// ------------------------------- //
 
-// ----- Client Initialization ----- //
+// --- Client Initialization --- //
 
 const client = new Client({
     intents: [
@@ -53,7 +53,7 @@ const client = new Client({
     },
 });
 
-// -------- Command Loading -------- //
+// ------ Command Loading ------ //
 
 client.prefixCommands = new Collection();
 client.slashCommands = new Collection(); 
@@ -109,6 +109,8 @@ client.on('interactionCreate', async interaction => {
     if (!command) return;
     try { await command.execute(interaction); } catch (error) { console.error(error); }
 });
+
+// ------- welcome message ------- //
 
 client.on('guildMemberAdd', async (member) => {
     if (member.user.bot) return;

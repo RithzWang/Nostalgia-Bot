@@ -179,7 +179,7 @@ async function createWelcomeImage(member) {
     // --- 4. Text (Server Name Top Right) ---
     // We do this before the user name to keep the code organized
     ctx.save(); 
-ctx.font = 'bold 50px "NewYork"';
+ctx.font = 'bold 50px "Noto Sans"';
 ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'; 
 ctx.textAlign = 'right'; 
 

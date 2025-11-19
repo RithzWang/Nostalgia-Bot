@@ -178,7 +178,7 @@ async function createWelcomeImage(member) {
     ctx.font = 'bold 50px "Noto Sans", "Naskh", "Kanit", "Math", "Emoji"';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'; // Slightly transparent white
     ctx.textAlign = 'right'; 
-    ctx.textBaseline = 'bottom'; 
+    ctx.textBaseline = 'top'; 
     // Draw at Width - 60px padding
     ctx.fillText("A2-Q Server", dim.width - 60, 60);
     ctx.restore(); 

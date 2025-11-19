@@ -17,7 +17,7 @@ try {
 GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'SF Pro - Semibold.otf'), 'SF Pro');
 
 GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'New York - Heavy.otf'), 'NewYork');
-    GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'Lateef-Bold.ttf'), 'Lateef');
+    GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoNaskhArabic.ttf'), 'Naskh');
 
 GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'Kanit-SemiBold.ttf'), 'Kanit');
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoSansMath-Regular.ttf'), 'Math');
@@ -210,7 +210,7 @@ ctx.restore();
     const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>/g, '').trim();
     const displayName = cleanedDisplayName || member.user.username;
 
-    ctx.font = 'bold 100px "Noto Sans", "Lateef", "Kanit", "Math", "Emoji"';
+    ctx.font = 'bold 100px "Noto Sans", "Naskh", "Kanit", "Math", "Emoji"';
     ctx.textAlign = 'left'; 
     
     ctx.fillText(displayName, textX, currentY);

@@ -78,9 +78,7 @@ for (const file of slashCommandFiles) {
 const { createWelcomeImage } = require('./welcomeCanvas.js'); 
 
 
-// ----------------------------------- //
-// ---------- Event Handlers ---------- //
-// ----------------------------------- //
+// --------- Event Handlers ---------- //
 
 client.on('clientReady', (readyClient) => {
     console.log(`Logged in as ${readyClient.user.tag}`);
@@ -132,7 +130,7 @@ client.on('guildMemberAdd', async (member) => {
                 .setColor(colourEmbed);
 
     const unclickableButton = new ButtonBuilder()
-    .setLabel('Don’t Forget To Save Your Card')
+    .setLabel('I Hope You Enjoy Your Stay')
     .setStyle(ButtonStyle.Secondary) // Sets color to Gray (neutral)
     .setEmoji('‼️')
     .setCustomId('hello_button_disabled') // Required for non-link buttons
@@ -157,8 +155,8 @@ const row = new ActionRowBuilder()
 
 
 
-// ------ role update log ------ //
-// 'guildMemberUpdate' event name remains the same
+// -------- role update log -------- //
+
 client.on('guildMemberUpdate', (oldMember, newMember) => {
     if (newMember.user.bot) return;
 

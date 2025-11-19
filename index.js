@@ -15,6 +15,8 @@ try {
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoSans-Bold.ttf'), 'Noto Sans');
 
 GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'SF Pro - Semibold.otf'), 'SF Pro');
+
+GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'New York - Heavy.otf'), 'NewYork');
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoNaskhArabic.ttf'), 'Naskh');
 
 GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'Kanit-SemiBold.ttf'), 'Kanit');
@@ -177,7 +179,7 @@ async function createWelcomeImage(member) {
     // --- 4. Text (Server Name Top Right) ---
     // We do this before the user name to keep the code organized
     ctx.save(); 
-ctx.font = 'bold 50px "SF Pro"';
+ctx.font = 'bold 50px "NewYork"';
 ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'; 
 ctx.textAlign = 'right'; 
 

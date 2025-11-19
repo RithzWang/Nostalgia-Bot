@@ -97,7 +97,7 @@ async function createWelcomeImage(member) {
 
     if (backgroundAvatar) {
         ctx.drawImage(backgroundAvatar, 0, 0, dim.width, dim.height);
-        ctx.filter = 'blur(50px)'; // Heavy Blur
+        ctx.filter = 'blur(30px)'; // Heavy Blur
         ctx.drawImage(canvas, 0, 0); 
         ctx.filter = 'none'; 
     } else {

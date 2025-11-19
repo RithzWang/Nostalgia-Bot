@@ -57,7 +57,7 @@ async function createWelcomeImage(member) {
 
     // --- 3. Main Avatar (Foreground) ---
     const avatarSize = 400;
-    const avatarX = dim.margin + 70;
+    const avatarX = dim.margin + 30;
     const avatarY = (dim.height - avatarSize) / 2;
     const avatarRadius = avatarSize / 2;
 

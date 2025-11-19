@@ -84,7 +84,7 @@ client.on('clientReady', (readyClient) => {
         const thailandTime = currentTime.format(`HH:mm`);
         readyClient.user.setActivity('customstatus', {
             type: ActivityType.Custom, 
-            state: `⏳ ${thailandTime} (GMT+7)`
+            state: `${thailandTime} (GMT+7)`
         });
     }, 2000); 
 });

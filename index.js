@@ -84,7 +84,7 @@ client.on('clientReady', (readyClient) => {
             type: ActivityType.Custom, 
             state: `⏳ ${thailandTime} (GMT+7)`
         });
-    }, 5000); 
+    }, 2000); 
 });
 
 client.on('messageCreate', message => {

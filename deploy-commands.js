@@ -8,9 +8,6 @@ const CLIENT_ID = '1167109778175168554';
 const GUILD_ID = '1167046828043276379'; 
 // ---------------------------------
 
-// --- 3. Assemble and Deploy ---
-// This list overwrites all existing commands on the server.
-const commands = [embedCommand,editEmbedCommand].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(BOT_TOKEN);
 

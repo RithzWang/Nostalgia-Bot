@@ -101,7 +101,7 @@ async function createWelcomeImage(member) {
 
     // --- 4. Text (Server Name Top Right) ---
     ctx.save(); 
-    ctx.font = 'bold 50px "SF Pro Bold"';
+    ctx.font = 'bold 50px "Noto Sans"';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'; 
     ctx.textAlign = 'right'; 
     ctx.textBaseline = 'bottom'; 

@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { Client, GatewayIntentBits, Partials, Collection, EmbedBuilder, ActivityType, AttachmentBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, Partials, Collection, EmbedBuilder, ActivityType, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
 const moment = require('moment-timezone');
 const keep_alive = require('./keep_alive.js');
@@ -269,6 +269,15 @@ client.on('guildMemberAdd', async (member) => {
                 .setThumbnail(member.user.displayAvatarURL())
                 .setImage('attachment://welcome-image.png')
                 .setColor(colourEmbed);
+
+    const linkButton = new ButtonBuilder()
+                .setLabel('Say Hi') // Text on the button
+                .setURL('https://your-website-link.com') // Your URL here
+                .setStyle(ButtonStyle.Link)
+                .setEmoji('👋'); // Optional: Add an emoji to the button
+
+            const row = new ActionRowBuilder()
+                .addComponents(linkButton);
 
             const channel = client.channels.cache.get(welcomeLog);
             if (channel) channel.send({ embeds: [embed], files: [attachment] });

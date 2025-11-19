@@ -185,25 +185,16 @@ async function createWelcomeImage(member) {
 
 
     // --- 5. User Text ---
-        const textX = avatarX + avatarSize + 60;
+            const textX = avatarX + avatarSize + 60;
     let currentY = dim.height / 2 - 50;
 
     ctx.fillStyle = '#ffffff';
 
-    // --- START SHADOW CONFIGURATION (matching your UI settings) ---
-    ctx.shadowColor = "rgba(0, 0, 0, 0.9)"; // Black with 90% opacity (Transparency: 90)
-    ctx.shadowBlur = 0;                     // No blur (Blur: 0)
-    ctx.shadowOffsetX = 65;                 // Offset to the right by 65 (assuming Direction 0 means horizontal offset)
-    ctx.shadowOffsetY = 0;                  // No vertical offset (assuming Direction 0 means horizontal offset)
-    // --- If Direction 0 meant downward offset, it would be:
-    // ctx.shadowOffsetX = 0;
-    // ctx.shadowOffsetY = 65;
-    // --- If Direction 0 meant 45-degree angle (bottom-right), it would be:
-    // ctx.shadowOffsetX = 65;
-    // ctx.shadowOffsetY = 65;
-    // --- For a shadow that mimics a "duplicate text" look directly behind, use small offsets:
-    // ctx.shadowOffsetX = 2; // small offset
-    // ctx.shadowOffsetY = 2; // small offset
+    // --- START SHADOW CONFIGURATION ---
+    ctx.shadowColor = "rgba(0, 0, 0, 0.75)"; // Black with 75% opacity
+    ctx.shadowBlur = 15;                     // How "soft" the shadow is
+    ctx.shadowOffsetX = 5;                   // Horizontal distance
+    ctx.shadowOffsetY = 5;                   // Vertical distance
     // --- END SHADOW CONFIGURATION ---
 
     const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>/g, '').trim();

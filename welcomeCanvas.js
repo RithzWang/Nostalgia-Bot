@@ -121,7 +121,7 @@ async function createWelcomeImage(member) {
     const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>/g, '').trim();
     const displayName = cleanedDisplayName || member.user.username;
 
-    ctx.font = 'bold 100px "Noto Sans", "Naskh", "Kanit", "Math", "Emoji"';
+    ctx.font = 'bold 100px "SF Pro Bold", "Noto Sans", "Naskh", "Kanit", "Math", "Emoji"';
     ctx.textAlign = 'left'; 
     
     ctx.fillText(displayName, textX, currentY);

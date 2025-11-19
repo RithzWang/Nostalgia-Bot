@@ -15,7 +15,7 @@ try {
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoSans-VariableFont.ttf'), 'Noto Sans');
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoNaskhArabic.ttf'), 'Naskh');
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoSansMath-Regular.ttf'), 'Math');
-    GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoColorEmoji-Regular.ttf'), 'Emoji');
+    GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'Emoji-WhatsAppColorEmoji.ttf'), 'Emoji');
     console.log("✅ Fonts registered successfully.");
 } catch (error) {
     console.error("❌ Error registering fonts. Check folder name 'fontss' and filenames.", error);

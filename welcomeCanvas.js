@@ -11,7 +11,7 @@ async function createWelcomeImage(member) {
     const ctx = canvas.getContext('2d');
 
     // --- Rounded Rectangle Clip Path --- 
-    const cornerRadius = 80;
+    const cornerRadius = 70;
     ctx.save();
     ctx.beginPath();
     ctx.roundRect(0, 0, dim.width, dim.height, cornerRadius);

@@ -91,24 +91,28 @@ async function createWelcomeImage(member) {
     ctx.closePath();
     ctx.clip();
 
-    // --- 1. Draw Blurred Avatar Background (Close-up Crop) ---
-    // We request a larger size for better quality when zooming/cropping
+    // --- 1. Draw Blurred Avatar Background (Fit Horizontal) ---
     const backgroundAvatarURL = member.displayAvatarURL({ extension: 'png', size: 2048 });
     const backgroundAvatar = await loadImage(backgroundAvatarURL).catch(() => null);
 
     if (backgroundAvatar) {
-        // SETTINGS: How much to zoom in?
-        // 0.4 means we only take the center 40% of the image (High Zoom)
-        // 0.6 means we take the center 60% (Medium Zoom)
-        const zoomLevel = 0.5; 
+        // Calculate aspect ratios
+        const canvasRatio = dim.width / dim.height;
 
-        // Calculate the crop rectangle (Source X, Y, Width, Height)
-        const sWidth = backgroundAvatar.width * zoomLevel;
-        const sHeight = backgroundAvatar.height * zoomLevel;
-        const sx = (backgroundAvatar.width - sWidth) / 2;
+        // To "fit the edge horizontal", we use the full width of the source image
+        const sWidth = backgroundAvatar.width;
+        
+        // Calculate the necessary height to maintain the correct aspect ratio
+        // sWidth / sHeight must equal canvasWidth / canvasHeight
+        const sHeight = sWidth / canvasRatio;
+
+        // Start at X=0 (left edge)
+        const sx = 0;
+        
+        // Calculate Y to center the crop vertically (middle strip of the avatar)
         const sy = (backgroundAvatar.height - sHeight) / 2;
 
-        // Draw the cropped center portion to the full canvas size
+        // Draw the cropped portion to fill the canvas exactly
         // params: image, sourceX, sourceY, sourceWidth, sourceHeight, destX, destY, destWidth, destHeight
         ctx.drawImage(backgroundAvatar, sx, sy, sWidth, sHeight, 0, 0, dim.width, dim.height);
         

@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, AttachmentBuilder } = require('discord.js');
-const { createWelcomeImage } = require('./welcomeCanvas.js'); // Make sure path to utils is correct
+const { createWelcomeImage } = require('../welcomeCanvas.js'); // Make sure path to utils is correct
 
 module.exports = {
     // This "data" part is what was missing!

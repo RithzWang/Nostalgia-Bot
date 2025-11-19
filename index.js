@@ -95,7 +95,7 @@ client.on('clientReady', (readyClient) => {
 });
 
 client.on('messageCreate', message => {
-    if (!message.content.startsWith(prefixed) || message.author.bot) return;
+    if (!message.content.startsWith(prefix) || message.author.bot) return;
     const args = message.content.slice(prefix.length).split(/ +/);
     const commandName = args.shift().toLowerCase();
     const command = client.prefixCommands.get(commandName);

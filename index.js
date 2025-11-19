@@ -12,6 +12,8 @@ const { prefix, serverID, welcomeLog, roleupdateLog, roleupdateMessage, roleforL
 // ------ FONT REGISTRATION ------ //
 
 try {
+
+GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'SF-Pro-Display-Bold.otf'), 'SF Pro Bold');
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoSans-Bold.ttf'), 'Noto Sans');
 
 GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'SF Pro - Semibold.otf'), 'SF Pro');

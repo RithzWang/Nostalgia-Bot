@@ -11,8 +11,8 @@ const { createCanvas } = require('@napi-rs/canvas');
 
 // Game Settings
 const GRID_SIZE = 20; // Size of one square in pixels
-const COLS = 20;      // Width of the board (cells)
-const ROWS = 15;      // Height of the board (cells)
+const COLS = 15;      // Width of the board (cells)
+const ROWS = 10;      // Height of the board (cells)
 const WIDTH = COLS * GRID_SIZE;
 const HEIGHT = ROWS * GRID_SIZE;
 

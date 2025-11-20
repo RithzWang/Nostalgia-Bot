@@ -1,14 +1,14 @@
 const { EmbedBuilder } = require('discord.js');
 const translate = require('@iamtraction/google-translate');
-const { translateChannelID, colourEmbed } = require('./config.json');
+const { translateChannelSPID, colourEmbed } = require('./config.json');
 
 module.exports = async (message) => {
     // 1. Stop if the message is from a bot
     if (message.author.bot) return;
 
     // 2. Stop if the message is NOT in the translation channel
-    // Make sure 'translateChannelID' is in your config.json!
-    if (message.channel.id !== translateChannelID) return;
+    // Make sure 'translateChannelSPID' is in your config.json!
+    if (message.channel.id !== translateChannelSPID) return;
 
     // 3. Stop if the message has no text (like just an image or symbols)
     if (!/[a-zA-Z]/.test(message.content)) return; 

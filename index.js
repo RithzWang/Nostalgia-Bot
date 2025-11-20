@@ -7,7 +7,7 @@ const moment = require('moment-timezone');
 const keep_alive = require('./keep_alive.js');
 
 // ---- Configuration Imports ---- //
-const { prefix, serverID, welcomeLog, roleupdateLog, roleforLog, colourEmbed } = require("./config.json");
+const { prefix, serverID, welcomeLog, roleupdateLog, roleforLog, colourEmbed, verifiedRoleID } = require("./config.json");
 
 // ------ FONT REGISTRATION ------ //
 try {

@@ -76,7 +76,7 @@ const invitesCache = new Collection();
 
 // --------- Event Handlers ---------- //
 
-client.on('ready', async (readyClient) => {
+client.on('clientReady', async (readyClient) => {
     console.log(`Logged in as ${readyClient.user.tag}`);
 
     // ==============================================

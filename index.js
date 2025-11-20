@@ -10,6 +10,8 @@ const keep_alive = require('./keep_alive.js');
 const { prefix, serverID, welcomeLog, roleupdateLog, roleforLog, colourEmbed, translateChannelSPID } = require("./config.json");
 
 // ----- auto translate sp ----- //
+const translate = require('@iamtraction/google-translate');
+
 const autotranslateSP = require('./autotranslateSP.js');
 
 // ------ FONT REGISTRATION ------ //

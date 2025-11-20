@@ -150,7 +150,7 @@ module.exports = {
             .addComponents(
                 new ButtonBuilder()
                     .setCustomId('spotify_timestamp') 
-                    .setLabel(`${dateTimeString} GMT+7`) 
+                    .setLabel(`${dateTimeString} (GMT+7)`) 
                     .setStyle(ButtonStyle.Secondary) 
                     .setDisabled(true)
             );

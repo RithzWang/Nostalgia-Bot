@@ -9,6 +9,9 @@ const keep_alive = require('./keep_alive.js');
 // ---- Configuration Imports ---- //
 const { prefix, serverID, welcomeLog, roleupdateLog, roleforLog, colourEmbed, translateChannelSPID } = require("./config.json");
 
+// ----- auto translate sp ----- //
+const autotranslateSP = require('./autotranslateSP.js');
+
 // ------ FONT REGISTRATION ------ //
 try {
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'SF-Pro-Display-Bold.otf'), 'SF Pro Bold');

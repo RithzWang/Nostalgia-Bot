@@ -161,9 +161,9 @@ client.on('guildMemberAdd', async (member) => {
                 .setColor(colourEmbed);
 
             const unclickableButton = new ButtonBuilder()
-                .setLabel('I Hope You Enjoy Your Stay')
+                .setLabel(`${member.user.id}`)
                 .setStyle(ButtonStyle.Secondary)
-                .setEmoji('‼️')
+                .setEmoji('1441133157855395911')
                 .setCustomId('hello_button_disabled')
                 .setDisabled(true);
 

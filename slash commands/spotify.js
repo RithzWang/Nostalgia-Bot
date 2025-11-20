@@ -67,30 +67,28 @@ module.exports = {
             ctx.fillRect(25, 25, 200, 200);
         }
 
-        // C. Text Configuration (Arabic Support)
+        // C. Text Configuration with FALLBACK FONTS
+        // We list the fonts you registered: Main -> Thai (Kanit) -> Arabic (Naskh) -> Emoji
         ctx.fillStyle = '#FFFFFF';
-        
-        const getFont = (text, baseFont) => {
-            const arabicRegex = /[\u0600-\u06FF]/;
-            if (arabicRegex.test(text)) return 'Naskh'; 
-            return baseFont; 
-        };
 
         // 1. Title
-        const titleFont = getFont(trackTitle, 'SF Pro Bold'); 
-        ctx.font = `bold 40px "${titleFont}"`; 
+        // Uses "SF Pro Bold" first. If it sees Thai, it switches to "Kanit", etc.
+        ctx.font = '40px "Noto Sans", "Kanit", "Naskh"'; 
+        
         let displayTitle = trackTitle;
         if (displayTitle.length > 20) displayTitle = displayTitle.substring(0, 20) + "...";
         ctx.fillText(displayTitle, 250, 80);
 
         // 2. Artist
         ctx.fillStyle = '#B3B3B3'; 
-        const artistFont = getFont(trackArtist, 'Noto Sans');
-        ctx.font = `30px "${artistFont}"`;
+        // Uses "SF Pro" (Semibold) as primary
+        ctx.font = '30px "Noto Sans", "Kanit", "Naskh"';
         ctx.fillText(trackArtist, 250, 125);
 
         // 3. Album
-        ctx.font = 'italic 20px "Noto Sans"';
+        // We don't use italic here because your registered fonts might not support synthesizing italics well.
+        // We rely on the lighter/different weight if available, or just standard SF Pro.
+        ctx.font = '20px "Noto Sans", "Kanit", "Naskh"';
         let displayAlbum = trackAlbum;
         if (displayAlbum.length > 30) displayAlbum = displayAlbum.substring(0, 30) + "...";
         ctx.fillText(displayAlbum, 250, 160);
@@ -114,7 +112,8 @@ module.exports = {
 
         // E. Timestamps
         ctx.fillStyle = '#B3B3B3';
-        ctx.font = '14px "Noto Sans"';
+        // Using "SF Pro" or "Math" for numbers
+        ctx.font = '14px "Math"';
         
         const formatTime = (ms) => {
             const min = Math.floor(ms / 60000);
@@ -125,20 +124,19 @@ module.exports = {
         ctx.fillText(formatTime(current), 250, 225); 
         ctx.fillText(formatTime(duration), 250 + barWidth - 30, 225); 
 
-        // --- FINAL OUTPUT (EMBED & BUTTON) --- //
+        // --- FINAL OUTPUT --- //
         
         const attachment = new AttachmentBuilder(await canvas.encode('png'), { name: 'spotify-card.png' });
 
         const embed = new EmbedBuilder()
             .setTitle(`${member.displayName}'s listening to`)
-            .setColor('#1DB954') // Spotify Green
+            .setColor('#1DB954')
             .setImage('attachment://spotify-card.png');
-            // Removed .setTimestamp() as requested
 
         // Calculate GMT+7 Time
         const now = new Date();
         const timeString = now.toLocaleTimeString('en-GB', { 
-            timeZone: 'Asia/Bangkok', // Use standard IANA time zone for GMT+7
+            timeZone: 'Asia/Bangkok', 
             hour: '2-digit', 
             minute: '2-digit' 
         });
@@ -147,8 +145,8 @@ module.exports = {
             .addComponents(
                 new ButtonBuilder()
                     .setCustomId('spotify_timestamp') 
-                    .setLabel(`${timeString} GMT+7`) // Label with GMT+7 time
-                    .setStyle(ButtonStyle.Secondary) // Grey style
+                    .setLabel(`${timeString} GMT+7`) 
+                    .setStyle(ButtonStyle.Secondary) 
                     .setDisabled(true)
             );
 

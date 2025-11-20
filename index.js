@@ -70,6 +70,18 @@ for (const file of prefixCommandFiles) {
     }
 }
 
+client.slashCommands = new Collection();
+// Assuming you have a folder named 'slashCommands', if not, create it or remove this block
+if (fs.existsSync('./slashCommands')) {
+    const slashCommandFiles = fs.readdirSync('./slashCommands').filter(file => file.endsWith('.js'));
+    for (const file of slashCommandFiles) {
+        const command = require(`./slashCommands/${file}`);
+        if (command.data && command.data.name) {
+             client.slashCommands.set(command.data.name, command);
+        }
+    }
+}
+
 
 // ----------------------------------- //
  

@@ -11,7 +11,7 @@ const { createCanvas, loadImage } = require('@napi-rs/canvas');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('spotify')
-        .setDescription('Show a beautiful card of what you (or someone else) are listening to.')
+        .setDescription('Show a beautiful card of what you are listening to.')
         .addUserOption(option => 
             option.setName('user')
                 .setDescription('Check someone else\'s Spotify status')

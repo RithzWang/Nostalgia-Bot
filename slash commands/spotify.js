@@ -1,4 +1,11 @@
-const { SlashCommandBuilder, AttachmentBuilder, EmbedBuilder } = require('discord.js');
+const { 
+    SlashCommandBuilder, 
+    AttachmentBuilder, 
+    EmbedBuilder, 
+    ActionRowBuilder, 
+    ButtonBuilder, 
+    ButtonStyle 
+} = require('discord.js');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 
 module.exports = {
@@ -78,12 +85,12 @@ module.exports = {
 
         // 2. Artist
         ctx.fillStyle = '#B3B3B3'; 
-        const artistFont = getFont(trackArtist, 'SF Pro');
+        const artistFont = getFont(trackArtist, 'Noto Sans');
         ctx.font = `30px "${artistFont}"`;
         ctx.fillText(trackArtist, 250, 125);
 
         // 3. Album
-        ctx.font = 'italic 20px "SF Pro"';
+        ctx.font = 'italic 20px "Noto Sans"';
         let displayAlbum = trackAlbum;
         if (displayAlbum.length > 30) displayAlbum = displayAlbum.substring(0, 30) + "...";
         ctx.fillText(displayAlbum, 250, 160);
@@ -107,7 +114,7 @@ module.exports = {
 
         // E. Timestamps
         ctx.fillStyle = '#B3B3B3';
-        ctx.font = '14px "SF Pro"';
+        ctx.font = '14px "Noto Sans"';
         
         const formatTime = (ms) => {
             const min = Math.floor(ms / 60000);
@@ -118,16 +125,37 @@ module.exports = {
         ctx.fillText(formatTime(current), 250, 225); 
         ctx.fillText(formatTime(duration), 250 + barWidth - 30, 225); 
 
-        // --- FINAL OUTPUT (EMBED) --- //
+        // --- FINAL OUTPUT (EMBED & BUTTON) --- //
         
         const attachment = new AttachmentBuilder(await canvas.encode('png'), { name: 'spotify-card.png' });
 
         const embed = new EmbedBuilder()
             .setTitle(`${member.displayName}'s listening to`)
             .setColor('#1DB954') // Spotify Green
-            .setImage('attachment://spotify-card.png')
-            .setTimestamp();
+            .setImage('attachment://spotify-card.png');
+            // Removed .setTimestamp() as requested
 
-        await interaction.editReply({ embeds: [embed], files: [attachment] });
+        // Calculate GMT+7 Time
+        const now = new Date();
+        const timeString = now.toLocaleTimeString('en-GB', { 
+            timeZone: 'Asia/Bangkok', // Use standard IANA time zone for GMT+7
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
+
+        const row = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('spotify_timestamp') 
+                    .setLabel(`${timeString} GMT+7`) // Label with GMT+7 time
+                    .setStyle(ButtonStyle.Secondary) // Grey style
+                    .setDisabled(true)
+            );
+
+        await interaction.editReply({ 
+            embeds: [embed], 
+            files: [attachment],
+            components: [row]
+        });
     },
 };

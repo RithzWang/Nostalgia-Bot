@@ -68,18 +68,18 @@ module.exports = {
         ctx.fillStyle = '#FFFFFF';
         
         // Title (Truncate if too long)
-        ctx.font = 'bold 40px "SF Pro Bold"'; 
+        ctx.font = 'bold 40px "SF Pro Bold", "Noto Sans", "Naskh", "Kanit"'; 
         let displayTitle = trackTitle;
         if (displayTitle.length > 20) displayTitle = displayTitle.substring(0, 20) + "...";
         ctx.fillText(displayTitle, 250, 80);
 
         // Artist
         ctx.fillStyle = '#B3B3B3'; // Light Grey
-        ctx.font = '30px "SF Pro"';
+        ctx.font = '30px "SF Pro Bold", "Noto Sans", "Naskh", "Kanit"';
         ctx.fillText(trackArtist, 250, 125);
 
         // Album (Smaller)
-        ctx.font = 'italic 20px "SF Pro"';
+        ctx.font = 'italic 20px "SF Pro Bold", "Noto Sans", "Naskh", "Kanit"';
         let displayAlbum = trackAlbum;
         if (displayAlbum.length > 30) displayAlbum = displayAlbum.substring(0, 30) + "...";
         ctx.fillText(displayAlbum, 250, 160);

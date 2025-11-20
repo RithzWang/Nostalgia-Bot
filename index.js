@@ -185,26 +185,28 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
     if (newMember.user.bot) return;
 
     const specifiedRolesSet = new Set(roleforLog);
+
     const addedRoles = newMember.roles.cache.filter(role => specifiedRolesSet.has(role.id) && !oldMember.roles.cache.has(role.id));
     const removedRoles = oldMember.roles.cache.filter(role => specifiedRolesSet.has(role.id) && !newMember.roles.cache.has(role.id));
 
     const logChannel = newMember.guild.channels.cache.get(roleupdateLog);
     if (!logChannel) return;
 
-    const silentMessageOptions = { allowedMentions: { parse: [] } };
+    const silentMessageOptions = {
+        allowedMentions: { parse: [] },
+    };
 
     const editMessage = (messageContent) => {
         if (!messageContent.trim()) return;
-        if (lastRoleUpdateMessageId) {
-            logChannel.messages.fetch(lastRoleUpdateMessageId)
-                .then(msg => msg.edit({ content: messageContent, ...silentMessageOptions }))
-                .catch(e => {
-                    logChannel.send({ content: messageContent, ...silentMessageOptions })
-                        .then(msg => { lastRoleUpdateMessageId = msg.id; });
-                });
+        if (roleupdateMessage) {
+            logChannel.messages.fetch(roleupdateMessage)
+                
+                .then(msg => msg.edit({ content: messageContent, ...silentMessageOptions })) 
+                .catch(console.error);
         } else {
+           
             logChannel.send({ content: messageContent, ...silentMessageOptions })
-                .then(msg => { lastRoleUpdateMessageId = msg.id; })
+                .then(msg => { roleupdateMessage = msg.id; })
                 .catch(console.error);
         }
     };
@@ -226,8 +228,8 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
     } else if (removedRoles.size > 0) {
         roleUpdateMessage = `<a:success:1297818086463770695> ${newMember.user} has been removed ${formatRoles(removedRoles)} ${plural(removedRoles)}!`;
     }
-    
-    if (roleUpdateMessage) editMessage(roleUpdateMessage);
+
+    editMessage(roleUpdateMessage);
 });
 
 

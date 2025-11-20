@@ -133,19 +133,24 @@ module.exports = {
             .setColor('#1DB954')
             .setImage('attachment://spotify-card.png');
 
-        // Calculate GMT+7 Time
+        // Calculate Date and Time for GMT+7
         const now = new Date();
-        const timeString = now.toLocaleTimeString('en-GB', { 
+        // Using 'en-GB' to get DD/MM/YYYY format
+        const dateTimeString = now.toLocaleString('en-GB', { 
             timeZone: 'Asia/Bangkok', 
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
             hour: '2-digit', 
-            minute: '2-digit' 
+            minute: '2-digit',
+            hour12: false // 24-hour format (e.g., 20:30 instead of 8:30 pm)
         });
 
         const row = new ActionRowBuilder()
             .addComponents(
                 new ButtonBuilder()
                     .setCustomId('spotify_timestamp') 
-                    .setLabel(`${timeString} GMT+7`) 
+                    .setLabel(`${dateTimeString} GMT+7`) 
                     .setStyle(ButtonStyle.Secondary) 
                     .setDisabled(true)
             );

@@ -74,11 +74,11 @@ module.exports = {
 
         // Artist
         ctx.fillStyle = '#B3B3B3'; 
-        ctx.font = '30px "SF Pro"';
+        ctx.font = '30px "Noto Sans", "Naskh", "Kanit"';
         ctx.fillText(trackArtist, 250, 125);
 
         // Album (Smaller)
-        ctx.font = 'italic 20px "SF Pro"';
+        ctx.font = 'italic 20px "Noto Sans", "Naskh", "Kanit"';
         let displayAlbum = trackAlbum;
         if (displayAlbum.length > 30) displayAlbum = displayAlbum.substring(0, 30) + "...";
         ctx.fillText(displayAlbum, 250, 160);
@@ -102,7 +102,7 @@ module.exports = {
 
         // E. Timestamps
         ctx.fillStyle = '#B3B3B3';
-        ctx.font = '14px "SF Pro"';
+        ctx.font = '14px "Noto Sans"';
         
         const formatTime = (ms) => {
             const min = Math.floor(ms / 60000);

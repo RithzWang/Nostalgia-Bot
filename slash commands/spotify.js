@@ -67,7 +67,7 @@ module.exports = {
         ctx.fillStyle = '#FFFFFF';
         
         // Title (Truncate if too long)
-        ctx.font = 'bold 40px "SF Pro Bold"'; 
+        ctx.font = 'bold 40px "Noto Sans", "Naskh", "Kanit"'; 
         let displayTitle = trackTitle;
         if (displayTitle.length > 20) displayTitle = displayTitle.substring(0, 20) + "...";
         ctx.fillText(displayTitle, 250, 80);

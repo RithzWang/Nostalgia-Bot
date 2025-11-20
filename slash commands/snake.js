@@ -19,7 +19,7 @@ const HEIGHT = ROWS * GRID_SIZE;
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('snake')
-        .setDescription('Play a game of Snake using Discord Buttons!'),
+        .setDescription('Play a snake game.'),
 
     async execute(interaction) {
         await interaction.deferReply();

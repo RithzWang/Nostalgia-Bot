@@ -61,7 +61,7 @@ const slashCommandsArray = []; // We need this array for the auto-deployer
 if (fs.existsSync('./slash commands')) {
     const slashCommandFiles = fs.readdirSync('./slash commands').filter(file => file.endsWith('.js'));
     for (const file of slashCommandFiles) {
-        const command = require(`./slashCommands/${file}`);
+        const command = require(`./slash commands/${file}`);
         if (command.data && command.data.name) {
             client.slashCommands.set(command.data.name, command);
             slashCommandsArray.push(command.data.toJSON());

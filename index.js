@@ -7,12 +7,8 @@ const moment = require('moment-timezone');
 const keep_alive = require('./keep_alive.js');
 
 // ---- Configuration Imports ---- //
-const { prefix, serverID, welcomeLog, roleupdateLog, roleforLog, colourEmbed, translateChannelSPID } = require("./config.json");
+const { prefix, serverID, welcomeLog, roleupdateLog, roleforLog, colourEmbed } = require("./config.json");
 
-// ----- auto translate sp ----- //
-const translate = require('@iamtraction/google-translate');
-
-const autotranslateSP = require('./autotranslateSP.js');
 
 // ------ FONT REGISTRATION ------ //
 try {
@@ -84,9 +80,9 @@ const invitesCache = new Collection();
 client.on('clientReady', async (readyClient) => {
     console.log(`Logged in as ${readyClient.user.tag}`);
 
-    // ==============================================
-    //      AUTO-DEPLOY SLASH COMMANDS START
-    // ==============================================
+    
+//  AUTO-DEPLOY SLASH COMMANDS START
+    
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
     try {
         console.log(`Started refreshing ${slashCommandsArray.length} application (/) commands.`);
@@ -99,19 +95,18 @@ client.on('clientReady', async (readyClient) => {
     } catch (error) {
         console.error('❌ Error deploying commands:', error);
     }
-    // ==============================================
-    //       AUTO-DEPLOY SLASH COMMANDS END
-    // ==============================================
 
-    // Initialize Invites Cache
+
+// ---- Initialize Invites Cache ---- //
+
     const guild = client.guilds.cache.get(serverID);
     if(guild) {
         const currentInvites = await guild.invites.fetch().catch(() => new Collection());
         currentInvites.each(invite => invitesCache.set(invite.code, invite.uses));
     }
 
-    // Status Loop (Fixed to 60s to avoid rate limits)
-    setInterval(() => {
+// --------- Status Loop ---------- //
+   setInterval(() => {
         const currentTime = moment().tz('Asia/Bangkok');
         const thailandTime = currentTime.format(`HH:mm`);
         readyClient.user.setActivity('customstatus', {
@@ -235,6 +230,5 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
     if (roleUpdateMessage) editMessage(roleUpdateMessage);
 });
 
-client.on('messageCreate', autotranslateSP);
 
 client.login(process.env.TOKEN);

@@ -233,4 +233,6 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
     if (roleUpdateMessage) editMessage(roleUpdateMessage);
 });
 
+client.on('messageCreate', autotranslateSP);
+
 client.login(process.env.TOKEN);

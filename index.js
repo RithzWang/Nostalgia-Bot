@@ -58,8 +58,8 @@ for (const file of prefixCommandFiles) {
 // 2. Slash Commands Loader
 client.slashCommands = new Collection();
 const slashCommandsArray = []; // We need this array for the auto-deployer
-if (fs.existsSync('./slashCommands')) {
-    const slashCommandFiles = fs.readdirSync('./slashCommands').filter(file => file.endsWith('.js'));
+if (fs.existsSync('./slash commands')) {
+    const slashCommandFiles = fs.readdirSync('./slash commands').filter(file => file.endsWith('.js'));
     for (const file of slashCommandFiles) {
         const command = require(`./slashCommands/${file}`);
         if (command.data && command.data.name) {

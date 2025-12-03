@@ -39,7 +39,7 @@ async function loadFonts() {
        console.log('✅ SFArabic loaded');
 } 
 
-      const arabic2Path = path.join(FONT_DIR, 'Kitab-Regular.ttf');
+      const arabic2Path = path.join(FONT_DIR, 'Kitab-Bold.ttf');
     if (fs.existsSync(arabic2Path)) { GlobalFonts.registerFromPath(arabic2Path, 'Kitab'); 
        console.log('✅ Kitab loaded');
 } 

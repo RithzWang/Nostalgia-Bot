@@ -9,7 +9,7 @@ const keep_alive = require('./keep_alive.js');
 const { loadFonts } = require('./fontLoader');
 
 // ---- Configuration Imports ---- //
-const { prefix, serverID, welcomeLog, roleupdateLog, roleforLog, colourEmbed } = require("./config.json");
+const { prefix, serverID, welcomeLog, roleupdateLog, roleforLog, colourEmbed, roleUpdateMessage } = require("./config.json");
 
 // --- Client Initialization --- //
 const client = new Client({

@@ -34,7 +34,7 @@ async function loadFonts() {
     }
 
     // 4. Arabic (Scheherazade New)
-    const arabicPath = path.join(FONT_DIR, 'SF-Arabic.ttf');
+    const arabicPath = path.join(FONT_DIR, 'SFArabic.ttf');
     if (fs.existsSync(arabicPath)) { GlobalFonts.registerFromPath(arabicPath, 'SFArabic'); 
        console.log('✅ SFArabic loaded');
 } 

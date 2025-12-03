@@ -184,18 +184,15 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
 
     const editMessage = (messageContent) => {
         if (!messageContent.trim()) return;
-        
-        if (activeRoleMessageId) {
-            logChannel.messages.fetch(activeRoleMessageId)
+        if (roleupdateMessage) {
+            logChannel.messages.fetch(roleupdateMessage)
+                
                 .then(msg => msg.edit({ content: messageContent, ...silentMessageOptions })) 
-                .catch((e) => {
-                    console.log("Could not edit message, sending new one.");
-                    logChannel.send({ content: messageContent, ...silentMessageOptions })
-                        .then(msg => { activeRoleMessageId = msg.id; });
-                });
+                .catch(console.error);
         } else {
+           
             logChannel.send({ content: messageContent, ...silentMessageOptions })
-                .then(msg => { activeRoleMessageId = msg.id; })
+                .then(msg => { roleupdateMessage = msg.id; })
                 .catch(console.error);
         }
     };
@@ -218,9 +215,7 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
         roleUpdateMessage = `<a:success:1297818086463770695> ${newMember.user} has been removed ${formatRoles(removedRoles)} ${plural(removedRoles)}!`;
     }
 
-    if (roleUpdateMessage) {
-        editMessage(roleUpdateMessage);
-    }
+    editMessage(roleUpdateMessage);
 });
 
 

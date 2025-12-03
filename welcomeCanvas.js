@@ -110,8 +110,8 @@ async function createWelcomeImage(member) {
 
     // --- 4. Text (Server Name Top Right) ---
     ctx.save(); 
-    // UPDATED FONT: Uses SF Pro with Apple Emoji fallback
-    ctx.font = 'bold 60px "SF Pro", "Apple Color Emoji", sans-serif';
+    // UPDATED: Strictly Noto Sans as requested
+    ctx.font = 'bold 60px "Noto Sans", "Apple Color Emoji"';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; 
     ctx.textAlign = 'right'; 
     ctx.textBaseline = 'bottom'; 
@@ -131,10 +131,8 @@ async function createWelcomeImage(member) {
     const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>/g, '').trim();
     const displayName = cleanedDisplayName || member.user.username;
 
-    // UPDATED FONT: Main Display Name
-    // 1. Tries SF Pro (Text)
-    // 2. If it hits an emoji, uses Apple Color Emoji
-    ctx.font = 'bold 100px "SF Pro", "Apple Color Emoji", sans-serif';
+    // UPDATED FONT: SF Pro -> Arabic -> Thai -> Emoji
+    ctx.font = 'bold 100px "SF Pro", "Scheherazade", "Thonburi", "Apple Color Emoji", sans-serif';
     ctx.textAlign = 'left'; 
     
     ctx.fillText(displayName, textX, currentY);
@@ -160,8 +158,8 @@ async function createWelcomeImage(member) {
         usernameText = `@${cleanedUsername}`;
     }
 
-    // UPDATED FONT: Username
-    ctx.font = '80px "SF Pro", "Apple Color Emoji", sans-serif';
+    // UPDATED FONT: SF Pro -> Arabic -> Thai -> Emoji
+    ctx.font = '80px "SF Pro", "Scheherazade", "Thonburi", "Apple Color Emoji", sans-serif';
     ctx.fillStyle = '#b9bbbe';
     ctx.fillText(usernameText, textX, currentY);
 

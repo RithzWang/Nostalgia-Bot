@@ -30,7 +30,7 @@ async function loadFonts() {
     const sfProSemiPath = path.join(FONT_DIR, 'SF Pro - Semibold.otf');
     if (fs.existsSync(sfProSemiPath)) {
         GlobalFonts.registerFromPath(sfProSemiPath, 'SF Pro SemiBold');
-        console.log('✅ SF Pro SemiBold loaded');
+        
     }
 
     // 4. Arabic (Scheherazade New)
@@ -41,8 +41,10 @@ async function loadFonts() {
     const thaiPath = path.join(FONT_DIR, 'Thonburi-Bold.ttf');
     if (fs.existsSync(thaiPath)) GlobalFonts.registerFromPath(thaiPath, 'Thonburi');
 
-    const mathPath = path.join(FONT_DIR, 'KpMath-Bold.ttf');
-    if (fs.existsSync(thaiPath)) GlobalFonts.registerFromPath(thaiPath, 'KpMath');
+    const mathPath = path.join(FONT_DIR, 'NotoSansMath-Regular.ttf');
+    if (fs.existsSync(mathPath)) { GlobalFonts.registerFromPath(mathPath, 'Math');
+      console.log('✅ Math loaded'); 
+     }
 
     // 6. Emoji
     if (fs.existsSync(FONT_PATH)) GlobalFonts.registerFromPath(FONT_PATH, 'Apple Color Emoji');

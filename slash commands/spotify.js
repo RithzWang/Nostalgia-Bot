@@ -48,7 +48,7 @@ module.exports = {
 
         // --- DRAWING THE CANVAS --- //
         
-        const canvas = createCanvas(750, 250);
+        const canvas = createCanvas(750, 320);
         const ctx = canvas.getContext('2d');
 
         // A. Background (Vertical Grey Gradient)

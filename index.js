@@ -9,7 +9,7 @@ const keep_alive = require('./keep_alive.js');
 const { loadFonts } = require('./fontLoader');
 
 // ---- Configuration Imports ---- //
-const { prefix, serverID, welcomeLog, roleupdateLog, roleforLog, colourEmbed, roleUpdateMessage } = require("./config.json");
+const { prefix, serverID, welcomeLog, roleupdateLog, roleforLog, colourEmbed, roleupdateMessage } = require("./config.json");
 
 // --- Client Initialization --- //
 const client = new Client({
@@ -219,7 +219,7 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
     }
 
     if (roleUpdateMessage) {
-        editMessage(roleUpdateMessage);
+        editMessage(roleupdateMessage);
     }
 });
 

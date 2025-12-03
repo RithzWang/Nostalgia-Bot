@@ -41,6 +41,9 @@ async function loadFonts() {
     const thaiPath = path.join(FONT_DIR, 'Thonburi-Bold.ttf');
     if (fs.existsSync(thaiPath)) GlobalFonts.registerFromPath(thaiPath, 'Thonburi');
 
+    const mathPath = path.join(FONT_DIR, 'KpMath-Bold.ttf');
+    if (fs.existsSync(thaiPath)) GlobalFonts.registerFromPath(thaiPath, 'KpMath');
+
     // 6. Emoji
     if (fs.existsSync(FONT_PATH)) GlobalFonts.registerFromPath(FONT_PATH, 'Apple Color Emoji');
 

@@ -73,7 +73,7 @@ module.exports = {
 
         // 1. Title
         // Uses "SF Pro Bold" first. If it sees Thai, it switches to "Kanit", etc.
-        ctx.font = '40px "SF Pro", "Thonburi", "SFArabic"'; 
+        ctx.font = 'bold 40px "SF Pro", "Thonburi", "SFArabic"'; 
         
         let displayTitle = trackTitle;
         if (displayTitle.length > 20) displayTitle = displayTitle.substring(0, 20) + "...";
@@ -88,7 +88,7 @@ module.exports = {
         // 3. Album
         // We don't use italic here because your registered fonts might not support synthesizing italics well.
         // We rely on the lighter/different weight if available, or just standard SF Pro.
-        ctx.font = '20px "SF Regular", "Thonburi", "SFArabic"';
+        ctx.font = '20px "SF Semibold", "Thonburi", "SFArabic"';
         let displayAlbum = trackAlbum;
         if (displayAlbum.length > 30) displayAlbum = displayAlbum.substring(0, 30) + "...";
         ctx.fillText(displayAlbum, 250, 160);

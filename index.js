@@ -13,9 +13,15 @@ const { prefix, serverID, welcomeLog, roleupdateLog, roleforLog, colourEmbed, ro
 
 // ------ FONT REGISTRATION ------ //
 try {
-    GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'SF-Pro-Display-Bold.otf'), 'SF Pro Bold');
+    GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'SF-Pro-Display-Bold.otf'), 'SF Pro');
+
+GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'SF-Pro-Display-Regular.otf'), 'SF Regular');
+
+GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'SFArabic.ttf'), 'SFArabic');
+
+GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'SF-Pro-Display-Bold.otf'), 'Thonburi');
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoSans-Bold.ttf'), 'Noto Sans');
-    GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'SF Pro - Semibold.otf'), 'SF Pro');
+    GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'SF Pro - Semibold.otf'), 'SF Semiboold');
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'New York - Heavy.otf'), 'NewYork');
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoNaskhArabic.ttf'), 'Naskh');
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'Kanit-SemiBold.ttf'), 'Kanit');

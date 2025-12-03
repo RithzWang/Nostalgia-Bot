@@ -94,7 +94,7 @@ async function createWelcomeImage(member) {
     ctx.restore(); 
 
     // --- 5. User Text ---
-    const textX = avatarX + avatarSize + 50;
+    const textX = avatarX + avatarSize + 70;
     let currentY = dim.height / 2 - 50;
 
     ctx.fillStyle = '#ffffff';

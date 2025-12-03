@@ -33,6 +33,9 @@ async function loadFonts() {
     const sfProReg = path.join(FONT_DIR, 'SF-Pro-Display-Regular.otf');
     if (fs.existsSync(sfProReg)) GlobalFonts.registerFromPath(sfProReg, 'SF Pro');
 
+    const sfPro3Path = path.join(FONT_DIR, 'SF Pro SemiBold.otf');
+    if (fs.existsSync(sfProPath)) GlobalFonts.registerFromPath(sfProPath, 'SF Pro3');
+
     // 3. Arabic (Scheherazade New)
     const arabicPath = path.join(FONT_DIR, 'ScheherazadeNew-Bold.ttf');
     if (fs.existsSync(arabicPath)) GlobalFonts.registerFromPath(arabicPath, 'Scheherazade');

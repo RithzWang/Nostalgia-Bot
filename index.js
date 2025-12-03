@@ -219,7 +219,7 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
     }
 
     if (roleUpdateMessage) {
-        editMessage(roleupdateMessage);
+        editMessage(roleUpdateMessage);
     }
 });
 

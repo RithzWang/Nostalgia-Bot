@@ -6,7 +6,7 @@ const { GlobalFonts } = require('@napi-rs/canvas');
 // Direct link to the Apple Emoji file
 const FONT_URL = "https://github.com/samuelngs/apple-emoji-linux/releases/download/v17.4/AppleColorEmoji.ttf";
 
-// !!! UPDATED: Points to your 'fontss' folder
+// Points to your 'fontss' folder
 const FONT_DIR = path.join(__dirname, 'fontss'); 
 const FONT_PATH = path.join(FONT_DIR, 'AppleColorEmoji.ttf');
 
@@ -18,7 +18,7 @@ async function loadFonts() {
 
     // 2. Check if we have the Apple Emoji font, if not, download it
     if (!fs.existsSync(FONT_PATH)) {
-        console.log('🍎 iOS Emoji font missing. Downloading now into /fontss... (This takes a moment)');
+        console.log('🍎 iOS Emoji font missing. Downloading now... (This takes a moment)');
         try {
             await downloadFile(FONT_URL, FONT_PATH);
             console.log('✅ Download complete!');
@@ -27,25 +27,41 @@ async function loadFonts() {
         }
     }
 
-    // 3. Register your existing SF Pro fonts from 'fontss'
-    // I am registering them all under the family name "SF Pro" so they work together
-    
-    const boldPath = path.join(FONT_DIR, 'SF-Pro-Display-Bold.otf');
-    if (fs.existsSync(boldPath)) {
-        GlobalFonts.registerFromPath(boldPath, 'SF Pro');
+    // --- REGISTER FONTS ---
+
+    // 1. English (SF Pro)
+    // Checks for both Bold and Regular just in case
+    const sfProPath = path.join(FONT_DIR, 'SF-Pro-Display-Bold.otf');
+    if (fs.existsSync(sfProPath)) GlobalFonts.registerFromPath(sfProPath, 'SF Pro');
+
+    const sfProReg = path.join(FONT_DIR, 'SF-Pro-Display-Regular.otf');
+    if (fs.existsSync(sfProReg)) GlobalFonts.registerFromPath(sfProReg, 'SF Pro');
+
+    // 2. Arabic (Scheherazade New)
+    const arabicPath = path.join(FONT_DIR, 'ScheherazadeNew-Bold.ttf');
+    if (fs.existsSync(arabicPath)) {
+        // We register it as "Scheherazade" to make typing easier
+        GlobalFonts.registerFromPath(arabicPath, 'Scheherazade');
+        console.log('✅ Arabic font loaded (Scheherazade)');
+    } else {
+        console.log('⚠️ Arabic font not found. Check filename in fontss/');
     }
 
-    const regularPath = path.join(FONT_DIR, 'SF-Pro-Display-Regular.otf');
-    if (fs.existsSync(regularPath)) {
-        GlobalFonts.registerFromPath(regularPath, 'SF Pro');
+    // 3. Thai (Thonburi)
+    const thaiPath = path.join(FONT_DIR, 'Thonburi-Bold.ttf');
+    if (fs.existsSync(thaiPath)) {
+        GlobalFonts.registerFromPath(thaiPath, 'Thonburi');
+        console.log('✅ Thai font loaded (Thonburi)');
+    } else {
+        console.log('⚠️ Thai font not found. Check filename in fontss/');
     }
 
-    // 4. Register the downloaded Apple Emoji
+    // 4. Emoji (Apple Color Emoji)
     if (fs.existsSync(FONT_PATH)) {
         GlobalFonts.registerFromPath(FONT_PATH, 'Apple Color Emoji');
     }
 
-    console.log('✅ All fonts in /fontss registered.');
+    console.log('✅ All fonts registration complete.');
 }
 
 function downloadFile(url, dest) {

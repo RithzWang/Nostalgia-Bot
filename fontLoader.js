@@ -10,7 +10,6 @@ const FONT_PATH = path.join(FONT_DIR, 'AppleColorEmoji.ttf');
 async function loadFonts() {
     if (!fs.existsSync(FONT_DIR)) fs.mkdirSync(FONT_DIR);
 
-    // Download Emoji if missing
     if (!fs.existsSync(FONT_PATH)) {
         console.log('🍎 iOS Emoji font missing. Downloading...');
         try { await downloadFile(FONT_URL, FONT_PATH); } 
@@ -19,32 +18,30 @@ async function loadFonts() {
 
     // --- REGISTER FONTS ---
 
-    // 1. Noto Sans (Strictly for Server Name)
+    // 1. Noto Sans (Server Name)
     const notoSansPath = path.join(FONT_DIR, 'NotoSans-Bold.ttf');
-    if (fs.existsSync(notoSansPath)) {
-        GlobalFonts.registerFromPath(notoSansPath, 'Noto Sans');
-        console.log('✅ Noto Sans loaded');
-    }
+    if (fs.existsSync(notoSansPath)) GlobalFonts.registerFromPath(notoSansPath, 'Noto Sans');
 
-    // 2. English (SF Pro)
+    // 2. SF Pro (Main Display Name - Bold)
     const sfProPath = path.join(FONT_DIR, 'SF-Pro-Display-Bold.otf');
     if (fs.existsSync(sfProPath)) GlobalFonts.registerFromPath(sfProPath, 'SF Pro');
+    
+    // 3. SF Pro SemiBold (Username) << NEW
+    const sfProSemiPath = path.join(FONT_DIR, 'SF Pro - SemiBold.otf');
+    if (fs.existsSync(sfProSemiPath)) {
+        GlobalFonts.registerFromPath(sfProSemiPath, 'SF Pro SemiBold');
+        console.log('✅ SF Pro SemiBold loaded');
+    }
 
-    const sfProReg = path.join(FONT_DIR, 'SF-Pro-Display-Regular.otf');
-    if (fs.existsSync(sfProReg)) GlobalFonts.registerFromPath(sfProReg, 'SF Pro');
-
-    const sfPro3Path = path.join(FONT_DIR, 'SF Pro - SemiBold.otf');
-    if (fs.existsSync(sfProPath)) GlobalFonts.registerFromPath(sfProPath, 'SF Pro3');
-
-    // 3. Arabic (Scheherazade New)
+    // 4. Arabic (Scheherazade New)
     const arabicPath = path.join(FONT_DIR, 'ScheherazadeNew-Bold.ttf');
     if (fs.existsSync(arabicPath)) GlobalFonts.registerFromPath(arabicPath, 'Scheherazade');
 
-    // 4. Thai (Thonburi)
+    // 5. Thai (Thonburi)
     const thaiPath = path.join(FONT_DIR, 'Thonburi-Bold.ttf');
     if (fs.existsSync(thaiPath)) GlobalFonts.registerFromPath(thaiPath, 'Thonburi');
 
-    // 5. Emoji
+    // 6. Emoji
     if (fs.existsSync(FONT_PATH)) GlobalFonts.registerFromPath(FONT_PATH, 'Apple Color Emoji');
 
     console.log('✅ All fonts registration complete.');

@@ -34,17 +34,18 @@ async function loadFonts() {
     }
 
     // 4. Arabic (Scheherazade New)
-    const arabicPath = path.join(FONT_DIR, 'ScheherazadeNew-Bold.ttf');
-    if (fs.existsSync(arabicPath)) GlobalFonts.registerFromPath(arabicPath, 'Scheherazade');
+    const arabicPath = path.join(FONT_DIR, 'SFArabic.ttf');
+    if (fs.existsSync(arabicPath)) { GlobalFonts.registerFromPath(arabicPath, 'SFArabic'); 
+       console.log('✅ SFArabic loaded');
+} 
 
     // 5. Thai (Thonburi)
     const thaiPath = path.join(FONT_DIR, 'Thonburi-Bold.ttf');
     if (fs.existsSync(thaiPath)) GlobalFonts.registerFromPath(thaiPath, 'Thonburi');
 
     const mathPath = path.join(FONT_DIR, 'NotoSansMath-Regular.ttf');
-    if (fs.existsSync(mathPath)) { GlobalFonts.registerFromPath(mathPath, 'Math');
-      console.log('✅ Math loaded'); 
-     }
+    if (fs.existsSync(mathPath)) GlobalFonts.registerFromPath(mathPath, 'Math');
+     
 
     // 6. Emoji
     if (fs.existsSync(FONT_PATH)) GlobalFonts.registerFromPath(FONT_PATH, 'Apple Color Emoji');

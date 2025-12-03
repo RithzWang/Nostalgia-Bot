@@ -44,7 +44,7 @@ async function createWelcomeImage(member) {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
     ctx.fillRect(0, 0, dim.width, dim.height);
 
-    // --- 2.5 Inner Frame (Grey Transparent) ---
+    // --- 2.5 Inner Frame ---
     ctx.save();
     ctx.lineWidth = 40; 
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)'; 
@@ -108,9 +108,8 @@ async function createWelcomeImage(member) {
         }
     }
 
-    // --- 4. Text (Server Name Top Right) ---
+    // --- 4. Server Name ---
     ctx.save(); 
-    // UPDATED: Strictly Noto Sans as requested
     ctx.font = 'bold 60px "Noto Sans", "Apple Color Emoji"';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; 
     ctx.textAlign = 'right'; 
@@ -131,7 +130,7 @@ async function createWelcomeImage(member) {
     const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>/g, '').trim();
     const displayName = cleanedDisplayName || member.user.username;
 
-    // UPDATED FONT: SF Pro -> Arabic -> Thai -> Emoji
+    // MAIN TEXT: Uses SF Pro (Bold)
     ctx.font = 'bold 100px "SF Pro", "Scheherazade", "Thonburi", "Apple Color Emoji", sans-serif';
     ctx.textAlign = 'left'; 
     
@@ -158,8 +157,9 @@ async function createWelcomeImage(member) {
         usernameText = `@${cleanedUsername}`;
     }
 
-    // UPDATED FONT: SF Pro -> Arabic -> Thai -> Emoji
-    ctx.font = '80px "SF Pro3", sans-serif';
+    // UPDATED FONT: Uses "SF Pro SemiBold" specifically for username
+    ctx.font = '80px "SF Pro SemiBold"';
+    
     ctx.fillStyle = '#b9bbbe';
     ctx.fillText(usernameText, textX, currentY);
 

@@ -91,7 +91,7 @@ client.on('ready', async (readyClient) => {
     setInterval(() => {
         const currentTime = moment().tz('Asia/Bangkok');
         const thailandTime = currentTime.format(`HH:mm`);
-        readyClient.user.setActivity('customstatus', {
+        clientReady.user.setActivity('customstatus', {
             type: ActivityType.Custom,
             state: `${thailandTime} (GMT+7)`
         });

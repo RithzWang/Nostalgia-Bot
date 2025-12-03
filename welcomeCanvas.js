@@ -72,14 +72,14 @@ async function createWelcomeImage(member) {
     ctx.restore();
 
     // B. Draw Status Circle
-    const status = member.presence ? member.presence.status : 'offline';
+ //--   const status = member.presence ? member.presence.status : 'offline';
     let statusColor = '#747f8d';
     switch (status) {
         case 'online': statusColor = '#3ba55c'; break;
         case 'idle':   statusColor = '#faa61a'; break;
         case 'dnd':    statusColor = '#ed4245'; break;
         case 'streaming': statusColor = '#593695'; break;
-    }
+    }  --//
 
     const statusRadius = 45;
     const offset = 15;

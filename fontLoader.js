@@ -39,6 +39,11 @@ async function loadFonts() {
        console.log('✅ SFArabic loaded');
 } 
 
+      const arabicPath = path.join(FONT_DIR, 'Kitab-Regular.ttf');
+    if (fs.existsSync(arabicPath)) { GlobalFonts.registerFromPath(arabicPath, 'Kitab'); 
+       console.log('✅ Kitab loaded');
+} 
+
     // 5. Thai (Thonburi)
     const thaiPath = path.join(FONT_DIR, 'Thonburi-Bold.ttf');
     if (fs.existsSync(thaiPath)) GlobalFonts.registerFromPath(thaiPath, 'Thonburi');

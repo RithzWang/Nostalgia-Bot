@@ -71,30 +71,6 @@ async function createWelcomeImage(member) {
     ctx.drawImage(mainAvatar, avatarX, avatarY, avatarSize, avatarSize);
     ctx.restore();
 
-    // B. Draw Status Circle
- //--   const status = member.presence ? member.presence.status : 'offline';
-    let statusColor = '#747f8d';
-    switch (status) {
-        case 'online': statusColor = '#3ba55c'; break;
-        case 'idle':   statusColor = '#faa61a'; break;
-        case 'dnd':    statusColor = '#ed4245'; break;
-        case 'streaming': statusColor = '#593695'; break;
-    }  --//
-
-    const statusRadius = 45;
-    const offset = 15;
-    const statusX = avatarX + avatarSize - (statusRadius * 2) + offset;
-    const statusY = avatarY + avatarSize - (statusRadius * 2) + offset;
-
-    ctx.beginPath();
-    ctx.arc(statusX, statusY, statusRadius, 0, Math.PI * 2);
-    ctx.fillStyle = statusColor;
-    ctx.fill();
-    ctx.strokeStyle = '#1e1e1e';
-    ctx.lineWidth = 10;
-    ctx.stroke();
-    ctx.closePath();
-
     // C. Draw Avatar Decoration
     const decoURL = member.user.avatarDecorationURL({ extension: 'png', size: 512 });
     if (decoURL) {

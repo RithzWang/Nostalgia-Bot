@@ -159,7 +159,7 @@ async function createWelcomeImage(member) {
     }
 
     // UPDATED FONT: SF Pro -> Arabic -> Thai -> Emoji
-    ctx.font = 'bold 80px "SF Pro", "Scheherazade", "Thonburi", "Apple Color Emoji", sans-serif';
+    ctx.font = 'bold 80px "SF Pro3", sans-serif';
     ctx.fillStyle = '#b9bbbe';
     ctx.fillText(usernameText, textX, currentY);
 

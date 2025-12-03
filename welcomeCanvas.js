@@ -44,12 +44,10 @@ async function createWelcomeImage(member) {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
     ctx.fillRect(0, 0, dim.width, dim.height);
 
-    // --- 2.5 NEW: Inner Frame (Grey Transparent) ---
+    // --- 2.5 Inner Frame (Grey Transparent) ---
     ctx.save();
-    // Note: Because of the clip at the top, half of this line is cut off.
-    // 30px width = 15px visible inner border.
     ctx.lineWidth = 40; 
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)'; // Grey, 0.5 opacity
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)'; 
     ctx.beginPath();
     ctx.roundRect(0, 0, dim.width, dim.height, cornerRadius);
     ctx.stroke();
@@ -112,11 +110,11 @@ async function createWelcomeImage(member) {
 
     // --- 4. Text (Server Name Top Right) ---
     ctx.save(); 
-    ctx.font = 'bold 60px "Noto Sans"';
+    // UPDATED FONT: Uses SF Pro with Apple Emoji fallback
+    ctx.font = 'bold 60px "SF Pro", "Apple Color Emoji", sans-serif';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; 
     ctx.textAlign = 'right'; 
     ctx.textBaseline = 'bottom'; 
-    // Moved padding slightly to account for the new frame
     ctx.fillText("A2-Q Server", dim.width - 70, dim.height - 70);
     ctx.restore(); 
 
@@ -133,7 +131,10 @@ async function createWelcomeImage(member) {
     const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>/g, '').trim();
     const displayName = cleanedDisplayName || member.user.username;
 
-    ctx.font = 'bold 100px "SF Pro Bold", "Noto Sans", "Naskh", "Kanit", "Math", "Emoji"';
+    // UPDATED FONT: Main Display Name
+    // 1. Tries SF Pro (Text)
+    // 2. If it hits an emoji, uses Apple Color Emoji
+    ctx.font = 'bold 100px "SF Pro", "Apple Color Emoji", sans-serif';
     ctx.textAlign = 'left'; 
     
     ctx.fillText(displayName, textX, currentY);
@@ -159,7 +160,8 @@ async function createWelcomeImage(member) {
         usernameText = `@${cleanedUsername}`;
     }
 
-    ctx.font = '80px "SF Pro"';
+    // UPDATED FONT: Username
+    ctx.font = '80px "SF Pro", "Apple Color Emoji", sans-serif';
     ctx.fillStyle = '#b9bbbe';
     ctx.fillText(usernameText, textX, currentY);
 

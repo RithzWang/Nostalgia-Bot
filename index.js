@@ -64,7 +64,7 @@ const invitesCache = new Collection();
 // --------- Event Handlers ---------- //
 
 // UPDATED: Used 'clientReady' as the argument name
-client.on('ready', async (clientReady) => {
+client.on('clientReady', async (clientReady) => {
     console.log(`Logged in as ${clientReady.user.tag}`);
 
     //  AUTO-DEPLOY SLASH COMMANDS

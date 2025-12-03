@@ -5,7 +5,7 @@ const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
 const moment = require('moment-timezone');
 const keep_alive = require('./keep_alive.js');
 
-// --- Import the Font Loader (The file we made earlier) ---
+// --- Import the Font Loader ---
 const { loadFonts } = require('./fontLoader');
 
 // ---- Configuration Imports ---- //
@@ -56,7 +56,6 @@ if (fs.existsSync('./slash commands')) {
 }
 
 // --- Global Variable for Role Logging ---
-// We use this variable instead of the one from config.json so it can be updated
 let activeRoleMessageId = null;
 
 // --- Invite Cache ---
@@ -64,15 +63,16 @@ const invitesCache = new Collection();
 
 // --------- Event Handlers ---------- //
 
-client.on('ready', async (readyClient) => {
-    console.log(`Logged in as ${readyClient.user.tag}`);
+// UPDATED: Used 'clientReady' as the argument name
+client.on('ready', async (clientReady) => {
+    console.log(`Logged in as ${clientReady.user.tag}`);
 
     //  AUTO-DEPLOY SLASH COMMANDS
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
     try {
         console.log(`Started refreshing ${slashCommandsArray.length} application (/) commands.`);
         await rest.put(
-            Routes.applicationGuildCommands(readyClient.user.id, serverID),
+            Routes.applicationGuildCommands(clientReady.user.id, serverID),
             { body: slashCommandsArray },
         );
         console.log('✅ Successfully reloaded application (/) commands.');
@@ -91,6 +91,8 @@ client.on('ready', async (readyClient) => {
     setInterval(() => {
         const currentTime = moment().tz('Asia/Bangkok');
         const thailandTime = currentTime.format(`HH:mm`);
+        
+        // Now this works because we defined 'clientReady' above
         clientReady.user.setActivity('customstatus', {
             type: ActivityType.Custom,
             state: `${thailandTime} (GMT+7)`
@@ -121,11 +123,9 @@ client.on('guildMemberAdd', async (member) => {
     if (member.user.bot) return;
     if (member.guild.id === serverID) {
         try {
-            // Invite Tracker Logic
             const newInvites = await member.guild.invites.fetch().catch(() => new Collection());
             let usedInvite = newInvites.find(inv => inv.uses > (invitesCache.get(inv.code) || 0));
             
-            // Update cache
             if (newInvites.size > 0) {
                  newInvites.each(inv => invitesCache.set(inv.code, inv.uses));
             }
@@ -185,13 +185,11 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
     const editMessage = (messageContent) => {
         if (!messageContent.trim()) return;
         
-        // Use the global variable activeRoleMessageId
         if (activeRoleMessageId) {
             logChannel.messages.fetch(activeRoleMessageId)
                 .then(msg => msg.edit({ content: messageContent, ...silentMessageOptions })) 
                 .catch((e) => {
                     console.log("Could not edit message, sending new one.");
-                    // If edit fails (deleted message), send new one
                     logChannel.send({ content: messageContent, ...silentMessageOptions })
                         .then(msg => { activeRoleMessageId = msg.id; });
                 });
@@ -226,11 +224,11 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
 });
 
 
-// --- ASYNC STARTUP (Loads fonts first, then logs in) --- //
+// --- ASYNC STARTUP --- //
 (async () => {
     try {
         console.log("⏳ Starting font check...");
-        await loadFonts(); // Downloads or loads fonts
+        await loadFonts(); 
         console.log("🚀 Fonts loaded. Logging in...");
         await client.login(process.env.TOKEN);
     } catch (error) {

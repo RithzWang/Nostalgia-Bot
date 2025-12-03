@@ -82,13 +82,13 @@ module.exports = {
         // 2. Artist
         ctx.fillStyle = '#B3B3B3'; 
         // Uses "SF Pro" (Semibold) as primary
-        ctx.font = '30px "SF Semibold", "Thonburi", "SFArabic"';
+        ctx.font = '30px "SF Pro SemiBold", "Thonburi", "SFArabic"';
         ctx.fillText(trackArtist, 250, 125);
 
         // 3. Album
         // We don't use italic here because your registered fonts might not support synthesizing italics well.
         // We rely on the lighter/different weight if available, or just standard SF Pro.
-        ctx.font = '20px "SF Semibold", "Thonburi", "SFArabic"';
+        ctx.font = '20px "SF Pro SemiBold", "Thonburi", "SFArabic"';
         let displayAlbum = trackAlbum;
         if (displayAlbum.length > 30) displayAlbum = displayAlbum.substring(0, 30) + "...";
         ctx.fillText(displayAlbum, 250, 160);

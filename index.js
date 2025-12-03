@@ -19,7 +19,7 @@ GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'SF-Pro-Display-Regu
 
 GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'SFArabic.ttf'), 'SFArabic');
 
-GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'SF-Pro-Display-Bold.otf'), 'Thonburi');
+GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'Thonburi-Bold.ttf'), 'Thonburi');
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoSans-Bold.ttf'), 'Noto Sans');
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'SF Pro - Semibold.otf'), 'SF Semiboold');
     GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'New York - Heavy.otf'), 'NewYork');

@@ -110,7 +110,7 @@ async function createWelcomeImage(member) {
 
     // --- 4. Server Name ---
     ctx.save(); 
-    ctx.font = 'bold 60px "Noto Sans", "Apple Color Emoji"';
+    ctx.font = 'bold 60px "Noto Sans", "KpMath", "Apple Color Emoji"';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; 
     ctx.textAlign = 'right'; 
     ctx.textBaseline = 'bottom'; 
@@ -131,7 +131,7 @@ async function createWelcomeImage(member) {
     const displayName = cleanedDisplayName || member.user.username;
 
     // MAIN TEXT: Uses SF Pro (Bold)
-    ctx.font = 'bold 100px "SF Pro", "Scheherazade", "Thonburi", "Apple Color Emoji", sans-serif';
+    ctx.font = 'bold 100px "SF Pro", "Scheherazade", "Thonburi", "KpMath", "Apple Color Emoji", sans-serif';
     ctx.textAlign = 'left'; 
     
     ctx.fillText(displayName, textX, currentY);

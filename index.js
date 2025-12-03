@@ -1,29 +1,15 @@
 const fs = require('fs');
 const path = require('path');
-// Added REST and Routes to imports for the auto-deploy
 const { Client, GatewayIntentBits, Partials, Collection, EmbedBuilder, ActivityType, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, REST, Routes } = require('discord.js');
 const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
 const moment = require('moment-timezone');
 const keep_alive = require('./keep_alive.js');
 
+// --- Import the Font Loader (The file we made earlier) ---
+const { loadFonts } = require('./fontLoader');
+
 // ---- Configuration Imports ---- //
-const { prefix, serverID, welcomeLog, roleupdateLog, roleforLog, roleupdateMessage, colourEmbed } = require("./config.json");
-
-
-// ------ FONT REGISTRATION ------ //
-try {
-    GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'SF-Pro-Display-Bold.otf'), 'SF Pro Bold');
-    GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoSans-Bold.ttf'), 'Noto Sans');
-    GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'SF Pro - Semibold.otf'), 'SF Pro');
-    GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'New York - Heavy.otf'), 'NewYork');
-    GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoNaskhArabic.ttf'), 'Naskh');
-    GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'Kanit-SemiBold.ttf'), 'Kanit');
-    GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoSansMath-Regular.ttf'), 'Math');
-    GlobalFonts.registerFromPath(path.join(__dirname, 'fontss', 'NotoColorEmoji-Regular.ttf'), 'Emoji');
-    console.log("✅ Fonts registered successfully.");
-} catch (error) {
-    console.error("❌ Error registering fonts. Check folder name 'fontss' and filenames.", error);
-}
+const { prefix, serverID, welcomeLog, roleupdateLog, roleforLog, colourEmbed } = require("./config.json");
 
 // --- Client Initialization --- //
 const client = new Client({
@@ -57,7 +43,7 @@ for (const file of prefixCommandFiles) {
 
 // 2. Slash Commands Loader
 client.slashCommands = new Collection();
-const slashCommandsArray = []; // We need this array for the auto-deployer
+const slashCommandsArray = []; 
 if (fs.existsSync('./slash commands')) {
     const slashCommandFiles = fs.readdirSync('./slash commands').filter(file => file.endsWith('.js'));
     for (const file of slashCommandFiles) {
@@ -69,24 +55,22 @@ if (fs.existsSync('./slash commands')) {
     }
 }
 
-// --- Global Variable for Role Logging (Fixes the crash issue) ---
-let lastRoleUpdateMessageId = null;
+// --- Global Variable for Role Logging ---
+// We use this variable instead of the one from config.json so it can be updated
+let activeRoleMessageId = null;
+
 // --- Invite Cache ---
 const invitesCache = new Collection();
 
-
 // --------- Event Handlers ---------- //
 
-client.on('clientReady', async (readyClient) => {
+client.on('ready', async (readyClient) => {
     console.log(`Logged in as ${readyClient.user.tag}`);
 
-    
-//  AUTO-DEPLOY SLASH COMMANDS START
-    
+    //  AUTO-DEPLOY SLASH COMMANDS
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
     try {
         console.log(`Started refreshing ${slashCommandsArray.length} application (/) commands.`);
-        // Uses the bot's own ID automatically
         await rest.put(
             Routes.applicationGuildCommands(readyClient.user.id, serverID),
             { body: slashCommandsArray },
@@ -96,17 +80,15 @@ client.on('clientReady', async (readyClient) => {
         console.error('❌ Error deploying commands:', error);
     }
 
-
-// ---- Initialize Invites Cache ---- //
-
+    // ---- Initialize Invites Cache ---- //
     const guild = client.guilds.cache.get(serverID);
     if(guild) {
         const currentInvites = await guild.invites.fetch().catch(() => new Collection());
         currentInvites.each(invite => invitesCache.set(invite.code, invite.uses));
     }
 
-// --------- Status Loop ---------- //
-   setInterval(() => {
+    // --------- Status Loop ---------- //
+    setInterval(() => {
         const currentTime = moment().tz('Asia/Bangkok');
         const thailandTime = currentTime.format(`HH:mm`);
         readyClient.user.setActivity('customstatus', {
@@ -142,7 +124,11 @@ client.on('guildMemberAdd', async (member) => {
             // Invite Tracker Logic
             const newInvites = await member.guild.invites.fetch().catch(() => new Collection());
             let usedInvite = newInvites.find(inv => inv.uses > (invitesCache.get(inv.code) || 0));
-            newInvites.each(inv => invitesCache.set(inv.code, inv.uses)); // Update cache
+            
+            // Update cache
+            if (newInvites.size > 0) {
+                 newInvites.each(inv => invitesCache.set(inv.code, inv.uses));
+            }
 
             const inviterName = usedInvite && usedInvite.inviter ? usedInvite.inviter.username : 'Unknown';
             const inviterId = usedInvite && usedInvite.inviter ? usedInvite.inviter.id : 'Unknown';
@@ -198,15 +184,20 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
 
     const editMessage = (messageContent) => {
         if (!messageContent.trim()) return;
-        if (roleupdateMessage) {
-            logChannel.messages.fetch(roleupdateMessage)
-                
+        
+        // Use the global variable activeRoleMessageId
+        if (activeRoleMessageId) {
+            logChannel.messages.fetch(activeRoleMessageId)
                 .then(msg => msg.edit({ content: messageContent, ...silentMessageOptions })) 
-                .catch(console.error);
+                .catch((e) => {
+                    console.log("Could not edit message, sending new one.");
+                    // If edit fails (deleted message), send new one
+                    logChannel.send({ content: messageContent, ...silentMessageOptions })
+                        .then(msg => { activeRoleMessageId = msg.id; });
+                });
         } else {
-           
             logChannel.send({ content: messageContent, ...silentMessageOptions })
-                .then(msg => { roleupdateMessage = msg.id; })
+                .then(msg => { activeRoleMessageId = msg.id; })
                 .catch(console.error);
         }
     };
@@ -229,8 +220,20 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
         roleUpdateMessage = `<a:success:1297818086463770695> ${newMember.user} has been removed ${formatRoles(removedRoles)} ${plural(removedRoles)}!`;
     }
 
-    editMessage(roleUpdateMessage);
+    if (roleUpdateMessage) {
+        editMessage(roleUpdateMessage);
+    }
 });
 
 
-client.login(process.env.TOKEN);
+// --- ASYNC STARTUP (Loads fonts first, then logs in) --- //
+(async () => {
+    try {
+        console.log("⏳ Starting font check...");
+        await loadFonts(); // Downloads or loads fonts
+        console.log("🚀 Fonts loaded. Logging in...");
+        await client.login(process.env.TOKEN);
+    } catch (error) {
+        console.error("❌ Failed to start bot:", error);
+    }
+})();

@@ -48,7 +48,7 @@ module.exports = {
 
             const embed = new EmbedBuilder()
                 .setTitle('Revoke Registration')
-                .setDescription(`User: ${targetUser}\nAdmin: ${interaction.user}`)
+                .setDescription(`User: ${targetUser}\nExecuted by ${interaction.user}`)
                 .setColor(Colors.Red) // ✅ FIXED: Removed the semicolon here
                 .setThumbnail(targetMember.user.displayAvatarURL());
 

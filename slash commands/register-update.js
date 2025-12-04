@@ -67,7 +67,8 @@ module.exports = {
             const embed = new EmbedBuilder()
                 .setTitle('Update Registration')
                 .setDescription(`Updated ${targetUser} to **${newNickname}**\nExecuted by ${interaction.user}`)
-                .setColor(Colors.Blue);
+                .setColor(Colors.Blue)
+                .setThumbnail(targetMember.user.displayAvatarURL());
 
             const button = new ButtonBuilder()
                 .setCustomId('update_time_btn') 

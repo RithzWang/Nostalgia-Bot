@@ -28,7 +28,7 @@ module.exports = {
       const embed = new EmbedBuilder()
         .setTitle(title || "No Title")
         .setDescription(description || "No Description")
-        .setColor("#888888")
+        .setColor("#888888");
 
       await msg.edit({ embeds: [embed] });
       await message.reply(`✅ Embed in ${channel} updated successfully.`);

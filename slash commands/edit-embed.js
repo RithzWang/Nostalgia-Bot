@@ -55,8 +55,6 @@ module.exports = {
             if (newTitle) editedEmbed.setTitle(newTitle);
             if (newDesc) editedEmbed.setDescription(newDesc.replace(/\\n/g, '\n'));
             if (newColor) editedEmbed.setColor(newColor);
-            
-            editedEmbed.setTimestamp();
 
             await message.edit({ embeds: [editedEmbed] });
             await interaction.editReply(`✅ Successfully edited message inside ${channel}`);

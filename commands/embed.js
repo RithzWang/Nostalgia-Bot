@@ -19,9 +19,7 @@ module.exports = {
     const embed = new EmbedBuilder()
       .setTitle(title || "No Title")
       .setDescription(description || "No Description")
-      .setColor("#888888")
-      .setTimestamp()
-      .setFooter({ text: `Sent by ${message.author.tag}` });
+      .setColor("#888888");
 
     await channel.send({ embeds: [embed] });
     await message.reply(`✅ Embed sent to ${channel}`);

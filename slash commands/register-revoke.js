@@ -17,13 +17,14 @@ module.exports = {
                 .setDescription('The member to revoke')
                 .setRequired(true)
         )
-        .setDefaultMemberPermissions(PermissionFlagsBits.ADMINISTRATION),
+        // ⚠️ FIXED: Changed 'ADMINISTRATION' (invalid) to 'Administrator'
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
         const targetUser = interaction.options.getUser('target');
         const targetMember = await interaction.guild.members.fetch(targetUser.id);
         const registeredRoleId = '1446058693631148043';
-        const logChannelId = '1187771223791378522'; // 📜 LOG CHANNEL ID
+        const logChannelId = '1187771223791378522'; 
 
         if (!targetMember.manageable) {
             return interaction.reply({ content: `❌ I cannot modify ${targetUser}.`, ephemeral: true });
@@ -48,7 +49,7 @@ module.exports = {
             const embed = new EmbedBuilder()
                 .setTitle('Revoke Registration')
                 .setDescription(`User: ${targetUser}\nAdmin: ${interaction.user}`)
-                .setColor(Colors.Red);
+                .setColor(Colors.Red) // ✅ FIXED: Removed the semicolon here
                 .setThumbnail(targetMember.user.displayAvatarURL());
 
             const button = new ButtonBuilder()

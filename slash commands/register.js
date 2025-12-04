@@ -3,7 +3,7 @@ const { SlashCommandBuilder } = require('discord.js');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('register')
-        .setDescription('Register your profile and update your nickname.')
+        .setDescription('Registeration')
         .addStringOption(option => 
             option.setName('name')
                 .setDescription('Your desired name')
@@ -69,7 +69,7 @@ module.exports = {
             await member.roles.add(registeredRoleId);
 
             return interaction.reply({ 
-                content: `✅ **Registered!**\nChanged nickname to: **${newNickname}**\nAdded role: <@&${registeredRoleId}>`,
+                content: `Your registration is complete.`,
                 ephemeral: false 
             });
 

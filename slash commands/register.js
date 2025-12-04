@@ -47,7 +47,7 @@ module.exports = {
             });
         }
 
-        const newNickname = `${country}｜${name}`;
+        const newNickname = `${country} | ${name}`;
 
         if (newNickname.length > 32) {
             return interaction.reply({ 
@@ -79,7 +79,7 @@ module.exports = {
                 
                 const embed = new EmbedBuilder()
                     .setTitle('New Registration')
-                    .setDescription(`User: ${member}\nNickname: **${newNickname}**${warning}`)
+                    .setDescription(`User: ${member}\nName: **${name}\nFrom: ${country}\nNickname: **${newNickname}**${warning}`)
                     .setColor(Colors.Green) // Blue
                     .setThumbnail(member.user.displayAvatarURL());
 

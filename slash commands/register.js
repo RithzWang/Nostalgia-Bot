@@ -70,7 +70,7 @@ module.exports = {
 
             return interaction.reply({ 
                 content: `Your registration is complete.`,
-                ephemeral: false 
+                ephemeral: true 
             });
 
         } catch (error) {

@@ -18,7 +18,7 @@ module.exports = {
         )
         .addStringOption(option => 
             option.setName('country')
-                .setDescription('Your country flag emoji (e.g., 🇸🇦, 🇹🇭)')
+                .setDescription('Your country flag emoji (e.g., 🇸🇦, 🇦🇷)')
                 .setRequired(true)
         ),
 

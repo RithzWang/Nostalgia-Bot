@@ -12,7 +12,7 @@ module.exports = {
         .setDescription('Registration')
         .addStringOption(option => 
             option.setName('name')
-                .setDescription('Your desired name (e.g., Ridouan)')
+                .setDescription('Your desired name (e.g., Naif, Faisal)')
                 .setRequired(true)
                 .setMaxLength(25)
         )

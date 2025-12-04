@@ -4,7 +4,8 @@ const {
     EmbedBuilder, 
     ActionRowBuilder, 
     ButtonBuilder, 
-    ButtonStyle 
+    ButtonStyle,
+    Colors 
 } = require('discord.js');
 
 module.exports = {
@@ -47,7 +48,7 @@ module.exports = {
             const embed = new EmbedBuilder()
                 .setTitle('Revoke Registration')
                 .setDescription(`User: ${targetUser}\nAdmin: ${interaction.user}`)
-                .setColor('RED');
+                .setColor(Colors.Red);
                 .setThumbnail(targetUser.user.displayAvatarURL());
 
             const button = new ButtonBuilder()

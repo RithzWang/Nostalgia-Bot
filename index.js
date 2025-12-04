@@ -168,24 +168,32 @@ client.on('guildMemberAdd', async (member) => {
 
 // ------ nickname changing -------- //
 
-client.on('guildMemberAdd', async (member) => {
-   
-    if (member.guild.id !== serverID) {
-        
-        return; 
-    }
+client.on('guildMemberAdd', (member) => {
+    
+    if (member.guild.id !== serverID) return;
 
-    const prefix = "🌟 | ";
-    let newNickname = prefix + member.displayName;
+    setTimeout(async () => {
 
-    if (newNickname.length > 32) newNickname = newNickname.substring(0, 32);
+        if (!member.guild.members.cache.has(member.id)) return;
 
-    try {
-        await member.setNickname(newNickname);
-    } catch (error) {
-        console.error(`Cannot rename ${member.user.tag}`);
-    }
+        const prefix = "🌟 • ";
+        let newNickname = prefix + member.displayName;
+
+        if (newNickname.length > 32) {
+            newNickname = newNickname.substring(0, 32);
+        }
+
+        try {
+            await member.setNickname(newNickname);
+            console.log(`Changed nickname for ${member.user.tag} in target server.`);
+        } catch (error) {
+            console.error(`Could not rename ${member.user.tag}:`, error.message);
+        }
+
+    }, 5000); 
 });
+
+
 
 
 // -------- role update log -------- //

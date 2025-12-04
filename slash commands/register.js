@@ -1,0 +1,84 @@
+const { SlashCommandBuilder } = require('discord.js');
+
+module.exports = {
+    data: new SlashCommandBuilder()
+        .setName('register')
+        .setDescription('Register your profile and update your nickname.')
+        .addStringOption(option => 
+            option.setName('name')
+                .setDescription('Your desired name')
+                .setRequired(true)
+                .setMaxLength(25)
+        )
+        .addStringOption(option => 
+            option.setName('country')
+                .setDescription('Your country flag emoji (e.g., 🇸🇦, 🇹🇭)')
+                .setRequired(true)
+        ),
+
+    async execute(interaction) {
+        const name = interaction.options.getString('name');
+        const country = interaction.options.getString('country');
+        const member = interaction.member;
+        
+        // The Role ID you provided
+        const registeredRoleId = '1446058693631148043';
+
+        // --- CHECK 1: Already Registered? ---
+        if (member.roles.cache.has(registeredRoleId)) {
+            return interaction.reply({ 
+                content: `❌ **You are already registered!** You cannot use this command again.`, 
+                ephemeral: true 
+            });
+        }
+
+        const newNickname = `${country} | ${name}`;
+
+        // --- CHECK 2: Length Limit ---
+        if (newNickname.length > 32) {
+            return interaction.reply({ 
+                content: `❌ The nickname **"${newNickname}"** is too long (${newNickname.length}/32).`, 
+                ephemeral: true 
+            });
+        }
+
+        // --- CHECK 3: Server Owner ---
+        if (member.id === interaction.guild.ownerId) {
+            return interaction.reply({ 
+                content: `❌ I cannot change the **Server Owner's** nickname, but I will give you the role.`, 
+                ephemeral: true 
+            });
+            // Note: If you want the command to STOP for the owner, use 'return' here. 
+            // Usually owners want the role even if the bot can't change their name.
+        }
+
+        // --- CHECK 4: Bot Hierarchy ---
+        // Ensure bot is higher than the user to change nickname
+        if (member.roles.highest.position >= interaction.guild.members.me.roles.highest.position) {
+            return interaction.reply({ 
+                content: `❌ I cannot change your nickname because your role is higher than mine.`, 
+                ephemeral: true 
+            });
+        }
+
+        try {
+            // 1. Change Nickname
+            await member.setNickname(newNickname);
+            
+            // 2. Add the Role
+            await member.roles.add(registeredRoleId);
+
+            return interaction.reply({ 
+                content: `✅ **Registered!**\nChanged nickname to: **${newNickname}**\nAdded role: <@&${registeredRoleId}>`,
+                ephemeral: false 
+            });
+
+        } catch (error) {
+            console.error(error);
+            return interaction.reply({ 
+                content: `❌ **Error:** I could not finish the registration.\n\n**Please check:**\n1. Does my bot have the **Manage Nicknames** & **Manage Roles** permissions?\n2. Is my Bot Role **higher** than the role <@&${registeredRoleId}> in Server Settings?`, 
+                ephemeral: true 
+            });
+        }
+    },
+};

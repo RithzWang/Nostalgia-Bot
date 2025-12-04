@@ -6,7 +6,7 @@ module.exports = {
         .setDescription('Registeration')
         .addStringOption(option => 
             option.setName('name')
-                .setDescription('Your desired name')
+                .setDescription('Your desired name (e.g., Ridouan)')
                 .setRequired(true)
                 .setMaxLength(25)
         )
@@ -17,6 +17,19 @@ module.exports = {
         ),
 
     async execute(interaction) {
+        // --- 🔒 CHANNEL LOCK ---
+        // The ID of the specific channel allowed
+        const allowedChannelId = '1446065407713607812';
+
+        // Check if the command was used in the wrong channel
+        if (interaction.channelId !== allowedChannelId) {
+            return interaction.reply({ 
+                content: `❌ This command can only be used in <#${allowedChannelId}>`, 
+                ephemeral: true 
+            });
+        }
+        // -----------------------
+
         const name = interaction.options.getString('name');
         const country = interaction.options.getString('country');
         const member = interaction.member;
@@ -48,12 +61,9 @@ module.exports = {
                 content: `❌ I cannot change the **Server Owner's** nickname, but I will give you the role.`, 
                 ephemeral: true 
             });
-            // Note: If you want the command to STOP for the owner, use 'return' here. 
-            // Usually owners want the role even if the bot can't change their name.
         }
 
         // --- CHECK 4: Bot Hierarchy ---
-        // Ensure bot is higher than the user to change nickname
         if (member.roles.highest.position >= interaction.guild.members.me.roles.highest.position) {
             return interaction.reply({ 
                 content: `❌ I cannot change your nickname because your role is higher than mine.`, 

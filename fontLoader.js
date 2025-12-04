@@ -37,7 +37,7 @@ async function loadFonts() {
     const arabicPath = path.join(FONT_DIR, 'SFArabic.ttf');
     if (fs.existsSync(arabicPath))  GlobalFonts.registerFromPath(arabicPath, 'SFArabic');
 
-    const arabic2Path = path.join(FONT_DIR, 'AmiriQuran-Regular.ttf);
+    const arabic2Path = path.join(FONT_DIR, 'AmiriQuran-Regular.ttf');
     if (fs.existsSync(arabic2Path)) { GlobalFonts.registerFromPath(arabic2Path, 'AmiriQuran'); 
        console.log('✅ AmiriQuran loaded');
 } 

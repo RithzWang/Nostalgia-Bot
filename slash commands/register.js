@@ -1,4 +1,10 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { 
+    SlashCommandBuilder, 
+    EmbedBuilder, 
+    ActionRowBuilder, 
+    ButtonBuilder, 
+    ButtonStyle 
+} = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -19,6 +25,8 @@ module.exports = {
     async execute(interaction) {
         // --- 🔒 CHANNEL LOCK ---
         const allowedChannelId = '1446065407713607812';
+        const logChannelId = '1187771223791378522'; // 📜 LOG CHANNEL ID
+
         if (interaction.channelId !== allowedChannelId) {
             return interaction.reply({ 
                 content: `This command can only be used in <#${allowedChannelId}>`, 
@@ -31,59 +39,69 @@ module.exports = {
         const member = interaction.member;
         const registeredRoleId = '1446058693631148043';
 
-        // --- CHECK 1: Already Registered? ---
         if (member.roles.cache.has(registeredRoleId)) {
             return interaction.reply({ 
-                content: `**You are already registered!** You cannot use this command again.`, 
+                content: `**You are already registered!**`, 
                 ephemeral: true 
             });
         }
 
         const newNickname = `${country} | ${name}`;
 
-        // --- CHECK 2: Length Limit ---
         if (newNickname.length > 32) {
             return interaction.reply({ 
-                content: `The nickname **"${newNickname}"** is too long (${newNickname.length}/32).`, 
+                content: `Nickname too long: **${newNickname}**`, 
                 ephemeral: true 
             });
         }
 
-        // --- PREPARE LOGIC ---
-        let nicknameChanged = false;
-        let warningMessage = "";
-
-        // Check if we ALLOW changing the nickname
+        // Logic Check
         const isOwner = member.id === interaction.guild.ownerId;
-        const isHigherThanBot = member.roles.highest.position >= interaction.guild.members.me.roles.highest.position;
+        const isHigher = member.roles.highest.position >= interaction.guild.members.me.roles.highest.position;
+        let warning = "";
 
         try {
-            // 1. Give the Role (Always happens if checks pass)
+            // 1. Give Role
             await member.roles.add(registeredRoleId);
 
-            // 2. Handle Nickname
-            if (isOwner) {
-                warningMessage = "\n*(I could not change your nickname because you are the Server Owner, but I gave you the role.)*";
-            } else if (isHigherThanBot) {
-                warningMessage = "\n*(I could not change your nickname because your role is higher than mine, but I gave you the role.)*";
-            } else {
-                // Safe to change nickname
-                await member.setNickname(newNickname);
-                nicknameChanged = true;
+            // 2. Change Nickname (if allowed)
+            if (isOwner) warning = " (Owner: Nickname not changed)";
+            else if (isHigher) warning = " (Role too high: Nickname not changed)";
+            else await member.setNickname(newNickname);
+
+            // 3. 📜 SEND LOG 📜
+            const logChannel = interaction.guild.channels.cache.get(logChannelId);
+            if (logChannel) {
+                // Time
+                const now = new Date();
+                const timeString = now.toLocaleString('en-GB', { timeZone: 'Asia/Bangkok', hour12: false });
+                
+                const embed = new EmbedBuilder()
+                    .setTitle('New Registration')
+                    .setDescription(`User: ${member}\nNickname: **${newNickname}**${warning}`)
+                    .setColor(0x0099FF) // Blue
+                    .setThumbnail(member.user.displayAvatarURL());
+
+                const button = new ButtonBuilder()
+                    .setCustomId('log_reg_btn')
+                    .setLabel(`${timeString} (GMT+7)`)
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(true);
+                
+                const row = new ActionRowBuilder().addComponents(button);
+
+                await logChannel.send({ embeds: [embed], components: [row] });
             }
 
-            // 3. Send Success Reply
+            // 4. Reply to User
             return interaction.reply({ 
-                content: `Your registration is complete.${warningMessage}`,
+                content: `Your registration is complete.${warning ? "\n*" + warning + "*" : ""}`,
                 ephemeral: true 
             });
 
         } catch (error) {
             console.error(error);
-            return interaction.reply({ 
-                content: `**Error:** I could not finish the registration.\n\n**Please check:**\n1. Does my bot have the **Manage Nicknames** & **Manage Roles** permissions?\n2. Is my Bot Role **higher** than the role <@&${registeredRoleId}>?`, 
-                ephemeral: true 
-            });
+            return interaction.reply({ content: `Error during registration.`, ephemeral: true });
         }
     },
 };

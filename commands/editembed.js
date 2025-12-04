@@ -18,7 +18,8 @@ module.exports = {
     if (!rest || !rest.includes("|"))
       return message.reply("Use this format: `!editembed #channel messageID Title | Description`");
 
-    const [title, description] = rest.split("|").map(s => s.trim());
+    const [title, ...descParts] = rest.split("|");
+const description = descParts.join("|").trim();
 
     try {
       const msg = await channel.messages.fetch(messageId);

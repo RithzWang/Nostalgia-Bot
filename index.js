@@ -166,6 +166,28 @@ client.on('guildMemberAdd', async (member) => {
     }
 });
 
+// ------ nickname changing -------- //
+
+client.on('guildMemberAdd', async (member) => {
+   
+    if (member.guild.id !== serverID) {
+        
+        return; 
+    }
+
+    const prefix = "🌟 | ";
+    let newNickname = prefix + member.displayName;
+
+    if (newNickname.length > 32) newNickname = newNickname.substring(0, 32);
+
+    try {
+        await member.setNickname(newNickname);
+    } catch (error) {
+        console.error(`Cannot rename ${member.user.tag}`);
+    }
+});
+
+
 // -------- role update log -------- //
 
 client.on('guildMemberUpdate', (oldMember, newMember) => {

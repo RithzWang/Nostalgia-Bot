@@ -3,7 +3,7 @@ const { SlashCommandBuilder } = require('discord.js');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('register')
-        .setDescription('Registeration')
+        .setDescription('Registration')
         .addStringOption(option => 
             option.setName('name')
                 .setDescription('Your desired name (e.g., Ridouan)')

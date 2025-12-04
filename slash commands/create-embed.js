@@ -35,7 +35,7 @@ module.exports = {
             .setTitle(title)
             .setDescription(description.replace(/\\n/g, '\n'))
             .setColor(color)
-            .setTimestamp();
+
 
         try {
             await channel.send({ embeds: [embed] });

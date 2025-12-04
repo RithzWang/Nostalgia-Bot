@@ -46,8 +46,8 @@ module.exports = {
 
             const embed = new EmbedBuilder()
                 .setTitle('Revoke Registration')
-                .setDescription(`for ${targetUser} by ${interaction.user}`)
-                .setColor(0xFF0000);
+                .setDescription(`User: ${targetUser}\n Admin: ${interaction.user}`)
+                .setColor('RED');
 
             const button = new ButtonBuilder()
                 .setCustomId('revoke_time_btn')

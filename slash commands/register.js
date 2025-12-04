@@ -32,7 +32,7 @@ module.exports = {
             });
         }
 
-        const newNickname = `${country} | ${name}`;
+        const newNickname = `${country}｜${name}`;
 
         // --- CHECK 2: Length Limit ---
         if (newNickname.length > 32) {

@@ -3,7 +3,8 @@ const {
     EmbedBuilder, 
     ActionRowBuilder, 
     ButtonBuilder, 
-    ButtonStyle 
+    ButtonStyle,
+    Colors 
 } = require('discord.js');
 
 module.exports = {
@@ -79,7 +80,7 @@ module.exports = {
                 const embed = new EmbedBuilder()
                     .setTitle('New Registration')
                     .setDescription(`User: ${member}\nNickname: **${newNickname}**${warning}`)
-                    .setColor('GREEN') // Blue
+                    .setColor(Colors.Green) // Blue
                     .setThumbnail(member.user.displayAvatarURL());
 
                 const button = new ButtonBuilder()

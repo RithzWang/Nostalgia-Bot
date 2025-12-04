@@ -4,7 +4,8 @@ const {
     EmbedBuilder, 
     ActionRowBuilder, 
     ButtonBuilder, 
-    ButtonStyle 
+    ButtonStyle,
+    Colors 
 } = require('discord.js');
 
 module.exports = {
@@ -66,7 +67,7 @@ module.exports = {
             const embed = new EmbedBuilder()
                 .setTitle('Update Registration')
                 .setDescription(`Updated ${targetUser} to **${newNickname}**\nExecuted by ${interaction.user}`)
-                .setColor(0x00FF00);
+                .setColor(Colors.Blue);
 
             const button = new ButtonBuilder()
                 .setCustomId('update_time_btn') 

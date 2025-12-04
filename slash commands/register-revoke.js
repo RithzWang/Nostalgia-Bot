@@ -16,7 +16,7 @@ module.exports = {
                 .setDescription('The member to revoke')
                 .setRequired(true)
         )
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageNicknames),
+        .setDefaultMemberPermissions(PermissionFlagsBits.ADMINISTRATION),
 
     async execute(interaction) {
         const targetUser = interaction.options.getUser('target');
@@ -48,6 +48,7 @@ module.exports = {
                 .setTitle('Revoke Registration')
                 .setDescription(`User: ${targetUser}\n Admin: ${interaction.user}`)
                 .setColor('RED');
+                .setThumbnail(targetMember.user.displayAvatarURL());
 
             const button = new ButtonBuilder()
                 .setCustomId('revoke_time_btn')

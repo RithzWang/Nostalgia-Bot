@@ -29,8 +29,6 @@ module.exports = {
         .setTitle(title || "No Title")
         .setDescription(description || "No Description")
         .setColor("#888888")
-        .setTimestamp()
-        .setFooter({ text: `Edited by ${message.author.tag}` });
 
       await msg.edit({ embeds: [embed] });
       await message.reply(`✅ Embed in ${channel} updated successfully.`);

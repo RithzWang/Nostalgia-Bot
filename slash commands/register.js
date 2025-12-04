@@ -24,7 +24,7 @@ module.exports = {
         // Check if the command was used in the wrong channel
         if (interaction.channelId !== allowedChannelId) {
             return interaction.reply({ 
-                content: `❌ This command can only be used in <#${allowedChannelId}>`, 
+                content: `This command can only be used in <#${allowedChannelId}>`, 
                 ephemeral: true 
             });
         }
@@ -40,17 +40,17 @@ module.exports = {
         // --- CHECK 1: Already Registered? ---
         if (member.roles.cache.has(registeredRoleId)) {
             return interaction.reply({ 
-                content: `❌ **You are already registered!** You cannot use this command again.`, 
+                content: `**You are already registered!** You cannot use this command again.`, 
                 ephemeral: true 
             });
         }
 
-        const newNickname = `${country}｜${name}`;
+        const newNickname = `${country} | ${name}`;
 
         // --- CHECK 2: Length Limit ---
         if (newNickname.length > 32) {
             return interaction.reply({ 
-                content: `❌ The nickname **"${newNickname}"** is too long (${newNickname.length}/32).`, 
+                content: `The nickname **"${newNickname}"** is too long (${newNickname.length}/32).`, 
                 ephemeral: true 
             });
         }
@@ -58,7 +58,7 @@ module.exports = {
         // --- CHECK 3: Server Owner ---
         if (member.id === interaction.guild.ownerId) {
             return interaction.reply({ 
-                content: `❌ I cannot change the **Server Owner's** nickname, but I will give you the role.`, 
+                content: `I cannot change the **Server Owner's** nickname, but I will give you the role.`, 
                 ephemeral: true 
             });
         }
@@ -66,7 +66,7 @@ module.exports = {
         // --- CHECK 4: Bot Hierarchy ---
         if (member.roles.highest.position >= interaction.guild.members.me.roles.highest.position) {
             return interaction.reply({ 
-                content: `❌ I cannot change your nickname because your role is higher than mine.`, 
+                content: `I cannot change your nickname because your role is higher than mine.`, 
                 ephemeral: true 
             });
         }
@@ -86,7 +86,7 @@ module.exports = {
         } catch (error) {
             console.error(error);
             return interaction.reply({ 
-                content: `❌ **Error:** I could not finish the registration.\n\n**Please check:**\n1. Does my bot have the **Manage Nicknames** & **Manage Roles** permissions?\n2. Is my Bot Role **higher** than the role <@&${registeredRoleId}> in Server Settings?`, 
+                content: `**Error:** I could not finish the registration.\n\n**Please check:**\n1. Does my bot have the **Manage Nicknames** & **Manage Roles** permissions?\n2. Is my Bot Role **higher** than the role <@&${registeredRoleId}> in Server Settings?`, 
                 ephemeral: true 
             });
         }

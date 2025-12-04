@@ -176,7 +176,7 @@ client.on('guildMemberAdd', (member) => {
 
         if (!member.guild.members.cache.has(member.id)) return;
 
-        const prefix = "🌟 • ";
+        const prefix = "🌟・";
         let newNickname = prefix + member.displayName;
 
         if (newNickname.length > 32) {

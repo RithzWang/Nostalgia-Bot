@@ -79,7 +79,7 @@ module.exports = {
                 const embed = new EmbedBuilder()
                     .setTitle('New Registration')
                     .setDescription(`User: ${member}\nNickname: **${newNickname}**${warning}`)
-                    .setColor(0x0099FF) // Blue
+                    .setColor('GREEN') // Blue
                     .setThumbnail(member.user.displayAvatarURL());
 
                 const button = new ButtonBuilder()

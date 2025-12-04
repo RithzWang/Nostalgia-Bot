@@ -49,7 +49,7 @@ module.exports = {
                 .setTitle('Revoke Registration')
                 .setDescription(`User: ${targetUser}\nAdmin: ${interaction.user}`)
                 .setColor(Colors.Red);
-                .setThumbnail(targetUser.user.displayAvatarURL());
+                .setThumbnail(targetMember.user.displayAvatarURL());
 
             const button = new ButtonBuilder()
                 .setCustomId('revoke_time_btn')

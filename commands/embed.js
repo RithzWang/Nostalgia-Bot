@@ -14,7 +14,8 @@ module.exports = {
     if (!rest || !rest.includes("|"))
       return message.reply("Use this format: `!embed #channel Title | Description`");
 
-    const [title, description] = rest.split("|").map(s => s.trim());
+    const [title, ...descParts] = rest.split("|");
+const description = descParts.join("|").trim();
 
     const embed = new EmbedBuilder()
       .setTitle(title || "No Title")

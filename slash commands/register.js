@@ -18,23 +18,17 @@ module.exports = {
 
     async execute(interaction) {
         // --- 🔒 CHANNEL LOCK ---
-        // The ID of the specific channel allowed
         const allowedChannelId = '1446065407713607812';
-
-        // Check if the command was used in the wrong channel
         if (interaction.channelId !== allowedChannelId) {
             return interaction.reply({ 
                 content: `This command can only be used in <#${allowedChannelId}>`, 
                 ephemeral: true 
             });
         }
-        // -----------------------
 
         const name = interaction.options.getString('name');
         const country = interaction.options.getString('country');
         const member = interaction.member;
-        
-        // The Role ID you provided
         const registeredRoleId = '1446058693631148043';
 
         // --- CHECK 1: Already Registered? ---
@@ -55,38 +49,39 @@ module.exports = {
             });
         }
 
-        // --- CHECK 3: Server Owner ---
-        if (member.id === interaction.guild.ownerId) {
-            return interaction.reply({ 
-                content: `I cannot change the **Server Owner's** nickname, but I will give you the role.`, 
-                ephemeral: true 
-            });
-        }
+        // --- PREPARE LOGIC ---
+        let nicknameChanged = false;
+        let warningMessage = "";
 
-        // --- CHECK 4: Bot Hierarchy ---
-        if (member.roles.highest.position >= interaction.guild.members.me.roles.highest.position) {
-            return interaction.reply({ 
-                content: `I cannot change your nickname because your role is higher than mine.`, 
-                ephemeral: true 
-            });
-        }
+        // Check if we ALLOW changing the nickname
+        const isOwner = member.id === interaction.guild.ownerId;
+        const isHigherThanBot = member.roles.highest.position >= interaction.guild.members.me.roles.highest.position;
 
         try {
-            // 1. Change Nickname
-            await member.setNickname(newNickname);
-            
-            // 2. Add the Role
+            // 1. Give the Role (Always happens if checks pass)
             await member.roles.add(registeredRoleId);
 
+            // 2. Handle Nickname
+            if (isOwner) {
+                warningMessage = "\n*(I could not change your nickname because you are the Server Owner, but I gave you the role.)*";
+            } else if (isHigherThanBot) {
+                warningMessage = "\n*(I could not change your nickname because your role is higher than mine, but I gave you the role.)*";
+            } else {
+                // Safe to change nickname
+                await member.setNickname(newNickname);
+                nicknameChanged = true;
+            }
+
+            // 3. Send Success Reply
             return interaction.reply({ 
-                content: `Your registration is complete.`,
+                content: `Your registration is complete.${warningMessage}`,
                 ephemeral: true 
             });
 
         } catch (error) {
             console.error(error);
             return interaction.reply({ 
-                content: `**Error:** I could not finish the registration.\n\n**Please check:**\n1. Does my bot have the **Manage Nicknames** & **Manage Roles** permissions?\n2. Is my Bot Role **higher** than the role <@&${registeredRoleId}> in Server Settings?`, 
+                content: `**Error:** I could not finish the registration.\n\n**Please check:**\n1. Does my bot have the **Manage Nicknames** & **Manage Roles** permissions?\n2. Is my Bot Role **higher** than the role <@&${registeredRoleId}>?`, 
                 ephemeral: true 
             });
         }

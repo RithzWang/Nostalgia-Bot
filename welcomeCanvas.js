@@ -107,7 +107,7 @@ async function createWelcomeImage(member) {
     const displayName = cleanedDisplayName || member.user.username;
 
     // MAIN TEXT: Uses SF Pro (Bold)
-    ctx.font = 'bold 95px "SF Pro", "SFArabic", "Thonburi", "Math", "Apple Color Emoji", sans-serif';
+    ctx.font = 'bold 95px "SF Pro", "AmiriQuran", "Thonburi", "Math", "Apple Color Emoji", sans-serif';
     ctx.textAlign = 'left'; 
     
     ctx.fillText(displayName, textX, currentY);

@@ -47,7 +47,7 @@ module.exports = {
             });
         }
 
-        const newNickname = `${country} | ${name}`;
+        const newNickname = `${country}｜${name}`;
 
         if (newNickname.length > 32) {
             return interaction.reply({ 

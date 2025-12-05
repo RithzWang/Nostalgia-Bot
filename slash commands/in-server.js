@@ -1,4 +1,11 @@
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { 
+    SlashCommandBuilder, 
+    EmbedBuilder, 
+    ActionRowBuilder, 
+    StringSelectMenuBuilder, 
+    PermissionFlagsBits, 
+    ComponentType 
+} = require('discord.js');
 
 // ⚠️ REPLACE THIS WITH YOUR USER ID ⚠️
 const OWNER_ID = '837741275603009626'; 
@@ -7,91 +14,106 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('in-server')
         .setDescription('Manage the servers the bot is in.')
-        // Subcommand 1: List Servers
         .addSubcommand(subcommand =>
             subcommand
                 .setName('list')
-                .setDescription('Lists all servers the bot is currently in.')
+                .setDescription('Shows a dropdown menu to leave servers.')
         )
-        // Subcommand 2: Leave Server
-        .addSubcommand(subcommand =>
-            subcommand
-                .setName('leave')
-                .setDescription('⚠️ Owner Only: Force the bot to leave a server.')
-                .addStringOption(option =>
-                    option.setName('server_id')
-                        .setDescription('The ID of the server to leave')
-                        .setRequired(true)
-                )
-        )
-        // Only allow people with Manage Server to see this command by default
+        // Only allow people with Manage Server to see this command
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
     async execute(interaction) {
+        // 1. Security Check: Block anyone who isn't the owner
+        if (interaction.user.id !== OWNER_ID) {
+            return interaction.reply({ 
+                content: '⛔ **Access Denied:** Only the bot owner can use this command.', 
+                ephemeral: true 
+            });
+        }
+
         const subcommand = interaction.options.getSubcommand();
 
         if (subcommand === 'list') {
-            await handleList(interaction);
-        } else if (subcommand === 'leave') {
-            await handleLeave(interaction);
+            await handleListAndLeave(interaction);
         }
     },
 };
 
-// --- Helper Functions ---
+async function handleListAndLeave(interaction) {
+    await interaction.deferReply({ ephemeral: true });
 
-async function handleList(interaction) {
-    await interaction.deferReply({ ephemeral: true }); // Only you can see this list
-
+    // Get all servers
     const guilds = interaction.client.guilds.cache;
-    
-    // Sort by member count (largest first)
-    const sortedGuilds = guilds.sort((a, b) => b.memberCount - a.memberCount);
 
-    // Create a simple list (Discord has a 4096 char limit for descriptions, so we limit to top 20 for safety)
-    const guildList = sortedGuilds.first(20).map((g, index) => {
-        return `**${index + 1}. ${g.name}**\n🆔 \`${g.id}\` | 👤 ${g.memberCount} members`;
-    }).join('\n\n');
+    // Discord Select Menus can only hold 25 options max. 
+    // We sort by member count and take the top 25.
+    const topGuilds = guilds
+        .sort((a, b) => b.memberCount - a.memberCount)
+        .first(25);
+
+    // 1. Build the Dropdown Options
+    const options = topGuilds.map(guild => ({
+        label: guild.name,
+        description: `${guild.memberCount} members | ID: ${guild.id}`,
+        value: guild.id, // The value we send back is the Server ID
+    }));
+
+    // 2. Create the Select Menu
+    const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId('server_leave_menu')
+        .setPlaceholder('🔻 Select a server to leave...')
+        .addOptions(options);
+
+    // 3. Put it in a Row
+    const row = new ActionRowBuilder().addComponents(selectMenu);
 
     const embed = new EmbedBuilder()
-        .setTitle(`🛡️ Server List (${guilds.size} total)`)
-        .setDescription(guildList || 'No servers found.')
-        .setColor('#5865F2')
-        .setFooter({ text: guilds.size > 20 ? 'Showing top 20 servers by size.' : 'End of list.' });
+        .setTitle(`🛡️ Server Manager (${guilds.size} Servers)`)
+        .setDescription('Select a server from the dropdown below to force the bot to leave it.')
+        .setColor('#5865F2');
 
-    await interaction.editReply({ embeds: [embed] });
-}
+    // 4. Send the message with the dropdown
+    const message = await interaction.editReply({ 
+        embeds: [embed], 
+        components: [row] 
+    });
 
-async function handleLeave(interaction) {
-    // 1. Security Check: Only allow the Bot Owner
-    if (interaction.user.id !== OWNER_ID) {
-        return interaction.reply({ 
-            content: '⛔ **Access Denied:** Only the bot owner can use this command.', 
-            ephemeral: true 
-        });
-    }
+    // 5. Create a Collector to listen for the click
+    const collector = message.createMessageComponentCollector({ 
+        componentType: ComponentType.StringSelect, 
+        time: 60000 // Menu active for 60 seconds
+    });
 
-    const guildId = interaction.options.getString('server_id');
-    const guild = interaction.client.guilds.cache.get(guildId);
+    collector.on('collect', async i => {
+        // Confirm it's the same user (double check)
+        if (i.user.id !== interaction.user.id) return;
 
-    if (!guild) {
-        return interaction.reply({ 
-            content: `❌ I could not find a server with ID: \`${guildId}\`. (I might not be in it, or the ID is wrong).`, 
-            ephemeral: true 
-        });
-    }
+        const selectedGuildId = i.values[0]; // Get the ID from the selection
+        const guildToLeave = interaction.client.guilds.cache.get(selectedGuildId);
 
-    try {
-        await guild.leave();
-        return interaction.reply({ 
-            content: `✅ Successfully left **${guild.name}** (ID: \`${guildId}\`).`, 
-            ephemeral: true 
-        });
-    } catch (error) {
-        console.error(error);
-        return interaction.reply({ 
-            content: `❌ Failed to leave server: ${error.message}`, 
-            ephemeral: true 
-        });
-    }
+        if (!guildToLeave) {
+            return i.reply({ content: '❌ Error: I am no longer in that server.', ephemeral: true });
+        }
+
+        try {
+            // Acknowledge the interaction immediately so it doesn't fail
+            await i.update({ content: `⏳ Leaving **${guildToLeave.name}**...`, components: [] });
+            
+            // Perform the leave action
+            await guildToLeave.leave();
+
+            // Follow up with success
+            await i.followUp({ content: `✅ Successfully left **${guildToLeave.name}**.`, ephemeral: true });
+        } catch (error) {
+            console.error(error);
+            await i.followUp({ content: `❌ Failed to leave: ${error.message}`, ephemeral: true });
+        }
+    });
+
+    collector.on('end', collected => {
+        // If time runs out, remove the dropdown so they can't click it anymore
+        if (collected.size === 0) {
+            interaction.editReply({ content: '⚠️ Menu timed out.', components: [] }).catch(() => {});
+        }
+    });
 }

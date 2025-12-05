@@ -42,13 +42,13 @@ module.exports = {
             
             await interaction.reply({ 
                 content: `✅ Embed sent to ${channel} with color \`${color}\``, 
-                ephemeral: true 
+                flags: MessageFlags.Ephemeral 
             });
         } catch (error) {
             console.error(error);
             await interaction.reply({ 
                 content: `❌ I couldn't send the message. Check my permissions in that channel.`, 
-                ephemeral: true 
+                flags: MessageFlags.Ephemeral 
             });
         }
     },

@@ -5,6 +5,7 @@ const {
     ActionRowBuilder, 
     ButtonBuilder, 
     ButtonStyle,
+    MessageFlags,
     Colors 
 } = require('discord.js');
 
@@ -27,11 +28,11 @@ module.exports = {
         const logChannelId = '1187771223791378522'; 
 
         if (!targetMember.manageable) {
-            return interaction.reply({ content: `❌ I cannot modify ${targetUser}.`, ephemeral: true });
+            return interaction.reply({ content: `❌ I cannot modify ${targetUser}.`, flags: MessageFlags.Ephemeral });
         }
 
         if (!targetMember.roles.cache.has(registeredRoleId)) {
-            return interaction.reply({ content: `${targetUser} hasnt registered yet`, ephemeral: true });
+            return interaction.reply({ content: `${targetUser} hasnt registered yet`, flags: MessageFlags.Ephemeral });
         }
 
         try {
@@ -69,7 +70,7 @@ module.exports = {
 
         } catch (error) {
             console.error(error);
-            return interaction.reply({ content: `❌ Error executing revoke.`, ephemeral: true });
+            return interaction.reply({ content: `❌ Error executing revoke.`, flags: MessageFlags.Ephemeral });
         }
     },
 };

@@ -47,11 +47,11 @@ for (const file of prefixCommandFiles) {
 client.slashCommands = new Collection();
 const slashCommandsArray = [];
 
-// 1. Point to the new folder location inside 'src'
-const mainCommandsFolder = path.join(__dirname, 'src', 'slash commands');
+// 1. Update the path to include the extra 'commands' folder
+const mainCommandsFolder = path.join(__dirname, 'src', 'commands', 'slash commands');
 
 const loadCommands = (dir) => {
-    // Check if the directory exists before trying to read it
+    // Safety check: ensure the folder actually exists to avoid crashes
     if (!fs.existsSync(dir)) return;
 
     const files = fs.readdirSync(dir);
@@ -61,7 +61,7 @@ const loadCommands = (dir) => {
         const stat = fs.lstatSync(filePath);
 
         if (stat.isDirectory()) {
-            // If it finds 'owner', it dives inside
+            // Recursively load subfolders (like 'owner')
             loadCommands(filePath);
         } else if (file.endsWith('.js')) {
             delete require.cache[require.resolve(filePath)];
@@ -70,13 +70,16 @@ const loadCommands = (dir) => {
             if (command.data && command.data.name) {
                 client.slashCommands.set(command.data.name, command);
                 slashCommandsArray.push(command.data.toJSON());
-                console.log(`[+] Loaded command: ${command.data.name} (from ${file})`);
+                // Optional: Print loaded commands to console
+                console.log(`[+] Loaded: ${command.data.name}`);
             }
         }
     }
 };
 
+// Start the loading process
 loadCommands(mainCommandsFolder);
+
 
 
 // --- Global Variable for Role Logging ---

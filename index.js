@@ -228,4 +228,4 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
     } catch (error) {
         console.error("❌ Failed to start bot:", error);
     }
-})();
+});

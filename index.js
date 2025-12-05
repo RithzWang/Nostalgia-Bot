@@ -77,7 +77,7 @@ client.on('clientReady', async (readyClient) => {
             type: ActivityType.Custom,
             state: `⏳ ${thailandTime} (GMT+7)`
         }],
-        status: 'invisible' // This sets the yellow moon icon
+        status: 'none' // This sets the yellow moon icon
     });
 }, 5000);
 

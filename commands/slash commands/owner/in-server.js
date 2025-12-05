@@ -7,6 +7,7 @@ const {
     ButtonStyle, 
     ComponentType, 
     PermissionFlagsBits,
+    MessageFlags,
     ChannelType
 } = require('discord.js');
 
@@ -159,7 +160,7 @@ async function showInviteMenu(i, guilds) {
         const guild = menuInteraction.client.guilds.cache.get(guildId);
 
         if (!guild) {
-            return menuInteraction.reply({ content: '❌ Server not found.', ephemeral: true });
+            return menuInteraction.reply({ content: '❌ Server not found.', flags: MessageFlags.Ephemeral });
         }
 
         // Try to find a valid channel to create an invite
@@ -170,14 +171,14 @@ async function showInviteMenu(i, guilds) {
         );
 
         if (!channel) {
-            return menuInteraction.reply({ content: `❌ I couldn't find a channel in **${guild.name}** where I have permissions to create an invite.`, ephemeral: true });
+            return menuInteraction.reply({ content: `❌ I couldn't find a channel in **${guild.name}** where I have permissions to create an invite.`, flags: MessageFlags.Ephemeral });
         }
 
         try {
             const invite = await channel.createInvite({ maxAge: 0, maxUses: 1 }); // Permanent link, 1 use
-            await menuInteraction.reply({ content: `✅ **Invite for ${guild.name}:**\n${invite.url}`, ephemeral: true });
+            await menuInteraction.reply({ content: `✅ **Invite for ${guild.name}:**\n${invite.url}`, flags: MessageFlags.Ephemeral });
         } catch (err) {
-            await menuInteraction.reply({ content: `❌ Error creating invite: ${err.message}`, ephemeral: true });
+            await menuInteraction.reply({ content: `❌ Error creating invite: ${err.message}`, flags: MessageFlags.Ephemeral });
         }
     });
 }

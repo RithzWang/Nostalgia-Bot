@@ -64,22 +64,28 @@ const invitesCache = new Collection();
 
 // --------- Event Handlers ---------- //
 
+
 // UPDATED: Used 'clientReady' as the argument name
-client.on('clientReady', async (clientReady) => {
+client.on('ready', async (clientReady) => { // NOTE: Standard event name is 'ready'
     console.log(`Logged in as ${clientReady.user.tag}`);
 
-    //  AUTO-DEPLOY SLASH COMMANDS
+    // AUTO-DEPLOY SLASH COMMANDS (GLOBAL)
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
     try {
         console.log(`Started refreshing ${slashCommandsArray.length} application (/) commands.`);
+        
+        // 👇 CHANGED: Removed 'serverID' and changed to applicationCommands
         await rest.put(
-            Routes.applicationGuildCommands(clientReady.user.id, serversID),
+            Routes.applicationCommands(clientReady.user.id),
             { body: slashCommandsArray },
         );
-        console.log('✅ Successfully reloaded application (/) commands.');
+        
+        console.log('✅ Successfully reloaded application (/) commands globally.');
     } catch (error) {
         console.error('❌ Error deploying commands:', error);
     }
+});
+
 
     // ---- Initialize Invites Cache ---- //
     const guild = client.guilds.cache.get(serverID);

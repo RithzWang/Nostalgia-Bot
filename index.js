@@ -8,10 +8,8 @@ const keep_alive = require('./keep_alive.js');
 const { loadFonts } = require('./fontLoader');
 
 // 1. Remove 'roleupdateMessage' from here. We need it to be a variable we can change.
-const { prefix, serverID, serversID, welcomeLog, roleupdateLog, roleforLog, colourEmbed } = require("./config.json");
+const { prefix, serverID, serversID, welcomeLog, roleupdateLog, roleupdateMessage, roleforLog, colourEmbed } = require("./config.json");
 
-// Define it here instead so we can update it
-let activeRoleMessageId = null; 
 
 const client = new Client({
     intents: [
@@ -169,17 +167,32 @@ client.on('guildMemberAdd', async (member) => {
 client.on('guildMemberUpdate', (oldMember, newMember) => {
     if (newMember.user.bot) return;
 
-    // Ensure roles are actually cached
     const specifiedRolesSet = new Set(roleforLog);
-    
-    // Check differences
+
     const addedRoles = newMember.roles.cache.filter(role => specifiedRolesSet.has(role.id) && !oldMember.roles.cache.has(role.id));
     const removedRoles = oldMember.roles.cache.filter(role => specifiedRolesSet.has(role.id) && !newMember.roles.cache.has(role.id));
 
-    if (addedRoles.size === 0 && removedRoles.size === 0) return;
-
     const logChannel = newMember.guild.channels.cache.get(roleupdateLog);
     if (!logChannel) return;
+
+    const silentMessageOptions = {
+        allowedMentions: { parse: [] },
+    };
+
+    const editMessage = (messageContent) => {
+        if (!messageContent.trim()) return;
+        if (roleupdateMessage) {
+            logChannel.messages.fetch(roleupdateMessage)
+                
+                .then(msg => msg.edit({ content: messageContent, ...silentMessageOptions })) 
+                .catch(console.error);
+        } else {
+           
+            logChannel.send({ content: messageContent, ...silentMessageOptions })
+                .then(msg => { roleupdateMessage = msg.id; })
+                .catch(console.error);
+        }
+    };
 
     const formatRoles = (roles) => {
         const roleNames = roles.map(role => `**${role.name}**`);
@@ -199,22 +212,7 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
         roleUpdateMessage = `<a:success:1297818086463770695> ${newMember.user} has been removed ${formatRoles(removedRoles)} ${plural(removedRoles)}!`;
     }
 
-    const silentMessageOptions = { allowedMentions: { parse: [] } };
-
-    // Use the local variable 'activeRoleMessageId' we defined at the top
-    if (activeRoleMessageId) {
-        logChannel.messages.fetch(activeRoleMessageId)
-            .then(msg => msg.edit({ content: roleUpdateMessage, ...silentMessageOptions }))
-            .catch(() => {
-                // If message not found (maybe deleted), send a new one
-                logChannel.send({ content: roleUpdateMessage, ...silentMessageOptions })
-                    .then(msg => { activeRoleMessageId = msg.id; });
-            });
-    } else {
-        logChannel.send({ content: roleUpdateMessage, ...silentMessageOptions })
-            .then(msg => { activeRoleMessageId = msg.id; })
-            .catch(console.error);
-    }
+    editMessage(roleUpdateMessage);
 });
 
 (async () => {

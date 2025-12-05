@@ -5,6 +5,7 @@ const {
     ActionRowBuilder, 
     ButtonBuilder, 
     ButtonStyle,
+    MessageFlags,
     Colors 
 } = require('discord.js');
 
@@ -40,17 +41,17 @@ module.exports = {
         const logChannelId = '1187771223791378522'; // 📜 LOG CHANNEL ID
 
         if (!targetMember.roles.cache.has(registeredRoleId)) {
-            return interaction.reply({ content: `${targetUser} hasnt registered yet.`, ephemeral: true });
+            return interaction.reply({ content: `${targetUser} hasnt registered yet.`, flags: MessageFlags.Ephemeral });
         }
 
         if (!targetMember.manageable) {
-            return interaction.reply({ content: `❌ I cannot update ${targetUser}.`, ephemeral: true });
+            return interaction.reply({ content: `❌ I cannot update ${targetUser}.`, flags: MessageFlags.Ephemeral });
         }
 
         const newNickname = `${newCountry} | ${newName}`;
 
         if (newNickname.length > 32) {
-            return interaction.reply({ content: `❌ Nickname too long: **${newNickname}**`, ephemeral: true });
+            return interaction.reply({ content: `❌ Nickname too long: **${newNickname}**`, flags: MessageFlags.Ephemeral });
         }
 
         try {
@@ -87,7 +88,7 @@ module.exports = {
 
         } catch (error) {
             console.error(error);
-            return interaction.reply({ content: `❌ Error updating nickname.`, ephemeral: true });
+            return interaction.reply({ content: `❌ Error updating nickname.`, flags: MessageFlags.Ephemeral });
         }
     },
 };

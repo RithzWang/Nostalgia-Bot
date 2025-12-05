@@ -12,7 +12,7 @@ module.exports = (client) => {
     // 1. SLASH COMMANDS LOADER (Recursive)
     // Path: handlers/ -> .. -> commands -> slash commands
     // ====================================================
-    const slashCommandsFolder = path.join(__dirname, 'commands', 'slash commands');
+    const slashCommandsFolder = path.join(__dirname, '..', 'commands', 'slash commands');
 
     const loadSlashCommands = (dir) => {
         if (!fs.existsSync(dir)) return;
@@ -46,7 +46,7 @@ module.exports = (client) => {
     // 2. PREFIX COMMANDS LOADER (Recursive)
     // Path: handlers/ -> .. -> commands -> prefix commands
     // ====================================================
-    const prefixCommandsFolder = path.join(__dirname, 'commands', 'prefix commands');
+    const prefixCommandsFolder = path.join(__dirname, '..', 'commands', 'prefix commands');
 
     const loadPrefixCommands = (dir) => {
         if (!fs.existsSync(dir)) return;

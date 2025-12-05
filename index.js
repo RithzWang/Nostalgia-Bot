@@ -22,7 +22,7 @@ const client = new Client({
         GatewayIntentBits.GuildPresences
     ],
     partials: [ Partials.Channel, Partials.Message, Partials.Reaction, Partials.GuildMember, Partials.User ],
-    ws: { properties: { browser: 'Discord iOS' } },
+    ws: { properties: { browser: 'Discord Android' } },
 });
 
 // --- COMMAND LOADING ---

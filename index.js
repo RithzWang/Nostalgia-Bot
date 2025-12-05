@@ -34,7 +34,7 @@ client.slashCommands = new Collection();
 
 // --- LOAD HANDLERS ---
 // This runs the function we exported in commandHandler.js
-require('./handlers/commandHandler.js')(client);
+require('./handlers/commandHandler')(client);
 
 
 

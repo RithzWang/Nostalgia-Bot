@@ -3,45 +3,107 @@ const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, MessageFlags } = 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('say')
-        .setDescription('Make the bot say a message')
-        // 1. The Content (Required)
-        .addStringOption(option =>
-            option.setName('content')
-                .setDescription('What should the bot say?')
-                .setRequired(true)
+        .setDescription('Manage bot messages')
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
+        
+        // --- SUBCOMMAND 1: SEND ---
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('send')
+                .setDescription('Make the bot say something new')
+                .addStringOption(option =>
+                    option.setName('content')
+                        .setDescription('What should the bot say?')
+                        .setRequired(true)
+                )
+                .addChannelOption(option =>
+                    option.setName('channel')
+                        .setDescription('Where to send it? (Empty = Here)')
+                        .addChannelTypes(ChannelType.GuildText)
+                )
         )
-        // 2. The Channel (Optional)
-        .addChannelOption(option =>
-            option.setName('channel')
-                .setDescription('Where should the bot send this? (Leave empty for here)')
-                .addChannelTypes(ChannelType.GuildText) // Only allow text channels
-                .setRequired(false)
-        )
-        // Security: Only allow people with "Manage Messages" permission to use this
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+        // --- SUBCOMMAND 2: EDIT ---
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('edit')
+                .setDescription('Edit a message the bot already sent')
+                .addStringOption(option =>
+                    option.setName('message_id')
+                        .setDescription(' The ID of the message to edit')
+                        .setRequired(true)
+                )
+                .addStringOption(option =>
+                    option.setName('content')
+                        .setDescription('The new content')
+                        .setRequired(true)
+                )
+                .addChannelOption(option =>
+                    option.setName('channel')
+                        .setDescription('Which channel is the message in? (Empty = Here)')
+                        .addChannelTypes(ChannelType.GuildText)
+                )
+        ),
 
     async execute(interaction) {
-        // Get the options
+        const subcommand = interaction.options.getSubcommand();
         const content = interaction.options.getString('content');
-        // If they didn't pick a channel, use the current one (interaction.channel)
+        // Default to current channel if no channel is selected
         const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
 
-        try {
-            // Send the message to the target channel
-            await targetChannel.send(content);
+        // ===========================================
+        // LOGIC FOR /say send
+        // ===========================================
+        if (subcommand === 'send') {
+            try {
+                await targetChannel.send(content);
+                
+                await interaction.reply({ 
+                    content: `✅ Message sent to ${targetChannel}`, 
+                    flags: MessageFlags.Ephemeral 
+                });
+            } catch (error) {
+                await interaction.reply({ 
+                    content: `❌ I cannot send messages in ${targetChannel}. Check my permissions!`, 
+                    flags: MessageFlags.Ephemeral 
+                });
+            }
+        }
 
-            // Reply to the user (Hidden) so they know it worked
-            await interaction.reply({ 
-                content: `✅ Sent message to ${targetChannel}`, 
-                flags: MessageFlags.Ephemeral // Uses the new flags method!
-            });
+        // ===========================================
+        // LOGIC FOR /say edit
+        // ===========================================
+        else if (subcommand === 'edit') {
+            const messageId = interaction.options.getString('message_id');
 
-        } catch (error) {
-            console.error(error);
-            await interaction.reply({ 
-                content: `❌ I couldn't send the message. Do I have permission to talk in ${targetChannel}?`, 
-                flags: MessageFlags.Ephemeral 
-            });
+            try {
+                // 1. Fetch the message from the channel
+                const messageToEdit = await targetChannel.messages.fetch(messageId);
+
+                // 2. Check if the bot is the author
+                if (messageToEdit.author.id !== interaction.client.user.id) {
+                    return interaction.reply({ 
+                        content: `❌ I can only edit my own messages! That message belongs to ${messageToEdit.author}.`, 
+                        flags: MessageFlags.Ephemeral 
+                    });
+                }
+
+                // 3. Edit the message
+                await messageToEdit.edit(content);
+
+                await interaction.reply({ 
+                    content: `✅ Successfully edited the message in ${targetChannel}.`, 
+                    flags: MessageFlags.Ephemeral 
+                });
+
+            } catch (error) {
+                console.error(error);
+                // Usually happens if the ID is wrong or message was deleted
+                await interaction.reply({ 
+                    content: `❌ I couldn't find that message in ${targetChannel}. Please check the Message ID.`, 
+                    flags: MessageFlags.Ephemeral 
+                });
+            }
         }
     },
 };

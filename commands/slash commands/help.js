@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -39,7 +39,7 @@ module.exports = {
         const command = commands.get(commandName.toLowerCase());
 
         if (!command) {
-            return interaction.reply({ content: `❌ I couldn't find a command named \`/${commandName}\`.`, ephemeral: true });
+            return interaction.reply({ content: `❌ I couldn't find a command named \`/${commandName}\`.`, flags: MessageFlags.Ephemeral });
         }
 
         const embed = new EmbedBuilder()

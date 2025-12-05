@@ -31,16 +31,48 @@ const client = new Client({
 
 // 1. Prefix Commands
 client.prefixCommands = new Collection();
-const prefixCommandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
-for (const file of prefixCommandFiles) {
-    const command = require(`./commands/${file}`);
-    client.prefixCommands.set(command.name, command);
-    if (command.aliases) {
-        for (const alias of command.aliases) {
-            client.prefixCommands.set(alias, command);
+
+// 1. Point specifically to "commands/prefix commands"
+const prefixCommandsFolder = path.join(__dirname, 'commands', 'prefix commands');
+
+const loadPrefixCommands = (dir) => {
+    // Safety check: ensure the folder exists
+    if (!fs.existsSync(dir)) return;
+
+    const files = fs.readdirSync(dir);
+
+    for (const file of files) {
+        const filePath = path.join(dir, file);
+        const stat = fs.lstatSync(filePath);
+
+        if (stat.isDirectory()) {
+            // 2. Recursion: Look inside subfolders (e.g., 'admin', 'moderation')
+            loadPrefixCommands(filePath);
+        } else if (file.endsWith('.js')) {
+            // 3. Load the JS file
+            delete require.cache[require.resolve(filePath)];
+            const command = require(filePath);
+
+            // 4. Register command
+            if (command.name) {
+                client.prefixCommands.set(command.name, command);
+
+                // 5. Register Aliases
+                if (command.aliases && Array.isArray(command.aliases)) {
+                    for (const alias of command.aliases) {
+                        client.prefixCommands.set(alias, command);
+                    }
+                }
+                
+                // console.log(`[Prefix] Loaded: ${command.name}`);
+            }
         }
     }
-}
+};
+
+// Start the loader
+loadPrefixCommands(prefixCommandsFolder);
+
 
 
 // 2. Slash Commands

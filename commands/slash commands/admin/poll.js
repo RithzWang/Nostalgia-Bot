@@ -6,7 +6,7 @@ module.exports = {
         .setDescription('Create a fully custom poll')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator) // Admin Only
 
-        // --- 1. REQUIRED OPTIONS (MUST COME FIRST) ---
+        // --- 1. REQUIRED OPTIONS (Must be first) ---
         .addStringOption(option =>
             option.setName('question')
                 .setDescription('The question to ask')
@@ -23,7 +23,7 @@ module.exports = {
                 .setRequired(true)
         )
 
-        // --- 2. OPTIONAL SETTINGS (MUST COME AFTER) ---
+        // --- 2. OPTIONAL SETTINGS ---
         .addChannelOption(option =>
             option.setName('channel')
                 .setDescription('Where to post this poll? (Empty = Here)')
@@ -47,28 +47,22 @@ module.exports = {
                 .setDescription('Allow multiple votes? (Default: False)')
         )
 
-        // --- 3. OPTIONAL EMOJIS & EXTRA ANSWERS ---
-        .addStringOption(option => option.setName('emoji1').setDescription('Emoji for answer 1 (e.g. 🍎)'))
-        .addStringOption(option => option.setName('emoji2').setDescription('Emoji for answer 2 (e.g. 🍌)'))
-        
-        // Extra Answer 3
+        // --- 3. EXTRA ANSWERS & EMOJIS ---
+        .addStringOption(option => option.setName('emoji1').setDescription('Emoji for answer 1'))
+        .addStringOption(option => option.setName('emoji2').setDescription('Emoji for answer 2'))
         .addStringOption(option => option.setName('answer3').setDescription('Third answer text'))
         .addStringOption(option => option.setName('emoji3').setDescription('Emoji for answer 3'))
-        
-        // Extra Answer 4
         .addStringOption(option => option.setName('answer4').setDescription('Fourth answer text'))
         .addStringOption(option => option.setName('emoji4').setDescription('Emoji for answer 4')),
 
     async execute(interaction) {
         // 1. Get Options
         const questionText = interaction.options.getString('question');
-        const duration = interaction.options.getInteger('duration') || 24; // Default to 24 if they don't pick one
+        const duration = interaction.options.getInteger('duration') || 24;
         const allowMultiselect = interaction.options.getBoolean('multiselect') || false;
-        
-        // Get the target channel (Default to current channel if null)
         const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
 
-        // 2. Build Answers Array
+        // 2. Build Answers
         const answers = [];
         for (let i = 1; i <= 4; i++) {
             const text = interaction.options.getString(`answer${i}`);
@@ -81,7 +75,6 @@ module.exports = {
             }
         }
 
-        // 3. Create the Poll Data Object
         const pollData = {
             question: { text: questionText },
             answers: answers,
@@ -90,22 +83,19 @@ module.exports = {
         };
 
         try {
-            // 4. Send Logic
-            if (targetChannel.id === interaction.channel.id) {
-                await interaction.reply({ poll: pollData });
-            } else {
-                await targetChannel.send({ poll: pollData });
-                
-                await interaction.reply({ 
-                    content: `✅ Poll successfully sent to ${targetChannel}!`, 
-                    flags: MessageFlags.Ephemeral 
-                });
-            }
+            // STEP A: Send the poll independently (Separated)
+            await targetChannel.send({ poll: pollData });
+
+            // STEP B: Reply to you saying it worked (Ephemeral / Hidden)
+            await interaction.reply({ 
+                content: '✅ Poll has been created successfully!', 
+                flags: MessageFlags.Ephemeral 
+            });
 
         } catch (error) {
             console.error(error);
             await interaction.reply({ 
-                content: '❌ Failed to send poll. Check my permissions in that channel or check your emojis!', 
+                content: '❌ Failed to send poll. Check my permissions!', 
                 flags: MessageFlags.Ephemeral 
             });
         }

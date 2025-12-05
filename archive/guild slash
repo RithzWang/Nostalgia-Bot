@@ -1,0 +1,17 @@
+
+// UPDATED: Used 'clientReady' as the argument name
+client.on('clientReady', async (clientReady) => {
+    console.log(`Logged in as ${clientReady.user.tag}`);
+
+    //  AUTO-DEPLOY SLASH COMMANDS
+    const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
+    try {
+        console.log(`Started refreshing ${slashCommandsArray.length} application (/) commands.`);
+        await rest.put(
+            Routes.applicationGuildCommands(clientReady.user.id, serverID),
+            { body: slashCommandsArray },
+        );
+        console.log('✅ Successfully reloaded application (/) commands.');
+    } catch (error) {
+        console.error('❌ Error deploying commands:', error);
+    }

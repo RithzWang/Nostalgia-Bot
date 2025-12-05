@@ -71,7 +71,7 @@ client.on('clientReady', async (readyClient) => {
             type: ActivityType.Custom,
             state: `${thailandTime} (GMT+7)`
         }],
-        status: 'online' // This sets the yellow moon icon
+        status: 'dnd' // This sets the yellow moon icon
     });
 }, 60000);
 
@@ -228,4 +228,4 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
     } catch (error) {
         console.error("❌ Failed to start bot:", error);
     }
-});
+})();

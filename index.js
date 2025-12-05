@@ -73,7 +73,7 @@ client.on('clientReady', async (clientReady) => {
     try {
         console.log(`Started refreshing ${slashCommandsArray.length} application (/) commands.`);
         await rest.put(
-            Routes.applicationGuildCommands(clientReady.user.id, serverID),
+            Routes.applicationGuildCommands(clientReady.user.id, serversID),
             { body: slashCommandsArray },
         );
         console.log('✅ Successfully reloaded application (/) commands.');

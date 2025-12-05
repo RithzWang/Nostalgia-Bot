@@ -1,18 +1,18 @@
 const fs = require('fs');
 const path = require('path');
 const { Client, GatewayIntentBits, Partials, Collection, EmbedBuilder, ActivityType, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, REST, Routes } = require('discord.js');
-const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
+// Check if @napi-rs/canvas is actually installed, otherwise use standard 'canvas'
+const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas'); 
 const moment = require('moment-timezone');
 const keep_alive = require('./keep_alive.js');
-
-// --- Import the Font Loader ---
 const { loadFonts } = require('./fontLoader');
 
-// ---- Configuration Imports ---- //
-const { prefix, serverID, serversID, welcomeLog, roleupdateLog, roleforLog, colourEmbed, roleupdateMessage } = require("./config.json");
+// 1. Remove 'roleupdateMessage' from here. We need it to be a variable we can change.
+const { prefix, serverID, serversID, welcomeLog, roleupdateLog, roleforLog, colourEmbed } = require("./config.json");
 
+// Define it here instead so we can update it
+let activeRoleMessageId = null; 
 
-// --- Client Initialization --- //
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -27,59 +27,47 @@ const client = new Client({
     ws: { properties: { $browser: 'Discord iOS' } },
 });
 
-// ------ Command Loading ------ //
-
+// --- COMMAND LOADING ---
 client.prefixCommands = new Collection(); 
 client.slashCommands = new Collection();
+// Initialize this empty array just in case handler fails, though handler should fill it
+client.slashDatas = []; 
 
-// --- LOAD HANDLERS ---
-// This runs the function we exported in commandHandler.js
 require('./handlers/commandHandler')(client);
 
-
-
-// --- Global Variable for Role Logging ---
-let activeRoleMessageId = null;
-
-// --- Invite Cache ---
 const invitesCache = new Collection();
 
-// --------- Event Handlers ---------- //
-
-
-
-// UPDATED: Used 'clientReady' as the argument name
-client.on('clientReady', async (clientReady) => {
-    console.log(`Logged in as ${clientReady.user.tag}`);
+// ==========================================
+// FIX 1 & 2: Event name is 'ready', and use client.slashDatas
+// ==========================================
+client.on('clientReady', async (readyClient) => {
+    console.log(`Logged in as ${readyClient.user.tag}`);
 
     //  AUTO-DEPLOY SLASH COMMANDS
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
     try {
-        console.log(`Started refreshing ${slashCommandsArray.length} application (/) commands.`);
+        // USE client.slashDatas HERE
+        console.log(`Started refreshing ${client.slashDatas.length} application (/) commands.`);
         await rest.put(
-            Routes.applicationGuildCommands(clientReady.user.id, serverID),
-            { body: slashCommandsArray },
+            Routes.applicationGuildCommands(readyClient.user.id, serverID),
+            { body: client.slashDatas }, 
         );
         console.log('✅ Successfully reloaded application (/) commands.');
     } catch (error) {
         console.error('❌ Error deploying commands:', error);
     }
 
-
-    // ---- Initialize Invites Cache ---- //
     const guild = client.guilds.cache.get(serverID);
     if(guild) {
         const currentInvites = await guild.invites.fetch().catch(() => new Collection());
         currentInvites.each(invite => invitesCache.set(invite.code, invite.uses));
     }
 
-    // --------- Status Loop ---------- //
     setInterval(() => {
         const currentTime = moment().tz('Asia/Bangkok');
         const thailandTime = currentTime.format(`HH:mm`);
         
-        // Now this works because we defined 'clientReady' above
-        clientReady.user.setActivity('customstatus', {
+        readyClient.user.setActivity('customstatus', {
             type: ActivityType.Custom,
             state: `${thailandTime} (GMT+7)`
         });
@@ -91,6 +79,10 @@ client.on('messageCreate', message => {
     const args = message.content.slice(prefix.length).split(/ +/);
     const commandName = args.shift().toLowerCase();
     const command = client.prefixCommands.get(commandName);
+    
+    // Add alias support here if you want:
+    // const command = client.prefixCommands.get(commandName) || client.prefixCommands.find(cmd => cmd.aliases && cmd.aliases.includes(commandName));
+
     if (!command) return;
     try { command.execute(message, args); } catch (error) { console.error(error); }
 });
@@ -102,116 +94,92 @@ client.on('interactionCreate', async interaction => {
     try { await command.execute(interaction); } catch (error) { console.error(error); }
 });
 
-// ------- welcome message ------- //
+// ==========================================
+// MERGED: Welcome + Nickname (One event listener is cleaner)
+// ==========================================
 const { createWelcomeImage } = require('./welcomeCanvas.js');
 
 client.on('guildMemberAdd', async (member) => {
     if (member.user.bot) return;
-    if (member.guild.id === serverID) {
-        try {
-            const newInvites = await member.guild.invites.fetch().catch(() => new Collection());
-            let usedInvite = newInvites.find(inv => inv.uses > (invitesCache.get(inv.code) || 0));
-            
-            if (newInvites.size > 0) {
-                 newInvites.each(inv => invitesCache.set(inv.code, inv.uses));
-            }
-
-            const inviterName = usedInvite && usedInvite.inviter ? usedInvite.inviter.username : 'Unknown';
-            const inviterId = usedInvite && usedInvite.inviter ? usedInvite.inviter.id : 'Unknown';
-            const inviteCode = usedInvite ? usedInvite.code : 'Unknown';
-
-            const welcomeImageBuffer = await createWelcomeImage(member);
-            const attachment = new AttachmentBuilder(welcomeImageBuffer, { name: 'welcome-image.png' });
-            
-            const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
-            const memberCount = member.guild.memberCount;
-            
-            const embed = new EmbedBuilder()
-                .setDescription(`### Welcome to A2-Q Server\n-# <@${member.user.id}> \`(${member.user.username})\`\n-# <:calendar:1439970556534329475> Account Created: ${accountCreated}\n-# <:users:1439970561953501214> Member Count: \`${memberCount}\`\n-# <:chain:1439970559105564672> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`)
-                .setThumbnail(member.user.displayAvatarURL())
-                .setImage('attachment://welcome-image.png')
-                .setColor(colourEmbed);
-
-            const unclickableButton = new ButtonBuilder()
-                .setLabel(`${member.user.id}`)
-                .setStyle(ButtonStyle.Secondary)
-                .setEmoji('1441133157855395911')
-                .setCustomId('hello_button_disabled')
-                .setDisabled(true);
-
-            const row = new ActionRowBuilder().addComponents(unclickableButton);
-
-            const channel = client.channels.cache.get(welcomeLog);
-            if (channel) {
-                channel.send({ embeds: [embed], files: [attachment], components: [row] });
-            }
-        } catch (err) {
-            console.error("Error in Welcomer:", err);
-        }
-    }
-});
-
-// ------ nickname changing -------- //
-
-client.on('guildMemberAdd', (member) => {
-    
     if (member.guild.id !== serverID) return;
 
+    // 1. Handle Nickname
     setTimeout(async () => {
-
+        // Double check member is still there
         if (!member.guild.members.cache.has(member.id)) return;
 
-        const prefix = "🌟・";
-        let newNickname = prefix + member.displayName;
-
-        if (newNickname.length > 32) {
-            newNickname = newNickname.substring(0, 32);
-        }
+        const prefixName = "🌟・";
+        let newNickname = prefixName + member.displayName;
+        if (newNickname.length > 32) newNickname = newNickname.substring(0, 32);
 
         try {
             await member.setNickname(newNickname);
-            console.log(`Changed nickname for ${member.user.tag} in target server.`);
+            console.log(`Changed nickname for ${member.user.tag}`);
         } catch (error) {
             console.error(`Could not rename ${member.user.tag}:`, error.message);
         }
+    }, 5000);
 
-    }, 5000); 
+    // 2. Handle Welcome Image & Invites
+    try {
+        const newInvites = await member.guild.invites.fetch().catch(() => new Collection());
+        let usedInvite = newInvites.find(inv => inv.uses > (invitesCache.get(inv.code) || 0));
+        
+        if (newInvites.size > 0) {
+             newInvites.each(inv => invitesCache.set(inv.code, inv.uses));
+        }
+
+        const inviterName = usedInvite && usedInvite.inviter ? usedInvite.inviter.username : 'Unknown';
+        const inviterId = usedInvite && usedInvite.inviter ? usedInvite.inviter.id : 'Unknown';
+        const inviteCode = usedInvite ? usedInvite.code : 'Unknown';
+
+        const welcomeImageBuffer = await createWelcomeImage(member);
+        const attachment = new AttachmentBuilder(welcomeImageBuffer, { name: 'welcome-image.png' });
+        
+        const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
+        const memberCount = member.guild.memberCount;
+        
+        const embed = new EmbedBuilder()
+            .setDescription(`### Welcome to A2-Q Server\n-# <@${member.user.id}> \`(${member.user.username})\`\n-# <:calendar:1439970556534329475> Account Created: ${accountCreated}\n-# <:users:1439970561953501214> Member Count: \`${memberCount}\`\n-# <:chain:1439970559105564672> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`)
+            .setThumbnail(member.user.displayAvatarURL())
+            .setImage('attachment://welcome-image.png')
+            .setColor(colourEmbed);
+
+        const unclickableButton = new ButtonBuilder()
+            .setLabel(`${member.user.id}`)
+            .setStyle(ButtonStyle.Secondary)
+            .setEmoji('1441133157855395911')
+            .setCustomId('hello_button_disabled')
+            .setDisabled(true);
+
+        const row = new ActionRowBuilder().addComponents(unclickableButton);
+
+        const channel = client.channels.cache.get(welcomeLog);
+        if (channel) {
+            channel.send({ embeds: [embed], files: [attachment], components: [row] });
+        }
+    } catch (err) {
+        console.error("Error in Welcomer:", err);
+    }
 });
 
-
-
-
-// -------- role update log -------- //
-
+// ==========================================
+// FIX 3: Role Logging logic
+// ==========================================
 client.on('guildMemberUpdate', (oldMember, newMember) => {
     if (newMember.user.bot) return;
 
+    // Ensure roles are actually cached
     const specifiedRolesSet = new Set(roleforLog);
-
+    
+    // Check differences
     const addedRoles = newMember.roles.cache.filter(role => specifiedRolesSet.has(role.id) && !oldMember.roles.cache.has(role.id));
     const removedRoles = oldMember.roles.cache.filter(role => specifiedRolesSet.has(role.id) && !newMember.roles.cache.has(role.id));
 
+    if (addedRoles.size === 0 && removedRoles.size === 0) return;
+
     const logChannel = newMember.guild.channels.cache.get(roleupdateLog);
     if (!logChannel) return;
-
-    const silentMessageOptions = {
-        allowedMentions: { parse: [] },
-    };
-
-    const editMessage = (messageContent) => {
-        if (!messageContent.trim()) return;
-        if (roleupdateMessage) {
-            logChannel.messages.fetch(roleupdateMessage)
-                
-                .then(msg => msg.edit({ content: messageContent, ...silentMessageOptions })) 
-                .catch(console.error);
-        } else {
-           
-            logChannel.send({ content: messageContent, ...silentMessageOptions })
-                .then(msg => { roleupdateMessage = msg.id; })
-                .catch(console.error);
-        }
-    };
 
     const formatRoles = (roles) => {
         const roleNames = roles.map(role => `**${role.name}**`);
@@ -231,11 +199,24 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
         roleUpdateMessage = `<a:success:1297818086463770695> ${newMember.user} has been removed ${formatRoles(removedRoles)} ${plural(removedRoles)}!`;
     }
 
-    editMessage(roleUpdateMessage);
+    const silentMessageOptions = { allowedMentions: { parse: [] } };
+
+    // Use the local variable 'activeRoleMessageId' we defined at the top
+    if (activeRoleMessageId) {
+        logChannel.messages.fetch(activeRoleMessageId)
+            .then(msg => msg.edit({ content: roleUpdateMessage, ...silentMessageOptions }))
+            .catch(() => {
+                // If message not found (maybe deleted), send a new one
+                logChannel.send({ content: roleUpdateMessage, ...silentMessageOptions })
+                    .then(msg => { activeRoleMessageId = msg.id; });
+            });
+    } else {
+        logChannel.send({ content: roleUpdateMessage, ...silentMessageOptions })
+            .then(msg => { activeRoleMessageId = msg.id; })
+            .catch(console.error);
+    }
 });
 
-
-// --- ASYNC STARTUP --- //
 (async () => {
     try {
         console.log("⏳ Starting font check...");

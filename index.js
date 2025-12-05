@@ -71,9 +71,11 @@ client.on('clientReady', async (readyClient) => {
             type: ActivityType.Custom,
             state: `${thailandTime} (GMT+7)`
         }],
-        status: 'dnd' // This sets the yellow moon icon
+        status: 'online' // This sets the yellow moon icon
     });
 }, 60000);
+
+});
 
 
 client.on('messageCreate', message => {

@@ -17,13 +17,12 @@ module.exports = {
         .addSubcommand(subcommand =>
             subcommand
                 .setName('list')
-                .setDescription('Shows a dropdown menu to leave servers.')
+                .setDescription('Select multiple servers to leave at once.')
         )
-        // Only allow people with Manage Server to see this command
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
     async execute(interaction) {
-        // 1. Security Check: Block anyone who isn't the owner
+        // 1. Security Check
         if (interaction.user.id !== OWNER_ID) {
             return interaction.reply({ 
                 content: '⛔ **Access Denied:** Only the bot owner can use this command.', 
@@ -34,84 +33,95 @@ module.exports = {
         const subcommand = interaction.options.getSubcommand();
 
         if (subcommand === 'list') {
-            await handleListAndLeave(interaction);
+            await handleMultiLeave(interaction);
         }
     },
 };
 
-async function handleListAndLeave(interaction) {
+async function handleMultiLeave(interaction) {
     await interaction.deferReply({ ephemeral: true });
 
-    // Get all servers
     const guilds = interaction.client.guilds.cache;
 
-    // Discord Select Menus can only hold 25 options max. 
-    // We sort by member count and take the top 25.
+    // Discord Dropdowns limit: Max 25 options.
+    // We get the top 25 servers (sorted by size)
     const topGuilds = guilds
         .sort((a, b) => b.memberCount - a.memberCount)
         .first(25);
 
-    // 1. Build the Dropdown Options
     const options = topGuilds.map(guild => ({
         label: guild.name,
         description: `${guild.memberCount} members | ID: ${guild.id}`,
-        value: guild.id, // The value we send back is the Server ID
+        value: guild.id,
     }));
 
-    // 2. Create the Select Menu
+    // 2. Create Multi-Select Menu
     const selectMenu = new StringSelectMenuBuilder()
         .setCustomId('server_leave_menu')
-        .setPlaceholder('🔻 Select a server to leave...')
+        .setPlaceholder('🔻 Select servers to leave (Multi-select enabled)')
+        .setMinValues(1) // Must pick at least 1
+        .setMaxValues(options.length) // Can pick all of them
         .addOptions(options);
 
-    // 3. Put it in a Row
     const row = new ActionRowBuilder().addComponents(selectMenu);
 
     const embed = new EmbedBuilder()
         .setTitle(`🛡️ Server Manager (${guilds.size} Servers)`)
-        .setDescription('Select a server from the dropdown below to force the bot to leave it.')
+        .setDescription('Select the servers you want the bot to leave.\n**You can select multiple servers at once.**')
         .setColor('#5865F2');
 
-    // 4. Send the message with the dropdown
     const message = await interaction.editReply({ 
         embeds: [embed], 
         components: [row] 
     });
 
-    // 5. Create a Collector to listen for the click
+    // 3. Collector
     const collector = message.createMessageComponentCollector({ 
         componentType: ComponentType.StringSelect, 
-        time: 60000 // Menu active for 60 seconds
+        time: 60000 
     });
 
     collector.on('collect', async i => {
-        // Confirm it's the same user (double check)
         if (i.user.id !== interaction.user.id) return;
 
-        const selectedGuildId = i.values[0]; // Get the ID from the selection
-        const guildToLeave = interaction.client.guilds.cache.get(selectedGuildId);
+        // Get ALL selected IDs (It's an array now)
+        const selectedIds = i.values;
+        
+        // Update message immediately to prevent re-clicking
+        await i.update({ 
+            content: `⏳ Processing **${selectedIds.length}** servers...`, 
+            embeds: [], 
+            components: [] 
+        });
 
-        if (!guildToLeave) {
-            return i.reply({ content: '❌ Error: I am no longer in that server.', ephemeral: true });
+        const leftServers = [];
+        const failedServers = [];
+
+        // 4. Loop through selections and leave
+        for (const id of selectedIds) {
+            const guild = interaction.client.guilds.cache.get(id);
+            if (!guild) continue;
+
+            try {
+                await guild.leave();
+                leftServers.push(guild.name);
+            } catch (error) {
+                console.error(error);
+                failedServers.push(`${guild.name} (Error)`);
+            }
         }
 
-        try {
-            // Acknowledge the interaction immediately so it doesn't fail
-            await i.update({ content: `⏳ Leaving **${guildToLeave.name}**...`, components: [] });
-            
-            // Perform the leave action
-            await guildToLeave.leave();
-
-            // Follow up with success
-            await i.followUp({ content: `✅ Successfully left **${guildToLeave.name}**.`, ephemeral: true });
-        } catch (error) {
-            console.error(error);
-            await i.followUp({ content: `❌ Failed to leave: ${error.message}`, ephemeral: true });
+        // 5. Final Report
+        let resultMessage = `✅ **Operation Complete**\n\n**Successfully Left (${leftServers.length}):**\n${leftServers.join(', ') || 'None'}`;
+        
+        if (failedServers.length > 0) {
+            resultMessage += `\n\n❌ **Failed (${failedServers.length}):**\n${failedServers.join(', ')}`;
         }
+
+        await i.editReply({ content: resultMessage });
     });
 
     collector.on('end', collected => {
-        // If time runs out, remove the dropdown so they can't click it anymore
         if (collected.size === 0) {
             interaction.editReply({ content: '⚠️ Menu timed out.', components: [] }).catch(() => {});
         }

@@ -48,7 +48,7 @@ client.slashCommands = new Collection();
 const slashCommandsArray = [];
 
 // 1. Update the path to include the extra 'commands' folder
-const mainCommandsFolder = path.join(__dirname, 'src', 'commands', 'slash commands');
+const mainCommandsFolder = path.join(__dirname, 'commands', 'slash commands');
 
 const loadCommands = (dir) => {
     // Safety check: ensure the folder actually exists to avoid crashes

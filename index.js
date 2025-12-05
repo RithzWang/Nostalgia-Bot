@@ -62,15 +62,19 @@ client.on('clientReady', async (readyClient) => {
     }
 
     setInterval(() => {
-        const currentTime = moment().tz('Asia/Bangkok');
-        const thailandTime = currentTime.format(`HH:mm`);
-        
-       readyClient.user.setStatus('idle'); readyClient.user.setActivity('customstatus', {
+    const currentTime = moment().tz('Asia/Bangkok');
+    const thailandTime = currentTime.format('HH:mm');
+
+    readyClient.user.setPresence({
+        activities: [{
+            name: 'customstatus',
             type: ActivityType.Custom,
             state: `${thailandTime} (GMT+7)`
-        });
-    }, 60000);
-});
+        }],
+        status: 'idle' // This sets the yellow moon icon
+    });
+}, 60000);
+
 
 client.on('messageCreate', message => {
     if (!message.content.startsWith(prefix) || message.author.bot) return;

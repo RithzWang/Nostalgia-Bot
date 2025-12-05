@@ -4,6 +4,7 @@ const {
     ActionRowBuilder, 
     ButtonBuilder, 
     ButtonStyle,
+    MessageFlags,
     Colors 
 } = require('discord.js');
 
@@ -31,7 +32,7 @@ module.exports = {
         if (interaction.channelId !== allowedChannelId) {
             return interaction.reply({ 
                 content: `This command can only be used in <#${allowedChannelId}>`, 
-                ephemeral: true 
+                flags: MessageFlags.Ephemeral 
             });
         }
 
@@ -43,7 +44,7 @@ module.exports = {
         if (member.roles.cache.has(registeredRoleId)) {
             return interaction.reply({ 
                 content: `**You are already registered!**`, 
-                ephemeral: true 
+                flags: MessageFlags.Ephemeral 
             });
         }
 
@@ -52,7 +53,7 @@ module.exports = {
         if (newNickname.length > 32) {
             return interaction.reply({ 
                 content: `Nickname too long: **${newNickname}**`, 
-                ephemeral: true 
+                flags: MessageFlags.Ephemeral 
             });
         }
 
@@ -97,12 +98,12 @@ module.exports = {
             // 4. Reply to User
             return interaction.reply({ 
                 content: `Your registration is complete.${warning ? "\n*" + warning + "*" : ""}`,
-                ephemeral: true 
+                flags: MessageFlags.Ephemeral 
             });
 
         } catch (error) {
             console.error(error);
-            return interaction.reply({ content: `Error during registration.`, ephemeral: true });
+            return interaction.reply({ content: `Error during registration.`, flags: MessageFlags.Ephemeral });
         }
     },
 };

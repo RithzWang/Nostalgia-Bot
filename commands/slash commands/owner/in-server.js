@@ -23,10 +23,10 @@ module.exports = {
     async execute(interaction) {
         // 1. Security Check
         if (interaction.user.id !== OWNER_ID) {
-            return interaction.reply({ content: '⛔ Owner only.', ephemeral: true });
+            return interaction.reply({ content: '⛔ Owner only.', flags: MessageFlags.Ephemeral });
         }
 
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         const guilds = interaction.client.guilds.cache;
 

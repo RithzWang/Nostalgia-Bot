@@ -80,7 +80,7 @@ module.exports = {
                 
                 const embed = new EmbedBuilder()
                     .setTitle('New Registration')
-                    .setDescription(`User: ${member}\nName: **${name}\nFrom: ${country}\nNickname: **${newNickname}**${warning}`)
+                    .setDescription(`User: ${member}\nName: **${name}**\nFrom: ${country}\nNickname: **${newNickname}**${warning}`)
                     .setColor(Colors.Green) // Blue
                     .setThumbnail(member.user.displayAvatarURL());
 

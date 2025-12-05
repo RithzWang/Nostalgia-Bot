@@ -1,7 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const Discord =require('discord.js');
-Discord.Constants.DefaultOptions.ws.properties.$browser = "Discord Android";
+ws: { properties: { browser: 'Discord Android' } };
 const { Client, GatewayIntentBits, Partials, Collection, EmbedBuilder, ActivityType, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, REST, Routes } = require('discord.js');
 // Check if @napi-rs/canvas is actually installed, otherwise use standard 'canvas'
 const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas'); 

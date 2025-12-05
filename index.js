@@ -42,19 +42,42 @@ for (const file of prefixCommandFiles) {
     }
 }
 
-// 2. Slash Commands Loader
+
+// 2. Slash Commands
 client.slashCommands = new Collection();
-const slashCommandsArray = []; 
-if (fs.existsSync('./slash commands')) {
-    const slashCommandFiles = fs.readdirSync('./slash commands').filter(file => file.endsWith('.js'));
-    for (const file of slashCommandFiles) {
-        const command = require(`./slash commands/${file}`);
-        if (command.data && command.data.name) {
-            client.slashCommands.set(command.data.name, command);
-            slashCommandsArray.push(command.data.toJSON());
+const slashCommandsArray = [];
+
+// 1. Point to the new folder location inside 'src'
+const mainCommandsFolder = path.join(__dirname, 'src', 'slash commands');
+
+const loadCommands = (dir) => {
+    // Check if the directory exists before trying to read it
+    if (!fs.existsSync(dir)) return;
+
+    const files = fs.readdirSync(dir);
+
+    for (const file of files) {
+        const filePath = path.join(dir, file);
+        const stat = fs.lstatSync(filePath);
+
+        if (stat.isDirectory()) {
+            // If it finds 'owner', it dives inside
+            loadCommands(filePath);
+        } else if (file.endsWith('.js')) {
+            delete require.cache[require.resolve(filePath)];
+            const command = require(filePath);
+
+            if (command.data && command.data.name) {
+                client.slashCommands.set(command.data.name, command);
+                slashCommandsArray.push(command.data.toJSON());
+                console.log(`[+] Loaded command: ${command.data.name} (from ${file})`);
+            }
         }
     }
-}
+};
+
+loadCommands(mainCommandsFolder);
+
 
 // --- Global Variable for Role Logging ---
 let activeRoleMessageId = null;

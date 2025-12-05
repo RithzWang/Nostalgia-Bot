@@ -29,88 +29,12 @@ const client = new Client({
 
 // ------ Command Loading ------ //
 
-// 1. Prefix Commands
-client.prefixCommands = new Collection();
-
-// 1. Point specifically to "commands/prefix commands"
-const prefixCommandsFolder = path.join(__dirname, 'commands', 'prefix commands');
-
-const loadPrefixCommands = (dir) => {
-    // Safety check: ensure the folder exists
-    if (!fs.existsSync(dir)) return;
-
-    const files = fs.readdirSync(dir);
-
-    for (const file of files) {
-        const filePath = path.join(dir, file);
-        const stat = fs.lstatSync(filePath);
-
-        if (stat.isDirectory()) {
-            // 2. Recursion: Look inside subfolders (e.g., 'admin', 'moderation')
-            loadPrefixCommands(filePath);
-        } else if (file.endsWith('.js')) {
-            // 3. Load the JS file
-            delete require.cache[require.resolve(filePath)];
-            const command = require(filePath);
-
-            // 4. Register command
-            if (command.name) {
-                client.prefixCommands.set(command.name, command);
-
-                // 5. Register Aliases
-                if (command.aliases && Array.isArray(command.aliases)) {
-                    for (const alias of command.aliases) {
-                        client.prefixCommands.set(alias, command);
-                    }
-                }
-                
-                // console.log(`[Prefix] Loaded: ${command.name}`);
-            }
-        }
-    }
-};
-
-// Start the loader
-loadPrefixCommands(prefixCommandsFolder);
-
-
-
-// 2. Slash Commands
+client.prefixCommands = new Collection(); 
 client.slashCommands = new Collection();
-const slashCommandsArray = [];
 
-// 1. Update the path to include the extra 'commands' folder
-const mainCommandsFolder = path.join(__dirname, 'commands', 'slash commands');
-
-const loadCommands = (dir) => {
-    // Safety check: ensure the folder actually exists to avoid crashes
-    if (!fs.existsSync(dir)) return;
-
-    const files = fs.readdirSync(dir);
-
-    for (const file of files) {
-        const filePath = path.join(dir, file);
-        const stat = fs.lstatSync(filePath);
-
-        if (stat.isDirectory()) {
-            // Recursively load subfolders (like 'owner')
-            loadCommands(filePath);
-        } else if (file.endsWith('.js')) {
-            delete require.cache[require.resolve(filePath)];
-            const command = require(filePath);
-
-            if (command.data && command.data.name) {
-                client.slashCommands.set(command.data.name, command);
-                slashCommandsArray.push(command.data.toJSON());
-                // Optional: Print loaded commands to console
-                console.log(`[+] Loaded: ${command.data.name}`);
-            }
-        }
-    }
-};
-
-// Start the loading process
-loadCommands(mainCommandsFolder);
+// --- LOAD HANDLERS ---
+// This runs the function we exported in commandHandler.js
+require('./handlers/commandHandler')(client);
 
 
 

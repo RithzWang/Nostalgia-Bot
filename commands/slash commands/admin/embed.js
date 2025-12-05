@@ -4,7 +4,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('embed')
         .setDescription('Create and edit embed messages')
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
 
         // ==========================
         // SUBCOMMAND: CREATE

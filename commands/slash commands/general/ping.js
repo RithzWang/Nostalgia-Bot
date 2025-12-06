@@ -3,7 +3,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('ping-pong')
-        .setDescription('Checks the bot\'s latency.'),
+        .setDescription('Check bot latency.'),
 
     async execute(interaction) {
         // 1. Send a temporary message to calculate the time difference

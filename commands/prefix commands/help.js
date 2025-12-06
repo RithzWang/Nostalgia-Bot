@@ -19,7 +19,7 @@ module.exports = {
             .setColor('#888888')
             .setTitle('👑 Owner')
             .setDescription('Commands for bot owner.')
-            .addFields({ name: '/in-server', value: 'Manage bot servers.' });
+            .addFields({ name: '/in-server', value: 'Manage bot servers.' }, { name: '/deletedm', value: 'Delete messages in one’s DM.' });
 
         const adminEmbed = new EmbedBuilder() 
             .setColor('#888888')
@@ -31,6 +31,8 @@ module.exports = {
                 { name: '/say create', value: 'Create a message.' },
                 { name: '/say edit', value: 'Edit an existing message.' },
                 { name: '/poll', value: 'Create a poll.' },
+                { name: '/sticky set', value: 'Set a sticky message.' },
+                { name: '/sticky remove', value: 'Stop the sticky message.' }
             );
 
         const modEmbed = new EmbedBuilder()
@@ -40,7 +42,8 @@ module.exports = {
             .addFields(
                 { name: '/kick', value: 'Kick a user.' },
                 { name: '/ban', value: 'Ban a user.' },
-                { name: '/timeout', value: 'Timeout a user.' }
+                { name: '/timeout', value: 'Timeout a user.' },
+                { name: '/warn', value: 'Warn a user.' }
             );
         
         const generalEmbed = new EmbedBuilder()

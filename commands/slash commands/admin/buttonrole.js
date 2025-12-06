@@ -11,7 +11,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('buttonrole')
         .setDescription('Manage role buttons on messages.')
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles)
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         
         // --- SUBCOMMAND: ADD ---
         .addSubcommand(subcommand =>
@@ -147,7 +147,7 @@ module.exports = {
                 await message.edit({ components: components });
 
                 await interaction.reply({ 
-                    content: `✅ Added **${isVerify ? 'Verify' : 'Toggle'}** button for **${role.name}**!`, 
+                    content: `<a:success:1297818086463770695> Added **${isVerify ? 'Verify' : 'Toggle'}** button for **${role.name}**!`, 
                     flags: MessageFlags.Ephemeral 
                 });
 
@@ -189,7 +189,7 @@ module.exports = {
                 await message.edit({ components: newComponents });
 
                 await interaction.reply({ 
-                    content: `🗑️ Removed the button for **${role.name}**.`, 
+                    content: `<a:success:1297818086463770695> Removed the button for **${role.name}**.`, 
                     flags: MessageFlags.Ephemeral 
                 });
 

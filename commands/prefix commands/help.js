@@ -11,9 +11,7 @@ module.exports = {
     description: 'Shows a dynamic help menu with categories.',
 
     async execute(message, args) {
-        const client = message.client; // Define client from the message object
-
-
+        const client = message.client; 
 
         // 1. Define Embeds
         const ownerEmbed = new EmbedBuilder()
@@ -22,7 +20,6 @@ module.exports = {
             .setDescription('Commands for bot owner.')
             .addFields({ name: '/in-server', value: 'Check bot latency.' });
 
-        // FIX 1: Renamed from ownerEmbed to adminEmbed
         const adminEmbed = new EmbedBuilder() 
             .setColor('#888888')
             .setTitle('⚙️ Admin')
@@ -87,7 +84,7 @@ module.exports = {
                 new StringSelectMenuOptionBuilder()
                     .setLabel('Moderation')
                     .setEmoji('🛡️')
-                    .setValue('moderation'), // FIX 2: Fixed typo (was 'moderatiom')
+                    .setValue('moderation'),
                 new StringSelectMenuOptionBuilder()
                     .setLabel('Register')
                     .setEmoji('📝')
@@ -126,13 +123,13 @@ module.exports = {
             if (selection === 'owner') {
                 await i.update({ embeds: [ownerEmbed] });
             } else if (selection === 'admin') {
-                await i.update({ embeds: [adminEmbed] }); // Using the new variable name
+                await i.update({ embeds: [adminEmbed] });
             } else if (selection === 'moderation') {
                 await i.update({ embeds: [modEmbed] });
             } else if (selection === 'registration') {
                 await i.update({ embeds: [registerEmbed] });
             } else if (selection === 'general') {
-                await i.update({ embeds: [generalEmbed] }); // FIX 3: Fixed variable name (was 'general')
+                await i.update({ embeds: [generalEmbed] });
             } else if (selection === 'fun') {
                 await i.update({ embeds: [funEmbed] });  
             }
@@ -145,3 +142,4 @@ module.exports = {
             sentMessage.edit({ components: [disabledRow] }).catch(() => {});
         });
     },
+}; // <--- THIS WAS MISSING

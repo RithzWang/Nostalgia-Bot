@@ -1,37 +1,16 @@
 const fs = require('fs');
 const path = require('path');
-const { 
-    Client, 
-    GatewayIntentBits, 
-    Partials, 
-    Collection, 
-    EmbedBuilder, 
-    ActivityType, 
-    AttachmentBuilder, 
-    ActionRowBuilder, 
-    ButtonBuilder, 
-    ButtonStyle, 
-    REST, 
-    Routes,
-    MessageFlags // <--- ADDED: Required for Components V2 features
-} = require('discord.js');
-
-// Check if @napi-rs/canvas is actually installed
+const { Client, GatewayIntentBits, Partials, Collection, EmbedBuilder, ActivityType, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, REST, Routes } = require('discord.js');
+// Check if @napi-rs/canvas is actually installed, otherwise use standard 'canvas'
 const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas'); 
 const moment = require('moment-timezone');
 const keep_alive = require('./keep_alive.js');
 const { loadFonts } = require('./fontLoader');
-const { createWelcomeImage } = require('./welcomeCanvas.js');
 
-// --- CONFIGURATION LOADING (FIXED) ---
-// We split the config so 'roleupdateMessage' can be a changeable variable (let)
-const config = require("./config.json");
-const { prefix, serverID, serversID, welcomeLog, roleupdateLog, roleupdateMessageID, roleforLog, colourEmbed } = config;
+// 1. Remove 'roleupdateMessage' from here. We need it to be a variable we can change.
+const { prefix, serverID, serversID, welcomeLog, roleupdateLog, roleupdateMessageID, roleforLog, colourEmbed } = require("./config.json");
 
-// Initialize this as a variable we can update while the bot runs
-let roleupdateMessage = config.roleupdateMessage || null; 
 
-// --- CLIENT SETUP ---
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -41,34 +20,38 @@ const client = new Client({
         GatewayIntentBits.GuildMembers,
         GatewayIntentBits.GuildMessageReactions,
         GatewayIntentBits.GuildPresences,
-        GatewayIntentBits.GuildMessagePolls
+      GatewayIntentBits.GuildMessagePolls
     ],
-    partials: [Partials.Channel, Partials.Message, Partials.Reaction, Partials.GuildMember, Partials.User],
-    ws: {
+    partials: [ Partials.Channel, Partials.Message, Partials.Reaction, Partials.GuildMember, Partials.User ],
+
+          ws: {
         properties: {
-            browser: 'Discord iOS' // Note: Discord patches this frequently, it might not always work.
+            browser: 'Discord iOS'
         }
     }
+
 });
 
 // --- COMMAND LOADING ---
 client.prefixCommands = new Collection(); 
 client.slashCommands = new Collection();
-client.slashDatas = []; // Initialize array for slash builder data
+// Initialize this empty array just in case handler fails, though handler should fill it
+client.slashDatas = []; 
 
-// Ensure your commandHandler populates client.slashDatas and the collections
 require('./handlers/commandHandler')(client);
 
 const invitesCache = new Collection();
 
-// --- EVENTS ---
-
+// ==========================================
+// FIX 1 & 2: Event name is 'ready', and use client.slashDatas
+// ==========================================
 client.on('clientReady', async (readyClient) => {
     console.log(`Logged in as ${readyClient.user.tag}`);
 
-    // AUTO-DEPLOY SLASH COMMANDS
+    //  AUTO-DEPLOY SLASH COMMANDS
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
     try {
+        // USE client.slashDatas HERE
         console.log(`Started refreshing ${client.slashDatas.length} application (/) commands.`);
         await rest.put(
             Routes.applicationGuildCommands(readyClient.user.id, serverID),
@@ -79,37 +62,37 @@ client.on('clientReady', async (readyClient) => {
         console.error('❌ Error deploying commands:', error);
     }
 
-    // Cache Invites
     const guild = client.guilds.cache.get(serverID);
     if(guild) {
         const currentInvites = await guild.invites.fetch().catch(() => new Collection());
         currentInvites.each(invite => invitesCache.set(invite.code, invite.uses));
     }
 
-    // Status Rotator (Thailand Time)
     setInterval(() => {
-        const currentTime = moment().tz('Asia/Bangkok');
-        const thailandTime = currentTime.format('HH:mm');
+    const currentTime = moment().tz('Asia/Bangkok');
+    const thailandTime = currentTime.format('HH:mm');
 
-        readyClient.user.setPresence({
-            activities: [{
-                name: 'customstatus',
-                type: ActivityType.Custom,
-                state: `⏳ ${thailandTime} (GMT+7)`
-            }],
-            status: 'idle'
-        });
-    }, 5000);
+    readyClient.user.setPresence({
+        activities: [{
+            name: 'customstatus',
+            type: ActivityType.Custom,
+            state: `⏳ ${thailandTime} (GMT+7)`
+        }],
+        status: 'idle' // This sets the yellow moon icon
+    });
+}, 5000);
+
 });
+
 
 client.on('messageCreate', message => {
     if (!message.content.startsWith(prefix) || message.author.bot) return;
-    
     const args = message.content.slice(prefix.length).split(/ +/);
     const commandName = args.shift().toLowerCase();
-    
-    // Look for command or alias (if your handler supports aliases)
     const command = client.prefixCommands.get(commandName);
+    
+    // Add alias support here if you want:
+    // const command = client.prefixCommands.get(commandName) || client.prefixCommands.find(cmd => cmd.aliases && cmd.aliases.includes(commandName));
 
     if (!command) return;
     try { command.execute(message, args); } catch (error) { console.error(error); }
@@ -117,19 +100,23 @@ client.on('messageCreate', message => {
 
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
-    
     const command = client.slashCommands.get(interaction.commandName);
     if (!command) return;
     try { await command.execute(interaction); } catch (error) { console.error(error); }
 });
 
-// --- WELCOMER + NICKNAME ---
+// ==========================================
+// MERGED: Welcome + Nickname (One event listener is cleaner)
+// ==========================================
+const { createWelcomeImage } = require('./welcomeCanvas.js');
+
 client.on('guildMemberAdd', async (member) => {
     if (member.user.bot) return;
     if (member.guild.id !== serverID) return;
 
     // 1. Handle Nickname
     setTimeout(async () => {
+        // Double check member is still there
         if (!member.guild.members.cache.has(member.id)) return;
 
         const prefixName = "🌟・";
@@ -187,7 +174,9 @@ client.on('guildMemberAdd', async (member) => {
     }
 });
 
-// --- ROLE LOGGING (FIXED) ---
+// ==========================================
+// FIX 3: Role Logging logic
+// ==========================================
 client.on('guildMemberUpdate', (oldMember, newMember) => {
     if (newMember.user.bot) return;
 
@@ -239,7 +228,6 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
     editMessage(roleUpdateMessage);
 });
 
-// --- INITIALIZATION ---
 (async () => {
     try {
         console.log("⏳ Starting font check...");

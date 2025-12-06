@@ -13,7 +13,6 @@ module.exports = {
     async execute(message, args) {
         const client = message.client; 
 
-        // 1. Define Embeds
         const ownerEmbed = new EmbedBuilder()
             .setColor('#888888')
             .setTitle('👑 Owner')
@@ -142,4 +141,4 @@ module.exports = {
             sentMessage.edit({ components: [disabledRow] }).catch(() => {});
         });
     },
-}; // <--- THIS WAS MISSING
+};

@@ -82,7 +82,7 @@ module.exports = {
                 });
                 
                 await interaction.reply({ 
-                    content: `I sent the message to ${targetChannel}. (Mentions: ${shouldMention ? 'ON' : 'OFF'})`, 
+                    content: `<a:success:1297818086463770695> I sent the message to ${targetChannel}. (Mentions: ${shouldMention ? 'ON' : 'OFF'})`, 
                     flags: MessageFlags.Ephemeral 
                 });
             } catch (error) {
@@ -117,7 +117,7 @@ module.exports = {
                 });
 
                 await interaction.reply({ 
-                    content: `I successfully edited the message in ${targetChannel}.`, 
+                    content: `<a:success:1297818086463770695> I successfully edited the message in ${targetChannel}.`, 
                     flags: MessageFlags.Ephemeral 
                 });
 

@@ -12,7 +12,7 @@ module.exports = {
         .addSubcommand(subcommand =>
             subcommand
                 .setName('create')
-                .setDescription('Send a new embed message')
+                .setDescription('Create a message embed')
                 .addStringOption(option =>
                     option.setName('title')
                         .setDescription('The title of the embed')

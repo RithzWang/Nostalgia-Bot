@@ -78,7 +78,7 @@ module.exports = {
             // Validation: Ensure at least Title or Description is provided
             if (!title && !description) {
                 return interaction.reply({
-                    content: '❌ You must provide at least a Title or a Description!',
+                    content: 'You must provide at least a Title or a Description!',
                     flags: MessageFlags.Ephemeral
                 });
             }
@@ -93,14 +93,14 @@ module.exports = {
                 await targetChannel.send({ embeds: [embed] });
 
                 await interaction.reply({
-                    content: `✅ Embed created in ${targetChannel}`,
+                    content: `I sent the embed in ${targetChannel}`,
                     flags: MessageFlags.Ephemeral
                 });
 
             } catch (error) {
                 console.error(error);
                 await interaction.reply({
-                    content: `❌ Failed to send embed. Check color format (use #Hex) or permissions.`,
+                    content: `Failed to send embed. Check color format (use #Hex) or permissions.`,
                     flags: MessageFlags.Ephemeral
                 });
             }
@@ -122,13 +122,13 @@ module.exports = {
                 // 2. Validate ownership and content
                 if (messageToEdit.author.id !== interaction.client.user.id) {
                     return interaction.reply({
-                        content: `❌ I can only edit my own messages.`,
+                        content: `I can only edit my own messages.`,
                         flags: MessageFlags.Ephemeral
                     });
                 }
                 if (messageToEdit.embeds.length === 0) {
                     return interaction.reply({
-                        content: `❌ That message doesn't have an embed to edit.`,
+                        content: `That message doesn’t have an embed to edit.`,
                         flags: MessageFlags.Ephemeral
                     });
                 }
@@ -146,14 +146,14 @@ module.exports = {
                 await messageToEdit.edit({ embeds: [newEmbed] });
 
                 await interaction.reply({
-                    content: `✅ Embed updated successfully in ${targetChannel}.`,
+                    content: `I successfully edited the embed in ${targetChannel}.`,
                     flags: MessageFlags.Ephemeral
                 });
 
             } catch (error) {
                 console.error(error);
                 await interaction.reply({
-                    content: `❌ Could not find message with ID \`${messageId}\` in ${targetChannel}.`,
+                    content: `I could not find message with ID \`${messageId}\` in ${targetChannel}.`,
                     flags: MessageFlags.Ephemeral
                 });
             }

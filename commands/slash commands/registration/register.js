@@ -106,7 +106,7 @@ module.exports = {
                 const role = interaction.guild.roles.cache.get(registeredRoleId);
                 const totalRegistered = role ? role.members.size : 'N/A';
 
-                const newDescription = `to be able to chat and connect to voice channels, use the command **</register submit:1446387435130064941>**\n\n> \`name:\` followed by your name\n> \`country:\` followed by your country’s flag emoji\n\n**Example:**\n\`\`\`\n/register submit name: Naif country: 🇸🇦\n\`\`\`\n> **Total Registered: ${totalRegistered}**`;
+                const newDescription = `to be able to chat and connect to voice channels, use the command **</register submit:1446387435130064941>**\n\n> \`name:\` followed by your name\n> \`country:\` followed by your country’s flag emoji\n\n**Example:**\n\`\`\`\n/register submit name: Naif country: 🇸🇦\n\`\`\`\n> **Total Registered:** ${totalRegistered}`;
 
                 if (infoMessage.embeds.length > 0) {
                     const updatedEmbed = EmbedBuilder.from(infoMessage.embeds[0]).setDescription(newDescription);
@@ -148,10 +148,7 @@ module.exports = {
                     flags: MessageFlags.Ephemeral 
                 });
 
-                // 🛑 2. WAIT 3 SECONDS
-                await new Promise(resolve => setTimeout(resolve, 3000));
-
-                // 3. Perform Actions
+                // 2. Perform Actions
                 await member.roles.add(registeredRoleId);
                 
                 const isOwner = member.id === interaction.guild.ownerId;
@@ -167,13 +164,14 @@ module.exports = {
                 await sendLog('New Registration', `User: ${member}\nName: **${name}**\nFrom: ${country}\n${warning}`, Colors.Green, member);
                 await updateInfoMessage();
 
-                // ✅ 4. EDIT MESSAGE TO SUCCESS
+                // ✅ 3. EDIT MESSAGE TO SUCCESS
                 return interaction.editReply({ 
                     content: `Your registration is complete.${warning ? "\n*" + warning + "*" : ""}`
                 });
 
             } catch (error) {
                 console.error(error);
+                // If we already replied with "Submitting...", we must use editReply
                 if (interaction.replied) {
                     return interaction.editReply({ content: "Error during registration." });
                 } else {

@@ -273,6 +273,67 @@ client.on('messageCreate', async (message) => {
 });
 
 
+// --- BUTTON ROLE CLICK HANDLER ---
+client.on('interactionCreate', async (interaction) => {
+    if (!interaction.isButton()) return;
+
+    if (interaction.customId.startsWith('role_')) {
+        
+        // Split ID: role_123456789_1  ->  ['role', '123456789', '1']
+        const parts = interaction.customId.split('_');
+        const roleId = parts[1];
+        const mode = parts[2] || '0'; // Default to '0' (Toggle) if missing (for old buttons)
+
+        const role = interaction.guild.roles.cache.get(roleId);
+
+        if (!role) {
+            return interaction.reply({ content: '❌ This role no longer exists.', flags: MessageFlags.Ephemeral });
+        }
+
+        if (role.position >= interaction.guild.members.me.roles.highest.position) {
+            return interaction.reply({ content: '❌ I cannot assign this role because it is higher than me.', flags: MessageFlags.Ephemeral });
+        }
+
+        const member = interaction.member;
+        const hasRole = member.roles.cache.has(roleId);
+
+        // MODE 1: VERIFY ONLY (True)
+        if (mode === '1') {
+            if (hasRole) {
+                return interaction.reply({ 
+                    content: `✅ You are already verified with the **${role.name}** role.`, 
+                    flags: MessageFlags.Ephemeral 
+                });
+            } else {
+                await member.roles.add(role);
+                return interaction.reply({ 
+                    content: `🎉 You have been verified! Added **${role.name}**.`, 
+                    flags: MessageFlags.Ephemeral 
+                });
+            }
+        } 
+        
+        // MODE 0: TOGGLE (False)
+        else {
+            if (hasRole) {
+                await member.roles.remove(role);
+                return interaction.reply({ 
+                    content: `➖ Removed **${role.name}** role.`, 
+                    flags: MessageFlags.Ephemeral 
+                });
+            } else {
+                await member.roles.add(role);
+                return interaction.reply({ 
+                    content: `➕ Added **${role.name}** role.`, 
+                    flags: MessageFlags.Ephemeral 
+                });
+            }
+        }
+    }
+});
+
+
+
 
 (async () => {
     try {

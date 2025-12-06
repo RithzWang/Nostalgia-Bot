@@ -73,7 +73,7 @@ module.exports = {
                 lastId = messages.last().id;
             }
 
-            await interaction.editReply(`Done! Deleted **${deletedCount}** messages in ${targetUser.tag}'s DMs.`);
+            await interaction.editReply(`<a:success:1297818086463770695> Done! Deleted **${deletedCount}** messages in ${targetUser.tag}'s DMs.`);
 
         } catch (error) {
             console.error(error);

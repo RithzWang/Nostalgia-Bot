@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, MessageFlags } = require('discord.js');
 const Warn = require('../../../src/models/Warn');
 
 module.exports = {
@@ -70,7 +70,7 @@ module.exports = {
             });
 
             if (!warnings.length) {
-                return interaction.reply({ content: `${target.tag} has **0** warnings.`, ephemeral: true });
+                return interaction.reply({ content: `${target.tag} has **0** warnings.`, flags: MessageFlags.Ephemeral });
             }
 
             // 2. Format the list (Show last 10 to avoid too much text)

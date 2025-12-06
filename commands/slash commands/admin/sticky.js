@@ -4,7 +4,7 @@ const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 // ../ (up to 'commands')
 // ../ (up to 'src' or root)
 // Then into 'models/Sticky'
-const Sticky = require('../../../models/Sticky'); 
+const Sticky = require('../../../src/models/Sticky'); 
 
 module.exports = {
     data: new SlashCommandBuilder()

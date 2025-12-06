@@ -240,6 +240,40 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
 });
 
 // --- INITIALIZATION ---
+// --- STICKY MESSAGE LOGIC ---
+client.on('messageCreate', async (message) => {
+    // 1. Ignore bots (prevents infinite loops)
+    if (message.author.bot) return;
+
+    // 2. Check if this channel has a sticky message in the database
+    // We wrap this in a try/catch to prevent crashes if DB is slow
+    try {
+        const stickyConfig = await Sticky.findOne({ channelId: message.channel.id });
+        
+        if (!stickyConfig) return; // No sticky message for this channel
+
+        // 3. If there is a "last message" stored, delete it
+        if (stickyConfig.lastMessageId) {
+            const lastMessage = await message.channel.messages.fetch(stickyConfig.lastMessageId).catch(() => null);
+            if (lastMessage) {
+                await lastMessage.delete().catch(() => {});
+            }
+        }
+
+        // 4. Send the new sticky message
+        const sentMessage = await message.channel.send({ content: stickyConfig.content });
+
+        // 5. Save the new message ID so we can delete it next time
+        stickyConfig.lastMessageId = sentMessage.id;
+        await stickyConfig.save();
+
+    } catch (err) {
+        console.error("Error handling sticky message:", err);
+    }
+});
+
+
+
 (async () => {
     try {
         // Connect to Database (Render Safe)

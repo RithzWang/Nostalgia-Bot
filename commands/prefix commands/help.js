@@ -66,19 +66,26 @@ module.exports = {
 
         const homeEmbed = new EmbedBuilder()
             .setColor('#888888')
-               .setTitle('A2-Q Server')
+            .setTitle('A2-Q Server')
     .setDescription(
         'A safe and well managed server made for fun — but taken seriously\n\n' + 
         '> We are a community for **Minecraft** builders and **Brawl Stars** brawlers. Whether you want to grind trophies, build a base, or just hang out in VC, this is a safe place for friends to game together.'
     )
-    .addFields({ 
-        name: 'Owner Information', 
-        value: 
-            '<:discord:1446794842351865958> : [Q1TN](https://discord.com/users/837741275603009626)\n' +
-            '<:insta:1446793242040467486> : [32r.6](https://instagram.com/32r.6)\n' +
-            '<:spotify:1446793276073181277> : [Q1TN](https://open.spotify.com/user/31ljrymawsram5zmxn4sbutp7bxm)\n' +
-            '<:domain:1446793140395835583> : [ridouan.xyz](https://ridouan.xyz)'
-    });
+    .addFields(
+        { 
+            name: 'Owner Information', 
+            value: 
+                '<:discord:1446794842351865958> : [Q1TN](https://discord.com/users/837741275603009626)\n' +
+                '<:insta:1446793242040467486> : [32r.6](https://instagram.com/32r.6)\n' +
+                '<:spotify:1446793276073181277> : [Q1TN](https://open.spotify.com/user/31ljrymawsram5zmxn4sbutp7bxm)\n' +
+                '<:domain:1446793140395835583> : [ridouan.xyz](https://ridouan.xyz)'
+        },
+        {
+            name: '\u200b', // This creates an empty space for the Field Title
+            value: '-# Select a category of bot commands from the dropdown menu below.'
+        }
+    );
+
 
         // 2. Create the Select Menu
         const selectMenu = new StringSelectMenuBuilder()

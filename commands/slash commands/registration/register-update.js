@@ -12,7 +12,7 @@ const {
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('register-update')
-        .setDescription('Force update a member\'s registration details.')
+        .setDescription('Update a member registration')
         .addUserOption(option => 
             option.setName('target')
                 .setDescription('The member to update')

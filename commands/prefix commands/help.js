@@ -62,7 +62,7 @@ module.exports = {
             .setColor('#888888')
             .setTitle('🎉 Fun')
             .setDescription('Relax and have fun!')
-            .addFields({ name: '!rps', value: 'Play Rock Paper Scissors against the bot.' });
+            .addFields({ name: '/rps', value: 'Play Rock Paper Scissors against the bot.' });
 
         const homeEmbed = new EmbedBuilder()
             .setColor('#888888')

@@ -9,9 +9,10 @@ const {
 module.exports = {
     name: 'help',
     description: 'Shows a dynamic help menu with categories.',
-    
-    async execute(client, message, args) {
-        // 1. Create the Embeds (Same as before)
+
+    async execute(message, args) {
+        const client = message.client; // Define client from the message object
+        
         const generalEmbed = new EmbedBuilder()
             .setColor(0x0099FF)
             .setTitle('🌐 General Commands')

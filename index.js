@@ -324,7 +324,7 @@ client.on('interactionCreate', async (interaction) => {
             } else {
                 await member.roles.add(role);
                 return interaction.reply({ 
-                    content: `➕<a:success:1297818086463770695> Added **${role.name}** role.`, 
+                    content: `<a:success:1297818086463770695> Added **${role.name}** role.`, 
                     flags: MessageFlags.Ephemeral 
                 });
             }

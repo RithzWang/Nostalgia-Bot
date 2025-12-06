@@ -50,7 +50,7 @@ module.exports = {
                         .setRequired(true)
                 )
         )
-        // 3. Admin Subcommand: Revoke (Updated with Reason)
+        // 3. Admin Subcommand: Revoke
         .addSubcommand(sub =>
             sub.setName('revoke')
                 .setDescription('Revoke registration (Staff Only)')
@@ -106,7 +106,7 @@ module.exports = {
                 const role = interaction.guild.roles.cache.get(registeredRoleId);
                 const totalRegistered = role ? role.members.size : 'N/A';
 
-                const newDescription = `to be able to chat and connect to voice channels, use the command **</register submit:1446387435130064941>**\n\n> \`name:\` followed by your name\n> \`country:\` followed by your country’s flag emoji\n\n**Example:**\n\`\`\`\n/register submit name: Naif country: 🇸🇦\n\`\`\`\nTotal Registered: **${totalRegistered}**`;
+                const newDescription = `to be able to chat and connect to voice channels, use the command **</register submit:1446387435130064941>**\n\n> \`name:\` followed by your name\n> \`country:\` followed by your country’s flag emoji\n\n**Example:**\n\`\`\`\n/register submit name: Naif country: 🇸🇦\n\`\`\`\n\n**Total Registered:** ${totalRegistered}`;
 
                 if (infoMessage.embeds.length > 0) {
                     const updatedEmbed = EmbedBuilder.from(infoMessage.embeds[0]).setDescription(newDescription);
@@ -142,6 +142,16 @@ module.exports = {
             }
 
             try {
+                // ⏳ 1. IMMEDIATE LOADING MESSAGE
+                await interaction.reply({ 
+                    content: "Submitting your registration...", 
+                    flags: MessageFlags.Ephemeral 
+                });
+
+                // 🛑 2. WAIT 3 SECONDS
+                await new Promise(resolve => setTimeout(resolve, 3000));
+
+                // 3. Perform Actions
                 await member.roles.add(registeredRoleId);
                 
                 const isOwner = member.id === interaction.guild.ownerId;
@@ -157,14 +167,18 @@ module.exports = {
                 await sendLog('New Registration', `User: ${member}\nName: **${name}**\nFrom: ${country}\n${warning}`, Colors.Green, member);
                 await updateInfoMessage();
 
-                return interaction.reply({ 
-                    content: `Registration complete!${warning ? "\n*" + warning + "*" : ""}`,
-                    flags: MessageFlags.Ephemeral 
+                // ✅ 4. EDIT MESSAGE TO SUCCESS
+                return interaction.editReply({ 
+                    content: `Your registration is complete.${warning ? "\n*" + warning + "*" : ""}`
                 });
 
             } catch (error) {
                 console.error(error);
-                return interaction.reply({ content: "Error during registration.", flags: MessageFlags.Ephemeral });
+                if (interaction.replied) {
+                    return interaction.editReply({ content: "Error during registration." });
+                } else {
+                    return interaction.reply({ content: "Error during registration.", flags: MessageFlags.Ephemeral });
+                }
             }
         }
 
@@ -182,6 +196,8 @@ module.exports = {
             const newNickname = `${country} | ${name}`;
 
             try {
+                await interaction.reply({ content: "Updating registration...", flags: MessageFlags.Ephemeral });
+
                 if (!targetMember.roles.cache.has(registeredRoleId)) {
                     await targetMember.roles.add(registeredRoleId);
                 }
@@ -190,8 +206,9 @@ module.exports = {
                 
                 await sendLog('Registration Updated', `Admin: ${interaction.user}\nTarget: ${targetMember}\nNew Name: **${name}**\nNew Country: ${country}`, Colors.Blue, targetMember);
                 
-                return interaction.reply({ content: `Updated ${targetMember}'s registration.`, flags: MessageFlags.Ephemeral });
+                return interaction.editReply({ content: `Updated ${targetMember}'s registration.` });
             } catch (error) {
+                if (interaction.replied) return interaction.editReply({ content: "Could not update user (Check hierarchy)." });
                 return interaction.reply({ content: `Could not update user (Check hierarchy).`, flags: MessageFlags.Ephemeral });
             }
         }
@@ -205,17 +222,16 @@ module.exports = {
             }
 
             const targetMember = interaction.options.getMember('member');
-            const reason = interaction.options.getString('reason'); // 📥 Get Reason
-            
-            // "🌟・Display Name" (Max 32 chars)
+            const reason = interaction.options.getString('reason');
             const cleanDisplayName = targetMember.user.displayName.substring(0, 29);
             const resetNickname = `🌟・${cleanDisplayName}`;
 
             try {
+                await interaction.reply({ content: "Revoking registration...", flags: MessageFlags.Ephemeral });
+
                 await targetMember.roles.remove(registeredRoleId);
                 await targetMember.setNickname(resetNickname);
 
-                // 📝 Log with Reason
                 await sendLog(
                     'Registration Revoked', 
                     `Admin: ${interaction.user}\nTarget: ${targetMember}\nReason: **${reason}**\nAction: Role removed & Nickname reset`, 
@@ -225,9 +241,10 @@ module.exports = {
                 
                 await updateInfoMessage(); 
 
-                return interaction.reply({ content: `Revoked registration for ${targetMember}.`, flags: MessageFlags.Ephemeral });
+                return interaction.editReply({ content: `Revoked registration for ${targetMember}.` });
             } catch (error) {
                 console.log(error);
+                if (interaction.replied) return interaction.editReply({ content: "Could not revoke user (Check hierarchy)." });
                 return interaction.reply({ content: `Could not revoke user (Check hierarchy).`, flags: MessageFlags.Ephemeral });
             }
         }

@@ -19,7 +19,7 @@ module.exports = {
                 )
                 .addStringOption(option =>
                     option.setName('description')
-                        .setDescription('The main text of the embed')
+                        .setDescription('The description of the embed')
                 )
                 .addStringOption(option =>
                     option.setName('color')
@@ -27,7 +27,7 @@ module.exports = {
                 )
                 .addChannelOption(option =>
                     option.setName('channel')
-                        .setDescription('Where to send it? (Empty = Here)')
+                        .setDescription('Where to send it?')
                         .addChannelTypes(ChannelType.GuildText)
                 )
         )

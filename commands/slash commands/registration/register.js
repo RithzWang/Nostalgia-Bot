@@ -50,13 +50,18 @@ module.exports = {
                         .setRequired(true)
                 )
         )
-        // 3. Admin Subcommand: Revoke
+        // 3. Admin Subcommand: Revoke (Updated with Reason)
         .addSubcommand(sub =>
             sub.setName('revoke')
-                .setDescription('Revoke registration and reset nickname (Staff Only)')
+                .setDescription('Revoke registration (Staff Only)')
                 .addUserOption(option =>
                     option.setName('member')
                         .setDescription('The member to revoke')
+                        .setRequired(true)
+                )
+                .addStringOption(option => 
+                    option.setName('reason')
+                        .setDescription('Reason for revocation')
                         .setRequired(true)
                 )
         )
@@ -101,7 +106,7 @@ module.exports = {
                 const role = interaction.guild.roles.cache.get(registeredRoleId);
                 const totalRegistered = role ? role.members.size : 'N/A';
 
-                const newDescription = `to be able to chat and connect to voice channels, use the command **</register submit:1446387435130064941>**\n\n> \`name:\` followed by your name\n> \`country:\` followed by your country’s flag emoji\n\n**Example:**\n\`\`\`\n/register submit name: Naif country: 🇸🇦\n\`\`\`\n### Total Registered: **${totalRegistered}**`;
+                const newDescription = `to be able to chat and connect to voice channels, use the command **</register submit:1446387435130064941>**\n\n> \`name:\` followed by your name\n> \`country:\` followed by your country’s flag emoji\n\n**Example:**\n\`\`\`\n/register submit name: Naif country: 🇸🇦\n\`\`\`\n### Total Registered: ${totalRegistered}`;
 
                 if (infoMessage.embeds.length > 0) {
                     const updatedEmbed = EmbedBuilder.from(infoMessage.embeds[0]).setDescription(newDescription);
@@ -113,7 +118,7 @@ module.exports = {
         }
 
         // ===========================================
-        // 1️⃣ SUBCOMMAND: SUBMIT (User Registration)
+        // 1️⃣ SUBCOMMAND: SUBMIT
         // ===========================================
         if (subcommand === 'submit') {
             if (interaction.channelId !== allowedChannelId) {
@@ -137,7 +142,6 @@ module.exports = {
             }
 
             try {
-                // Apply Role & Nickname
                 await member.roles.add(registeredRoleId);
                 
                 const isOwner = member.id === interaction.guild.ownerId;
@@ -151,7 +155,7 @@ module.exports = {
                 }
 
                 await sendLog('New Registration', `User: ${member}\nName: **${name}**\nFrom: ${country}\n${warning}`, Colors.Green, member);
-                await updateInfoMessage(); // Update count
+                await updateInfoMessage();
 
                 return interaction.reply({ 
                     content: `Registration complete!${warning ? "\n*" + warning + "*" : ""}`,
@@ -165,7 +169,7 @@ module.exports = {
         }
 
         // ===========================================
-        // 2️⃣ SUBCOMMAND: UPDATE (Admin Only)
+        // 2️⃣ SUBCOMMAND: UPDATE
         // ===========================================
         if (subcommand === 'update') {
             if (!interaction.member.permissions.has(PermissionFlagsBits.ManageNicknames)) {
@@ -178,7 +182,6 @@ module.exports = {
             const newNickname = `${country} | ${name}`;
 
             try {
-                // Ensure they have the role
                 if (!targetMember.roles.cache.has(registeredRoleId)) {
                     await targetMember.roles.add(registeredRoleId);
                 }
@@ -194,7 +197,7 @@ module.exports = {
         }
 
         // ===========================================
-        // 3️⃣ SUBCOMMAND: REVOKE (Admin Only)
+        // 3️⃣ SUBCOMMAND: REVOKE
         // ===========================================
         if (subcommand === 'revoke') {
             if (!interaction.member.permissions.has(PermissionFlagsBits.ManageNicknames)) {
@@ -202,10 +205,9 @@ module.exports = {
             }
 
             const targetMember = interaction.options.getMember('member');
+            const reason = interaction.options.getString('reason'); // 📥 Get Reason
             
-            // "🌟・Display Name"
-            // Ensure we don't exceed 32 chars. 
-            // "🌟・" is roughly 3 length. So we take first 29 chars of display name.
+            // "🌟・Display Name" (Max 32 chars)
             const cleanDisplayName = targetMember.user.displayName.substring(0, 29);
             const resetNickname = `🌟・${cleanDisplayName}`;
 
@@ -213,8 +215,15 @@ module.exports = {
                 await targetMember.roles.remove(registeredRoleId);
                 await targetMember.setNickname(resetNickname);
 
-                await sendLog('Registration Revoked', `Admin: ${interaction.user}\nTarget: ${targetMember}\nAction: Role removed & Nickname reset`, Colors.Red, targetMember);
-                await updateInfoMessage(); // Update count (it should go down)
+                // 📝 Log with Reason
+                await sendLog(
+                    'Registration Revoked', 
+                    `Admin: ${interaction.user}\nTarget: ${targetMember}\nReason: **${reason}**\nAction: Role removed & Nickname reset`, 
+                    Colors.Red, 
+                    targetMember
+                );
+                
+                await updateInfoMessage(); 
 
                 return interaction.reply({ content: `Revoked registration for ${targetMember}.`, flags: MessageFlags.Ephemeral });
             } catch (error) {

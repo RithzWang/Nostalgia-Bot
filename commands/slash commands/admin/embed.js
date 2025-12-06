@@ -27,7 +27,7 @@ module.exports = {
                 )
                 .addChannelOption(option =>
                     option.setName('channel')
-                        .setDescription('Where to send it?')
+                        .setDescription('Where to send it? Empty = Here')
                         .addChannelTypes(ChannelType.GuildText)
                 )
         )
@@ -58,7 +58,7 @@ module.exports = {
                 )
                 .addChannelOption(option =>
                     option.setName('channel')
-                        .setDescription('Where is the message? (Empty = Here)')
+                        .setDescription('Which channel is the message in? Empty = Here')
                         .addChannelTypes(ChannelType.GuildText)
                 )
         ),

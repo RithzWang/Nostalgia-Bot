@@ -10,7 +10,7 @@ module.exports = {
         .addSubcommand(subcommand =>
             subcommand
                 .setName('send')
-                .setDescription('Make the bot say something new')
+                .setDescription('Create a message')
                 .addStringOption(option =>
                     option.setName('content')
                         .setDescription('What should the bot say?')
@@ -18,7 +18,7 @@ module.exports = {
                 )
                 .addChannelOption(option =>
                     option.setName('channel')
-                        .setDescription('Where to send it? (Empty = Here)')
+                        .setDescription('Where to send it?')
                         .addChannelTypes(ChannelType.GuildText)
                 )
         )
@@ -27,7 +27,7 @@ module.exports = {
         .addSubcommand(subcommand =>
             subcommand
                 .setName('edit')
-                .setDescription('Edit a message the bot already sent')
+                .setDescription('Edit an existing message')
                 .addStringOption(option =>
                     option.setName('message_id')
                         .setDescription(' The ID of the message to edit')
@@ -40,7 +40,7 @@ module.exports = {
                 )
                 .addChannelOption(option =>
                     option.setName('channel')
-                        .setDescription('Which channel is the message in? (Empty = Here)')
+                        .setDescription('Which channel is the message in?')
                         .addChannelTypes(ChannelType.GuildText)
                 )
         ),
@@ -59,12 +59,12 @@ module.exports = {
                 await targetChannel.send(content);
                 
                 await interaction.reply({ 
-                    content: `✅ Message sent to ${targetChannel}`, 
+                    content: `I sent the message to ${targetChannel}`, 
                     flags: MessageFlags.Ephemeral 
                 });
             } catch (error) {
                 await interaction.reply({ 
-                    content: `❌ I cannot send messages in ${targetChannel}. Check my permissions!`, 
+                    content: `I cannot send messages in ${targetChannel}. Please check my permissions!`, 
                     flags: MessageFlags.Ephemeral 
                 });
             }
@@ -83,7 +83,7 @@ module.exports = {
                 // 2. Check if the bot is the author
                 if (messageToEdit.author.id !== interaction.client.user.id) {
                     return interaction.reply({ 
-                        content: `❌ I can only edit my own messages! That message belongs to ${messageToEdit.author}.`, 
+                        content: `I can only edit messages that sent by me!`, 
                         flags: MessageFlags.Ephemeral 
                     });
                 }
@@ -92,7 +92,7 @@ module.exports = {
                 await messageToEdit.edit(content);
 
                 await interaction.reply({ 
-                    content: `✅ Successfully edited the message in ${targetChannel}.`, 
+                    content: `I successfully edited the message in ${targetChannel}.`, 
                     flags: MessageFlags.Ephemeral 
                 });
 
@@ -100,7 +100,7 @@ module.exports = {
                 console.error(error);
                 // Usually happens if the ID is wrong or message was deleted
                 await interaction.reply({ 
-                    content: `❌ I couldn't find that message in ${targetChannel}. Please check the Message ID.`, 
+                    content: `I couldn’t find that message in ${targetChannel}. Please check the Message ID!`, 
                     flags: MessageFlags.Ephemeral 
                 });
             }

@@ -118,7 +118,7 @@ module.exports = {
 
         collector.on('collect', async i => {
             if (i.user.id !== message.author.id) {
-                return i.reply({ content: 'These buttons aren\'t for you!', ephemeral: true });
+                return i.reply({ content: 'These buttons aren’t for you!', ephemeral: true });
             }
 
             const selection = i.values[0];

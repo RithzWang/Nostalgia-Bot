@@ -90,7 +90,8 @@ module.exports = {
                 }
 
                 // 3. Edit the message
-                await messageToEdit.edit(content);
+                await messageToEdit.edit(content),
+allowedMentions: { repliedUser: false }
 
                 await interaction.reply({ 
                     content: `I successfully edited the message in ${targetChannel}.`, 

@@ -40,10 +40,9 @@ module.exports = {
             );
 
         const homeEmbed = new EmbedBuilder()
-            .setColor(0x2B2D31)
-            .setTitle('🤖 Bot Help Center')
+            .setColor('#888888')
+            .setTitle('Smart A2-Q Help')
             .setDescription('Select a category from the dropdown menu below.')
-            .setThumbnail(client.user.displayAvatarURL());
 
         // 2. Create the Select Menu
         const selectMenu = new StringSelectMenuBuilder()

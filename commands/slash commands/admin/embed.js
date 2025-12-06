@@ -93,7 +93,7 @@ module.exports = {
                 await targetChannel.send({ embeds: [embed] });
 
                 await interaction.reply({
-                    content: `I sent the embed in ${targetChannel}`,
+                    content: `<a:success:1297818086463770695> I sent the embed in ${targetChannel}`,
                     flags: MessageFlags.Ephemeral
                 });
 
@@ -146,7 +146,7 @@ module.exports = {
                 await messageToEdit.edit({ embeds: [newEmbed] });
 
                 await interaction.reply({
-                    content: `I successfully edited the embed in ${targetChannel}.`,
+                    content: `<a:success:1297818086463770695> I successfully edited the embed in ${targetChannel}.`,
                     flags: MessageFlags.Ephemeral
                 });
 

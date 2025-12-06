@@ -111,7 +111,7 @@ module.exports = {
 
             // STEP B: Confirm
             await interaction.reply({ 
-                content: `I created a poll in ${targetChannel}`, 
+                content: `<a:success:1297818086463770695> I created a poll in ${targetChannel}`, 
                 flags: MessageFlags.Ephemeral 
             });
 

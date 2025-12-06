@@ -17,7 +17,7 @@ module.exports = {
             .setColor('#888888')
             .setTitle('👑 Owner')
             .setDescription('Commands for bot owner.')
-            .addFields({ name: '/in-server', value: 'Check bot latency.' });
+            .addFields({ name: '/in-server', value: 'Manage bot servers' });
 
         const adminEmbed = new EmbedBuilder() 
             .setColor('#888888')

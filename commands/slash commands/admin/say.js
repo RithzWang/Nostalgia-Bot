@@ -83,7 +83,7 @@ module.exports = {
                 // 2. Check if the bot is the author
                 if (messageToEdit.author.id !== interaction.client.user.id) {
                     return interaction.reply({ 
-                        content: `I can only edit messages that sent by me!`, 
+                        content: `I can only edit my own messages.`, 
                         flags: MessageFlags.Ephemeral 
                     });
                 }

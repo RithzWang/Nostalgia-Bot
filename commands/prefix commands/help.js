@@ -66,7 +66,7 @@ module.exports = {
         const homeEmbed = new EmbedBuilder()
             .setColor('#888888')
             .setTitle('A2-Q’s Rules')
-            .setDescription('-# these rules should keep the community respectful\n\n> 1. Be friendly to each other, we want to keep the chat respectful, although we do joke around quite a lot, it’s important to stay respectful!\n> 2. Keep Racism & Bad Behaviour out of the chat!\n> 3. If you notice any inappropriate behaviour or rule-breaking, don’t hesitate to inform **Staff Members**');
+            .setDescription('-# these rules should keep the community respectful\n\n> 1. Be friendly to each other, we want to keep the chat respectful, although we do joke around quite a lot, it’s important to stay respectful!\n> 2. Keep Racism & Bad Behaviour out of the chat!\n> 3. If you notice any inappropriate behaviour or rule-breaking, don’t hesitate to inform **Staff Members**\n\n-# Select a category of bot commands from the dropdown menu below.');
 
         // 2. Create the Select Menu
         const selectMenu = new StringSelectMenuBuilder()

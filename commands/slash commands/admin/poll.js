@@ -3,7 +3,7 @@ const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags, ChannelType } = 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('poll')
-        .setDescription('Create a fully custom poll')
+        .setDescription('Create a poll')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator) // Admin Only
 
         // --- 1. REQUIRED OPTIONS (Must be first) ---

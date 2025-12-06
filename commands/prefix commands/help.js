@@ -66,8 +66,19 @@ module.exports = {
 
         const homeEmbed = new EmbedBuilder()
             .setColor('#888888')
-            .setTitle('A2-Q’s Rules')
-            .setDescription('-# these rules should keep the community respectful\n\n> 1. Be friendly to each other, we want to keep the chat respectful, although we do joke around quite a lot, it’s important to stay respectful!\n> 2. Keep Racism & Bad Behaviour out of the chat!\n> 3. If you notice any inappropriate behaviour or rule-breaking, don’t hesitate to inform **Staff Members**\n\n\n-# Select a category of bot commands from the dropdown menu below.');
+               .setTitle('A2-Q Server')
+    .setDescription(
+        'A safe and well managed server made for fun — but taken seriously\n\n' + 
+        '> We are a community for **Minecraft** builders and **Brawl Stars** brawlers. Whether you want to grind trophies, build a base, or just hang out in VC, this is a safe place for friends to game together.'
+    )
+    .addFields({ 
+        name: 'Owner Information', 
+        value: 
+            '<:discord:1446794842351865958> : [Q1TN](https://discord.com/users/837741275603009626)\n' +
+            '<:insta:1446793242040467486> : [32r.6](https://instagram.com/32r.6)\n' +
+            '<:spotify:1446793276073181277> : [Q1TN](https://open.spotify.com/user/31ljrymawsram5zmxn4sbutp7bxm)\n' +
+            '<:domain:1446793140395835583> : [ridouan.xyz](https://ridouan.xyz)'
+    });
 
         // 2. Create the Select Menu
         const selectMenu = new StringSelectMenuBuilder()

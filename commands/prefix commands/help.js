@@ -17,7 +17,7 @@ module.exports = {
    const sendOptions = {
                 content: content,
                 allowedMentions: {
-                    parse: [], // Don't parse any mentions
+                    parse: [], 
                 },
             };
 

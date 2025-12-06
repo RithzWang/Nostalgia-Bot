@@ -14,18 +14,11 @@ module.exports = {
         const client = message.client; 
 
 
-   const sendOptions = {
-                content: content,
-                allowedMentions: {
-                    parse: [], 
-                },
-            };
-
         const ownerEmbed = new EmbedBuilder()
             .setColor('#888888')
             .setTitle('👑 Owner')
             .setDescription('Commands for bot owner.')
-            .addFields({ name: '/in-server', value: 'Manage bot servers' });
+            .addFields({ name: '/in-server', value: 'Manage bot servers.' });
 
         const adminEmbed = new EmbedBuilder() 
             .setColor('#888888')
@@ -59,9 +52,9 @@ module.exports = {
             .setColor('#888888')
             .setTitle('📝 Registration')
             .addFields(
-                { name: '/register', value: 'Register to the server' },
-                { name: '/register-update (staff)', value: 'Update a user registration' },
-                { name: '/register-revoke (staff)', value: 'Revoke a user registration' }
+                { name: '/register', value: 'Register to the server.' },
+                { name: '/register-update (staff)', value: 'Update a user registration.' },
+                { name: '/register-revoke (staff)', value: 'Revoke a user registration.' }
             );
 
         const funEmbed = new EmbedBuilder()

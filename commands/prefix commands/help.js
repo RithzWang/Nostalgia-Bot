@@ -28,7 +28,7 @@ module.exports = {
                 { name: '/embed edit', value: 'Edit an existing message embed.' },
                 { name: '/say create', value: 'Create a message.' },
                 { name: '/say edit', value: 'Edit an existing message.' },
-                { name: '/poll', value: 'Create a poll' },
+                { name: '/poll', value: 'Create a poll.' },
             );
 
         const modEmbed = new EmbedBuilder()

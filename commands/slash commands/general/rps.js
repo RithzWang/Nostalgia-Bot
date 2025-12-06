@@ -11,7 +11,7 @@ const {
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('rps')
-        .setDescription('Play Rock Paper Scissors against the bot!'),
+        .setDescription('Play Rock Paper Scissors against the bot.'),
 
     async execute(interaction) {
         // 1. Create the Buttons

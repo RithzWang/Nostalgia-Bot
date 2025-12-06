@@ -27,7 +27,7 @@ const { loadFonts } = require('./fontLoader');
 // --- CONFIGURATION ---
 // 1. Load the config
 const config = require("./config.json");
-const Sticky = require('./models/Sticky');
+const Sticky = require('./src/models/Sticky');
 
 
 // 2. Extract constants (WE DO NOT extract roleupdateMessageID here)

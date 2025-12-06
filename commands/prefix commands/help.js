@@ -3,7 +3,8 @@ const {
     ActionRowBuilder, 
     StringSelectMenuBuilder, 
     StringSelectMenuOptionBuilder, 
-    ComponentType 
+    ComponentType,
+    MessageFlags // <--- 1. ADD THIS IMPORT
 } = require('discord.js');
 
 module.exports = {
@@ -13,7 +14,7 @@ module.exports = {
     async execute(message, args) {
         const client = message.client; 
 
-
+        // 1. Define Embeds
         const ownerEmbed = new EmbedBuilder()
             .setColor('#888888')
             .setTitle('👑 Owner')
@@ -101,16 +102,18 @@ module.exports = {
 
         const row = new ActionRowBuilder().addComponents(selectMenu);
 
-        // 3. Send Message
+        // 3. Send Message (UPDATED)
         const sentMessage = await message.reply({
             embeds: [homeEmbed],
             components: [row],
+            allowedMentions: { repliedUser: false }, // <--- Stops the Ping
+            flags: [MessageFlags.SuppressNotifications] // <--- Makes it Silent (@silent)
         });
 
         // 4. Collector
         const collector = sentMessage.createMessageComponentCollector({ 
             componentType: ComponentType.StringSelect, 
-            time: 60000 
+            idle: 20000 
         });
 
         collector.on('collect', async i => {
@@ -139,7 +142,11 @@ module.exports = {
             const disabledRow = new ActionRowBuilder().addComponents(
                 selectMenu.setDisabled(true).setPlaceholder('Menu Expired')
             );
-            sentMessage.edit({ components: [disabledRow] }).catch(() => {});
+            
+            sentMessage.edit({ 
+                embeds: [homeEmbed], 
+                components: [disabledRow] 
+            }).catch(() => {});
         });
     },
 };

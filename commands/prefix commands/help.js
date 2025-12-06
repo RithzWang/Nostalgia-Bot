@@ -75,9 +75,9 @@ module.exports = {
         { 
             name: 'Owner Information', 
             value: 
-                '<:discord:1446794842351865958> : [**Q1TN**](https://discord.com/users/837741275603009626)\n' +
+                '<:discord:1446794842351865958> : [**q1tn**](https://discord.com/users/837741275603009626)\n' +
                 '<:insta:1446793242040467486> : [**32r.6**](https://instagram.com/32r.6)\n' +
-                '<:spotify:1446793276073181277> : [**Q1TN**](https://open.spotify.com/user/31ljrymawsram5zmxn4sbutp7bxm)\n' +
+                '<:spotify:1446793276073181277> : [**q1tn**](https://open.spotify.com/user/31ljrymawsram5zmxn4sbutp7bxm)\n' +
                 '<:domain:1446793140395835583> : [**ridouan.xyz**](https://ridouan.xyz)'
         },
         {

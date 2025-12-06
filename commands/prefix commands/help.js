@@ -13,6 +13,14 @@ module.exports = {
     async execute(message, args) {
         const client = message.client; 
 
+
+   const sendOptions = {
+                content: content,
+                allowedMentions: {
+                    parse: [], // Don't parse any mentions
+                },
+            };
+
         const ownerEmbed = new EmbedBuilder()
             .setColor('#888888')
             .setTitle('👑 Owner')

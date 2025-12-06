@@ -138,7 +138,7 @@ module.exports = {
             const newNickname = `${country} | ${name}`;
 
             if (newNickname.length > 32) {
-                return interaction.reply({ content: `Nickname too long.`, flags: MessageFlags.Ephemeral });
+                return interaction.reply({ content: `Name too long.`, flags: MessageFlags.Ephemeral });
             }
 
             try {
@@ -166,7 +166,7 @@ module.exports = {
 
                 // ✅ 3. EDIT MESSAGE TO SUCCESS
                 return interaction.editReply({ 
-                    content: `Your registration is complete.${warning ? "\n*" + warning + "*" : ""}`
+                    content: `<a:success:1297818086463770695> Your registration is complete.${warning ? "\n*" + warning + "*" : ""}`
                 });
 
             } catch (error) {
@@ -204,7 +204,7 @@ module.exports = {
                 
                 await sendLog('Registration Updated', `Admin: ${interaction.user}\nTarget: ${targetMember}\nNew Name: **${name}**\nNew Country: ${country}`, Colors.Blue, targetMember);
                 
-                return interaction.editReply({ content: `Updated ${targetMember}'s registration.` });
+                return interaction.editReply({ content: `<a:success:1297818086463770695> Updated ${targetMember}'s registration.` });
             } catch (error) {
                 if (interaction.replied) return interaction.editReply({ content: "Could not update user (Check hierarchy)." });
                 return interaction.reply({ content: `Could not update user (Check hierarchy).`, flags: MessageFlags.Ephemeral });
@@ -239,7 +239,7 @@ module.exports = {
                 
                 await updateInfoMessage(); 
 
-                return interaction.editReply({ content: `Revoked registration for ${targetMember}.` });
+                return interaction.editReply({ content: `<a:success:1297818086463770695> Revoked registration for ${targetMember}.` });
             } catch (error) {
                 console.log(error);
                 if (interaction.replied) return interaction.editReply({ content: "Could not revoke user (Check hierarchy)." });

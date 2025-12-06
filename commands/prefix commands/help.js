@@ -131,7 +131,7 @@ module.exports = {
         // 4. Collector
         const collector = sentMessage.createMessageComponentCollector({ 
             componentType: ComponentType.StringSelect, 
-            idle: 20000 
+            idle: 30000 
         });
 
         collector.on('collect', async i => {

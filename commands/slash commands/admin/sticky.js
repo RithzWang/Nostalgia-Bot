@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 // Path breakdown:
 // ../ (up to 'slash commands')
 // ../ (up to 'commands')
@@ -41,15 +41,15 @@ module.exports = {
             }
 
             await sticky.save();
-            await interaction.reply({ content: '✅ Sticky message set!', ephemeral: true });
+            await interaction.reply({ content: 'Sticky message set!', flags: MessageFlags.Ephemeral });
 
         } else if (subcommand === 'remove') {
             const sticky = await Sticky.findOneAndDelete({ channelId: interaction.channel.id });
 
             if (sticky) {
-                await interaction.reply({ content: '🗑️ Sticky message removed.', ephemeral: true });
+                await interaction.reply({ content: 'Sticky message removed.', flags: MessageFlags.Ephemeral });
             } else {
-                await interaction.reply({ content: '❌ There is no sticky message in this channel.', ephemeral: true });
+                await interaction.reply({ content: 'There is no sticky message in this channel.', flags: MessageFlags.Ephemeral });
             }
         }
     }

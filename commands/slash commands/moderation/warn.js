@@ -69,7 +69,7 @@ module.exports = {
             // 2. Create the Embed
             const embed = new EmbedBuilder()
                 .setColor(0xFF0000)
-                .setTitle('User Warned')
+                .setTitle('<a:success:1297818086463770695> User Warned')
                 .setDescription(`**User:** ${target.tag}\n**Reason:** ${reason}\n**Moderator:** ${interaction.user.tag}`)
                 .setThumbnail(target.displayAvatarURL())
 
@@ -135,7 +135,7 @@ module.exports = {
 
                 if (deletedWarn) {
                     await interaction.reply({ 
-                        content: `Warning \`${warnId}\` has been removed.`, 
+                        content: `<a:success:1297818086463770695> Warning \`${warnId}\` has been removed.`, 
                         flags: MessageFlags.Ephemeral 
                     });
                 } else {

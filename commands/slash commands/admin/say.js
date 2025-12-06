@@ -56,7 +56,8 @@ module.exports = {
         // ===========================================
         if (subcommand === 'send') {
             try {
-                await targetChannel.send(content);
+                await targetChannel.send(content),
+            allowedMentions: { repliedUser: false }
                 
                 await interaction.reply({ 
                     content: `I sent the message to ${targetChannel}`, 

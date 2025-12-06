@@ -12,7 +12,7 @@ const {
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('register-revoke')
-        .setDescription('Removes the registration role and resets the nickname.')
+        .setDescription('Revoke an member registration')
         .addUserOption(option => 
             option.setName('target')
                 .setDescription('The member to revoke')

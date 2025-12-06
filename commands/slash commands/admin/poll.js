@@ -14,19 +14,19 @@ module.exports = {
         )
         .addStringOption(option => 
             option.setName('answer1')
-                .setDescription('First answer text')
+                .setDescription('First answer')
                 .setRequired(true)
         )
         .addStringOption(option => 
             option.setName('answer2')
-                .setDescription('Second answer text')
+                .setDescription('Second answer')
                 .setRequired(true)
         )
 
         // --- 2. OPTIONAL SETTINGS ---
         .addChannelOption(option =>
             option.setName('channel')
-                .setDescription('Where to post this poll? (Empty = Here)')
+                .setDescription('Where to post this poll? Empty = Here')
                 .addChannelTypes(ChannelType.GuildText)
         )
         .addIntegerOption(option =>
@@ -50,9 +50,9 @@ module.exports = {
         // --- 3. EXTRA ANSWERS & EMOJIS ---
         .addStringOption(option => option.setName('emoji1').setDescription('Emoji for answer 1'))
         .addStringOption(option => option.setName('emoji2').setDescription('Emoji for answer 2'))
-        .addStringOption(option => option.setName('answer3').setDescription('Third answer text'))
+        .addStringOption(option => option.setName('answer3').setDescription('Third answer'))
         .addStringOption(option => option.setName('emoji3').setDescription('Emoji for answer 3'))
-        .addStringOption(option => option.setName('answer4').setDescription('Fourth answer text'))
+        .addStringOption(option => option.setName('answer4').setDescription('Fourth answer'))
         .addStringOption(option => option.setName('emoji4').setDescription('Emoji for answer 4')),
 
     async execute(interaction) {
@@ -88,7 +88,7 @@ module.exports = {
 
             // STEP B: Reply to you saying it worked (Ephemeral / Hidden)
             await interaction.reply({ 
-                content: '✅ Poll has been created successfully!', 
+                content: `I created a poll in ${targetChannel}`, 
                 flags: MessageFlags.Ephemeral 
             });
 

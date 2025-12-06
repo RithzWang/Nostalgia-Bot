@@ -1,5 +1,19 @@
+const { 
+    EmbedBuilder, 
+    ActionRowBuilder, 
+    StringSelectMenuBuilder, 
+    StringSelectMenuOptionBuilder, 
+    ComponentType 
+} = require('discord.js');
+
+module.exports = {
+    name: 'help',
+    description: 'Shows a dynamic help menu with categories.',
+
     async execute(message, args) {
-        const client = message.client; 
+        const client = message.client; // Define client from the message object
+
+
 
         // 1. Define Embeds
         const ownerEmbed = new EmbedBuilder()

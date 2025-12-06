@@ -118,7 +118,7 @@ async function showLeaveMenu(i, guilds) {
                 left.push(g.name);
             }
         }
-        await menuInteraction.editReply({ content: `I left Servers: \n${left.join('\n')}` });
+        await menuInteraction.editReply({ content: `<a:success:1297818086463770695> I left Servers: \n${left.join('\n')}` });
     });
 }
 

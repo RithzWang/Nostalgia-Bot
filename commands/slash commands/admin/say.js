@@ -16,6 +16,11 @@ module.exports = {
                         .setDescription('What should the bot say?')
                         .setRequired(true)
                 )
+                .addBooleanOption(option => 
+                    option.setName('mention')
+                        .setDescription('Should I mention?')
+                        .setRequired(true)
+                )
                 .addChannelOption(option =>
                     option.setName('channel')
                         .setDescription('Where to send it? Empty = Here')
@@ -30,12 +35,17 @@ module.exports = {
                 .setDescription('Edit an existing message')
                 .addStringOption(option =>
                     option.setName('message_id')
-                        .setDescription(' The ID of the message to edit')
+                        .setDescription('The ID of the message to edit')
                         .setRequired(true)
                 )
                 .addStringOption(option =>
                     option.setName('content')
                         .setDescription('The new content')
+                        .setRequired(true)
+                )
+                .addBooleanOption(option => 
+                    option.setName('mention')
+                        .setDescription('Should I mention?')
                         .setRequired(true)
                 )
                 .addChannelOption(option =>
@@ -48,22 +58,35 @@ module.exports = {
     async execute(interaction) {
         const subcommand = interaction.options.getSubcommand();
         const content = interaction.options.getString('content');
+        const shouldMention = interaction.options.getBoolean('mention');
+        
         // Default to current channel if no channel is selected
         const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
+
+        // Determine Allowed Mentions logic
+        // If true: Allow 'users', 'roles', and 'everyone' to be pinged
+        // If false: Allow NOTHING to be pinged (silent)
+        const allowedMentions = shouldMention 
+            ? { parse: ['users', 'roles', 'everyone'] } 
+            : { parse: [] };
 
         // ===========================================
         // LOGIC FOR /say send
         // ===========================================
         if (subcommand === 'send') {
             try {
-                await targetChannel.send(content),
-            allowedMentions: { repliedUser: false }
+                // FIXED: Options object must be inside send({ ... })
+                await targetChannel.send({ 
+                    content: content, 
+                    allowedMentions: allowedMentions 
+                });
                 
                 await interaction.reply({ 
-                    content: `I sent the message to ${targetChannel}`, 
+                    content: `I sent the message to ${targetChannel}. (Mentions: ${shouldMention ? 'ON' : 'OFF'})`, 
                     flags: MessageFlags.Ephemeral 
                 });
             } catch (error) {
+                console.error(error);
                 await interaction.reply({ 
                     content: `I cannot send messages in ${targetChannel}. Please check my permissions!`, 
                     flags: MessageFlags.Ephemeral 
@@ -78,10 +101,8 @@ module.exports = {
             const messageId = interaction.options.getString('message_id');
 
             try {
-                // 1. Fetch the message from the channel
                 const messageToEdit = await targetChannel.messages.fetch(messageId);
 
-                // 2. Check if the bot is the author
                 if (messageToEdit.author.id !== interaction.client.user.id) {
                     return interaction.reply({ 
                         content: `I can only edit my own messages.`, 
@@ -89,9 +110,11 @@ module.exports = {
                     });
                 }
 
-                // 3. Edit the message
-                await messageToEdit.edit(content),
-allowedMentions: { repliedUser: false }
+                // FIXED: Options object must be inside edit({ ... })
+                await messageToEdit.edit({ 
+                    content: content, 
+                    allowedMentions: allowedMentions 
+                });
 
                 await interaction.reply({ 
                     content: `I successfully edited the message in ${targetChannel}.`, 
@@ -100,7 +123,6 @@ allowedMentions: { repliedUser: false }
 
             } catch (error) {
                 console.error(error);
-                // Usually happens if the ID is wrong or message was deleted
                 await interaction.reply({ 
                     content: `I couldn’t find that message in ${targetChannel}. Please check the Message ID!`, 
                     flags: MessageFlags.Ephemeral 

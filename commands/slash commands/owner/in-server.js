@@ -17,7 +17,7 @@ const OWNER_ID = '837741275603009626';
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('in-server')
-        .setDescription('Manage bot servers (Leave or Create Invites)')
+        .setDescription('Manage bot servers')
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
     async execute(interaction) {
@@ -34,7 +34,7 @@ module.exports = {
         const embed = new EmbedBuilder()
             .setTitle(`🤖 Server Management Panel`)
             .setDescription(`**Current Status:**\nThe bot is currently in **${guilds.size}** servers.\n\n**Select an action below:**\n👋 **Leave:** Force the bot to leave specific servers.\n🔗 **Invite:** Generate an invite link for a specific server.`)
-            .setColor('#5865F2');
+            .setColor('#888888');
 
         // 3. Create the Two Buttons
         const leaveButton = new ButtonBuilder()
@@ -95,7 +95,7 @@ async function showLeaveMenu(i, guilds) {
     const embed = new EmbedBuilder()
         .setTitle('👋 Leave Servers')
         .setDescription('Select the servers below to make the bot **leave** them immediately.')
-        .setColor('#ED4245');
+        .setColor('#888888');
 
     // Update the message
     const response = await i.update({ embeds: [embed], components: [row], fetchReply: true });
@@ -118,7 +118,7 @@ async function showLeaveMenu(i, guilds) {
                 left.push(g.name);
             }
         }
-        await menuInteraction.editReply({ content: `✅ **Left Servers:**\n${left.join('\n')}` });
+        await menuInteraction.editReply({ content: `I left Servers: \n${left.join('\n')}` });
     });
 }
 
@@ -144,7 +144,7 @@ async function showInviteMenu(i, guilds) {
     const embed = new EmbedBuilder()
         .setTitle('🔗 Create Invite')
         .setDescription('Select a server below. The bot will try to find a channel and create an invite link.')
-        .setColor('#5865F2');
+        .setColor('#888888');
 
     // Update the message
     const response = await i.update({ embeds: [embed], components: [row], fetchReply: true });
@@ -176,7 +176,7 @@ async function showInviteMenu(i, guilds) {
 
         try {
             const invite = await channel.createInvite({ maxAge: 0, maxUses: 1 }); // Permanent link, 1 use
-            await menuInteraction.reply({ content: `✅ **Invite for ${guild.name}:**\n${invite.url}`, flags: MessageFlags.Ephemeral });
+            await menuInteraction.reply({ content: `**Invite for ${guild.name}:**\n${invite.url}`, flags: MessageFlags.Ephemeral });
         } catch (err) {
             await menuInteraction.reply({ content: `❌ Error creating invite: ${err.message}`, flags: MessageFlags.Ephemeral });
         }

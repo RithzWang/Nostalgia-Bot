@@ -106,7 +106,7 @@ module.exports = {
         const sentMessage = await message.reply({
             embeds: [homeEmbed],
             components: [row],
-            allowedMentions: { repliedUser: false }, // <--- Stops the Ping
+            allowedMentions: { repliedUser: false },
             flags: [MessageFlags.SuppressNotifications] // <--- Makes it Silent (@silent)
         });
 

@@ -33,7 +33,7 @@ module.exports = {
 
         const modEmbed = new EmbedBuilder()
             .setColor('#888888')
-            .setTitle('🛡️ Moderation Commands')
+            .setTitle('🛡️ Moderation')
             .setDescription('Tools for staff members.')
             .addFields(
                 { name: '/kick', value: 'Kick a user.' },
@@ -43,13 +43,13 @@ module.exports = {
         
         const generalEmbed = new EmbedBuilder()
             .setColor('#888888')
-            .setTitle('🌐 General Commands')
+            .setTitle('🌐 General')
             .setDescription('Basic commands for everyone.')
             .addFields({ name: '/ping-pong', value: 'Check bot latency.' });
 
         const registerEmbed = new EmbedBuilder()
             .setColor('#888888')
-            .setTitle('Registration')
+            .setTitle('📝 Registration')
             .addFields(
                 { name: '/register', value: 'Register to the server' },
                 { name: '/register-update (staff)', value: 'Update a user registration' },
@@ -58,7 +58,7 @@ module.exports = {
 
         const funEmbed = new EmbedBuilder()
             .setColor('#888888')
-            .setTitle('🎉 Fun Commands')
+            .setTitle('🎉 Fun')
             .setDescription('Relax and have fun!')
             .addFields({ name: '!rps', value: 'Play Rock Paper Scissors against the bot.' });
 

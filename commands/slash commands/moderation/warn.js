@@ -2,10 +2,14 @@ const {
     SlashCommandBuilder, 
     PermissionFlagsBits, 
     EmbedBuilder, 
-    MessageFlags // <--- 1. Imported MessageFlags
+    MessageFlags,
+    ActionRowBuilder, // <--- Added
+    ButtonBuilder,    // <--- Added
+    ButtonStyle       // <--- Added
 } = require('discord.js');
 
 const Warn = require('../../../src/models/Warn');
+const moment = require('moment-timezone'); // <--- Required for GMT+7 time
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -52,6 +56,7 @@ module.exports = {
             const target = interaction.options.getUser('target');
             const reason = interaction.options.getString('reason');
 
+            // 1. Save to Database
             const newWarn = new Warn({
                 guildId: interaction.guild.id,
                 userId: target.id,
@@ -61,21 +66,35 @@ module.exports = {
 
             await newWarn.save();
 
+            // 2. Create the Embed
             const embed = new EmbedBuilder()
                 .setColor(0xFF0000)
-                .setTitle('⚠️ User Warned')
+                .setTitle('User Warned')
                 .setDescription(`**User:** ${target.tag}\n**Reason:** ${reason}\n**Moderator:** ${interaction.user.tag}`)
+                .setThumbnail(target.displayAvatarURL())
                 .setTimestamp();
 
-            // We usually keep the actual Warning PUBLIC so people see it.
-            // If you want this hidden too, add "flags: MessageFlags.Ephemeral" here.
-            await interaction.reply({ embeds: [embed] });
+            // 3. Create the Timestamp Button (GMT+7)
+            const thailandTime = moment().tz('Asia/Bangkok').format('DD/MM/YYYY HH:mm');
+            
+            const timeButton = new ButtonBuilder()
+                .setCustomId('warn_timestamp')
+                .setLabel(`${thailandTime} (GMT+7)`)
+                .setStyle(ButtonStyle.Secondary) // Grey
+                .setDisabled(true); // Unclickable
 
+            const row = new ActionRowBuilder().addComponents(timeButton);
+
+            // 4. Send Public Message with Button
+            await interaction.reply({ 
+                embeds: [embed], 
+                components: [row] 
+            });
+
+            // 5. DM the user (Silent fail if closed)
             try {
                 await target.send(`You have been warned in **${interaction.guild.name}** for: ${reason}`);
-            } catch (err) {
-                // Ignore DMs
-            }
+            } catch (err) { }
 
         // --- WARN LIST ---
         } else if (subcommand === 'list') {
@@ -89,7 +108,7 @@ module.exports = {
             if (!warnings.length) {
                 return interaction.reply({ 
                     content: `${target.tag} has **0** warnings.`, 
-                    flags: MessageFlags.Ephemeral // <--- Updated
+                    flags: MessageFlags.Ephemeral 
                 });
             }
 
@@ -105,7 +124,7 @@ module.exports = {
 
             await interaction.reply({ 
                 embeds: [embed],
-                flags: MessageFlags.Ephemeral // <--- Updated
+                flags: MessageFlags.Ephemeral 
             });
 
         // --- WARN REMOVE ---
@@ -117,19 +136,19 @@ module.exports = {
 
                 if (deletedWarn) {
                     await interaction.reply({ 
-                        content: `✅ Warning \`${warnId}\` has been removed.`, 
-                        flags: MessageFlags.Ephemeral // <--- Updated
+                        content: `Warning \`${warnId}\` has been removed.`, 
+                        flags: MessageFlags.Ephemeral 
                     });
                 } else {
                     await interaction.reply({ 
-                        content: `❌ Could not find a warning with ID \`${warnId}\`. Check the ID and try again.`, 
-                        flags: MessageFlags.Ephemeral // <--- Updated
+                        content: `Could not find a warning with ID \`${warnId}\`. Check the ID and try again.`, 
+                        flags: MessageFlags.Ephemeral 
                     });
                 }
             } catch (err) {
                 await interaction.reply({ 
-                    content: `❌ Invalid ID format. Please copy it exactly from \`/warn list\`.`, 
-                    flags: MessageFlags.Ephemeral // <--- Updated
+                    content: `Invalid ID format. Please copy it exactly from \`/warn list\`.`, 
+                    flags: MessageFlags.Ephemeral 
                 });
             }
         }

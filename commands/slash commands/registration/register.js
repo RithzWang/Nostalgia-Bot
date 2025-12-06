@@ -11,7 +11,7 @@ const {
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('register')
-        .setDescription('Registration')
+        .setDescription('Register to the server')
         .addStringOption(option => 
             option.setName('name')
                 .setDescription('Your desired name (e.g., Naif, Faisal)')

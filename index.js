@@ -26,7 +26,7 @@ const { createWelcomeImage } = require('./welcomeCanvas.js');
 // --- CONFIGURATION LOADING (FIXED) ---
 // We split the config so 'roleupdateMessage' can be a changeable variable (let)
 const config = require("./config.json");
-const { prefix, serverID, serversID, welcomeLog, roleupdateLog, roleforLog, colourEmbed } = config;
+const { prefix, serverID, serversID, welcomeLog, roleupdateLog, roleupdateMessageID, roleforLog, colourEmbed } = config;
 
 // Initialize this as a variable we can update while the bot runs
 let roleupdateMessage = config.roleupdateMessage || null; 
@@ -205,21 +205,15 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
 
     const editMessage = (messageContent) => {
         if (!messageContent.trim()) return;
-        
-        if (roleupdateMessage) {
-            // Edit existing message
-            logChannel.messages.fetch(roleupdateMessage)
+        if (roleupdateMessageID) {
+            logChannel.messages.fetch(roleupdateMessageID)
+                
                 .then(msg => msg.edit({ content: messageContent, ...silentMessageOptions })) 
-                .catch(err => {
-                    console.error("Could not fetch log message, sending new one:", err);
-                    // Fallback if message was deleted
-                    logChannel.send({ content: messageContent, ...silentMessageOptions })
-                        .then(msg => { roleupdateMessage = msg.id; });
-                });
+                .catch(console.error);
         } else {
-            // Send new message
+           
             logChannel.send({ content: messageContent, ...silentMessageOptions })
-                .then(msg => { roleupdateMessage = msg.id; }) // NOW THIS WORKS because it's a let
+                .then(msg => { roleupdateMessageID = msg.id; })
                 .catch(console.error);
         }
     };
@@ -232,19 +226,17 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
     };
 
     const plural = (roles) => roles.size === 1 ? 'role' : 'roles';
-    let roleUpdateMessageContent = '';
+    let roleUpdateMessage = '';
 
     if (addedRoles.size > 0 && removedRoles.size > 0) {
-        roleUpdateMessageContent = `<a:success:1297818086463770695> ${newMember.user} has been added ${formatRoles(addedRoles)} ${plural(addedRoles)} and removed ${formatRoles(removedRoles)} ${plural(removedRoles)}!`;
+        roleUpdateMessage = `<a:success:1297818086463770695> ${newMember.user} has been added ${formatRoles(addedRoles)} ${plural(addedRoles)} and removed ${formatRoles(removedRoles)} ${plural(removedRoles)}!`;
     } else if (addedRoles.size > 0) {
-        roleUpdateMessageContent = `<a:success:1297818086463770695> ${newMember.user} has been added ${formatRoles(addedRoles)} ${plural(addedRoles)}!`;
+        roleUpdateMessage = `<a:success:1297818086463770695> ${newMember.user} has been added ${formatRoles(addedRoles)} ${plural(addedRoles)}!`;
     } else if (removedRoles.size > 0) {
-        roleUpdateMessageContent = `<a:success:1297818086463770695> ${newMember.user} has been removed ${formatRoles(removedRoles)} ${plural(removedRoles)}!`;
+        roleUpdateMessage = `<a:success:1297818086463770695> ${newMember.user} has been removed ${formatRoles(removedRoles)} ${plural(removedRoles)}!`;
     }
 
-    if (roleUpdateMessageContent) {
-        editMessage(roleUpdateMessageContent);
-    }
+    editMessage(roleUpdateMessage);
 });
 
 // --- INITIALIZATION ---

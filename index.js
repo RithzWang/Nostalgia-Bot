@@ -1,14 +1,39 @@
 const fs = require('fs');
 const path = require('path');
-const { Client, GatewayIntentBits, Partials, Collection, EmbedBuilder, ActivityType, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, REST, Routes } = require('discord.js');
-// Check if @napi-rs/canvas is actually installed, otherwise use standard 'canvas'
+const { 
+    Client, 
+    GatewayIntentBits, 
+    Partials, 
+    Collection, 
+    EmbedBuilder, 
+    ActivityType, 
+    AttachmentBuilder, 
+    ActionRowBuilder, 
+    ButtonBuilder, 
+    ButtonStyle, 
+    REST, 
+    Routes,
+    MessageFlags // Needed for Silent messages
+} = require('discord.js');
+
+// Database Library
+const mongoose = require('mongoose');
+
 const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas'); 
 const moment = require('moment-timezone');
 const keep_alive = require('./keep_alive.js');
 const { loadFonts } = require('./fontLoader');
 
-// 1. Remove 'roleupdateMessage' from here. We need it to be a variable we can change.
-const { prefix, serverID, serversID, welcomeLog, roleupdateLog, roleupdateMessageID, roleforLog, colourEmbed } = require("./config.json");
+// --- CONFIGURATION ---
+// 1. Load the config
+const config = require("./config.json");
+
+// 2. Extract constants (WE DO NOT extract roleupdateMessageID here)
+const { prefix, serverID, serversID, welcomeLog, roleupdateLog, roleforLog, colourEmbed } = config;
+
+// 3. Define the variable separately as 'let' so we can change it
+// If it's in config, we load it, otherwise it starts as null
+let roleupdateMessageID = config.roleupdateMessageID || null;
 
 
 const client = new Client({
@@ -20,38 +45,32 @@ const client = new Client({
         GatewayIntentBits.GuildMembers,
         GatewayIntentBits.GuildMessageReactions,
         GatewayIntentBits.GuildPresences,
-      GatewayIntentBits.GuildMessagePolls
+        GatewayIntentBits.GuildMessagePolls
     ],
     partials: [ Partials.Channel, Partials.Message, Partials.Reaction, Partials.GuildMember, Partials.User ],
-
-          ws: {
+    ws: {
         properties: {
             browser: 'Discord iOS'
         }
     }
-
 });
 
 // --- COMMAND LOADING ---
 client.prefixCommands = new Collection(); 
 client.slashCommands = new Collection();
-// Initialize this empty array just in case handler fails, though handler should fill it
 client.slashDatas = []; 
 
 require('./handlers/commandHandler')(client);
 
 const invitesCache = new Collection();
 
-// ==========================================
-// FIX 1 & 2: Event name is 'ready', and use client.slashDatas
-// ==========================================
+// --- EVENTS ---
 client.on('clientReady', async (readyClient) => {
     console.log(`Logged in as ${readyClient.user.tag}`);
 
-    //  AUTO-DEPLOY SLASH COMMANDS
+    // AUTO-DEPLOY SLASH COMMANDS
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
     try {
-        // USE client.slashDatas HERE
         console.log(`Started refreshing ${client.slashDatas.length} application (/) commands.`);
         await rest.put(
             Routes.applicationGuildCommands(readyClient.user.id, serverID),
@@ -69,21 +88,19 @@ client.on('clientReady', async (readyClient) => {
     }
 
     setInterval(() => {
-    const currentTime = moment().tz('Asia/Bangkok');
-    const thailandTime = currentTime.format('HH:mm');
+        const currentTime = moment().tz('Asia/Bangkok');
+        const thailandTime = currentTime.format('HH:mm');
 
-    readyClient.user.setPresence({
-        activities: [{
-            name: 'customstatus',
-            type: ActivityType.Custom,
-            state: `⏳ ${thailandTime} (GMT+7)`
-        }],
-        status: 'idle' // This sets the yellow moon icon
-    });
-}, 5000);
-
+        readyClient.user.setPresence({
+            activities: [{
+                name: 'customstatus',
+                type: ActivityType.Custom,
+                state: `⏳ ${thailandTime} (GMT+7)`
+            }],
+            status: 'idle' 
+        });
+    }, 5000);
 });
-
 
 client.on('messageCreate', message => {
     if (!message.content.startsWith(prefix) || message.author.bot) return;
@@ -91,9 +108,6 @@ client.on('messageCreate', message => {
     const commandName = args.shift().toLowerCase();
     const command = client.prefixCommands.get(commandName);
     
-    // Add alias support here if you want:
-    // const command = client.prefixCommands.get(commandName) || client.prefixCommands.find(cmd => cmd.aliases && cmd.aliases.includes(commandName));
-
     if (!command) return;
     try { command.execute(message, args); } catch (error) { console.error(error); }
 });
@@ -105,9 +119,7 @@ client.on('interactionCreate', async interaction => {
     try { await command.execute(interaction); } catch (error) { console.error(error); }
 });
 
-// ==========================================
-// MERGED: Welcome + Nickname (One event listener is cleaner)
-// ==========================================
+// --- WELCOMER ---
 const { createWelcomeImage } = require('./welcomeCanvas.js');
 
 client.on('guildMemberAdd', async (member) => {
@@ -116,7 +128,6 @@ client.on('guildMemberAdd', async (member) => {
 
     // 1. Handle Nickname
     setTimeout(async () => {
-        // Double check member is still there
         if (!member.guild.members.cache.has(member.id)) return;
 
         const prefixName = "🌟・";
@@ -174,9 +185,7 @@ client.on('guildMemberAdd', async (member) => {
     }
 });
 
-// ==========================================
-// FIX 3: Role Logging logic
-// ==========================================
+// --- ROLE LOGGING (YOUR ORIGINAL LOGIC) ---
 client.on('guildMemberUpdate', (oldMember, newMember) => {
     if (newMember.user.bot) return;
 
@@ -194,15 +203,15 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
 
     const editMessage = (messageContent) => {
         if (!messageContent.trim()) return;
+        
+        // Use the variable we defined at the top
         if (roleupdateMessageID) {
             logChannel.messages.fetch(roleupdateMessageID)
-                
                 .then(msg => msg.edit({ content: messageContent, ...silentMessageOptions })) 
                 .catch(console.error);
         } else {
-           
             logChannel.send({ content: messageContent, ...silentMessageOptions })
-                .then(msg => { roleupdateMessageID = msg.id; })
+                .then(msg => { roleupdateMessageID = msg.id; }) // Only possible because it's a 'let' now
                 .catch(console.error);
         }
     };
@@ -228,8 +237,18 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
     editMessage(roleUpdateMessage);
 });
 
+// --- INITIALIZATION ---
 (async () => {
     try {
+        // Connect to Database (Render Safe)
+        if (process.env.MONGO_TOKEN) {
+            // We use the variable name 'MyBotData' for your DB folder
+            await mongoose.connect(process.env.MONGO_TOKEN, { dbName: 'MyBotData' });
+            console.log("✅ Connected to MongoDB!");
+        } else {
+            console.log("⚠️ No MONGO_TOKEN found. Database features will not work.");
+        }
+
         console.log("⏳ Starting font check...");
         await loadFonts(); 
         console.log("🚀 Fonts loaded. Logging in...");

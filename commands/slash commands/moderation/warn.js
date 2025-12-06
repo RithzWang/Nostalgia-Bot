@@ -72,7 +72,6 @@ module.exports = {
                 .setTitle('User Warned')
                 .setDescription(`**User:** ${target.tag}\n**Reason:** ${reason}\n**Moderator:** ${interaction.user.tag}`)
                 .setThumbnail(target.displayAvatarURL())
-                .setTimestamp();
 
             // 3. Create the Timestamp Button (GMT+7)
             const thailandTime = moment().tz('Asia/Bangkok').format('DD/MM/YYYY HH:mm');

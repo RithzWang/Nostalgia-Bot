@@ -10,7 +10,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('sticky')
         .setDescription('Manage sticky messages.')
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addSubcommand(subcommand =>
             subcommand
                 .setName('set')
@@ -41,15 +41,15 @@ module.exports = {
             }
 
             await sticky.save();
-            await interaction.reply({ content: '<a:success:1297818086463770695> Sticky message set!', flags: MessageFlags.Ephemeral });
+            await interaction.reply({ content: '<:checkyes:1447177673410613418> Sticky message set!', flags: MessageFlags.Ephemeral });
 
         } else if (subcommand === 'remove') {
             const sticky = await Sticky.findOneAndDelete({ channelId: interaction.channel.id });
 
             if (sticky) {
-                await interaction.reply({ content: '<a:success:1297818086463770695> Sticky message removed.', flags: MessageFlags.Ephemeral });
+                await interaction.reply({ content: '<:checkyes:1447177673410613418> Sticky message removed.', flags: MessageFlags.Ephemeral });
             } else {
-                await interaction.reply({ content: 'There is no sticky message in this channel.', flags: MessageFlags.Ephemeral });
+                await interaction.reply({ content: '<:checkno:1447177716205092966> There is no sticky message in this channel.', flags: MessageFlags.Ephemeral });
             }
         }
     }

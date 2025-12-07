@@ -69,7 +69,7 @@ module.exports = {
             // 2. Create the Embed
             const embed = new EmbedBuilder()
                 .setColor(0xFF0000)
-                .setTitle('<a:success:1297818086463770695> User Warned')
+                .setTitle('<:checkyes:1447177673410613418> User Warned')
                 .setDescription(`**User:** ${target.tag}\n**Reason:** ${reason}\n**Moderator:** ${interaction.user.tag}`)
                 .setThumbnail(target.displayAvatarURL())
 
@@ -135,18 +135,18 @@ module.exports = {
 
                 if (deletedWarn) {
                     await interaction.reply({ 
-                        content: `<a:success:1297818086463770695> Warning \`${warnId}\` has been removed.`, 
+                        content: `<:checkyes:1447177673410613418> Warning \`${warnId}\` has been removed.`, 
                         flags: MessageFlags.Ephemeral 
                     });
                 } else {
                     await interaction.reply({ 
-                        content: `Could not find a warning with ID \`${warnId}\`. Check the ID and try again.`, 
+                        content: `<:checkno:1447177716205092966> Could not find a warning with ID \`${warnId}\`. Check the ID and try again.`, 
                         flags: MessageFlags.Ephemeral 
                     });
                 }
             } catch (err) {
                 await interaction.reply({ 
-                    content: `Invalid ID format. Please copy it exactly from \`/warn list\`.`, 
+                    content: `<:checkno:1447177716205092966> Invalid ID format. Please copy it exactly from \`/warn list\`.`, 
                     flags: MessageFlags.Ephemeral 
                 });
             }

@@ -94,7 +94,8 @@ module.exports = {
                 .setStyle(ButtonStyle.Secondary)
                 .setDisabled(true);
 
-            await logChannel.send({ embeds: [embed], components: [new ActionRowBuilder().addComponents(button)] });
+            // We do not await this, so it runs in the background and doesn't delay the user reply
+            logChannel.send({ embeds: [embed], components: [new ActionRowBuilder().addComponents(button)] }).catch(console.error);
         }
 
         // --- HELPER: UPDATE INFO MESSAGE FUNCTION ---
@@ -102,15 +103,26 @@ module.exports = {
             try {
                 const infoChannel = interaction.guild.channels.cache.get(allowedChannelId);
                 if (!infoChannel) return;
+                
                 const infoMessage = await infoChannel.messages.fetch(infoMessageId);
+                
                 const role = interaction.guild.roles.cache.get(registeredRoleId);
                 const totalRegistered = role ? role.members.size : 'N/A';
 
-                const newDescription = `to be able to chat and connect to voice channels, use the command **</register submit:1446387435130064941>**\n\n> \`name:\` followed by your name\n> \`country:\` followed by your country’s flag emoji\n\n**Example:**\n\`\`\`\n/register submit name: Naif country: 🇬🇧\n\`\`\`\n> **Total Registered:** ${totalRegistered}`;
+                const newDescription = `to be able to chat and connect to voice channels, use the command **</register submit:1446387435130064941>**\n\n> \`name:\` followed by your name\n> \`country:\` followed by your country’s flag emoji\n\n**Example:**\n\`\`\`\n/register submit name: Naif country: 🇬🇧\n\`\`\``;
+
+                const countButton = new ButtonBuilder()
+                    .setCustomId('total_registered_stats')
+                    .setLabel(`Total Registered: ${totalRegistered}`)
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(true);
+
+                const row = new ActionRowBuilder().addComponents(countButton);
 
                 if (infoMessage.embeds.length > 0) {
                     const updatedEmbed = EmbedBuilder.from(infoMessage.embeds[0]).setDescription(newDescription);
-                    await infoMessage.edit({ embeds: [updatedEmbed] });
+                    // Run in background
+                    infoMessage.edit({ embeds: [updatedEmbed], components: [row] }).catch(console.error);
                 }
             } catch (err) {
                 console.error("Info update failed:", err);
@@ -142,13 +154,7 @@ module.exports = {
             }
 
             try {
-                // ⏳ 1. IMMEDIATE LOADING MESSAGE
-                await interaction.reply({ 
-                    content: "Submitting your registration...", 
-                    flags: MessageFlags.Ephemeral 
-                });
-
-                // 2. Perform Actions
+                // 1. Perform Actions BEFORE Replying
                 await member.roles.add(registeredRoleId);
                 
                 const isOwner = member.id === interaction.guild.ownerId;
@@ -161,20 +167,20 @@ module.exports = {
                     warning = " (Nickname check: Role too high)";
                 }
 
-                await sendLog('New Registration', `User: ${member}\nName: **${name}**\nFrom: ${country}\n${warning}`, Colors.Green, member);
-                await updateInfoMessage();
+                // Run these in background so we can reply faster
+                sendLog('New Registration', `User: ${member}\nName: **${name}**\nFrom: ${country}\n${warning}`, Colors.Green, member);
+                updateInfoMessage();
 
-                // ✅ 3. EDIT MESSAGE TO SUCCESS
-                return interaction.editReply({ 
-                    content: `<a:success:1297818086463770695> Your registration is complete.${warning ? "\n*" + warning + "*" : ""}`
+                // 2. Send SINGLE Immediate Reply
+                return interaction.reply({ 
+                    content: `<a:success:1297818086463770695> Your registration is complete.${warning ? "\n*" + warning + "*" : ""}`,
+                    flags: MessageFlags.Ephemeral
                 });
 
             } catch (error) {
                 console.error(error);
-                // If we already replied with "Submitting...", we must use editReply
-                if (interaction.replied) {
-                    return interaction.editReply({ content: "Error during registration." });
-                } else {
+                // Only reply with error if we haven't replied yet
+                if (!interaction.replied) {
                     return interaction.reply({ content: "Error during registration.", flags: MessageFlags.Ephemeral });
                 }
             }
@@ -194,20 +200,22 @@ module.exports = {
             const newNickname = `${country} | ${name}`;
 
             try {
-                await interaction.reply({ content: "Updating registration...", flags: MessageFlags.Ephemeral });
-
                 if (!targetMember.roles.cache.has(registeredRoleId)) {
                     await targetMember.roles.add(registeredRoleId);
                 }
 
                 await targetMember.setNickname(newNickname);
                 
-                await sendLog('Registration Updated', `Admin: ${interaction.user}\nTarget: ${targetMember}\nNew Name: **${name}**\nNew Country: ${country}`, Colors.Blue, targetMember);
+                sendLog('Registration Updated', `Admin: ${interaction.user}\nTarget: ${targetMember}\nNew Name: **${name}**\nNew Country: ${country}`, Colors.Blue, targetMember);
                 
-                return interaction.editReply({ content: `<a:success:1297818086463770695> Updated ${targetMember}'s registration.` });
+                return interaction.reply({ 
+                    content: `<a:success:1297818086463770695> Updated ${targetMember}'s registration.`
+                });
             } catch (error) {
-                if (interaction.replied) return interaction.editReply({ content: "Could not update user (Check hierarchy)." });
-                return interaction.reply({ content: `Could not update user (Check hierarchy).`, flags: MessageFlags.Ephemeral });
+                console.error(error);
+                if (!interaction.replied) {
+                    return interaction.reply({ content: `Could not update user (Check hierarchy).`, flags: MessageFlags.Ephemeral });
+                }
             }
         }
 
@@ -225,25 +233,26 @@ module.exports = {
             const resetNickname = `🌟・${cleanDisplayName}`;
 
             try {
-                await interaction.reply({ content: "Revoking registration...", flags: MessageFlags.Ephemeral });
-
                 await targetMember.roles.remove(registeredRoleId);
                 await targetMember.setNickname(resetNickname);
 
-                await sendLog(
+                sendLog(
                     'Registration Revoked', 
                     `Admin: ${interaction.user}\nTarget: ${targetMember}\nReason: **${reason}**\nAction: Role removed & Nickname reset`, 
                     Colors.Red, 
                     targetMember
                 );
                 
-                await updateInfoMessage(); 
+                updateInfoMessage(); 
 
-                return interaction.editReply({ content: `<a:success:1297818086463770695> Revoked registration for ${targetMember}.` });
+                return interaction.reply({ 
+                    content: `<a:success:1297818086463770695> Revoked registration for ${targetMember}.`
+                });
             } catch (error) {
                 console.log(error);
-                if (interaction.replied) return interaction.editReply({ content: "Could not revoke user (Check hierarchy)." });
-                return interaction.reply({ content: `Could not revoke user (Check hierarchy).`, flags: MessageFlags.Ephemeral });
+                if (!interaction.replied) {
+                    return interaction.reply({ content: `Could not revoke user (Check hierarchy).`, flags: MessageFlags.Ephemeral });
+                }
             }
         }
     },

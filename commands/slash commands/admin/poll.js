@@ -111,14 +111,14 @@ module.exports = {
 
             // STEP B: Confirm
             await interaction.reply({ 
-                content: `<a:success:1297818086463770695> I created a poll in ${targetChannel}`, 
+                content: `<:checkyes:1447177673410613418> I created a poll in ${targetChannel}`, 
                 flags: MessageFlags.Ephemeral 
             });
 
         } catch (error) {
             console.error(error);
             await interaction.reply({ 
-                content: 'Failed to send poll. Check my permissions or ensure the emojis are valid!', 
+                content: '<:checkno:1447177716205092966> Failed to send poll. Check my permissions or ensure the emojis are valid!', 
                 flags: MessageFlags.Ephemeral 
             });
         }

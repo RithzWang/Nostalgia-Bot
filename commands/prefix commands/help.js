@@ -17,13 +17,13 @@ module.exports = {
         // 1. Define Embeds
         const ownerEmbed = new EmbedBuilder()
             .setColor('#888888')
-            .setTitle('👑 Owner')
+            .setTitle('<:owner:1447143417711951872> Bot Owner')
             .setDescription('Commands for bot owner.')
             .addFields({ name: '/in-server', value: 'Manage bot servers.' }, { name: '/deletedm', value: 'Delete messages in one’s DM.' });
 
         const adminEmbed = new EmbedBuilder() 
             .setColor('#888888')
-            .setTitle('⚙️ Admin')
+            .setTitle('<:admin:1447144258342490122> Admin')
             .setDescription('Commands for admins.')
             .addFields(
                 { name: '/embed create', value: 'Create a message embed.' },
@@ -37,7 +37,7 @@ module.exports = {
 
         const modEmbed = new EmbedBuilder()
             .setColor('#888888')
-            .setTitle('🛡️ Moderation')
+            .setTitle('<:moderation:1447143480559140895> Moderation')
             .setDescription('Tools for staff members.')
             .addFields(
                 { name: '/kick', value: 'Kick a user.' },
@@ -48,13 +48,13 @@ module.exports = {
         
         const generalEmbed = new EmbedBuilder()
             .setColor('#888888')
-            .setTitle('🌐 General')
+            .setTitle('<:general:1447143679348441098> General')
             .setDescription('Basic commands for everyone.')
             .addFields({ name: '/ping-pong', value: 'Check bot latency.' });
 
         const registerEmbed = new EmbedBuilder()
             .setColor('#888888')
-            .setTitle('📝 Registration')
+            .setTitle('<:registration:1447143542643490848> Registration')
             .addFields(
                 { name: '/register submit', value: 'Register yourself to the server.' },
                 { name: '/register update (staff)', value: 'Update a user registration.' },
@@ -63,7 +63,7 @@ module.exports = {
 
         const funEmbed = new EmbedBuilder()
             .setColor('#888888')
-            .setTitle('🎉 Fun')
+            .setTitle('<:fun:1447143741008904324> Fun')
             .setDescription('Relax and have fun!')
             .addFields({ name: '/rps', value: 'Play Rock Paper Scissors against the bot.' });
 
@@ -96,28 +96,28 @@ module.exports = {
             .setPlaceholder('Select a category...')
             .addOptions(
                 new StringSelectMenuOptionBuilder()
-                    .setLabel('Owner')
-                    .setEmoji('👑')
+                    .setLabel('Bot Owner')
+                    .setEmoji('1447143417711951872')
                     .setValue('owner'),
                 new StringSelectMenuOptionBuilder()
                     .setLabel('Admin')
-                    .setEmoji('⚙️')
+                    .setEmoji('1447144258342490122')
                     .setValue('admin'),
                 new StringSelectMenuOptionBuilder()
                     .setLabel('Moderation')
-                    .setEmoji('🛡️')
+                    .setEmoji('1447143480559140895')
                     .setValue('moderation'),
                 new StringSelectMenuOptionBuilder()
                     .setLabel('Register')
-                    .setEmoji('📝')
+                    .setEmoji('1447143542643490848')
                     .setValue('registration'),
                 new StringSelectMenuOptionBuilder()
                     .setLabel('General')
-                    .setEmoji('🌐')
+                    .setEmoji('1447143679348441098')
                     .setValue('general'),
                 new StringSelectMenuOptionBuilder()
                     .setLabel('Fun')
-                    .setEmoji('🎉')
+                    .setEmoji('1447143741008904324')
                     .setValue('fun'),
             );
 

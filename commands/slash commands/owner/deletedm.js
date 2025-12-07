@@ -16,7 +16,7 @@ module.exports = {
         // 2. Owner Check
         if (interaction.user.id !== OWNER_ID) {
             return interaction.reply({ 
-                content: '<:checkno:1447177716205092966> Only the bot owner can use this command.', 
+                content: '⛔ Only the bot owner can use this command.', 
                 flags: MessageFlags.Ephemeral 
             });
         }
@@ -31,7 +31,7 @@ module.exports = {
             const targetUser = await interaction.client.users.fetch(targetId).catch(() => null);
 
             if (!targetUser) {
-                return interaction.editReply('<:checkno:1447177716205092966> Could not find a user with that ID.');
+                return interaction.editReply('<:no:1297814819105144862> Could not find a user with that ID.');
             }
 
             // Open the DM Channel
@@ -73,11 +73,11 @@ module.exports = {
                 lastId = messages.last().id;
             }
 
-            await interaction.editReply(`<:checkyes:1447177673410613418> Done! Deleted **${deletedCount}** messages in ${targetUser.tag}'s DMs.`);
+            await interaction.editReply(`<:yes:1297814648417943565> Done! Deleted **${deletedCount}** messages in ${targetUser.tag}'s DMs.`);
 
         } catch (error) {
             console.error(error);
-            await interaction.editReply(`<:checkno:1447177716205092966> An error occurred: ${error.message}`);
+            await interaction.editReply(`<:no:1297814819105144862> An error occurred: ${error.message}`);
         }
     },
 };

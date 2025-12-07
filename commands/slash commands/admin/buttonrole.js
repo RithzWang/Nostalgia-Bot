@@ -84,7 +84,7 @@ module.exports = {
             if (!message) throw new Error('Message not found');
         } catch (error) {
             return interaction.reply({ 
-                content: `❌ Could not find that message in ${channel}. Check the ID.`, 
+                content: `<:checkno:1447177716205092966> Could not find that message in ${channel}. Check the ID.`, 
                 flags: MessageFlags.Ephemeral 
             });
         }
@@ -100,7 +100,7 @@ module.exports = {
 
             if (role.position >= interaction.guild.members.me.roles.highest.position) {
                 return interaction.reply({ 
-                    content: '❌ That role is higher than my highest role. I cannot give it.', 
+                    content: '<:checkno:1447177716205092966> That role is higher than my highest role. I cannot give it.', 
                     flags: MessageFlags.Ephemeral 
                 });
             }
@@ -136,7 +136,7 @@ module.exports = {
                 if (!added) {
                     if (components.length >= 5) {
                         return interaction.reply({ 
-                            content: '❌ This message has too many buttons (Max 5 rows).', 
+                            content: '<:checkno:1447177716205092966> This message has too many buttons (Max 5 rows).', 
                             flags: MessageFlags.Ephemeral 
                         });
                     }
@@ -147,13 +147,13 @@ module.exports = {
                 await message.edit({ components: components });
 
                 await interaction.reply({ 
-                    content: `<a:success:1297818086463770695> Added **${isVerify ? 'Verify' : 'Toggle'}** button for **${role.name}**!`, 
+                    content: `<:checkyes:1447177673410613418> Added **${isVerify ? 'Verify' : 'Toggle'}** button for **${role.name}**!`, 
                     flags: MessageFlags.Ephemeral 
                 });
 
             } catch (error) {
                 console.error(error);
-                await interaction.reply({ content: `❌ Error: ${error.message}`, flags: MessageFlags.Ephemeral });
+                await interaction.reply({ content: `<:checkno:1447177716205092966> Error: ${error.message}`, flags: MessageFlags.Ephemeral });
             }
         
         // ==========================================
@@ -181,7 +181,7 @@ module.exports = {
 
                 if (!found) {
                     return interaction.reply({ 
-                        content: `❌ I couldn't find a button for **${role.name}** on that message.`, 
+                        content: `<:checkno:1447177716205092966> I couldn't find a button for **${role.name}** on that message.`, 
                         flags: MessageFlags.Ephemeral 
                     });
                 }
@@ -189,13 +189,13 @@ module.exports = {
                 await message.edit({ components: newComponents });
 
                 await interaction.reply({ 
-                    content: `<a:success:1297818086463770695> Removed the button for **${role.name}**.`, 
+                    content: `<:checkyes:1447177673410613418> Removed the button for **${role.name}**.`, 
                     flags: MessageFlags.Ephemeral 
                 });
 
             } catch (error) {
                 console.error(error);
-                await interaction.reply({ content: `❌ Error: ${error.message}`, flags: MessageFlags.Ephemeral });
+                await interaction.reply({ content: `<:checkno:1447177716205092966> Error: ${error.message}`, flags: MessageFlags.Ephemeral });
             }
         }
     }

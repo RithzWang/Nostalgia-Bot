@@ -29,9 +29,6 @@ const { loadFonts } = require('./fontLoader');
 const config = require("./config.json");
 const Sticky = require('./src/models/Sticky');
 
-const eventsPath = path.join(__dirname, 'src', 'events'); 
-const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
-
 
 // 2. Extract constants (WE DO NOT extract roleupdateMessageID here)
 const { prefix, serverID, serversID, welcomeLog, roleupdateLog, roleforLog, colourEmbed } = config;

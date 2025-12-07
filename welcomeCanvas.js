@@ -69,7 +69,7 @@ async function createWelcomeImage(member) {
     ctx.closePath();
     
     // Shadow Settings (1.0 = Max Darkness)
-    ctx.shadowColor = 'rgba(0, 0, 0, 1.0)'; 
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)'; 
     ctx.shadowBlur = 35;                     
     ctx.shadowOffsetX = 8;                   
     ctx.shadowOffsetY = 8;                   
@@ -116,7 +116,7 @@ async function createWelcomeImage(member) {
     ctx.fillStyle = '#ffffff';
 
     // Shadow Settings for Display Name (1.0 = Max Darkness)
-    ctx.shadowColor = "rgba(0, 0, 0, 1.0)";
+    ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
     ctx.shadowBlur = 15;                     
     ctx.shadowOffsetX = 5;                   
     ctx.shadowOffsetY = 5;                   
@@ -135,13 +135,13 @@ async function createWelcomeImage(member) {
     
     // --- USERNAME ---
     // CHANGED: Reduced from 130 to 100 to make the gap smaller
-    currentY += 100;
+    currentY += 110;
 
     const cleanedUsername = member.user.username.replace(/<a?:\w+:\d+>/g, '').trim();
     let usernameText;
 
     // Shadow Settings for Username (1.0 = Max Darkness)
-    ctx.shadowColor = "rgba(0, 0, 0, 1.0)";
+    ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
     ctx.shadowBlur = 15;
     ctx.shadowOffsetX = 5;
     ctx.shadowOffsetY = 5;

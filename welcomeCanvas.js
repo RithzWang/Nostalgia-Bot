@@ -134,7 +134,7 @@ async function createWelcomeImage(member) {
     }
 
     // UPDATED FONT: Uses "SF Pro SemiBold" specifically for username
-    ctx.font = '80px "gg sans Regular", sans-serif';
+    ctx.font = '80px "SF Pro Semi", sans-serif';
     
     ctx.fillStyle = '#b9bbbe';
     ctx.fillText(usernameText, textX, currentY);

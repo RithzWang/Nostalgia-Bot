@@ -38,6 +38,13 @@ async function loadFonts() {
         GlobalFonts.registerFromPath(ReemBoldPath, 'ReemKufi Bold');
         }
 
+
+     const GeezaBoldPath = path.join(FONT_DIR, 'Geeza Pro Bold.ttf');
+    if (fs.existsSync(GeezaBoldPath)) {
+        GlobalFonts.registerFromPath(GeezaBoldPath, 'Geeza Bold');
+        }
+
+
     // 4. Arabic (Scheherazade New)
     const arabicPath = path.join(FONT_DIR, 'SFArabic.ttf');
     if (fs.existsSync(arabicPath))  GlobalFonts.registerFromPath(arabicPath, 'SFArabic');

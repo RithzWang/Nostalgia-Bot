@@ -102,7 +102,7 @@ async function createWelcomeImage(member) {
 
     // --- 4. Server Name ---
     ctx.save(); 
-    ctx.font = 'bold 60px "Noto Sans", "SFArabic", "Math", "Apple Color Emoji"';
+    ctx.font = 'bold 60px "Noto Sans", "Naskh", "Math", "Apple Color Emoji"';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; 
     ctx.textAlign = 'right'; 
     ctx.textBaseline = 'bottom'; 

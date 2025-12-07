@@ -33,9 +33,9 @@ async function loadFonts() {
         }
 
 
-    const wnSemiPath = path.join(FONT_DIR, 'whitneysemibold.otf');
-    if (fs.existsSync(wnSemiPath)) {
-        GlobalFonts.registerFromPath(wnSemiPath, 'Whitney Semibold');
+    const reemBoldPath = path.join(FONT_DIR, 'ReemKufi-Bold.ttf');
+    if (fs.existsSync(reemBold)) {
+        GlobalFonts.registerFromPath(reemBold, 'ReemKufi Bold');
         }
 
     // 4. Arabic (Scheherazade New)

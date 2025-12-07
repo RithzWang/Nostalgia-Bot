@@ -108,7 +108,7 @@ async function showLeaveMenu(i, guilds) {
 
     collector.on('collect', async menuInteraction => {
         const selectedIds = menuInteraction.values;
-        await menuInteraction.update({ content: '⏳ Processing leave requests...', components: [], embeds: [] });
+        await menuInteraction.update({ content: '<a:loading:1447184742934909032> Processing leave requests...', components: [], embeds: [] });
 
         const left = [];
         for (const id of selectedIds) {

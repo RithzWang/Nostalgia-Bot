@@ -155,7 +155,7 @@ async function createWelcomeImage(member) {
     }
 
     // USERNAME FONT
-    ctx.font = '90px "SF Pro Regular", sans-serif';
+    ctx.font = '90px "SF Pro Regular"';
     
     ctx.fillStyle = '#b9bbbe';
     ctx.fillText(usernameText, textX, currentY);

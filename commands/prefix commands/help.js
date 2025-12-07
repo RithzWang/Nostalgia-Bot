@@ -108,7 +108,7 @@ module.exports = {
                     .setEmoji('1447143480559140895')
                     .setValue('moderation'),
                 new StringSelectMenuOptionBuilder()
-                    .setLabel('Register')
+                    .setLabel('Registration')
                     .setEmoji('1447143542643490848')
                     .setValue('registration'),
                 new StringSelectMenuOptionBuilder()

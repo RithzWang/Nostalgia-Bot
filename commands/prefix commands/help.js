@@ -56,9 +56,7 @@ module.exports = {
             .setColor('#888888')
             .setTitle('<:registration:1447143542643490848> Registration')
             .addFields(
-                { name: '/register submit', value: 'Register yourself to the server.' },
-                { name: '/register update (staff)', value: 'Update a user registration.' },
-                { name: '/register revoke (staff)', value: 'Revoke a user registration.' }
+                { name: '/register submit', value: 'Register yourself to the server.' }
             );
 
         const funEmbed = new EmbedBuilder()

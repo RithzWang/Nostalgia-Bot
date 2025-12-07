@@ -30,8 +30,13 @@ async function loadFonts() {
     const sfProSemiPath = path.join(FONT_DIR, 'SF Pro - Semibold.otf');
     if (fs.existsSync(sfProSemiPath)) {
         GlobalFonts.registerFromPath(sfProSemiPath, 'SF Pro Semi');
-        
-    }
+        }
+
+
+    const wnSemiPath = path.join(FONT_DIR, 'whitneysemibold.otf');
+    if (fs.existsSync(wnSemiPath)) {
+        GlobalFonts.registerFromPath(wnSemiPath, 'Whitney Semibold');
+        }
 
     // 4. Arabic (Scheherazade New)
     const arabicPath = path.join(FONT_DIR, 'SFArabic.ttf');

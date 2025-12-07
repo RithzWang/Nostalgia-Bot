@@ -229,11 +229,11 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
     let roleUpdateMessage = '';
 
     if (addedRoles.size > 0 && removedRoles.size > 0) {
-        roleUpdateMessage = `<:checkyes:1447177673410613418> ${newMember.user} has been added ${formatRoles(addedRoles)} ${plural(addedRoles)} and removed ${formatRoles(removedRoles)} ${plural(removedRoles)}!`;
+        roleUpdateMessage = `<:yes:1297814648417943565> ${newMember.user} has been added ${formatRoles(addedRoles)} ${plural(addedRoles)} and removed ${formatRoles(removedRoles)} ${plural(removedRoles)}!`;
     } else if (addedRoles.size > 0) {
-        roleUpdateMessage = `<:checkyes:1447177673410613418> ${newMember.user} has been added ${formatRoles(addedRoles)} ${plural(addedRoles)}!`;
+        roleUpdateMessage = `<:yes:1297814648417943565> ${newMember.user} has been added ${formatRoles(addedRoles)} ${plural(addedRoles)}!`;
     } else if (removedRoles.size > 0) {
-        roleUpdateMessage = `<:checkyes:1447177673410613418> ${newMember.user} has been removed ${formatRoles(removedRoles)} ${plural(removedRoles)}!`;
+        roleUpdateMessage = `<:yes:1297814648417943565> ${newMember.user} has been removed ${formatRoles(removedRoles)} ${plural(removedRoles)}!`;
     }
 
     editMessage(roleUpdateMessage);
@@ -287,11 +287,11 @@ client.on('interactionCreate', async (interaction) => {
         const role = interaction.guild.roles.cache.get(roleId);
 
         if (!role) {
-            return interaction.reply({ content: '<:checkno:1447177716205092966> This role no longer exists.', flags: MessageFlags.Ephemeral });
+            return interaction.reply({ content: '<:no:1297814819105144862> This role no longer exists.', flags: MessageFlags.Ephemeral });
         }
 
         if (role.position >= interaction.guild.members.me.roles.highest.position) {
-            return interaction.reply({ content: '<:checkno:1447177716205092966> I cannot assign this role because it is higher than me.', flags: MessageFlags.Ephemeral });
+            return interaction.reply({ content: '<:no:1297814819105144862> I cannot assign this role because it is higher than me.', flags: MessageFlags.Ephemeral });
         }
 
         const member = interaction.member;
@@ -301,13 +301,13 @@ client.on('interactionCreate', async (interaction) => {
         if (mode === '1') {
             if (hasRole) {
                 return interaction.reply({ 
-                    content: `<:checkyes:1447177673410613418> You are already verified with the **${role.name}** role.`, 
+                    content: `<:no:1297814819105144862> You are already verified with the **${role.name}** role.`, 
                     flags: MessageFlags.Ephemeral 
                 });
             } else {
                 await member.roles.add(role);
                 return interaction.reply({ 
-                    content: `<:checkyes:1447177673410613418> You have been added **${role.name}**.`, 
+                    content: `<:yes:1297814648417943565> You have been added **${role.name}**.`, 
                     flags: MessageFlags.Ephemeral 
                 });
             }
@@ -318,13 +318,13 @@ client.on('interactionCreate', async (interaction) => {
             if (hasRole) {
                 await member.roles.remove(role);
                 return interaction.reply({ 
-                    content: `<:checkyes:1447177673410613418> Removed **${role.name}** role.`, 
+                    content: `<:yes:1297814648417943565> Removed **${role.name}** role.`, 
                     flags: MessageFlags.Ephemeral 
                 });
             } else {
                 await member.roles.add(role);
                 return interaction.reply({ 
-                    content: `<:checkyes:1447177673410613418> Added **${role.name}** role.`, 
+                    content: `<:yes:1297814648417943565> Added **${role.name}** role.`, 
                     flags: MessageFlags.Ephemeral 
                 });
             }

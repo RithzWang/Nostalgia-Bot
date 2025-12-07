@@ -62,7 +62,23 @@ async function createWelcomeImage(member) {
     const mainAvatarURL = member.displayAvatarURL({ extension: 'png', size: 512 });
     const mainAvatar = await loadImage(mainAvatarURL);
 
-    // A. Draw User Avatar (Clipped)
+    // --- 3a. Draw Shadow Behind Avatar ---
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(avatarX + avatarRadius, avatarY + avatarRadius, avatarRadius, 0, Math.PI * 2, true);
+    ctx.closePath();
+    
+    // Shadow Settings (1.0 = Max Darkness)
+    ctx.shadowColor = 'rgba(0, 0, 0, 1.0)'; 
+    ctx.shadowBlur = 35;                     
+    ctx.shadowOffsetX = 8;                   
+    ctx.shadowOffsetY = 8;                   
+    
+    ctx.fillStyle = '#000000'; 
+    ctx.fill(); 
+    ctx.restore();
+
+    // --- 3b. Draw User Avatar (Clipped) ---
     ctx.save();
     ctx.beginPath();
     ctx.arc(avatarX + avatarRadius, avatarY + avatarRadius, avatarRadius, 0, Math.PI * 2, true);
@@ -71,7 +87,7 @@ async function createWelcomeImage(member) {
     ctx.drawImage(mainAvatar, avatarX, avatarY, avatarSize, avatarSize);
     ctx.restore();
 
-    // C. Draw Avatar Decoration
+    // --- 3c. Draw Avatar Decoration ---
     const decoURL = member.user.avatarDecorationURL({ extension: 'png', size: 512 });
     if (decoURL) {
         const decoImage = await loadImage(decoURL).catch(e => null);
@@ -98,7 +114,9 @@ async function createWelcomeImage(member) {
     let currentY = dim.height / 2 - 50;
 
     ctx.fillStyle = '#ffffff';
-    ctx.shadowColor = "rgba(0, 0, 0, 0.75)";
+
+    // Shadow Settings for Display Name (1.0 = Max Darkness)
+    ctx.shadowColor = "rgba(0, 0, 0, 1.0)";
     ctx.shadowBlur = 15;                     
     ctx.shadowOffsetX = 5;                   
     ctx.shadowOffsetY = 5;                   
@@ -112,17 +130,18 @@ async function createWelcomeImage(member) {
     
     ctx.fillText(displayName, textX, currentY);
 
+    // Reset shadow
     ctx.shadowColor = "transparent";
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
+    
+    // --- USERNAME ---
+    // CHANGED: Reduced from 130 to 100 to make the gap smaller
+    currentY += 100;
 
-    // Username
-    currentY += 130;
     const cleanedUsername = member.user.username.replace(/<a?:\w+:\d+>/g, '').trim();
     let usernameText;
 
-    ctx.shadowColor = "rgba(0, 0, 0, 0.75)";
+    // Shadow Settings for Username (1.0 = Max Darkness)
+    ctx.shadowColor = "rgba(0, 0, 0, 1.0)";
     ctx.shadowBlur = 15;
     ctx.shadowOffsetX = 5;
     ctx.shadowOffsetY = 5;
@@ -138,11 +157,6 @@ async function createWelcomeImage(member) {
     
     ctx.fillStyle = '#b9bbbe';
     ctx.fillText(usernameText, textX, currentY);
-
-    ctx.shadowColor = "transparent";
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
 
     ctx.restore();
     return canvas.toBuffer('image/png');

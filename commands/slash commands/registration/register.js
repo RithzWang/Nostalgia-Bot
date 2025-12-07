@@ -96,7 +96,7 @@ module.exports = {
         // 1. Channel Check
         if (interaction.channelId !== allowedChannelId) {
             return interaction.reply({ 
-                content: `Please use <#${allowedChannelId}> to register.`, 
+                content: `<:no:1297814819105144862> Please use <#${allowedChannelId}> to register.`, 
                 flags: MessageFlags.Ephemeral 
             });
         }

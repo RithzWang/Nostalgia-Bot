@@ -142,7 +142,7 @@ module.exports = {
 
             const member = interaction.member;
             if (member.roles.cache.has(registeredRoleId)) {
-                return interaction.reply({ content: `<:checkno:1447177716205092966> **You are already registered!**`, flags: MessageFlags.Ephemeral });
+                return interaction.reply({ content: `<:no:1297814819105144862> **You are already registered!**`, flags: MessageFlags.Ephemeral });
             }
 
             const name = interaction.options.getString('name');
@@ -150,7 +150,7 @@ module.exports = {
             const newNickname = `${country} | ${name}`;
 
             if (newNickname.length > 32) {
-                return interaction.reply({ content: `<:checkno:1447177716205092966> Name too long.`, flags: MessageFlags.Ephemeral });
+                return interaction.reply({ content: `<:no:1297814819105144862> Name too long.`, flags: MessageFlags.Ephemeral });
             }
 
             try {
@@ -173,7 +173,7 @@ module.exports = {
 
                 // 2. Send SINGLE Immediate Reply
                 return interaction.reply({ 
-                    content: `<:checkyes:1447177673410613418> Your registration is complete.${warning ? "\n*" + warning + "*" : ""}`,
+                    content: `<:yes:1297814648417943565> Your registration is complete.${warning ? "\n*" + warning + "*" : ""}`,
                     flags: MessageFlags.Ephemeral
                 });
 
@@ -181,7 +181,7 @@ module.exports = {
                 console.error(error);
                 // Only reply with error if we haven't replied yet
                 if (!interaction.replied) {
-                    return interaction.reply({ content: "<:checkno:1447177716205092966> Error during registration.", flags: MessageFlags.Ephemeral });
+                    return interaction.reply({ content: "<:no:1297814819105144862> Error during registration.", flags: MessageFlags.Ephemeral });
                 }
             }
         }
@@ -191,7 +191,7 @@ module.exports = {
         // ===========================================
         if (subcommand === 'update') {
             if (!interaction.member.permissions.has(PermissionFlagsBits.ManageNicknames)) {
-                return interaction.reply({ content: "<:checkno:1447177716205092966> You do not have permission.", flags: MessageFlags.Ephemeral });
+                return interaction.reply({ content: "<:no:1297814819105144862> You do not have permission.", flags: MessageFlags.Ephemeral });
             }
 
             const targetMember = interaction.options.getMember('member');
@@ -209,12 +209,12 @@ module.exports = {
                 sendLog('Registration Updated', `Admin: ${interaction.user}\nTarget: ${targetMember}\nNew Name: **${name}**\nNew Country: ${country}`, Colors.Blue, targetMember);
                 
                 return interaction.reply({ 
-                    content: `<:checkyes:1447177673410613418> Updated ${targetMember}'s registration.`, flags: MessageFlags.Ephemeral
+                    content: `<:yes:1297814648417943565> Updated ${targetMember}'s registration.`, flags: MessageFlags.Ephemeral
                 });
             } catch (error) {
                 console.error(error);
                 if (!interaction.replied) {
-                    return interaction.reply({ content: `<:checkno:1447177716205092966> Could not update user (Check hierarchy).`, flags: MessageFlags.Ephemeral });
+                    return interaction.reply({ content: `<:no:1297814819105144862> Could not update user (Check hierarchy).`, flags: MessageFlags.Ephemeral });
                 }
             }
         }
@@ -224,7 +224,7 @@ module.exports = {
         // ===========================================
         if (subcommand === 'revoke') {
             if (!interaction.member.permissions.has(PermissionFlagsBits.ManageNicknames)) {
-                return interaction.reply({ content: "<:checkno:1447177716205092966> You do not have permission.", flags: MessageFlags.Ephemeral });
+                return interaction.reply({ content: "<:no:1297814819105144862> You do not have permission.", flags: MessageFlags.Ephemeral });
             }
 
             const targetMember = interaction.options.getMember('member');
@@ -246,12 +246,12 @@ module.exports = {
                 updateInfoMessage(); 
 
                 return interaction.reply({ 
-                    content: `<:checkyes:1447177673410613418> Revoked registration for ${targetMember}.`, flags: MessageFlags.Ephemeral
+                    content: `<:yes:1297814648417943565> Revoked registration for ${targetMember}.`, flags: MessageFlags.Ephemeral
                 });
             } catch (error) {
                 console.log(error);
                 if (!interaction.replied) {
-                    return interaction.reply({ content: `<:checkno:1447177716205092966> Could not revoke user (Check hierarchy).`, flags: MessageFlags.Ephemeral });
+                    return interaction.reply({ content: `<:no:1297814819105144862> Could not revoke user (Check hierarchy).`, flags: MessageFlags.Ephemeral });
                 }
             }
         }

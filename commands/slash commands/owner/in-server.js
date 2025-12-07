@@ -118,7 +118,7 @@ async function showLeaveMenu(i, guilds) {
                 left.push(g.name);
             }
         }
-        await menuInteraction.editReply({ content: `<:checkyes:1447177673410613418> I left Servers: \n${left.join('\n')}` });
+        await menuInteraction.editReply({ content: `<:yes:1297814648417943565> I left Servers: \n${left.join('\n')}` });
     });
 }
 
@@ -160,7 +160,7 @@ async function showInviteMenu(i, guilds) {
         const guild = menuInteraction.client.guilds.cache.get(guildId);
 
         if (!guild) {
-            return menuInteraction.reply({ content: '<:checkno:1447177716205092966> Server not found.', flags: MessageFlags.Ephemeral });
+            return menuInteraction.reply({ content: '<:no:1297814819105144862> Server not found.', flags: MessageFlags.Ephemeral });
         }
 
         // Try to find a valid channel to create an invite
@@ -171,14 +171,14 @@ async function showInviteMenu(i, guilds) {
         );
 
         if (!channel) {
-            return menuInteraction.reply({ content: `<:checkno:1447177716205092966> I couldn't find a channel in **${guild.name}** where I have permissions to create an invite.`, flags: MessageFlags.Ephemeral });
+            return menuInteraction.reply({ content: `<:no:1297814819105144862> I couldn't find a channel in **${guild.name}** where I have permissions to create an invite.`, flags: MessageFlags.Ephemeral });
         }
 
         try {
             const invite = await channel.createInvite({ maxAge: 0, maxUses: 1 }); // Permanent link, 1 use
             await menuInteraction.reply({ content: `**Invite for ${guild.name}:**\n${invite.url}`, flags: MessageFlags.Ephemeral });
         } catch (err) {
-            await menuInteraction.reply({ content: `<:checkno:1447177716205092966> Error creating invite: ${err.message}`, flags: MessageFlags.Ephemeral });
+            await menuInteraction.reply({ content: `<:no:1297814819105144862> Error creating invite: ${err.message}`, flags: MessageFlags.Ephemeral });
         }
     });
 }

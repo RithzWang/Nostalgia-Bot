@@ -28,8 +28,8 @@ module.exports = {
             .addFields(
                 { name: '/embed create', value: 'Create a message embed.' },
                 { name: '/embed edit', value: 'Edit an existing message embed.' },
-                { name: '/say create', value: 'Create a message.' },
-                { name: '/say edit', value: 'Edit an existing message.' },
+                { name: '/message create', value: 'Create a message.' },
+                { name: '/message edit', value: 'Edit an existing message.' },
                 { name: '/poll', value: 'Create a poll.' },
                 { name: '/sticky set', value: 'Set a sticky message.' },
                 { name: '/sticky remove', value: 'Stop the sticky message.' }

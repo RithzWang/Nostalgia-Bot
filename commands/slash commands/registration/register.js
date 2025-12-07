@@ -209,7 +209,7 @@ module.exports = {
                 sendLog('Registration Updated', `Admin: ${interaction.user}\nTarget: ${targetMember}\nNew Name: **${name}**\nNew Country: ${country}`, Colors.Blue, targetMember);
                 
                 return interaction.reply({ 
-                    content: `<a:success:1297818086463770695> Updated ${targetMember}'s registration.`
+                    content: `<a:success:1297818086463770695> Updated ${targetMember}'s registration.`, flags: MessageFlags.Ephemeral
                 });
             } catch (error) {
                 console.error(error);
@@ -246,7 +246,7 @@ module.exports = {
                 updateInfoMessage(); 
 
                 return interaction.reply({ 
-                    content: `<a:success:1297818086463770695> Revoked registration for ${targetMember}.`
+                    content: `<a:success:1297818086463770695> Revoked registration for ${targetMember}.`, flags: MessageFlags.Ephemeral
                 });
             } catch (error) {
                 console.log(error);

@@ -125,7 +125,7 @@ async function createWelcomeImage(member) {
     const displayName = cleanedDisplayName || member.user.username;
 
     // MAIN TEXT: Uses SF Pro (Bold)
-    ctx.font = 'bold 95px "gg sans Bold", "SFArabic", "Thonburi", "Math", "Apple Color Emoji", sans-serif';
+    ctx.font = 'bold 105px "gg sans Bold", "SFArabic", "Thonburi", "Math", "Apple Color Emoji", sans-serif';
     ctx.textAlign = 'left'; 
     
     ctx.fillText(displayName, textX, currentY);
@@ -153,7 +153,7 @@ async function createWelcomeImage(member) {
     }
 
     // UPDATED FONT: Uses "SF Pro SemiBold" specifically for username
-    ctx.font = '80px "SF Pro Semi", sans-serif';
+    ctx.font = '90px "SF Pro Semi", sans-serif';
     
     ctx.fillStyle = '#b9bbbe';
     ctx.fillText(usernameText, textX, currentY);

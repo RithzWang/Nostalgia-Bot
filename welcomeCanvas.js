@@ -155,7 +155,7 @@ async function createWelcomeImage(member) {
     }
 
     // FIX: Added ", sans-serif" for safety
-    ctx.font = '90px "SF Pro Semi", sans-serif';
+    ctx.font = '90px "Whitney Semibold", sans-serif';
     
     ctx.fillStyle = '#b9bbbe';
     ctx.fillText(usernameText, textX, currentY);

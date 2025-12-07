@@ -41,15 +41,15 @@ module.exports = {
             }
 
             await sticky.save();
-            await interaction.reply({ content: '<:checkyes:1447177673410613418> Sticky message set!', flags: MessageFlags.Ephemeral });
+            await interaction.reply({ content: '<:yes:1297814648417943565> Sticky message set!', flags: MessageFlags.Ephemeral });
 
         } else if (subcommand === 'remove') {
             const sticky = await Sticky.findOneAndDelete({ channelId: interaction.channel.id });
 
             if (sticky) {
-                await interaction.reply({ content: '<:checkyes:1447177673410613418> Sticky message removed.', flags: MessageFlags.Ephemeral });
+                await interaction.reply({ content: '<:yes:1297814648417943565> Sticky message removed.', flags: MessageFlags.Ephemeral });
             } else {
-                await interaction.reply({ content: '<:checkno:1447177716205092966> There is no sticky message in this channel.', flags: MessageFlags.Ephemeral });
+                await interaction.reply({ content: '<:no:1297814819105144862> There is no sticky message in this channel.', flags: MessageFlags.Ephemeral });
             }
         }
     }

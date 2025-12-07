@@ -230,7 +230,7 @@ module.exports = {
             const targetMember = interaction.options.getMember('member');
             const reason = interaction.options.getString('reason');
             const cleanDisplayName = targetMember.user.displayName.substring(0, 29);
-            const resetNickname = `🌟・${cleanDisplayName}`;
+            const resetNickname = `⁉️・${cleanDisplayName}`;
 
             try {
                 await targetMember.roles.remove(registeredRoleId);

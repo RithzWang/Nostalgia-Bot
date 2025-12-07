@@ -137,7 +137,7 @@ async function createWelcomeImage(member) {
     ctx.shadowColor = "transparent";
     
     // --- USERNAME ---
-    currentY += 110; // This gap is fine, the shift above fixes the alignment
+    currentY += 110; 
 
     const cleanedUsername = member.user.username.replace(/<a?:\w+:\d+>/g, '').trim();
     let usernameText;
@@ -154,8 +154,15 @@ async function createWelcomeImage(member) {
         usernameText = `@${cleanedUsername}`;
     }
 
-    // USERNAME FONT
+    // FIX: Added ", sans-serif" for safety
     ctx.font = '90px "SF Pro Regular", sans-serif';
     
     ctx.fillStyle = '#b9bbbe';
     ctx.fillText(usernameText, textX, currentY);
+
+    // FIX: Added the missing restore and return statements
+    ctx.restore();
+    return canvas.toBuffer('image/png');
+}
+
+module.exports = { createWelcomeImage };

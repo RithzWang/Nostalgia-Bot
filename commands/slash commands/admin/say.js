@@ -2,7 +2,7 @@ const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, MessageFlags } = 
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('say')
+        .setName('message')
         .setDescription('Manage bot messages')
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
         
@@ -82,13 +82,13 @@ module.exports = {
                 });
                 
                 await interaction.reply({ 
-                    content: `<a:success:1297818086463770695> I sent the message to ${targetChannel}. (Mentions: ${shouldMention ? 'ON' : 'OFF'})`, 
+                    content: `<:checkyes:1447177673410613418> I sent the message to ${targetChannel}. (Mentions: ${shouldMention ? 'ON' : 'OFF'})`, 
                     flags: MessageFlags.Ephemeral 
                 });
             } catch (error) {
                 console.error(error);
                 await interaction.reply({ 
-                    content: `I cannot send messages in ${targetChannel}. Please check my permissions!`, 
+                    content: `<:checkno:1447177716205092966> I cannot send messages in ${targetChannel}. Please check my permissions!`, 
                     flags: MessageFlags.Ephemeral 
                 });
             }
@@ -117,14 +117,14 @@ module.exports = {
                 });
 
                 await interaction.reply({ 
-                    content: `<a:success:1297818086463770695> I successfully edited the message in ${targetChannel}.`, 
+                    content: `<:checkyes:1447177673410613418> I successfully edited the message in ${targetChannel}.`, 
                     flags: MessageFlags.Ephemeral 
                 });
 
             } catch (error) {
                 console.error(error);
                 await interaction.reply({ 
-                    content: `I couldn’t find that message in ${targetChannel}. Please check the Message ID!`, 
+                    content: `<:checkno:1447177716205092966> I couldn’t find that message in ${targetChannel}. Please check the Message ID!`, 
                     flags: MessageFlags.Ephemeral 
                 });
             }

@@ -111,11 +111,14 @@ async function createWelcomeImage(member) {
 
     // --- 5. User Text ---
     const textX = avatarX + avatarSize + 70;
-    let currentY = dim.height / 2 - 50;
+    
+    // CHANGED: -50 -> -15
+    // This pushes the first line down so its baseline is just above the middle
+    let currentY = dim.height / 2 - 15; 
 
     ctx.fillStyle = '#ffffff';
 
-    // Shadow Settings for Display Name (1.0 = Max Darkness)
+    // Shadow Settings for Display Name
     ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
     ctx.shadowBlur = 15;                     
     ctx.shadowOffsetX = 5;                   
@@ -124,7 +127,7 @@ async function createWelcomeImage(member) {
     const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>/g, '').trim();
     const displayName = cleanedDisplayName || member.user.username;
 
-    // MAIN TEXT: Uses SF Pro (Bold)
+    // MAIN TEXT
     ctx.font = 'bold 110px "gg sans Bold", "SFArabic", "Thonburi", "Math", "Apple Color Emoji", sans-serif';
     ctx.textAlign = 'left'; 
     
@@ -134,13 +137,12 @@ async function createWelcomeImage(member) {
     ctx.shadowColor = "transparent";
     
     // --- USERNAME ---
-    // CHANGED: Reduced from 130 to 100 to make the gap smaller
-    currentY += 110;
+    currentY += 110; // This gap is fine, the shift above fixes the alignment
 
     const cleanedUsername = member.user.username.replace(/<a?:\w+:\d+>/g, '').trim();
     let usernameText;
 
-    // Shadow Settings for Username (1.0 = Max Darkness)
+    // Shadow Settings for Username
     ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
     ctx.shadowBlur = 15;
     ctx.shadowOffsetX = 5;
@@ -152,14 +154,8 @@ async function createWelcomeImage(member) {
         usernameText = `@${cleanedUsername}`;
     }
 
-    // UPDATED FONT: Uses "SF Pro SemiBold" specifically for username
+    // USERNAME FONT
     ctx.font = '90px "SF Pro Semi", sans-serif';
     
     ctx.fillStyle = '#b9bbbe';
     ctx.fillText(usernameText, textX, currentY);
-
-    ctx.restore();
-    return canvas.toBuffer('image/png');
-}
-
-module.exports = { createWelcomeImage };

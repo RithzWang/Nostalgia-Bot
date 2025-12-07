@@ -41,7 +41,7 @@ module.exports = {
             let lastId;
             let processing = true;
 
-            await interaction.editReply(`🔄 | Processing... Fetching and deleting messages for **${targetUser.tag}**. This may take a while.`);
+            await interaction.editReply(`<a:loading:1447184742934909032> Processing... Fetching and deleting messages for **${targetUser.tag}**. This may take a while.`);
 
             // 4. Loop through messages
             while (processing) {

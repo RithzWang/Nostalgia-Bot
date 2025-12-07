@@ -34,8 +34,8 @@ async function loadFonts() {
 
 
     const ReemBoldPath = path.join(FONT_DIR, 'ReemKufi-Bold.ttf');
-    if (fs.existsSync(ReemBold)) {
-        GlobalFonts.registerFromPath(ReemBold, 'ReemKufi Bold');
+    if (fs.existsSync(ReemBoldPath)) {
+        GlobalFonts.registerFromPath(ReemBoldPath, 'ReemKufi Bold');
         }
 
     // 4. Arabic (Scheherazade New)

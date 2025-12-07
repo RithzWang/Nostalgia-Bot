@@ -27,8 +27,10 @@ module.exports = {
         .setDefaultMemberPermissions(PermissionFlagsBits.SendMessages),
 
     async execute(interaction) {
+        // Configuration
         const allowedChannelId = '1446065407713607812';
         const logChannelId = '1187771223791378522';
+        const infoMessageId = '1446221552084582430';
         const registeredRoleId = '1446058693631148043';
 
         // --- HELPER: LOGGING FUNCTION ---
@@ -51,13 +53,47 @@ module.exports = {
                 .setStyle(ButtonStyle.Secondary)
                 .setDisabled(true);
 
+            // Run in background (no await)
             logChannel.send({ embeds: [embed], components: [new ActionRowBuilder().addComponents(button)] }).catch(console.error);
         }
 
+        // --- HELPER: UPDATE INFO MESSAGE FUNCTION ---
+        async function updateInfoMessage() {
+            try {
+                const infoChannel = interaction.guild.channels.cache.get(allowedChannelId);
+                if (!infoChannel) return;
+                
+                const infoMessage = await infoChannel.messages.fetch(infoMessageId);
+                
+                const role = interaction.guild.roles.cache.get(registeredRoleId);
+                const totalRegistered = role ? role.members.size : 'N/A';
+
+                // Updated text: Removed "submit" from the command mention
+                const newDescription = `to be able to chat and connect to voice channels, use the command **</register:1446387435130064941>**\n\n> \`name:\` followed by your name\n> \`country:\` followed by your country’s flag emoji\n\n**Example:**\n\`\`\`\n/register name: Naif country: 🇬🇧\n\`\`\``;
+
+                const countButton = new ButtonBuilder()
+                    .setCustomId('total_registered_stats')
+                    .setLabel(`Total Registered: ${totalRegistered}`)
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(true);
+
+                const row = new ActionRowBuilder().addComponents(countButton);
+
+                if (infoMessage.embeds.length > 0) {
+                    const updatedEmbed = EmbedBuilder.from(infoMessage.embeds[0]).setDescription(newDescription);
+                    // Run in background (no await)
+                    infoMessage.edit({ embeds: [updatedEmbed], components: [row] }).catch(console.error);
+                }
+            } catch (err) {
+                console.error("Info update failed:", err);
+            }
+        }
+
         // ===========================================
-        // MAIN EXECUTION
+        // MAIN EXECUTION (formerly 'submit')
         // ===========================================
         
+        // 1. Channel Check
         if (interaction.channelId !== allowedChannelId) {
             return interaction.reply({ 
                 content: `Please use <#${allowedChannelId}> to register.`, 
@@ -65,11 +101,13 @@ module.exports = {
             });
         }
 
+        // 2. Already Registered Check
         const member = interaction.member;
         if (member.roles.cache.has(registeredRoleId)) {
             return interaction.reply({ content: `<:no:1297814819105144862> **You are already registered!**`, flags: MessageFlags.Ephemeral });
         }
 
+        // 3. Validation
         const name = interaction.options.getString('name');
         const country = interaction.options.getString('country');
         const newNickname = `${country} | ${name}`;
@@ -79,7 +117,7 @@ module.exports = {
         }
 
         try {
-            // 1. Add Role (This triggers the event in step 1 automatically!)
+            // 4. Perform Actions BEFORE Replying
             await member.roles.add(registeredRoleId);
             
             const isOwner = member.id === interaction.guild.ownerId;
@@ -92,10 +130,11 @@ module.exports = {
                 warning = " (Nickname check: Role too high)";
             }
 
-            // 2. Log it
+            // Run these in background so we can reply faster
             sendLog('New Registration', `User: ${member}\nName: **${name}**\nFrom: ${country}\n${warning}`, Colors.Green, member);
+            updateInfoMessage();
 
-            // 3. Reply
+            // 5. Send SINGLE Immediate Reply
             return interaction.reply({ 
                 content: `<:yes:1297814648417943565> Your registration is complete.${warning ? "\n*" + warning + "*" : ""}`,
                 flags: MessageFlags.Ephemeral
@@ -103,6 +142,7 @@ module.exports = {
 
         } catch (error) {
             console.error(error);
+            // Only reply with error if we haven't replied yet
             if (!interaction.replied) {
                 return interaction.reply({ content: "<:no:1297814819105144862> Error during registration.", flags: MessageFlags.Ephemeral });
             }

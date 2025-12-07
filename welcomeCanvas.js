@@ -106,7 +106,7 @@ async function createWelcomeImage(member) {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; 
     ctx.textAlign = 'right'; 
     ctx.textBaseline = 'bottom'; 
-    ctx.fillText("نورت في سيرفر A2-Q", dim.width - 70, dim.height - 70);
+    ctx.fillText("A2-Q Server", dim.width - 70, dim.height - 70);
     ctx.restore(); 
 
     // --- 5. User Text ---
@@ -137,7 +137,7 @@ async function createWelcomeImage(member) {
     ctx.shadowColor = "transparent";
     
     // --- USERNAME ---
-    currentY += 110; 
+    currentY += 115; 
 
     const cleanedUsername = member.user.username.replace(/<a?:\w+:\d+>/g, '').trim();
     let usernameText;

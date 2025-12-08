@@ -81,7 +81,7 @@ async function createWelcomeImage(member) {
     // CHECK FOR ACCENT COLOR
     if (user.hexAccentColor) {
         // Create a gradient: Accent Color -> White (Top-Left to Bottom-Right)
-        const gradient = ctx.createLinearGradient(0, 0, dim.width, dim.height);
+        const gradient = ctx.createLinearGradient(0, 0, 0, dim.height)
         gradient.addColorStop(0, user.hexAccentColor); 
         gradient.addColorStop(1, '#ffffff'); // Fade to white for a metallic look
         // Or fade to transparent: gradient.addColorStop(1, 'rgba(255,255,255,0.2)');

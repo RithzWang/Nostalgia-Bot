@@ -40,20 +40,45 @@ async function createWelcomeImage(member) {
         ctx.fillRect(0, 0, dim.width, dim.height);
     }
 
-    // 2. Overlay
+    // --- 2. Overlay ---
     ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
     ctx.fillRect(0, 0, dim.width, dim.height);
 
+    // --- 2.5 Inner Frame ---
+    ctx.save();
+    ctx.lineWidth = 40; 
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)'; 
+    ctx.beginPath();
+    ctx.roundRect(0, 0, dim.width, dim.height, cornerRadius);
+    ctx.stroke();
+    ctx.restore();
+
     // --- 3. Main Avatar (Foreground) ---
     const avatarSize = 400;
-    const avatarX = dim.margin + 50;
+    const avatarX = dim.margin + 30;
     const avatarY = (dim.height - avatarSize) / 2;
     const avatarRadius = avatarSize / 2;
 
     const mainAvatarURL = member.displayAvatarURL({ extension: 'png', size: 512 });
     const mainAvatar = await loadImage(mainAvatarURL);
 
-    // A. Draw User Avatar (Clipped)
+    // --- 3a. Draw Shadow Behind Avatar ---
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(avatarX + avatarRadius, avatarY + avatarRadius, avatarRadius, 0, Math.PI * 2, true);
+    ctx.closePath();
+    
+    // Shadow Settings (1.0 = Max Darkness)
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)'; 
+    ctx.shadowBlur = 35;                     
+    ctx.shadowOffsetX = 8;                   
+    ctx.shadowOffsetY = 8;                   
+    
+    ctx.fillStyle = '#000000'; 
+    ctx.fill(); 
+    ctx.restore();
+
+    // --- 3b. Draw User Avatar (Clipped) ---
     ctx.save();
     ctx.beginPath();
     ctx.arc(avatarX + avatarRadius, avatarY + avatarRadius, avatarRadius, 0, Math.PI * 2, true);
@@ -62,31 +87,7 @@ async function createWelcomeImage(member) {
     ctx.drawImage(mainAvatar, avatarX, avatarY, avatarSize, avatarSize);
     ctx.restore();
 
-    // B. Draw Status Circle
-    const status = member.presence ? member.presence.status : 'offline';
-    let statusColor = '#747f8d';
-    switch (status) {
-        case 'online': statusColor = '#3ba55c'; break;
-        case 'idle':   statusColor = '#faa61a'; break;
-        case 'dnd':    statusColor = '#ed4245'; break;
-        case 'streaming': statusColor = '#593695'; break;
-    }
-
-    const statusRadius = 45;
-    const offset = 15;
-    const statusX = avatarX + avatarSize - (statusRadius * 2) + offset;
-    const statusY = avatarY + avatarSize - (statusRadius * 2) + offset;
-
-    ctx.beginPath();
-    ctx.arc(statusX, statusY, statusRadius, 0, Math.PI * 2);
-    ctx.fillStyle = statusColor;
-    ctx.fill();
-    ctx.strokeStyle = '#1e1e1e';
-    ctx.lineWidth = 10;
-    ctx.stroke();
-    ctx.closePath();
-
-    // C. Draw Avatar Decoration
+    // --- 3c. Draw Avatar Decoration ---
     const decoURL = member.user.avatarDecorationURL({ extension: 'png', size: 512 });
     if (decoURL) {
         const decoImage = await loadImage(decoURL).catch(e => null);
@@ -99,21 +100,26 @@ async function createWelcomeImage(member) {
         }
     }
 
-    // --- 4. Text (Server Name Top Right) ---
+    // --- 4. Server Name ---
     ctx.save(); 
-    ctx.font = 'bold 50px "Noto Sans"';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'; 
+    ctx.font = 'bold 60px "Noto Sans", "ReemKufi Bold", "Math", "Apple Color Emoji"';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; 
     ctx.textAlign = 'right'; 
     ctx.textBaseline = 'bottom'; 
-    ctx.fillText("A2-Q Server", dim.width - 60, dim.height - 60);
+    ctx.fillText("A2-Q Server", dim.width - 70, dim.height - 70);
     ctx.restore(); 
 
     // --- 5. User Text ---
-    const textX = avatarX + avatarSize + 60;
-    let currentY = dim.height / 2 - 50;
+    const textX = avatarX + avatarSize + 70;
+    
+    // CHANGED: -50 -> -15
+    // This pushes the first line down so its baseline is just above the middle
+    let currentY = dim.height / 2 - 15; 
 
     ctx.fillStyle = '#ffffff';
-    ctx.shadowColor = "rgba(0, 0, 0, 0.75)";
+
+    // Shadow Settings for Display Name
+    ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
     ctx.shadowBlur = 15;                     
     ctx.shadowOffsetX = 5;                   
     ctx.shadowOffsetY = 5;                   
@@ -121,22 +127,23 @@ async function createWelcomeImage(member) {
     const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>/g, '').trim();
     const displayName = cleanedDisplayName || member.user.username;
 
-    ctx.font = 'bold 100px "SF Pro Bold", "Noto Sans", "Naskh", "Kanit", "Math", "Emoji"';
+    // MAIN TEXT
+    ctx.font = 'bold 120px "gg sans Bold", "Geeza Bold", "Thonburi", "Math", "Apple Color Emoji", sans-serif';
     ctx.textAlign = 'left'; 
     
     ctx.fillText(displayName, textX, currentY);
 
+    // Reset shadow
     ctx.shadowColor = "transparent";
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
+    
+    // --- USERNAME ---
+    currentY += 115; 
 
-    // Username
-    currentY += 130;
     const cleanedUsername = member.user.username.replace(/<a?:\w+:\d+>/g, '').trim();
     let usernameText;
 
-    ctx.shadowColor = "rgba(0, 0, 0, 0.75)";
+    // Shadow Settings for Username
+    ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
     ctx.shadowBlur = 15;
     ctx.shadowOffsetX = 5;
     ctx.shadowOffsetY = 5;
@@ -147,15 +154,13 @@ async function createWelcomeImage(member) {
         usernameText = `@${cleanedUsername}`;
     }
 
-    ctx.font = '80px "SF Pro"';
+    // FIX: Added ", sans-serif" for safety
+    ctx.font = '90px "SF Pro Semi", sans-serif';
+    
     ctx.fillStyle = '#b9bbbe';
     ctx.fillText(usernameText, textX, currentY);
 
-    ctx.shadowColor = "transparent";
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
-
+    // FIX: Added the missing restore and return statements
     ctx.restore();
     return canvas.toBuffer('image/png');
 }

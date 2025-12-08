@@ -29,7 +29,7 @@ module.exports = {
             const inviterName = interaction.user.username;
             const inviterId = interaction.user.id;
             const inviteCode = 'TEST-CODE';
-            const colourEmbed = '#0099ff'; // Replace with your variable
+            const colourEmbed = '#888888'; // Replace with your variable
 
             // 4. Build Embed (Copied from your code)
             const embed = new EmbedBuilder()

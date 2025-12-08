@@ -1,0 +1,64 @@
+const { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { createWelcomeImage } = require('../../../welcomeCanvas.js'); // Adjust path to your file!
+
+module.exports = {
+    data: new SlashCommandBuilder()
+        .setName('testwelcome')
+        .setDescription('Simulate the welcome card for a specific user')
+        .addUserOption(option => 
+            option.setName('target')
+            .setDescription('The user to generate the image for (default is you)')
+        ),
+    
+    async execute(interaction) {
+        await interaction.deferReply(); // Generating images takes time, so we defer
+
+        try {
+            // 1. Get the target member (or yourself)
+            const member = interaction.options.getMember('target') || interaction.member;
+
+            // 2. Generate the Image
+            const welcomeImageBuffer = await createWelcomeImage(member);
+            const attachment = new AttachmentBuilder(welcomeImageBuffer, { name: 'welcome-image.png' });
+
+            // 3. Mock Data (Since this isn't a real join event, we fake the invite data)
+            const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
+            const memberCount = interaction.guild.memberCount;
+            
+            // Fake inviter data for the test
+            const inviterName = interaction.user.username;
+            const inviterId = interaction.user.id;
+            const inviteCode = 'TEST-CODE';
+            const colourEmbed = '#0099ff'; // Replace with your variable
+
+            // 4. Build Embed (Copied from your code)
+            const embed = new EmbedBuilder()
+                .setDescription(`### Welcome to A2-Q Server\n-# <@${member.user.id}> \`(${member.user.username})\`\n-# <:calendar:1439970556534329475> Account Created: ${accountCreated}\n-# <:users:1439970561953501214> Member Count: \`${memberCount}\`\n-# <:chain:1439970559105564672> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`)
+                .setThumbnail(member.user.displayAvatarURL())
+                .setImage('attachment://welcome-image.png')
+                .setColor(colourEmbed);
+
+            // 5. Build Button
+            const unclickableButton = new ButtonBuilder()
+                .setLabel(`${member.user.id}`)
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji('1441133157855395911')
+                .setCustomId('hello_button_disabled')
+                .setDisabled(true);
+
+            const row = new ActionRowBuilder().addComponents(unclickableButton);
+
+            // 6. Send the result
+            await interaction.editReply({ 
+                content: `**[SIMULATION]** Welcome card for ${member.user.tag}`,
+                embeds: [embed], 
+                files: [attachment], 
+                components: [row] 
+            });
+
+        } catch (error) {
+            console.error(error);
+            await interaction.editReply({ content: 'Something went wrong generating the image.' });
+        }
+    }
+};

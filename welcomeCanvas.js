@@ -128,7 +128,7 @@ async function createWelcomeImage(member) {
     const displayName = cleanedDisplayName || member.user.username;
 
     // MAIN TEXT
-    ctx.font = 'bold 110px "gg sans Bold", "Geeza Bold", "Thonburi", "Math", "Apple Color Emoji", sans-serif';
+    ctx.font = 'bold 120px "gg sans Bold", "Geeza Bold", "Thonburi", "Math", "Apple Color Emoji", sans-serif';
     ctx.textAlign = 'left'; 
     
     ctx.fillText(displayName, textX, currentY);

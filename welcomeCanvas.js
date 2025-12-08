@@ -80,15 +80,20 @@ async function createWelcomeImage(member) {
 
     // CHECK FOR ACCENT COLOR
     if (user.hexAccentColor) {
-        // Create a gradient: Accent Color -> White (Top-Left to Bottom-Right)
-        const gradient = ctx.createLinearGradient(0, 0, 0, dim.height)
+        // 1. Create Gradient from TOP (0,0) to BOTTOM (0, dim.height)
+        const gradient = ctx.createLinearGradient(0, 0, 0, dim.height);
+        
+        // 2. Top Color = Their "Primary" Theme (Accent Color)
         gradient.addColorStop(0, user.hexAccentColor); 
-        gradient.addColorStop(1, '#ffffff'); // Fade to white for a metallic look
-        // Or fade to transparent: gradient.addColorStop(1, 'rgba(255,255,255,0.2)');
+        
+        // 3. Bottom Color = Their "Accent" Theme
+        // Since Discord only gives us one color, we fade to White (or Black)
+        // You can change '#ffffff' to '#000000' for a darker theme
+        gradient.addColorStop(1, '#ffffff'); 
         
         ctx.strokeStyle = gradient;
     } else {
-        // Default logic if no accent color
+        // Default logic if no accent color found
         ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)'; 
     }
 
@@ -96,6 +101,7 @@ async function createWelcomeImage(member) {
     ctx.roundRect(0, 0, dim.width, dim.height, cornerRadius);
     ctx.stroke();
     ctx.restore();
+
 
     // --- 5. Main Avatar (Foreground) ---
     const avatarSize = 400;

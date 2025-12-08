@@ -1,7 +1,6 @@
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 
 // --- Helper 1: Darken/Lighten Hex Color ---
-// percent: negative values darken (-0.5), positive values lighten (0.5)
 function shadeColor(color, percent) {
     var f = parseInt(color.slice(1), 16),
         t = percent < 0 ? 0 : 255,
@@ -13,18 +12,16 @@ function shadeColor(color, percent) {
 }
 
 // --- Helper 2: Check if Color is Light or Dark ---
-// Returns TRUE if light, FALSE if dark
 function isColorLight(hex) {
     const r = parseInt(hex.slice(1, 3), 16);
     const g = parseInt(hex.slice(3, 5), 16);
     const b = parseInt(hex.slice(5, 7), 16);
-    // Standard formula to calculate brightness (YIQ)
     const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
     return yiq >= 128;
 }
 
 async function createWelcomeImage(member) {
-    // 1. Fetch the full user to get Banner and Accent Color
+    // 1. Fetch user to get Banner/Accent/Avatar details
     const user = await member.user.fetch(true);
 
     const dim = {
@@ -44,7 +41,7 @@ async function createWelcomeImage(member) {
     ctx.closePath();
     ctx.clip();
 
-    // --- 2. Draw Background (Banner OR Avatar) ---
+    // --- 2. Draw Background ---
     const bannerURL = user.bannerURL({ extension: 'png', size: 2048 });
     let backgroundBuf = null;
 
@@ -84,32 +81,36 @@ async function createWelcomeImage(member) {
     ctx.fillStyle = bannerURL ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.5)';
     ctx.fillRect(0, 0, dim.width, dim.height);
 
-    // --- 4. Inner Frame (Smart Gradient) ---
+    // --- 4. Inner Frame (NITRO LOGIC ADDED HERE) ---
     ctx.save();
     ctx.lineWidth = 40;
 
-    // CHECK FOR ACCENT COLOR
-    if (user.hexAccentColor) {
-        // Create Gradient from TOP to BOTTOM
-        const gradient = ctx.createLinearGradient(0, 0, 0, dim.height);
+    // DETECT NITRO SIGNALS:
+    // 1. Does the user have a Banner Image? (Standard users can't have this)
+    const hasBanner = user.banner !== null;
+    // 2. Is the avatar animated? (Standard users can't have GIFs)
+    const hasAnimatedAvatar = user.avatar && user.avatar.startsWith('a_');
+    
+    // If either is true, we treat them as "Nitro"
+    const isNitro = hasBanner || hasAnimatedAvatar;
 
-        // Top: Primary Accent Color
+    // Apply Logic: Must have Accent Color AND be Nitro
+    if (user.hexAccentColor && isNitro) {
+        
+        const gradient = ctx.createLinearGradient(0, 0, 0, dim.height);
         gradient.addColorStop(0, user.hexAccentColor);
 
-        // --- INTELLIGENT COLOR LOGIC ---
-        // Check if the user's color is Light or Dark
+        // Smart Gradient Logic
         const isLight = isColorLight(user.hexAccentColor);
-        
-        // If Light -> Darken it by 60% (-0.6)
-        // If Dark -> Lighten it by 60% (+0.6)
         const modifier = isLight ? -0.6 : 0.6;
 
         const secondaryColor = shadeColor(user.hexAccentColor, modifier);
         gradient.addColorStop(1, secondaryColor);
 
         ctx.strokeStyle = gradient;
+
     } else {
-        // Default logic if no accent color found
+        // DEFAULT for Non-Nitro (or Nitro users with no theme set)
         ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
     }
 
@@ -119,7 +120,7 @@ async function createWelcomeImage(member) {
     ctx.restore();
 
 
-    // --- 5. Main Avatar (Foreground) ---
+    // --- 5. Main Avatar ---
     const avatarSize = 400;
     const avatarX = dim.margin + 30;
     const avatarY = (dim.height - avatarSize) / 2;
@@ -128,22 +129,20 @@ async function createWelcomeImage(member) {
     const mainAvatarURL = member.displayAvatarURL({ extension: 'png', size: 512 });
     const mainAvatar = await loadImage(mainAvatarURL);
 
-    // --- 5a. Draw Shadow Behind Avatar ---
+    // Shadow
     ctx.save();
     ctx.beginPath();
     ctx.arc(avatarX + avatarRadius, avatarY + avatarRadius, avatarRadius, 0, Math.PI * 2, true);
     ctx.closePath();
-
     ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
     ctx.shadowBlur = 35;
     ctx.shadowOffsetX = 8;
     ctx.shadowOffsetY = 8;
-
     ctx.fillStyle = '#000000';
     ctx.fill();
     ctx.restore();
 
-    // --- 5b. Draw User Avatar (Clipped) ---
+    // Image
     ctx.save();
     ctx.beginPath();
     ctx.arc(avatarX + avatarRadius, avatarY + avatarRadius, avatarRadius, 0, Math.PI * 2, true);
@@ -152,7 +151,7 @@ async function createWelcomeImage(member) {
     ctx.drawImage(mainAvatar, avatarX, avatarY, avatarSize, avatarSize);
     ctx.restore();
 
-    // --- 5c. Draw Avatar Decoration ---
+    // Decoration
     const decoURL = user.avatarDecorationURL({ extension: 'png', size: 512 });
     if (decoURL) {
         const decoImage = await loadImage(decoURL).catch(e => null);
@@ -179,7 +178,6 @@ async function createWelcomeImage(member) {
     let currentY = dim.height / 2 - 15;
 
     ctx.fillStyle = '#ffffff';
-
     ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
     ctx.shadowBlur = 15;
     ctx.shadowOffsetX = 5;
@@ -188,18 +186,15 @@ async function createWelcomeImage(member) {
     const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>/g, '').trim();
     const displayName = cleanedDisplayName || user.username;
 
-    // MAIN TEXT
     ctx.font = 'bold 120px "gg sans Bold", "Geeza Bold", "Thonburi", "Math", "Apple Color Emoji", sans-serif';
     ctx.textAlign = 'left';
-
     ctx.fillText(displayName, textX, currentY);
 
     // Reset shadow
     ctx.shadowColor = "transparent";
 
-    // --- USERNAME ---
+    // Username
     currentY += 115;
-
     const cleanedUsername = user.username.replace(/<a?:\w+:\d+>/g, '').trim();
     let usernameText;
 

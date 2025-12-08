@@ -1,5 +1,28 @@
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 
+// --- Helper 1: Darken/Lighten Hex Color ---
+// percent: negative values darken (-0.5), positive values lighten (0.5)
+function shadeColor(color, percent) {
+    var f = parseInt(color.slice(1), 16),
+        t = percent < 0 ? 0 : 255,
+        p = percent < 0 ? percent * -1 : percent,
+        R = f >> 16,
+        G = f >> 8 & 0x00FF,
+        B = f & 0x0000FF;
+    return "#" + (0x1000000 + (Math.round((t - R) * p) + R) * 0x10000 + (Math.round((t - G) * p) + G) * 0x100 + (Math.round((t - B) * p) + B)).toString(16).slice(1);
+}
+
+// --- Helper 2: Check if Color is Light or Dark ---
+// Returns TRUE if light, FALSE if dark
+function isColorLight(hex) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    // Standard formula to calculate brightness (YIQ)
+    const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+    return yiq >= 128;
+}
+
 async function createWelcomeImage(member) {
     // 1. Fetch the full user to get Banner and Accent Color
     const user = await member.user.fetch(true);
@@ -28,7 +51,7 @@ async function createWelcomeImage(member) {
     if (bannerURL) {
         backgroundBuf = await loadImage(bannerURL).catch(() => null);
     }
-    
+
     if (!backgroundBuf) {
         const avatarURL = member.displayAvatarURL({ extension: 'png', size: 2048 });
         backgroundBuf = await loadImage(avatarURL).catch(() => null);
@@ -38,7 +61,7 @@ async function createWelcomeImage(member) {
         const canvasRatio = dim.width / dim.height;
         const sWidth = backgroundBuf.width;
         const sHeight = sWidth / canvasRatio;
-        
+
         if (backgroundBuf.height > sHeight) {
             const sourceHeight = backgroundBuf.width / canvasRatio;
             const sy = (backgroundBuf.height - sourceHeight) / 2;
@@ -48,9 +71,9 @@ async function createWelcomeImage(member) {
             const sx = (backgroundBuf.width - sourceWidth) / 2;
             ctx.drawImage(backgroundBuf, sx, 0, sourceWidth, backgroundBuf.height, 0, 0, dim.width, dim.height);
         }
-        
-        ctx.filter = bannerURL ? 'blur(3px)' : 'blur(10px)'; 
-        ctx.drawImage(canvas, 0, 0); 
+
+        ctx.filter = bannerURL ? 'blur(3px)' : 'blur(10px)';
+        ctx.drawImage(canvas, 0, 0);
         ctx.filter = 'none';
     } else {
         ctx.fillStyle = '#1e1e1e';
@@ -61,27 +84,33 @@ async function createWelcomeImage(member) {
     ctx.fillStyle = bannerURL ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.5)';
     ctx.fillRect(0, 0, dim.width, dim.height);
 
-    // --- 4. Inner Frame (Themed Gradient) ---
+    // --- 4. Inner Frame (Smart Gradient) ---
     ctx.save();
-    ctx.lineWidth = 40; 
+    ctx.lineWidth = 40;
 
     // CHECK FOR ACCENT COLOR
     if (user.hexAccentColor) {
-        // 1. Create Gradient from TOP (0,0) to BOTTOM (0, dim.height)
+        // Create Gradient from TOP to BOTTOM
         const gradient = ctx.createLinearGradient(0, 0, 0, dim.height);
+
+        // Top: Primary Accent Color
+        gradient.addColorStop(0, user.hexAccentColor);
+
+        // --- INTELLIGENT COLOR LOGIC ---
+        // Check if the user's color is Light or Dark
+        const isLight = isColorLight(user.hexAccentColor);
         
-        // 2. Top Color = Their "Primary" Theme (Accent Color)
-        gradient.addColorStop(0, user.hexAccentColor); 
-        
-        // 3. Bottom Color = Their "Accent" Theme
-        // Since Discord only gives us one color, we fade to White (or Black)
-        // You can change '#ffffff' to '#000000' for a darker theme
-        gradient.addColorStop(1, '#666666'); 
-        
+        // If Light -> Darken it by 60% (-0.6)
+        // If Dark -> Lighten it by 60% (+0.6)
+        const modifier = isLight ? -0.6 : 0.6;
+
+        const secondaryColor = shadeColor(user.hexAccentColor, modifier);
+        gradient.addColorStop(1, secondaryColor);
+
         ctx.strokeStyle = gradient;
     } else {
         // Default logic if no accent color found
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)'; 
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
     }
 
     ctx.beginPath();
@@ -104,14 +133,14 @@ async function createWelcomeImage(member) {
     ctx.beginPath();
     ctx.arc(avatarX + avatarRadius, avatarY + avatarRadius, avatarRadius, 0, Math.PI * 2, true);
     ctx.closePath();
-    
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)'; 
-    ctx.shadowBlur = 35;                     
-    ctx.shadowOffsetX = 8;                   
-    ctx.shadowOffsetY = 8;                   
-    
-    ctx.fillStyle = '#000000'; 
-    ctx.fill(); 
+
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+    ctx.shadowBlur = 35;
+    ctx.shadowOffsetX = 8;
+    ctx.shadowOffsetY = 8;
+
+    ctx.fillStyle = '#000000';
+    ctx.fill();
     ctx.restore();
 
     // --- 5b. Draw User Avatar (Clipped) ---
@@ -128,7 +157,7 @@ async function createWelcomeImage(member) {
     if (decoURL) {
         const decoImage = await loadImage(decoURL).catch(e => null);
         if (decoImage) {
-            const decoScale = 1.2; 
+            const decoScale = 1.2;
             const scaledDecoSize = avatarSize * decoScale;
             const decoOffsetX = avatarX - (scaledDecoSize - avatarSize) / 2;
             const decoOffsetY = avatarY - (scaledDecoSize - avatarSize) / 2;
@@ -137,39 +166,39 @@ async function createWelcomeImage(member) {
     }
 
     // --- 6. Server Name ---
-    ctx.save(); 
+    ctx.save();
     ctx.font = 'bold 60px "Noto Sans", "ReemKufi Bold", "Math", "Apple Color Emoji"';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; 
-    ctx.textAlign = 'right'; 
-    ctx.textBaseline = 'bottom'; 
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
     ctx.fillText("A2-Q Server", dim.width - 70, dim.height - 70);
-    ctx.restore(); 
+    ctx.restore();
 
     // --- 7. User Text ---
     const textX = avatarX + avatarSize + 70;
-    let currentY = dim.height / 2 - 15; 
+    let currentY = dim.height / 2 - 15;
 
     ctx.fillStyle = '#ffffff';
 
     ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
-    ctx.shadowBlur = 15;                     
-    ctx.shadowOffsetX = 5;                   
-    ctx.shadowOffsetY = 5;                   
+    ctx.shadowBlur = 15;
+    ctx.shadowOffsetX = 5;
+    ctx.shadowOffsetY = 5;
 
     const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>/g, '').trim();
     const displayName = cleanedDisplayName || user.username;
 
     // MAIN TEXT
     ctx.font = 'bold 120px "gg sans Bold", "Geeza Bold", "Thonburi", "Math", "Apple Color Emoji", sans-serif';
-    ctx.textAlign = 'left'; 
-    
+    ctx.textAlign = 'left';
+
     ctx.fillText(displayName, textX, currentY);
 
     // Reset shadow
     ctx.shadowColor = "transparent";
-    
+
     // --- USERNAME ---
-    currentY += 115; 
+    currentY += 115;
 
     const cleanedUsername = user.username.replace(/<a?:\w+:\d+>/g, '').trim();
     let usernameText;

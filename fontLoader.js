@@ -50,7 +50,6 @@ async function loadFonts() {
     if (fs.existsSync(arabicPath))  GlobalFonts.registerFromPath(arabicPath, 'SFArabic');
 
 
-
     // 5. Thai (Thonburi)
     const thaiPath = path.join(FONT_DIR, 'Thonburi-Bold.ttf');
     if (fs.existsSync(thaiPath)) GlobalFonts.registerFromPath(thaiPath, 'Thonburi');

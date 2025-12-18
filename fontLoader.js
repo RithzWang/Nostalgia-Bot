@@ -49,10 +49,6 @@ async function loadFonts() {
     const arabicPath = path.join(FONT_DIR, 'SFArabic.ttf');
     if (fs.existsSync(arabicPath))  GlobalFonts.registerFromPath(arabicPath, 'SFArabic');
 
-    const arabic2Path = path.join(FONT_DIR, 'NotoNaskhArabic.ttf');
-    if (fs.existsSync(arabic2Path)) { GlobalFonts.registerFromPath(arabic2Path, 'Naskh'); 
-       console.log('✅ NotoNaskh loaded');
-} 
 
 
     // 5. Thai (Thonburi)

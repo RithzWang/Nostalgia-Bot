@@ -166,7 +166,7 @@ async function createWelcomeImage(member) {
 
     // --- 6. Server Name ---
     ctx.save();
-    ctx.font = 'bold 60px "Noto Sans", "ReemKufi Bold", "Symbol", "Apple Color Emoji"';
+    ctx.font = 'bold 60px "Noto Sans", "ReemKufi Bold", "Symbol", "Apple Symbols", "Apple Color Emoji"';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'bottom';
@@ -186,7 +186,7 @@ async function createWelcomeImage(member) {
     const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>/g, '').trim();
     const displayName = cleanedDisplayName || user.username;
 
-    ctx.font = 'bold 120px "gg sans Bold", "Geeza Bold", "Thonburi", "Symbol", "Apple Color Emoji", sans-serif';
+    ctx.font = 'bold 120px "gg sans Bold", "Geeza Bold", "Thonburi", "Symbol", "Apple Symbols", "Apple Color Emoji", sans-serif';
     ctx.textAlign = 'left';
     ctx.fillText(displayName, textX, currentY);
 

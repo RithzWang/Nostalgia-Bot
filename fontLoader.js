@@ -59,8 +59,12 @@ async function loadFonts() {
     const thaiPath = path.join(FONT_DIR, 'Thonburi-Bold.ttf');
     if (fs.existsSync(thaiPath)) GlobalFonts.registerFromPath(thaiPath, 'Thonburi');
 
-    const mathPath = path.join(FONT_DIR, 'NotoSansMath-Regular.ttf');
-    if (fs.existsSync(mathPath)) GlobalFonts.registerFromPath(mathPath, 'Math');
+    const symbolPath = path.join(FONT_DIR, 'Symbol.ttf');
+    if (fs.existsSync(symbolPath)) GlobalFonts.registerFromPath(symbolPath, 'Symbol');
+
+
+   const applesymbolPath = path.join(FONT_DIR, 'Apple Symbols.ttf');
+    if (fs.existsSync(applesymbolPath)) GlobalFonts.registerFromPath(applesymbolPath, 'Apple Symbols');
      
 
     // 6. Emoji

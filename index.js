@@ -460,7 +460,7 @@ setInterval(async () => {
                 
                 winnersText = selected.map(id => `<@${id}>`).join(', ');
                 
-                await channel.send(`🎉 **CONGRATULATIONS!**\n${winnersText} You won **${g.prize}**!`);
+                await channel.send(`🎉 **CONGRATULATIONS!**\n${winnersText}, You won **${g.prize}**!`);
             } else {
                 await channel.send(`Giveaway ended, but no one joined. Prize: **${g.prize}**`);
             }

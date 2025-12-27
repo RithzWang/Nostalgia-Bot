@@ -20,7 +20,7 @@ module.exports = {
         .addSubcommand(subcommand =>
             subcommand
                 .setName('add')
-                .setDescription('Warn a user.')
+                .setDescription('Warn a user')
                 .addUserOption(option => 
                     option.setName('target')
                     .setDescription('The user to warn')
@@ -33,7 +33,7 @@ module.exports = {
         .addSubcommand(subcommand =>
             subcommand
                 .setName('list')
-                .setDescription('See warnings for a user.')
+                .setDescription('See warnings for a user')
                 .addUserOption(option => 
                     option.setName('target')
                     .setDescription('The user to check')

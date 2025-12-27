@@ -383,23 +383,42 @@ client.on('interactionCreate', async (interaction) => {
         }
     }
 
+    let responseContent = '';
+
     // --- TOGGLE LOGIC ---
     if (giveaway.participants.includes(interaction.user.id)) {
         giveaway.participants = giveaway.participants.filter(id => id !== interaction.user.id);
-        await giveaway.save();
-        return interaction.reply({ 
-            content: '<:no:1297814819105144862> You have **left** the giveaway.', 
-            flags: MessageFlags.Ephemeral 
-        });
+        responseContent = '<:no:1297814819105144862> You have **left** the giveaway.';
     } else {
         giveaway.participants.push(interaction.user.id);
-        await giveaway.save();
-        return interaction.reply({ 
-            content: '<:yes:1297814648417943565> You have successfully **joined** the giveaway!', 
-            flags: MessageFlags.Ephemeral 
-        });
+        responseContent = '<:yes:1297814648417943565> You have successfully **joined** the giveaway!';
     }
+
+    await giveaway.save();
+
+    // --- UPDATE BUTTONS (Counts) ---
+    const joinButton = new ButtonBuilder()
+        .setCustomId('giveaway_join')
+        .setLabel('Join Giveaway')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('🎉');
+
+    const countButton = new ButtonBuilder()
+        .setCustomId('giveaway_count')
+        .setLabel(`${giveaway.participants.length} Entries`) // Update Count
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(true);
+
+    const row = new ActionRowBuilder().addComponents(joinButton, countButton);
+
+    await interaction.message.edit({ components: [row] });
+
+    return interaction.reply({ 
+        content: responseContent, 
+        flags: MessageFlags.Ephemeral 
+    });
 });
+
 
 // 2. Auto-End Loop (Checks every 10 seconds)
 setInterval(async () => {

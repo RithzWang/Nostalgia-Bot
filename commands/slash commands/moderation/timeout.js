@@ -4,18 +4,19 @@ const {
     EmbedBuilder, 
     ActionRowBuilder, 
     ButtonBuilder, 
-    ButtonStyle 
+    ButtonStyle,
+    MessageFlags // <--- Added
 } = require('discord.js');
 const moment = require('moment-timezone');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('timeout')
-        .setDescription('Timeout (Mute) a user')
+        .setDescription('Timeout a member')
         .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
         .addUserOption(option => 
             option.setName('target')
-            .setDescription('The user to timeout')
+            .setDescription('The member to timeout')
             .setRequired(true))
         .addIntegerOption(option =>
             option.setName('duration')
@@ -42,13 +43,22 @@ module.exports = {
 
         // --- ERROR CHECKS ---
         if (!member) {
-            return interaction.reply({ content: '<:no:1297814819105144862> User is not in the server.', ephemeral: true });
+            return interaction.reply({ 
+                content: '<:no:1297814819105144862> Member is not in the server.', 
+                flags: MessageFlags.Ephemeral 
+            });
         }
         if (!member.moderatable) {
-            return interaction.reply({ content: '<:no:1297814819105144862> I cannot timeout this user (Higher role/Admin).', ephemeral: true });
+            return interaction.reply({ 
+                content: '<:no:1297814819105144862> I cannot timeout this member (Higher role/Admin).', 
+                flags: MessageFlags.Ephemeral 
+            });
         }
         if (interaction.member.roles.highest.position <= member.roles.highest.position) {
-            return interaction.reply({ content: '<:no:1297814819105144862> You cannot timeout someone with a higher or equal role.', ephemeral: true });
+            return interaction.reply({ 
+                content: '<:no:1297814819105144862> You cannot timeout someone with a higher or equal role.', 
+                flags: MessageFlags.Ephemeral 
+            });
         }
 
         // --- EXECUTE TIMEOUT ---
@@ -59,8 +69,6 @@ module.exports = {
             await member.send(`You have been timed out in **${interaction.guild.name}**\n**Reason:** ${reason}`).catch(() => {});
 
             // Format duration for display
-            const durationText = interaction.options.data.find(opt => opt.name === 'duration').value;
-            // Since we only get the Milliseconds back, let's create a rough text
             let readableDuration = 'Duration';
             if(duration === 60000) readableDuration = '60 Seconds';
             if(duration === 300000) readableDuration = '5 Minutes';
@@ -72,8 +80,8 @@ module.exports = {
             // --- EMBED & BUTTON ---
             const embed = new EmbedBuilder()
                 .setColor(0xFFFF00) // Yellow
-                .setTitle('⏰ User Timed Out')
-                .setDescription(`**User:** ${targetUser.tag}\n**Duration:** ${readableDuration}\n**Reason:** ${reason}\n**Moderator:** ${interaction.user.tag}`)
+                .setTitle('<:yes:1297814648417943565> Member Timed Out Successfully')
+                .setDescription(`**Member:** ${targetUser.tag}\n**Duration:** ${readableDuration}\n**Reason:** ${reason}\n**Moderator:** ${interaction.user.tag}`)
                 .setThumbnail(targetUser.displayAvatarURL());
 
             const thailandTime = moment().tz('Asia/Bangkok').format('DD/MM/YYYY HH:mm');
@@ -85,11 +93,15 @@ module.exports = {
 
             const row = new ActionRowBuilder().addComponents(timeButton);
 
+            // Success message is public
             await interaction.reply({ embeds: [embed], components: [row] });
 
         } catch (error) {
             console.error(error);
-            await interaction.reply({ content: '<:no:1297814819105144862> An error occurred while timing out.', ephemeral: true });
+            await interaction.reply({ 
+                content: '<:no:1297814819105144862> An error occurred while timing out.', 
+                flags: MessageFlags.Ephemeral 
+            });
         }
     }
 };

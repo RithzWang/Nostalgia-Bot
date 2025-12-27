@@ -241,18 +241,18 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
 
 // --- INITIALIZATION ---
 // --- STICKY MESSAGE LOGIC ---
+const { EmbedBuilder } = require('discord.js'); // Make sure this is imported at the top!
+
 client.on('messageCreate', async (message) => {
-    // 1. Ignore bots (prevents infinite loops)
+    // 1. Ignore bots
     if (message.author.bot) return;
 
-    // 2. Check if this channel has a sticky message in the database
-    // We wrap this in a try/catch to prevent crashes if DB is slow
     try {
         const stickyConfig = await Sticky.findOne({ channelId: message.channel.id });
         
-        if (!stickyConfig) return; // No sticky message for this channel
+        if (!stickyConfig) return; 
 
-        // 3. If there is a "last message" stored, delete it
+        // 3. Delete the previous message
         if (stickyConfig.lastMessageId) {
             const lastMessage = await message.channel.messages.fetch(stickyConfig.lastMessageId).catch(() => null);
             if (lastMessage) {
@@ -260,10 +260,17 @@ client.on('messageCreate', async (message) => {
             }
         }
 
-        // 4. Send the new sticky message
-        const sentMessage = await message.channel.send({ content: stickyConfig.content });
+        // --- NEW STEP 4: Create and Send Embed ---
+        const stickyEmbed = new EmbedBuilder()
+            .setTitle('Pinned Message')
+            .setDescription(stickyConfig.content)
+            .setColor('#888888');
 
-        // 5. Save the new message ID so we can delete it next time
+        // Send 'embeds' array instead of 'content' string
+        const sentMessage = await message.channel.send({ embeds: [stickyEmbed] });
+        // -----------------------------------------
+
+        // 5. Save the new message ID
         stickyConfig.lastMessageId = sentMessage.id;
         await stickyConfig.save();
 
@@ -271,6 +278,7 @@ client.on('messageCreate', async (message) => {
         console.error("Error handling sticky message:", err);
     }
 });
+
 
 
 // --- BUTTON ROLE CLICK HANDLER ---

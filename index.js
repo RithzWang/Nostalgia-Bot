@@ -686,11 +686,11 @@ client.on('interactionCreate', async (interaction) => {
             .setColor(0x808080)
             .addFields(
                 { name: 'User', value: `<@${interaction.user.id}> (${interaction.user.id})`, inline: false },
-                { name: 'What is your name?', value: name, inline: true },
-                { name: 'How old are you?', value: age, inline: true },
-                { name: 'Where are you from?', value: country, inline: true },
-                { name: 'What is your time zone?', value: timezone, inline: true },
-                { name: 'Why do you want to be staff?', value: reason, inline: false }
+                { name: 'Name:', value: name, inline: true },
+                { name: 'Age:', value: age, inline: true },
+                { name: 'Country:', value: country, inline: true },
+                { name: 'Time Zone:', value: timezone, inline: true },
+                { name: 'Reason they applied:', value: reason, inline: false }
             );
 
         // Generate GMT+7 Timestamp Button

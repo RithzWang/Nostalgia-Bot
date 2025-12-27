@@ -420,7 +420,7 @@ client.on('interactionCreate', async (interaction) => {
 });
 
 
-// 2. Auto-End Loop (Checks every 10 seconds)
+// 2. Auto-End Loop
 setInterval(async () => {
     const endedGiveaways = await Giveaway.find({ ended: false, endTimestamp: { $lte: Date.now() } });
 
@@ -436,17 +436,20 @@ setInterval(async () => {
             const participantCount = g.participants.length;
 
             if (participantCount > 0) {
-                // --- BOOSTER LUCK LOGIC ---
+                // --- BOOSTER LOGIC (25% More) ---
                 let weightedPool = [];
                 const guild = client.guilds.cache.get(g.guildId);
 
                 if (guild) {
                     for (const userId of g.participants) {
-                        weightedPool.push(userId); // Entry #1
+                        // Regular: 4 Tickets
+                        weightedPool.push(userId, userId, userId, userId);
+                        
                         try {
                             const member = await guild.members.fetch(userId).catch(() => null);
                             if (member && member.premiumSince) {
-                                weightedPool.push(userId); // Entry #2 (Booster)
+                                // Booster: +1 Ticket (Total 5)
+                                weightedPool.push(userId);
                             }
                         } catch (e) {}
                     }
@@ -454,13 +457,34 @@ setInterval(async () => {
                     weightedPool = g.participants;
                 }
 
+                // Shuffle & Pick
                 const shuffled = weightedPool.sort(() => 0.5 - Math.random());
-                const uniqueWinners = [...new Set(shuffled)]; 
-                const selected = uniqueWinners.slice(0, g.winnersCount);
+                // We must pick winners from the weighted pool, then remove duplicates if unique winners required
+                // BUT "Set" removes duplicates immediately, destroying the weights.
+                // Correct logic: Pick 1 from pool -> check if already won -> repeat.
                 
-                winnersText = selected.map(id => `<@${id}>`).join(', ');
+                let selectedWinners = [];
+                let tempPool = [...shuffled]; // Copy pool
+
+                while (selectedWinners.length < g.winnersCount && tempPool.length > 0) {
+                    // Pick random index
+                    const randomIndex = Math.floor(Math.random() * tempPool.length);
+                    const winnerId = tempPool[randomIndex];
+                    
+                    if (!selectedWinners.includes(winnerId)) {
+                        selectedWinners.push(winnerId);
+                    }
+                    
+                    // Optional: If you want to remove ALL tickets of that user so they don't win twice
+                    tempPool = tempPool.filter(id => id !== winnerId);
+                }
                 
-                await channel.send(`🎉 **CONGRATULATIONS!**\n${winnersText}, You won **${g.prize}**!`);
+                if (selectedWinners.length > 0) {
+                     winnersText = selectedWinners.map(id => `<@${id}>`).join(', ');
+                     await channel.send(`🎉 **CONGRATULATIONS!**\n${winnersText}, You won **${g.prize}**!`);
+                } else {
+                     await channel.send(`Giveaway ended, but no one joined. Prize: **${g.prize}**`);
+                }
             } else {
                 await channel.send(`Giveaway ended, but no one joined. Prize: **${g.prize}**`);
             }
@@ -495,7 +519,7 @@ setInterval(async () => {
                 .setTitle(`🎉 ${g.prize}`) 
                 .setColor(0x808080) 
                 .setDescription(finalDescription)
-                .setFooter(null); 
+                .setFooter(null);
 
             await message.edit({ embeds: [endedEmbed], components: [row] });
 
@@ -507,6 +531,7 @@ setInterval(async () => {
         }
     }
 }, 10 * 1000);
+
 
 
 

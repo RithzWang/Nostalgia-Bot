@@ -11,7 +11,7 @@ const moment = require('moment-timezone');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('kick')
-        .setDescription('Kick a user from the server.')
+        .setDescription('Kick a user from the server')
         .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers)
         .addUserOption(option => 
             option.setName('target')

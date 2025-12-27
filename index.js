@@ -364,10 +364,8 @@ client.on('interactionCreate', async (interaction) => {
     if (!interaction.isButton()) return;
     if (interaction.customId !== 'giveaway_join') return;
 
-    // Find the giveaway in DB
     const giveaway = await Giveaway.findOne({ messageId: interaction.message.id });
     
-    // Check if giveaway exists or ended
     if (!giveaway || giveaway.ended) {
         return interaction.reply({ 
             content: '<:no:1297814819105144862> This giveaway has ended.', 
@@ -375,22 +373,27 @@ client.on('interactionCreate', async (interaction) => {
         });
     }
 
+    // --- ROLE CHECK ---
+    if (giveaway.requiredRoleId) {
+        if (!interaction.member.roles.cache.has(giveaway.requiredRoleId)) {
+            return interaction.reply({ 
+                content: `<:no:1297814819105144862> You must have the <@&${giveaway.requiredRoleId}> role to join this giveaway.`, 
+                flags: MessageFlags.Ephemeral 
+            });
+        }
+    }
+
     // --- TOGGLE LOGIC ---
     if (giveaway.participants.includes(interaction.user.id)) {
-        // IF JOINED -> LEAVE
-        // Filter out the user ID to remove them
         giveaway.participants = giveaway.participants.filter(id => id !== interaction.user.id);
         await giveaway.save();
-
         return interaction.reply({ 
             content: '<:no:1297814819105144862> You have **left** the giveaway.', 
             flags: MessageFlags.Ephemeral 
         });
     } else {
-        // IF NOT JOINED -> JOIN
         giveaway.participants.push(interaction.user.id);
         await giveaway.save();
-
         return interaction.reply({ 
             content: '<:yes:1297814648417943565> You have successfully **joined** the giveaway!', 
             flags: MessageFlags.Ephemeral 
@@ -398,10 +401,8 @@ client.on('interactionCreate', async (interaction) => {
     }
 });
 
-
 // 2. Auto-End Loop (Checks every 10 seconds)
 setInterval(async () => {
-    // Find giveaways that are NOT ended, but time HAS passed
     const endedGiveaways = await Giveaway.find({ ended: false, endTimestamp: { $lte: Date.now() } });
 
     for (const g of endedGiveaways) {
@@ -446,9 +447,13 @@ setInterval(async () => {
             }
 
             // --- BUILD ENDED DESCRIPTION ---
-            const hostInfo = `**Winner(s):** ${winnersText}\n**Host:** <@${g.hostId}>`;
+            let hostInfo = `**Winner(s):** ${winnersText}\n**Host:** <@${g.hostId}>`;
             
-            // Changed Logic: Use -# for small text
+            // Add Role info back if it existed
+            if (g.requiredRoleId) {
+                hostInfo = `**Required Role:** <@&${g.requiredRoleId}>\n` + hostInfo;
+            }
+            
             const finalDescription = g.description 
                 ? `-# ${g.description}\n\n${hostInfo}` 
                 : hostInfo;
@@ -477,6 +482,7 @@ setInterval(async () => {
         }
     }
 }, 10 * 1000);
+
 
 
 

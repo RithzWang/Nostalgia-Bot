@@ -241,41 +241,60 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
 
 // --- INITIALIZATION ---
 // --- STICKY MESSAGE LOGIC ---
+const Sticky = require('./src/models/Sticky.js'); // ⚠️ Make sure this path is correct for your file structure
+
+// 1. Create a variable outside the event listener to hold the timers
+const stickyTimers = new Map();
+
 client.on('messageCreate', async (message) => {
-    // 1. Ignore bots
+    // Ignore bots
     if (message.author.bot) return;
 
-    try {
-        const stickyConfig = await Sticky.findOne({ channelId: message.channel.id });
-        
-        if (!stickyConfig) return; 
-
-        // 3. Delete the previous message
-        if (stickyConfig.lastMessageId) {
-            const lastMessage = await message.channel.messages.fetch(stickyConfig.lastMessageId).catch(() => null);
-            if (lastMessage) {
-                await lastMessage.delete().catch(() => {});
-            }
-        }
-
-        // --- NEW STEP 4: Create and Send Embed ---
-        const stickyEmbed = new EmbedBuilder()
-            .setTitle('Pinned Message')
-            .setDescription(stickyConfig.content)
-            .setColor('#888888');
-
-        // Send 'embeds' array instead of 'content' string
-        const sentMessage = await message.channel.send({ embeds: [stickyEmbed] });
-        // -----------------------------------------
-
-        // 5. Save the new message ID
-        stickyConfig.lastMessageId = sentMessage.id;
-        await stickyConfig.save();
-
-    } catch (err) {
-        console.error("Error handling sticky message:", err);
+    // 2. If a timer is already running for this channel, STOP it.
+    // This prevents the bot from spamming if people are typing fast.
+    if (stickyTimers.has(message.channel.id)) {
+        clearTimeout(stickyTimers.get(message.channel.id));
     }
+
+    // 3. Start a new timer for 5 seconds (5000ms)
+    const timer = setTimeout(async () => {
+        try {
+            const stickyConfig = await Sticky.findOne({ channelId: message.channel.id });
+            
+            if (!stickyConfig) return; 
+
+            // Delete the previous message
+            if (stickyConfig.lastMessageId) {
+                const lastMessage = await message.channel.messages.fetch(stickyConfig.lastMessageId).catch(() => null);
+                if (lastMessage) {
+                    await lastMessage.delete().catch(() => {});
+                }
+            }
+
+            // Create and Send Embed
+            const stickyEmbed = new EmbedBuilder()
+                .setTitle('Pinned Message')
+                .setDescription(stickyConfig.content)
+                .setColor('#888888');
+
+            const sentMessage = await message.channel.send({ embeds: [stickyEmbed] });
+
+            // Save the new message ID
+            stickyConfig.lastMessageId = sentMessage.id;
+            await stickyConfig.save();
+
+            // Remove the channel from the timer map as we are done
+            stickyTimers.delete(message.channel.id);
+
+        } catch (err) {
+            console.error("Error handling sticky message:", err);
+        }
+    }, 5000); // Wait 5 seconds
+
+    // Save the timer so we can cancel it if someone types again
+    stickyTimers.set(message.channel.id, timer);
 });
+
 
 
 

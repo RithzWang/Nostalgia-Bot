@@ -82,9 +82,9 @@ module.exports = {
 
             // Embed with Prize as Title
             const embed = new EmbedBuilder()
-                .setTitle(`🎉 ${prize} 🎉`)
+                .setTitle(`🎉 ${prize}`)
                 .setDescription(`**Hosted by:** ${interaction.user}\n**Winners:** ${winnerCount}\n**Ends:** <t:${Math.floor(endTime / 1000)}:R>`)
-                .setColor(0x00FF00) // Green
+                .setColor(0x808080) // Grey
                 .setFooter({ text: 'Click the button below to join!' });
 
             const button = new ButtonBuilder()

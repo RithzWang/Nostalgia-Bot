@@ -505,6 +505,68 @@ setInterval(async () => {
 
 
 
+// --- SELECT MENU ROLE HANDLER ---
+client.on('interactionCreate', async (interaction) => {
+    // 1. Check if it is the correct menu
+    if (!interaction.isStringSelectMenu()) return;
+    if (interaction.customId !== 'role_select_menu') return;
+
+    // 2. Defer (loading state) because adding roles might take 1-2 seconds
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+    const member = interaction.member;
+    const guild = interaction.guild;
+    const selectedRoleIds = interaction.values; // List of IDs the user CURRENTLY selected
+    
+    // 3. Get ALL possible role IDs from the menu options
+    // We need this to know which roles to REMOVE (the ones not selected)
+    const allRoleIds = interaction.component.options.map(opt => opt.value);
+
+    const added = [];
+    const removed = [];
+
+    // 4. Loop through every role in the menu
+    for (const roleId of allRoleIds) {
+        const role = guild.roles.cache.get(roleId);
+        
+        // Skip if role was deleted from server
+        if (!role) continue; 
+
+        if (selectedRoleIds.includes(roleId)) {
+            // Case A: User SELECTED this role
+            if (!member.roles.cache.has(roleId)) {
+                try {
+                    await member.roles.add(role);
+                    added.push(role.name);
+                } catch (e) {
+                    console.error(`Failed to add role ${role.name}:`, e);
+                }
+            }
+        } else {
+            // Case B: User did NOT select this role (so we remove it)
+            if (member.roles.cache.has(roleId)) {
+                try {
+                    await member.roles.remove(role);
+                    removed.push(role.name);
+                } catch (e) {
+                    console.error(`Failed to remove role ${role.name}:`, e);
+                }
+            }
+        }
+    }
+
+    // 5. Send Response
+    let response = '';
+    if (added.length > 0) response += `<:yes:1297814648417943565> **Added:** ${added.join(', ')}\n`;
+    if (removed.length > 0) response += `<:no:1297814819105144862> **Removed:** ${removed.join(', ')}\n`;
+    
+    if (response === '') response = 'Roles updated (No changes made).';
+
+    await interaction.editReply({ content: response });
+});
+
+
+
 
 (async () => {
     try {

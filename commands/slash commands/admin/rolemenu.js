@@ -13,12 +13,12 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('rolemenu')
         .setDescription('Manage role selection menus')
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles)
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         
         // 1. SETUP (New Menu)
         .addSubcommand(sub => {
             sub.setName('setup')
-                .setDescription('Create a NEW menu.')
+                .setDescription('Create a NEW menu')
                 // --- REQUIRED ---
                 .addStringOption(opt => opt.setName('title').setDescription('Embed Title').setRequired(true))
                 .addBooleanOption(opt => opt.setName('multi_select').setDescription('Can users select multiple roles? (True=Yes, False=Only 1)').setRequired(true))

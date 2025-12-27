@@ -159,7 +159,7 @@ module.exports = {
 
         collector.on('end', () => {
             const disabledRow = new ActionRowBuilder().addComponents(
-                selectMenu.setDisabled(true).setPlaceholder('Menu Expired')
+                selectMenu.setDisabled(true).setPlaceholder('\u200d')
             );
             
             sentMessage.edit({ 

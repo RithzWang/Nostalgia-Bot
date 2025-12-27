@@ -18,9 +18,13 @@ module.exports = {
         // 1. SETUP (New Menu)
         .addSubcommand(sub => {
             sub.setName('setup')
-                .setDescription('Create a NEW menu (up to 10 roles initially).')
+                .setDescription('Create a NEW menu.')
                 .addStringOption(opt => opt.setName('title').setDescription('Embed Title').setRequired(true))
                 .addStringOption(opt => opt.setName('description').setDescription('Embed Description').setRequired(true))
+                
+                // NEW OPTION: Multi-Select
+                .addBooleanOption(opt => opt.setName('multi_select').setDescription('Can users select multiple roles? (True=Yes, False=Only 1)').setRequired(true))
+                
                 .addChannelOption(opt => opt.setName('channel').setDescription('Where to post? (Optional)').addChannelTypes(ChannelType.GuildText))
                 .addStringOption(opt => opt.setName('message_id').setDescription('Old message ID to replace (Optional)').setRequired(false))
                 
@@ -75,6 +79,7 @@ module.exports = {
         if (sub === 'setup') {
             const title = interaction.options.getString('title');
             const description = interaction.options.getString('description');
+            const multiSelect = interaction.options.getBoolean('multi_select'); // Get the boolean
             const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
             const oldMessageId = interaction.options.getString('message_id');
 
@@ -111,13 +116,14 @@ module.exports = {
                 }
             }
 
-            menu.setMaxValues(validRoleCount);
+            // --- MULTI-SELECT LOGIC ---
+            if (multiSelect) {
+                menu.setMaxValues(validRoleCount); // Allow selecting ALL available options
+            } else {
+                menu.setMaxValues(1); // Only allow selecting 1
+            }
 
-            const embed = new EmbedBuilder()
-                .setTitle(title)
-                .setDescription(description)
-                .setColor(0x808080); // <--- Changed to Grey
-
+            const embed = new EmbedBuilder().setTitle(title).setDescription(description).setColor(0x808080);
             const row = new ActionRowBuilder().addComponents(menu);
 
             await targetChannel.send({ embeds: [embed], components: [row] });
@@ -150,7 +156,15 @@ module.exports = {
                 if (emoji) newOption.setEmoji(emoji);
 
                 newMenu.addOptions(newOption);
-                newMenu.setMaxValues(newMenu.options.length);
+                
+                // --- SMART MAX VALUES ---
+                // If it was previously 1 (Single Select), keep it 1. 
+                // If it was > 1, update it to equal the new number of options.
+                if (oldMenu.data.max_values > 1) {
+                    newMenu.setMaxValues(newMenu.options.length);
+                } else {
+                    newMenu.setMaxValues(1);
+                }
 
                 const row = new ActionRowBuilder().addComponents(newMenu);
                 await message.edit({ components: [row] });
@@ -189,7 +203,14 @@ module.exports = {
                 }
 
                 newMenu.setOptions(filteredOptions);
-                newMenu.setMaxValues(filteredOptions.length);
+
+                // --- SMART MAX VALUES ---
+                // If it was > 1, update to new length. If 1, stay 1.
+                if (oldMenu.data.max_values > 1) {
+                    newMenu.setMaxValues(filteredOptions.length);
+                } else {
+                    newMenu.setMaxValues(1);
+                }
 
                 const row = new ActionRowBuilder().addComponents(newMenu);
                 await message.edit({ components: [row] });

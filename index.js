@@ -132,7 +132,7 @@ client.on('guildMemberAdd', async (member) => {
     setTimeout(async () => {
         if (!member.guild.members.cache.has(member.id)) return;
 
-        const prefixName = "🌱・";
+        const prefixName = "🌱 •\U+0020";
         let newNickname = prefixName + member.displayName;
         if (newNickname.length > 32) newNickname = newNickname.substring(0, 32);
 

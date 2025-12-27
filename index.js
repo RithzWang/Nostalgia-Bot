@@ -13,7 +13,10 @@ const {
     ButtonStyle, 
     REST, 
     Routes,
-    MessageFlags // Needed for Silent messages
+    MessageFlags,
+    TextInputStyle,
+    TextInputBuilder,
+    ModalBuilder // Needed for Silent messages
 } = require('discord.js');
 
 // Database Library
@@ -29,6 +32,7 @@ const { loadFonts } = require('./fontLoader');
 const config = require("./config.json");
 const Sticky = require('./src/models/Sticky');
 const Giveaway = require('./src/models/Giveaway');
+const ApplicationConfig = require('./src/models/ApplicationConfig'); // Check path
 
 
 // 2. Extract constants (WE DO NOT extract roleupdateMessageID here)
@@ -597,6 +601,106 @@ client.on('interactionCreate', async (interaction) => {
 });
 
 
+
+// --- APPLICATION SYSTEM HANDLER ---
+client.on('interactionCreate', async (interaction) => {
+    
+    // 1. Handle Button Click -> Open Modal
+    if (interaction.isButton() && interaction.customId === 'app_apply_btn') {
+        const config = await ApplicationConfig.findOne({ guildId: interaction.guild.id });
+
+        if (!config || !config.enabled) {
+            return interaction.reply({ content: '<:no:1297814819105144862> Applications are closed.', flags: MessageFlags.Ephemeral });
+        }
+
+        // Create the Modal
+        const modal = new ModalBuilder()
+            .setCustomId('application_modal')
+            .setTitle('Staff Application');
+
+        // Inputs
+        const nameInput = new TextInputBuilder()
+            .setCustomId('app_name')
+            .setLabel("Name")
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+        const ageInput = new TextInputBuilder()
+            .setCustomId('app_age')
+            .setLabel("Age")
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+        const countryInput = new TextInputBuilder()
+            .setCustomId('app_country')
+            .setLabel("Country")
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+        const timezoneInput = new TextInputBuilder()
+            .setCustomId('app_timezone')
+            .setLabel("Time Zone")
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+        const reasonInput = new TextInputBuilder()
+            .setCustomId('app_reason')
+            .setLabel("Why do you want to join?")
+            .setStyle(TextInputStyle.Paragraph) // Big box
+            .setRequired(true);
+
+        // Add inputs to rows
+        const r1 = new ActionRowBuilder().addComponents(nameInput);
+        const r2 = new ActionRowBuilder().addComponents(ageInput);
+        const r3 = new ActionRowBuilder().addComponents(countryInput);
+        const r4 = new ActionRowBuilder().addComponents(timezoneInput);
+        const r5 = new ActionRowBuilder().addComponents(reasonInput);
+
+        modal.addComponents(r1, r2, r3, r4, r5);
+
+        await interaction.showModal(modal);
+    }
+
+    // 2. Handle Modal Submission -> Send Log
+    if (interaction.isModalSubmit() && interaction.customId === 'application_modal') {
+        const config = await ApplicationConfig.findOne({ guildId: interaction.guild.id });
+
+        if (!config || !config.logChannelId) {
+            return interaction.reply({ content: '<:no:1297814819105144862> Error: Log channel not found. Contact Admin.', flags: MessageFlags.Ephemeral });
+        }
+
+        const logChannel = interaction.guild.channels.cache.get(config.logChannelId);
+        if (!logChannel) {
+             return interaction.reply({ content: '<:no:1297814819105144862> Log channel deleted.', flags: MessageFlags.Ephemeral });
+        }
+
+        // Get Data
+        const name = interaction.fields.getTextInputValue('app_name');
+        const age = interaction.fields.getTextInputValue('app_age');
+        const country = interaction.fields.getTextInputValue('app_country');
+        const timezone = interaction.fields.getTextInputValue('app_timezone');
+        const reason = interaction.fields.getTextInputValue('app_reason');
+
+        // Build Log Embed
+        const embed = new EmbedBuilder()
+            .setTitle('📄 New Staff Application')
+            .setAuthor({ name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL() })
+            .setColor(0x0099FF)
+            .addFields(
+                { name: '👤 User', value: `<@${interaction.user.id}> (${interaction.user.id})`, inline: false },
+                { name: 'Name', value: name, inline: true },
+                { name: 'Age', value: age, inline: true },
+                { name: 'Country', value: country, inline: true },
+                { name: 'Time Zone', value: timezone, inline: true },
+                { name: 'Reason', value: reason, inline: false }
+            )
+            .setTimestamp();
+
+        await logChannel.send({ embeds: [embed] });
+
+        return interaction.reply({ content: '<:yes:1297814648417943565> Application submitted successfully!', flags: MessageFlags.Ephemeral });
+    }
+});
 
 
 

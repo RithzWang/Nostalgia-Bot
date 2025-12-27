@@ -186,7 +186,7 @@ async function createWelcomeImage(member) {
     const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>/g, '').trim();
     const displayName = cleanedDisplayName || user.username;
 
-    ctx.font = 'bold 120px "gg sans Bold", "Geeza Bold", "Thonburi", "Symbol", "Apple Symbols", "Noto Symbol", "Noto Symbol 2", "Noto Math", "Noto Hieroglyphs", "Noto Music", "Apple Color Emoji", sans-serif';
+    ctx.font = 'bold 120px "gg sans Bold", "Geeza Bold", "Thonburi", "Apple Gothic", "Hiragino Sans", "Pingfang", "Symbol", "Apple Symbols", "Noto Symbol", "Noto Symbol 2", "Noto Math", "Noto Hieroglyphs", "Noto Music", "Apple Color Emoji", sans-serif';
     ctx.textAlign = 'left';
     ctx.fillText(displayName, textX, currentY);
 

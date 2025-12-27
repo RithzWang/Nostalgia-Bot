@@ -600,61 +600,6 @@ client.on('interactionCreate', async (interaction) => {
 
 
 
-// --- SUGGESTION SYSTEM BUTTONS ---
-client.on('interactionCreate', async (interaction) => {
-    if (!interaction.isButton()) return;
-    if (!['suggestion_upvote', 'suggestion_downvote'].includes(interaction.customId)) return;
-
-    await interaction.deferUpdate(); // Prevent "Interactions Failed" error
-
-    const suggestion = await Suggestion.findOne({ messageId: interaction.message.id });
-    if (!suggestion) return;
-
-    const userId = interaction.user.id;
-    const isUpvote = interaction.customId === 'suggestion_upvote';
-
-    // Logic: 
-    // - If clicking Upvote: Remove from Downvotes. Toggle Upvote (Add if not there, Remove if there).
-    // - If clicking Downvote: Remove from Upvotes. Toggle Downvote.
-
-    if (isUpvote) {
-        if (suggestion.upvoters.includes(userId)) {
-            // Already upvoted -> Remove
-            suggestion.upvoters = suggestion.upvoters.filter(id => id !== userId);
-        } else {
-            // New upvote -> Add (and remove from downvote)
-            suggestion.upvoters.push(userId);
-            suggestion.downvoters = suggestion.downvoters.filter(id => id !== userId);
-        }
-    } else {
-        if (suggestion.downvoters.includes(userId)) {
-            // Already downvoted -> Remove
-            suggestion.downvoters = suggestion.downvoters.filter(id => id !== userId);
-        } else {
-            // New downvote -> Add (and remove from upvote)
-            suggestion.downvoters.push(userId);
-            suggestion.upvoters = suggestion.upvoters.filter(id => id !== userId);
-        }
-    }
-
-    await suggestion.save();
-
-    // Update Button Labels
-    const upvoteBtn = ButtonBuilder.from(interaction.message.components[0].components[0])
-        .setLabel(`${suggestion.upvoters.length}`);
-
-    const downvoteBtn = ButtonBuilder.from(interaction.message.components[0].components[1])
-        .setLabel(`${suggestion.downvoters.length}`);
-
-    const row = ActionRowBuilder.from(interaction.message.components[0])
-        .setComponents(upvoteBtn, downvoteBtn);
-
-    await interaction.editReply({ components: [row] });
-});
-
-
-
-
 
 (async () => {
     try {

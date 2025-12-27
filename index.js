@@ -679,12 +679,13 @@ client.on('interactionCreate', async (interaction) => {
         const timezone = interaction.fields.getTextInputValue('app_timezone');
         const reason = interaction.fields.getTextInputValue('app_reason');
 
-        // Build Log Embed (No Author, No Timestamp)
+        // Build Log Embed
         const embed = new EmbedBuilder()
             .setTitle('📄 New Staff Application')
-            .setColor(0x0099FF)
+            .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true })) // <--- Added Thumbnail
+            .setColor(0x808080)
             .addFields(
-                { name: '👤 User', value: `<@${interaction.user.id}> (${interaction.user.id})`, inline: false },
+                { name: 'User', value: `<@${interaction.user.id}> (${interaction.user.id})`, inline: false },
                 { name: 'What is your name?', value: name, inline: true },
                 { name: 'How old are you?', value: age, inline: true },
                 { name: 'Where are you from?', value: country, inline: true },
@@ -707,7 +708,7 @@ client.on('interactionCreate', async (interaction) => {
 
         const timeButton = new ButtonBuilder()
             .setCustomId('app_log_time')
-            .setLabel(`Submitted at: ${timeString} (GMT+7)`)
+            .setLabel(`${timeString} (GMT+7)`)
             .setStyle(ButtonStyle.Secondary)
             .setDisabled(true);
 

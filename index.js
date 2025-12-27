@@ -29,7 +29,6 @@ const { loadFonts } = require('./fontLoader');
 const config = require("./config.json");
 const Sticky = require('./src/models/Sticky');
 const Giveaway = require('./src/models/Giveaway');
-const Suggestion = require('./src/models/Suggestion');
 
 
 // 2. Extract constants (WE DO NOT extract roleupdateMessageID here)

@@ -464,7 +464,8 @@ setInterval(async () => {
             const endedEmbed = EmbedBuilder.from(message.embeds[0])
                 .setTitle(`🎉 ${g.prize} (Ended) 🎉`) 
                 .setColor(0x808080) 
-                .setDescription(finalDescription);
+                .setDescription(finalDescription)
+                .setFooter(null);
 
             await message.edit({ embeds: [endedEmbed], components: [row] });
 

@@ -19,18 +19,17 @@ module.exports = {
         .addSubcommand(sub => {
             sub.setName('setup')
                 .setDescription('Create a NEW menu.')
+                // --- REQUIRED OPTIONS FIRST ---
                 .addStringOption(opt => opt.setName('title').setDescription('Embed Title').setRequired(true))
                 .addStringOption(opt => opt.setName('description').setDescription('Embed Description').setRequired(true))
-                
-                // NEW OPTION: Multi-Select
                 .addBooleanOption(opt => opt.setName('multi_select').setDescription('Can users select multiple roles? (True=Yes, False=Only 1)').setRequired(true))
+                .addRoleOption(opt => opt.setName('role1').setDescription('Role 1 (Required)').setRequired(true)) // Moved Up
                 
+                // --- OPTIONAL OPTIONS AFTER ---
+                .addStringOption(opt => opt.setName('emoji1').setDescription('Emoji for Role 1').setRequired(false))
                 .addChannelOption(opt => opt.setName('channel').setDescription('Where to post? (Optional)').addChannelTypes(ChannelType.GuildText))
                 .addStringOption(opt => opt.setName('message_id').setDescription('Old message ID to replace (Optional)').setRequired(false))
                 
-                // Role 1 (Required)
-                .addRoleOption(opt => opt.setName('role1').setDescription('Role 1').setRequired(true))
-                .addStringOption(opt => opt.setName('emoji1').setDescription('Emoji for Role 1').setRequired(false))
                 // Roles 2-10 (Optional)
                 .addRoleOption(opt => opt.setName('role2').setDescription('Role 2').setRequired(false))
                 .addStringOption(opt => opt.setName('emoji2').setDescription('Emoji for Role 2').setRequired(false))
@@ -57,8 +56,10 @@ module.exports = {
         .addSubcommand(sub => 
             sub.setName('add')
                 .setDescription('Add a role to an EXISTING menu')
+                // Required First
                 .addStringOption(opt => opt.setName('message_id').setDescription('The Message ID of the menu').setRequired(true))
                 .addRoleOption(opt => opt.setName('role').setDescription('The role to add').setRequired(true))
+                // Optional After
                 .addStringOption(opt => opt.setName('emoji').setDescription('Emoji for this role').setRequired(false))
                 .addChannelOption(opt => opt.setName('channel').setDescription('Channel where the menu is (if not here)').addChannelTypes(ChannelType.GuildText))
         )
@@ -67,8 +68,10 @@ module.exports = {
         .addSubcommand(sub => 
             sub.setName('remove')
                 .setDescription('Remove a role from an EXISTING menu')
+                // Required First
                 .addStringOption(opt => opt.setName('message_id').setDescription('The Message ID of the menu').setRequired(true))
                 .addRoleOption(opt => opt.setName('role').setDescription('The role to remove').setRequired(true))
+                // Optional After
                 .addChannelOption(opt => opt.setName('channel').setDescription('Channel where the menu is (if not here)').addChannelTypes(ChannelType.GuildText))
         ),
 
@@ -79,7 +82,7 @@ module.exports = {
         if (sub === 'setup') {
             const title = interaction.options.getString('title');
             const description = interaction.options.getString('description');
-            const multiSelect = interaction.options.getBoolean('multi_select'); // Get the boolean
+            const multiSelect = interaction.options.getBoolean('multi_select');
             const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
             const oldMessageId = interaction.options.getString('message_id');
 
@@ -116,11 +119,10 @@ module.exports = {
                 }
             }
 
-            // --- MULTI-SELECT LOGIC ---
             if (multiSelect) {
-                menu.setMaxValues(validRoleCount); // Allow selecting ALL available options
+                menu.setMaxValues(validRoleCount);
             } else {
-                menu.setMaxValues(1); // Only allow selecting 1
+                menu.setMaxValues(1);
             }
 
             const embed = new EmbedBuilder().setTitle(title).setDescription(description).setColor(0x808080);
@@ -157,9 +159,7 @@ module.exports = {
 
                 newMenu.addOptions(newOption);
                 
-                // --- SMART MAX VALUES ---
-                // If it was previously 1 (Single Select), keep it 1. 
-                // If it was > 1, update it to equal the new number of options.
+                // Smart Max Values
                 if (oldMenu.data.max_values > 1) {
                     newMenu.setMaxValues(newMenu.options.length);
                 } else {
@@ -204,8 +204,7 @@ module.exports = {
 
                 newMenu.setOptions(filteredOptions);
 
-                // --- SMART MAX VALUES ---
-                // If it was > 1, update to new length. If 1, stay 1.
+                // Smart Max Values
                 if (oldMenu.data.max_values > 1) {
                     newMenu.setMaxValues(filteredOptions.length);
                 } else {

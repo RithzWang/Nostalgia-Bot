@@ -36,7 +36,7 @@ module.exports = {
                 .addIntegerOption(opt => opt.setName('winners').setDescription('Number of winners').setRequired(true))
                 .addStringOption(opt => opt.setName('prize').setDescription('The prize (Title)').setRequired(true))
                 .addStringOption(opt => opt.setName('description').setDescription('Extra details (Optional)').setRequired(false))
-                .addRoleOption(opt => opt.setName('role').setDescription('Only users with this role can join (Optional)').setRequired(false)) // <--- ADDED ROLE
+                .addRoleOption(opt => opt.setName('role').setDescription('Only users with this role can join (Optional)').setRequired(false))
                 .addChannelOption(opt => opt.setName('channel').setDescription('Where to post? (Optional)').addChannelTypes(ChannelType.GuildText))
         )
         // 2. END
@@ -61,7 +61,7 @@ module.exports = {
             const winnerCount = interaction.options.getInteger('winners');
             const prize = interaction.options.getString('prize');
             const description = interaction.options.getString('description');
-            const requiredRole = interaction.options.getRole('role'); // <--- Get Role
+            const requiredRole = interaction.options.getRole('role');
             const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
 
             const ms = parseDuration(durationStr);
@@ -84,7 +84,6 @@ module.exports = {
             // --- BUILD DESCRIPTION ---
             let hostInfo = `**Hosted by:** ${interaction.user}\n**Winners:** ${winnerCount}\n**Ends:** <t:${Math.floor(endTime / 1000)}:R>`;
             
-            // Add Role info if exists
             if (requiredRole) {
                 hostInfo = `**Required Role:** ${requiredRole}\n` + hostInfo;
             }
@@ -99,13 +98,21 @@ module.exports = {
                 .setColor(0x808080)
                 .setFooter({ text: 'Click the button below to join!' });
 
-            const button = new ButtonBuilder()
+            // Button 1: Join
+            const joinButton = new ButtonBuilder()
                 .setCustomId('giveaway_join')
                 .setLabel('Join Giveaway')
                 .setStyle(ButtonStyle.Secondary)
                 .setEmoji('🎉');
 
-            const row = new ActionRowBuilder().addComponents(button);
+            // Button 2: Count (Disabled)
+            const countButton = new ButtonBuilder()
+                .setCustomId('giveaway_count')
+                .setLabel('0 Entries')
+                .setStyle(ButtonStyle.Secondary)
+                .setDisabled(true); // Always disabled
+
+            const row = new ActionRowBuilder().addComponents(joinButton, countButton);
 
             const msg = await targetChannel.send({ embeds: [embed], components: [row] });
 
@@ -116,7 +123,7 @@ module.exports = {
                 hostId: interaction.user.id,
                 prize: prize,
                 description: description || null,
-                requiredRoleId: requiredRole ? requiredRole.id : null, // <--- Save Role ID
+                requiredRoleId: requiredRole ? requiredRole.id : null,
                 winnersCount: winnerCount,
                 startTimestamp: Date.now(),
                 endTimestamp: endTime,

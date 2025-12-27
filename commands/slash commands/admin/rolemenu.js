@@ -27,6 +27,7 @@ module.exports = {
                 // --- OPTIONAL ---
                 .addStringOption(opt => opt.setName('emoji1').setDescription('Emoji for Role 1').setRequired(false))
                 .addChannelOption(opt => opt.setName('channel').setDescription('Where to post? (Optional)').addChannelTypes(ChannelType.GuildText))
+                .addStringOption(opt => opt.setName('message_id').setDescription('ID of an existing BOT message to reuse (Optional)').setRequired(false))
                 
                 // Roles 2-10
                 .addRoleOption(opt => opt.setName('role2').setDescription('Role 2').setRequired(false))
@@ -77,11 +78,13 @@ module.exports = {
             const title = interaction.options.getString('title');
             const multiSelect = interaction.options.getBoolean('multi_select');
             const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
+            const reuseMessageId = interaction.options.getString('message_id');
 
             if (!targetChannel.viewable || !targetChannel.permissionsFor(interaction.guild.members.me).has(PermissionFlagsBits.SendMessages)) {
                 return interaction.reply({ content: `<:no:1297814819105144862> I cannot send messages in ${targetChannel}.`, flags: MessageFlags.Ephemeral });
             }
 
+            // 1. Prepare Menu
             const menu = new StringSelectMenuBuilder()
                 .setCustomId('role_select_menu')
                 .setMinValues(0);
@@ -100,7 +103,7 @@ module.exports = {
                     
                     const option = new StringSelectMenuOptionBuilder().setLabel(role.name).setValue(role.id);
                     
-                    // --- BOLD TEXT LOGIC ---
+                    // Bold Logic
                     let lineText = `**${role.name}**`;
                     if (emoji) {
                         option.setEmoji(emoji);
@@ -113,7 +116,7 @@ module.exports = {
                 }
             }
 
-            // --- PLACEHOLDER & MAX VALUES ---
+            // Placeholder Logic
             if (multiSelect) {
                 menu.setMaxValues(validRoleCount);
                 menu.setPlaceholder(`Select from ${validRoleCount} roles...`);
@@ -129,8 +132,38 @@ module.exports = {
 
             const row = new ActionRowBuilder().addComponents(menu);
 
-            await targetChannel.send({ embeds: [embed], components: [row] });
-            return interaction.reply({ content: `<:yes:1297814648417943565> Menu created in ${targetChannel}!`, flags: MessageFlags.Ephemeral });
+            // 2. Send or Edit Message
+            if (reuseMessageId) {
+                try {
+                    const oldMsg = await targetChannel.messages.fetch(reuseMessageId);
+                    
+                    if (!oldMsg) {
+                        return interaction.reply({ content: '<:no:1297814819105144862> Message not found.', flags: MessageFlags.Ephemeral });
+                    }
+                    if (oldMsg.author.id !== interaction.client.user.id) {
+                         return interaction.reply({ content: '<:no:1297814819105144862> I can only edit my own messages.', flags: MessageFlags.Ephemeral });
+                    }
+
+                    // Step 1: Replace Embed/Components immediately (Keeps old content momentarily)
+                    await oldMsg.edit({ embeds: [embed], components: [row] });
+                    
+                    // Step 2: Delete content after 3 seconds
+                    setTimeout(async () => {
+                        try {
+                            await oldMsg.edit({ content: '' }); // Clear text
+                        } catch (e) { console.error("Failed to clear content", e); }
+                    }, 3000);
+
+                    return interaction.reply({ content: `<:yes:1297814648417943565> Updated message in ${targetChannel}! Old text will vanish in 3s.`, flags: MessageFlags.Ephemeral });
+
+                } catch (e) {
+                    return interaction.reply({ content: '<:no:1297814819105144862> Failed to edit message. Check ID and permissions.', flags: MessageFlags.Ephemeral });
+                }
+            } else {
+                // Normal Send
+                await targetChannel.send({ embeds: [embed], components: [row] });
+                return interaction.reply({ content: `<:yes:1297814648417943565> Menu created in ${targetChannel}!`, flags: MessageFlags.Ephemeral });
+            }
         }
 
         // --- ADD COMMAND ---
@@ -152,11 +185,9 @@ module.exports = {
                     return interaction.reply({ content: '<:no:1297814819105144862> That message is not a role menu.', flags: MessageFlags.Ephemeral });
                 }
 
-                // 1. Update Menu
                 const newMenu = StringSelectMenuBuilder.from(oldMenu);
                 const newOption = new StringSelectMenuOptionBuilder().setLabel(role.name).setValue(role.id);
                 
-                // --- BOLD TEXT LOGIC ---
                 let lineText = `**${role.name}**`;
                 if (emoji) {
                     newOption.setEmoji(emoji);
@@ -164,10 +195,8 @@ module.exports = {
                 }
 
                 newMenu.addOptions(newOption);
-                
                 const newCount = newMenu.options.length;
 
-                // Update Max Values & Placeholder
                 if (oldMenu.data.max_values > 1) {
                     newMenu.setMaxValues(newCount);
                     newMenu.setPlaceholder(`Select from ${newCount} roles...`);
@@ -176,7 +205,6 @@ module.exports = {
                     newMenu.setPlaceholder(`Select 1 out of ${newCount} roles...`);
                 }
 
-                // 2. Update Embed Text
                 const newEmbed = EmbedBuilder.from(oldEmbed);
                 const currentDescription = newEmbed.data.description || "";
                 newEmbed.setDescription(currentDescription + '\n' + lineText);
@@ -187,7 +215,6 @@ module.exports = {
                 return interaction.reply({ content: `<:yes:1297814648417943565> Added **${role.name}** to the menu!`, flags: MessageFlags.Ephemeral });
 
             } catch (err) {
-                console.log(err);
                 return interaction.reply({ content: '<:no:1297814819105144862> Message not found or invalid.', flags: MessageFlags.Ephemeral });
             }
         }
@@ -206,7 +233,6 @@ module.exports = {
                 const oldActionRow = message.components[0];
                 const oldMenu = oldActionRow.components[0];
 
-                // 1. Update Menu
                 const newMenu = StringSelectMenuBuilder.from(oldMenu);
                 const currentOptions = newMenu.options;
                 const filteredOptions = currentOptions.filter(opt => opt.data.value !== role.id);
@@ -222,21 +248,16 @@ module.exports = {
                 newMenu.setOptions(filteredOptions);
                 const newCount = filteredOptions.length;
 
-                // Update Max Values & Placeholder
                 if (oldMenu.data.max_values > 1) {
                     newMenu.setMaxValues(newCount);
-                    newMenu.setPlaceholder(`Select from ${newCount} roles`);
+                    newMenu.setPlaceholder(`Select from ${newCount} roles...`);
                 } else {
                     newMenu.setMaxValues(1);
-                    newMenu.setPlaceholder(`Select one out of ${newCount} roles`);
+                    newMenu.setPlaceholder(`Select 1 out of ${newCount} roles...`);
                 }
 
-                // 2. Update Embed Text
                 const newEmbed = EmbedBuilder.from(oldEmbed);
                 const currentDescription = newEmbed.data.description || "";
-                
-                // Filter lines that do NOT contain the role name
-                // Note: This still works even with **bold** because the role name is inside the string.
                 const newDescription = currentDescription
                     .split('\n')
                     .filter(line => !line.includes(role.name))
@@ -250,7 +271,6 @@ module.exports = {
                 return interaction.reply({ content: `<:yes:1297814648417943565> Removed **${role.name}** from the menu!`, flags: MessageFlags.Ephemeral });
 
             } catch (err) {
-                console.log(err)
                 return interaction.reply({ content: '<:no:1297814819105144862> Message not found or invalid.', flags: MessageFlags.Ephemeral });
             }
         }

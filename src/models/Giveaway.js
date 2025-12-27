@@ -6,7 +6,8 @@ const giveawaySchema = new mongoose.Schema({
     messageId: { type: String, required: true },
     hostId: { type: String, required: true },
     prize: { type: String, required: true },
-    description: { type: String, required: false }, // <--- ADDED THIS
+    description: { type: String, required: false },
+    requiredRoleId: { type: String, required: false }, // <--- ADDED THIS
     winnersCount: { type: Number, required: true },
     startTimestamp: { type: Number, required: true },
     endTimestamp: { type: Number, required: true },

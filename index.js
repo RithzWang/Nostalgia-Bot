@@ -416,39 +416,43 @@ setInterval(async () => {
             const participantCount = g.participants.length;
 
             if (participantCount > 0) {
-                // --- BOOSTER LUCK LOGIC (2x Entries) ---
+                // --- BOOSTER LUCK LOGIC ---
                 let weightedPool = [];
                 const guild = client.guilds.cache.get(g.guildId);
 
                 if (guild) {
                     for (const userId of g.participants) {
-                        weightedPool.push(userId); // Entry #1 (Everyone)
-                        
+                        weightedPool.push(userId); // Entry #1
                         try {
-                            // Check if member is boosting
                             const member = await guild.members.fetch(userId).catch(() => null);
                             if (member && member.premiumSince) {
-                                weightedPool.push(userId); // Entry #2 (Booster Bonus)
+                                weightedPool.push(userId); // Entry #2 (Booster)
                             }
-                        } catch (e) { /* Ignore left members */ }
+                        } catch (e) {}
                     }
                 } else {
-                    weightedPool = g.participants; // Fallback
+                    weightedPool = g.participants;
                 }
 
-                // Shuffle & Pick
                 const shuffled = weightedPool.sort(() => 0.5 - Math.random());
                 const uniqueWinners = [...new Set(shuffled)]; 
                 const selected = uniqueWinners.slice(0, g.winnersCount);
                 
                 winnersText = selected.map(id => `<@${id}>`).join(', ');
                 
-                await channel.send(`🎉 **CONGRATULATIONS!**\n${winnersText}\nYou won **${g.prize}**!`);
+                await channel.send(`🎉 **CONGRATULATIONS!** 🎉\n${winnersText}\nYou won **${g.prize}**!`);
             } else {
                 await channel.send(`Giveaway ended, but no one joined. Prize: **${g.prize}**`);
             }
 
-            // Update Embed to "Ended" style
+            // --- BUILD ENDED DESCRIPTION ---
+            const hostInfo = `**Winner(s):** ${winnersText}\n**Host:** <@${g.hostId}>`;
+            
+            // Changed Logic: Use -# for small text
+            const finalDescription = g.description 
+                ? `-# ${g.description}\n\n${hostInfo}` 
+                : hostInfo;
+
             const disableButton = new ButtonBuilder()
                 .setCustomId('giveaway_join')
                 .setLabel(`Ended (${participantCount} Entries)`)
@@ -458,13 +462,12 @@ setInterval(async () => {
             const row = new ActionRowBuilder().addComponents(disableButton);
 
             const endedEmbed = EmbedBuilder.from(message.embeds[0])
-                .setTitle(`🎉 ${g.prize} (Ended)`) // Grey Title
-                .setColor(0x808080) // Grey Color
-                .setDescription(`**Winner(s):** ${winnersText}\n**Host:** <@${g.hostId}>`);
+                .setTitle(`🎉 ${g.prize} (Ended) 🎉`) 
+                .setColor(0x808080) 
+                .setDescription(finalDescription);
 
             await message.edit({ embeds: [endedEmbed], components: [row] });
 
-            // Mark as ended in DB
             g.ended = true;
             await g.save();
 
@@ -472,7 +475,7 @@ setInterval(async () => {
             console.error(`Error ending giveaway ${g.messageId}:`, err);
         }
     }
-}, 10 * 1000); // Check every 10 seconds
+}, 10 * 1000);
 
 
 

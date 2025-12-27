@@ -60,6 +60,26 @@ async function loadFonts() {
 
    const applesymbolPath = path.join(FONT_DIR, 'Apple Symbols.ttf');
     if (fs.existsSync(applesymbolPath)) GlobalFonts.registerFromPath(applesymbolPath, 'Apple Symbols');
+
+  
+   const symbol1Path = path.join(FONT_DIR, 'NotoSansSymbols-Bold.ttf');
+    if (fs.existsSync(symbol1Path)) GlobalFonts.registerFromPath(symbol1Path, 'Noto Symbol');
+
+
+   const symbol2Path = path.join(FONT_DIR, 'NotoSansSymbols2-Regular.ttf');
+    if (fs.existsSync(symbol2Path)) GlobalFonts.registerFromPath(symbol2Path, 'Noto Symbol 2');
+
+
+  const mathPath = path.join(FONT_DIR, 'NotoSansMath-Regular.ttf');
+    if (fs.existsSync(mathPath)) GlobalFonts.registerFromPath(mathPath, 'Noto Math');
+  
+  
+  const hieroglyphsPath = path.join(FONT_DIR, 'NotoSansEgyptianHieroglyphs-Regular.ttf');
+    if (fs.existsSync(hieroglyphsPath)) GlobalFonts.registerFromPath(hieroglyphsPath, 'Noto Hieroglyphs');
+
+
+   const musicPath = path.join(FONT_DIR, 'NotoMusic-Regular.ttf');
+    if (fs.existsSync(musicPath)) GlobalFonts.registerFromPath(musicPath, 'Noto Music');
      
 
     // 6. Emoji

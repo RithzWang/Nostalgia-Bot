@@ -28,7 +28,7 @@ module.exports = {
             });
         }
 
-        // 2. Check Channel (Must be used IN the specific channel)
+        // 2. Check Channel
         if (interaction.channelId !== config.channelId) {
             return interaction.reply({ 
                 content: `<:no:1297814819105144862> Please use this command in <#${config.channelId}>.`, 
@@ -38,14 +38,17 @@ module.exports = {
 
         // 3. Create Embed
         const embed = new EmbedBuilder()
-            .setAuthor({ name: `${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
             .setTitle('New Suggestion')
             .setDescription(idea)
             .setColor(0x808080) // Grey
             .addFields(
                 { name: 'Status', value: 'Pending', inline: false }
             )
-            .setTimestamp();
+            // Changed: User info in Footer instead of Author/Timestamp
+            .setFooter({ 
+                text: `Suggested by ${interaction.user.tag}`, 
+                iconURL: interaction.user.displayAvatarURL() 
+            });
 
         // 4. Create Buttons
         const upvoteBtn = new ButtonBuilder()

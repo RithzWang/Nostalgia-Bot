@@ -19,7 +19,7 @@ module.exports = {
         // 1. ADD
         .addSubcommand(subcommand =>
             subcommand
-                .setName(' ')
+                .setName('add')
                 .setDescription('Warn a user.')
                 .addUserOption(option => 
                     option.setName('target')

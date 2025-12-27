@@ -241,8 +241,6 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
 
 // --- INITIALIZATION ---
 // --- STICKY MESSAGE LOGIC ---
-const Sticky = require('./src/models/Sticky'); // ⚠️ Make sure this path is correct for your file structure
-
 // 1. Create a variable outside the event listener to hold the timers
 const stickyTimers = new Map();
 

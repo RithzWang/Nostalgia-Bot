@@ -80,7 +80,7 @@ module.exports = {
             // --- EMBED & BUTTON ---
             const embed = new EmbedBuilder()
                 .setColor(0xFFFF00) // Yellow
-                .setTitle('<:yes:1297814648417943565> Member Timed Out Successfully')
+                .setTitle('⏰ Member Timed Out Successfully')
                 .setDescription(`**Member:** ${targetUser.tag}\n**Duration:** ${readableDuration}\n**Reason:** ${reason}\n**Moderator:** ${interaction.user.tag}`)
                 .setThumbnail(targetUser.displayAvatarURL());
 

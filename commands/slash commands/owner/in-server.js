@@ -11,115 +11,174 @@ const {
     ChannelType
 } = require('discord.js');
 
+// ⚠️ REPLACE WITH YOUR ID
 const OWNER_ID = '837741275603009626'; 
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('in-server')
-        .setDescription('Owner-only server management panel')
+        .setDescription('Manage bot servers')
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
     async execute(interaction) {
-        // 1. Owner Security Check
+        // 1. Security Check
         if (interaction.user.id !== OWNER_ID) {
-            return interaction.reply({ content: '⛔ This command is restricted to the Bot Owner.', flags: MessageFlags.Ephemeral });
+            return interaction.reply({ content: '⛔ Owner only.', flags: MessageFlags.Ephemeral });
         }
 
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         const guilds = interaction.client.guilds.cache;
 
-        // 2. Main Dashboard Embed
+        // 2. Create the Main Embed
         const embed = new EmbedBuilder()
             .setTitle(`🤖 Server Management Panel`)
-            .setDescription(`**Stats:** Currently in **${guilds.size}** servers.\n\n**Actions:**\n👋 **Leave:** Force bot out of servers.\n🔗 **Invite:** Create an invite to a server.\n🎨 **Steal:** Copy emojis to this server.`)
+            .setDescription(`**Current Status:**\nThe bot is currently in **${guilds.size}** servers.\n\n**Select an action below:**\n👋 **Leave:** Force the bot to leave specific servers.\n🔗 **Invite:** Generate an invite link for a specific server.`)
             .setColor('#888888');
 
-        // 3. Main Action Buttons
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('btn_leave').setLabel('Leave').setStyle(ButtonStyle.Danger).setEmoji('👋'),
-            new ButtonBuilder().setCustomId('btn_invite').setLabel('Invite').setStyle(ButtonStyle.Primary).setEmoji('🔗'),
-            new ButtonBuilder().setCustomId('btn_steal').setLabel('Mass Steal').setStyle(ButtonStyle.Secondary).setEmoji('🎨')
-        );
+        // 3. Create the Two Buttons
+        const leaveButton = new ButtonBuilder()
+            .setCustomId('btn_mode_leave')
+            .setLabel('Leave Servers')
+            .setStyle(ButtonStyle.Danger) // Red
+            .setEmoji('👋');
 
+        const inviteButton = new ButtonBuilder()
+            .setCustomId('btn_mode_invite')
+            .setLabel('Create Invite')
+            .setStyle(ButtonStyle.Primary) // Blurple
+            .setEmoji('🔗');
+
+        const row = new ActionRowBuilder().addComponents(leaveButton, inviteButton);
+
+        // 4. Send the Main Menu
         const response = await interaction.editReply({ embeds: [embed], components: [row] });
 
-        // 4. Button Collector
+        // 5. Create Collector for Buttons
         const collector = response.createMessageComponentCollector({ 
             componentType: ComponentType.Button, 
-            time: 120000 
+            time: 60000 
         });
 
         collector.on('collect', async i => {
             if (i.user.id !== interaction.user.id) return;
 
-            if (i.customId === 'btn_leave') await handleLeave(i, guilds);
-            if (i.customId === 'btn_invite') await handleInvite(i, guilds);
-            if (i.customId === 'btn_steal') await handleSteal(i, guilds);
+            if (i.customId === 'btn_mode_leave') {
+                await showLeaveMenu(i, guilds);
+            } else if (i.customId === 'btn_mode_invite') {
+                await showInviteMenu(i, guilds);
+            }
         });
     },
 };
 
-// --- LOGIC FUNCTIONS ---
-
-async function handleLeave(i, guilds) {
+// ==========================================
+// 1. LOGIC FOR LEAVING SERVERS
+// ==========================================
+async function showLeaveMenu(i, guilds) {
+    // Sort and get top 25 servers
     const options = guilds.sort((a, b) => b.memberCount - a.memberCount).first(25).map(g => ({
         label: g.name,
-        description: `Members: ${g.memberCount} | ID: ${g.id}`,
+        description: `ID: ${g.id} | Members: ${g.memberCount}`,
         value: g.id
     }));
 
-    const menu = new StringSelectMenuBuilder()
-        .setCustomId('leave_menu')
-        .setPlaceholder('Select servers to leave...')
+    const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId('menu_leave_action')
+        .setPlaceholder('Select servers to LEAVE (Multi-select)...')
         .setMinValues(1)
-        .setMaxValues(options.length)
+        .setMaxValues(options.length) // Allow multiple
         .addOptions(options);
 
-    await i.update({ 
-        embeds: [new EmbedBuilder().setTitle('👋 Leave Servers').setDescription('Bot will leave selected servers.')], 
-        components: [new ActionRowBuilder().addComponents(menu)] 
+    const row = new ActionRowBuilder().addComponents(selectMenu);
+
+    const embed = new EmbedBuilder()
+        .setTitle('👋 Leave Servers')
+        .setDescription('Select the servers below to make the bot **leave** them immediately.')
+        .setColor('#888888');
+
+    // Update the message
+    const response = await i.update({ embeds: [embed], components: [row], fetchReply: true });
+
+    // Listen for Menu Selection
+    const collector = response.createMessageComponentCollector({ 
+        componentType: ComponentType.StringSelect, 
+        time: 60000 
+    });
+
+    collector.on('collect', async menuInteraction => {
+        const selectedIds = menuInteraction.values;
+        await menuInteraction.update({ content: '<a:loading:1447184742934909032> Processing leave requests...', components: [], embeds: [] });
+
+        const left = [];
+        for (const id of selectedIds) {
+            const g = menuInteraction.client.guilds.cache.get(id);
+            if (g) {
+                await g.leave().catch(console.error);
+                left.push(g.name);
+            }
+        }
+        await menuInteraction.editReply({ content: `<:yes:1297814648417943565> I left Servers: \n${left.join('\n')}` });
     });
 }
 
-async function handleInvite(i, guilds) {
-    const options = guilds.first(25).map(g => ({
+// ==========================================
+// 2. LOGIC FOR CREATING INVITES
+// ==========================================
+async function showInviteMenu(i, guilds) {
+    // Sort and get top 25 servers
+    const options = guilds.sort((a, b) => b.memberCount - a.memberCount).first(25).map(g => ({
         label: g.name,
         description: `ID: ${g.id}`,
         value: g.id
     }));
 
-    const menu = new StringSelectMenuBuilder()
-        .setCustomId('invite_menu')
-        .setPlaceholder('Select a server for an invite...')
+    const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId('menu_invite_action')
+        .setPlaceholder('Select a server to generate INVITE...')
+        .setMaxValues(1) // Only 1 at a time for invites is safer/cleaner
         .addOptions(options);
 
-    await i.update({ 
-        embeds: [new EmbedBuilder().setTitle('🔗 Create Invite').setDescription('Select a server to generate a link.')], 
-        components: [new ActionRowBuilder().addComponents(menu)] 
+    const row = new ActionRowBuilder().addComponents(selectMenu);
+
+    const embed = new EmbedBuilder()
+        .setTitle('🔗 Create Invite')
+        .setDescription('Select a server below. The bot will try to find a channel and create an invite link.')
+        .setColor('#888888');
+
+    // Update the message
+    const response = await i.update({ embeds: [embed], components: [row], fetchReply: true });
+
+    // Listen for Menu Selection
+    const collector = response.createMessageComponentCollector({ 
+        componentType: ComponentType.StringSelect, 
+        time: 60000 
+    });
+
+    collector.on('collect', async menuInteraction => {
+        const guildId = menuInteraction.values[0];
+        const guild = menuInteraction.client.guilds.cache.get(guildId);
+
+        if (!guild) {
+            return menuInteraction.reply({ content: '<:no:1297814819105144862> Server not found.', flags: MessageFlags.Ephemeral });
+        }
+
+        // Try to find a valid channel to create an invite
+        // We look for text channels where the bot has permission
+        const channel = guild.channels.cache.find(c => 
+            c.type === ChannelType.GuildText && 
+            c.permissionsFor(guild.members.me).has(PermissionFlagsBits.CreateInstantInvite)
+        );
+
+        if (!channel) {
+            return menuInteraction.reply({ content: `<:no:1297814819105144862> I couldn't find a channel in **${guild.name}** where I have permissions to create an invite.`, flags: MessageFlags.Ephemeral });
+        }
+
+        try {
+            const invite = await channel.createInvite({ maxAge: 0, maxUses: 1 }); // Permanent link, 1 use
+            await menuInteraction.reply({ content: `**Invite for ${guild.name}:**\n${invite.url}`, flags: MessageFlags.Ephemeral });
+        } catch (err) {
+            await menuInteraction.reply({ content: `<:no:1297814819105144862> Error creating invite: ${err.message}`, flags: MessageFlags.Ephemeral });
+        }
     });
 }
-
-async function handleSteal(i, guilds) {
-    const options = guilds.filter(g => g.emojis.cache.size > 0).first(25).map(g => ({
-        label: g.name,
-        description: `${g.emojis.cache.size} emojis available`,
-        value: g.id
-    }));
-
-    if (options.length === 0) return i.reply({ content: 'No emojis found in any servers.', flags: MessageFlags.Ephemeral });
-
-    const menu = new StringSelectMenuBuilder()
-        .setCustomId('steal_server_menu')
-        .setPlaceholder('Select server to steal from...')
-        .addOptions(options);
-
-    await i.update({ 
-        embeds: [new EmbedBuilder().setTitle('🎨 Mass Steal Emoji').setDescription('Step 1: Select source server.')], 
-        components: [new ActionRowBuilder().addComponents(menu)] 
-    });
-}
-
-// Note: You must also have your InteractionCreate listener in index.js 
-// updated to handle these specific StringSelectMenu customIds (leave_menu, invite_menu, steal_server_menu, etc.) 
-// or keep the sub-collectors as written in the previous responses.

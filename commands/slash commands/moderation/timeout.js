@@ -11,7 +11,7 @@ const moment = require('moment-timezone');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('timeout')
-        .setDescription('Timeout (Mute) a user.')
+        .setDescription('Timeout (Mute) a user')
         .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
         .addUserOption(option => 
             option.setName('target')

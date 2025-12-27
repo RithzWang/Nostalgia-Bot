@@ -131,118 +131,61 @@ client.on('guildMemberAdd', async (member) => {
     // 1. Handle Nickname
     setTimeout(async () => {
         if (!member.guild.members.cache.has(member.id)) return;
+
         const prefixName = "🌱・";
         let newNickname = prefixName + member.displayName;
         if (newNickname.length > 32) newNickname = newNickname.substring(0, 32);
-        try { await member.setNickname(newNickname); } catch (e) {}
+
+        try {
+            await member.setNickname(newNickname);
+            console.log(`Changed nickname for ${member.user.tag}`);
+        } catch (error) {
+            console.error(`Could not rename ${member.user.tag}:`, error.message);
+        }
     }, 5000);
 
-    // 2. Handle Welcome Logic
+    // 2. Handle Welcome Image & Invites
     try {
         const newInvites = await member.guild.invites.fetch().catch(() => new Collection());
         let usedInvite = newInvites.find(inv => inv.uses > (invitesCache.get(inv.code) || 0));
-        if (newInvites.size > 0) newInvites.each(inv => invitesCache.set(inv.code, inv.uses));
+        
+        if (newInvites.size > 0) {
+             newInvites.each(inv => invitesCache.set(inv.code, inv.uses));
+        }
 
         const inviterName = usedInvite && usedInvite.inviter ? usedInvite.inviter.username : 'Unknown';
         const inviterId = usedInvite && usedInvite.inviter ? usedInvite.inviter.id : 'Unknown';
         const inviteCode = usedInvite ? usedInvite.code : 'Unknown';
-        
-        // (Note: The button now links to your website, but we still calculate invite data for the text)
 
         const welcomeImageBuffer = await createWelcomeImage(member);
         const attachment = new AttachmentBuilder(welcomeImageBuffer, { name: 'welcome-image.png' });
         
         const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
         const memberCount = member.guild.memberCount;
-        const hexColor = parseInt(colourEmbed.replace('#', ''), 16);
+        
+        const embed = new EmbedBuilder()
+            .setDescription(`### Welcome to A2-Q Server\n-# <@${member.user.id}> \`(${member.user.username})\`\n-# <:calendar:1439970556534329475> Account Created: ${accountCreated}\n-# <:users:1439970561953501214> Member Count: \`${memberCount}\`\n-# <:chain:1439970559105564672> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`)
+            .setThumbnail(member.user.displayAvatarURL())
+            .setImage('attachment://welcome-image.png')
+            .setColor(colourEmbed);
 
-        const v2Payload = {
-            flags: 1 << 15,
-            components: [
-                // --- PART 1: The Text Box ---
-                {
-                    type: 1,
-                    components: [{
-                        type: 6, // Container
-                        accent_color: hexColor,
-                        components: [
-                            {
-                                type: 7, // Header Section
-                                content: [
-                                    { type: 8, content: "### Welcome to A2-Q Server" },
-                                    { type: 8, content: `-# <@${member.user.id}> \`(${member.user.username})\`` }
-                                ],
-                                accessory: { 
-                                    type: 2, style: 2, thumbnail: { url: member.user.displayAvatarURL() } 
-                                }
-                            },
-                            {
-                                type: 7, // Stats Section
-                                content: [
-                                    { type: 8, content: `-# <:calendar:1439970556534329475> Account Created: ${accountCreated}` },
-                                    { type: 8, content: `-# <:users:1439970561953501214> Member Count: \`${memberCount}\`` },
-                                    { type: 8, content: `-# <:chain:1439970559105564672> Invited by <@${inviterId}> \`(${inviterName})\`` }
-                                ]
-                            }
-                        ]
-                    }]
-                },
-                
-                // --- PART 2: The Website Button (In the middle) ---
-                {
-                    type: 1, // Action Row
-                    components: [{
-                        type: 2, // Button
-                        style: 5, // Link Style
-                        label: `Visit Website`, // You can change this label if you want
-                        url: 'https://ridouan.xyz/' // LINK UPDATED HERE
-                    }]
-                },
+        const unclickableButton = new ButtonBuilder()
+            .setLabel(`${member.user.id}`)
+            .setStyle(ButtonStyle.Secondary)
+            .setEmoji('1441133157855395911')
+            .setCustomId('hello_button_disabled')
+            .setDisabled(true);
 
-                // --- PART 3: The Image Box ---
-                {
-                    type: 1,
-                    components: [{
-                        type: 6, // Container
-                        accent_color: hexColor,
-                        components: [{
-                            type: 7,
-                            content: [], // No text
-                            accessory: {
-                                type: 3, // Media Accessory (The Image)
-                                src: "attachment://welcome-image.png",
-                                width: 0, 
-                                height: 0 
-                            }
-                        }]
-                    }]
-                },
-
-                // --- PART 4: The Old ID Button (At the bottom) ---
-                {
-                    type: 1,
-                    components: [{
-                        type: 2,
-                        style: 2, // Secondary
-                        label: `${member.user.id}`,
-                        emoji: { id: '1441133157855395911' },
-                        custom_id: 'hello_button_disabled',
-                        disabled: true
-                    }]
-                }
-            ]
-        };
+        const row = new ActionRowBuilder().addComponents(unclickableButton);
 
         const channel = client.channels.cache.get(welcomeLog);
         if (channel) {
-            channel.send({ ...v2Payload, files: [attachment] });
+            channel.send({ embeds: [embed], files: [attachment], components: [row] });
         }
-
     } catch (err) {
         console.error("Error in Welcomer:", err);
     }
 });
-
 
 // --- ROLE LOGGING (YOUR ORIGINAL LOGIC) ---
 client.on('guildMemberUpdate', (oldMember, newMember) => {

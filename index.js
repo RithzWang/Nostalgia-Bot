@@ -359,13 +359,15 @@ client.on('interactionCreate', async (interaction) => {
 
 // --- GIVEAWAY SYSTEM ---
 
-// 1. Handle Join Button
+// 1. Handle Join/Leave Button
 client.on('interactionCreate', async (interaction) => {
     if (!interaction.isButton()) return;
     if (interaction.customId !== 'giveaway_join') return;
 
     // Find the giveaway in DB
     const giveaway = await Giveaway.findOne({ messageId: interaction.message.id });
+    
+    // Check if giveaway exists or ended
     if (!giveaway || giveaway.ended) {
         return interaction.reply({ 
             content: '<:no:1297814819105144862> This giveaway has ended.', 
@@ -373,23 +375,29 @@ client.on('interactionCreate', async (interaction) => {
         });
     }
 
-    // Check if already joined
+    // --- TOGGLE LOGIC ---
     if (giveaway.participants.includes(interaction.user.id)) {
+        // IF JOINED -> LEAVE
+        // Filter out the user ID to remove them
+        giveaway.participants = giveaway.participants.filter(id => id !== interaction.user.id);
+        await giveaway.save();
+
         return interaction.reply({ 
-            content: '<:no:1297814819105144862> You have already joined this giveaway.', 
+            content: '<:no:1297814819105144862> You have **left** the giveaway.', 
+            flags: MessageFlags.Ephemeral 
+        });
+    } else {
+        // IF NOT JOINED -> JOIN
+        giveaway.participants.push(interaction.user.id);
+        await giveaway.save();
+
+        return interaction.reply({ 
+            content: '<:yes:1297814648417943565> You have successfully **joined** the giveaway!', 
             flags: MessageFlags.Ephemeral 
         });
     }
-
-    // Add user to DB
-    giveaway.participants.push(interaction.user.id);
-    await giveaway.save();
-
-    return interaction.reply({ 
-        content: '<:yes:1297814648417943565> You have successfully joined the giveaway!', 
-        flags: MessageFlags.Ephemeral 
-    });
 });
+
 
 // 2. Auto-End Loop (Checks every 10 seconds)
 setInterval(async () => {

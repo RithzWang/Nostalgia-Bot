@@ -2,28 +2,28 @@ const {
     SlashCommandBuilder, 
     PermissionFlagsBits, 
     EmbedBuilder, 
-    MessageFlags,
-    ActionRowBuilder, // <--- Added
-    ButtonBuilder,    // <--- Added
-    ButtonStyle       // <--- Added
+    MessageFlags, // <--- Ensure this is imported
+    ActionRowBuilder, 
+    ButtonBuilder, 
+    ButtonStyle 
 } = require('discord.js');
 
 const Warn = require('../../../src/models/Warn');
-const moment = require('moment-timezone'); // <--- Required for GMT+7 time
+const moment = require('moment-timezone');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('warn')
-        .setDescription('Manage user warnings')
+        .setDescription('Manage member warnings')
         .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
         // 1. ADD
         .addSubcommand(subcommand =>
             subcommand
                 .setName('add')
-                .setDescription('Warn a user')
+                .setDescription('Warn a member')
                 .addUserOption(option => 
                     option.setName('target')
-                    .setDescription('The user to warn')
+                    .setDescription('The member to warn')
                     .setRequired(true))
                 .addStringOption(option => 
                     option.setName('reason')
@@ -33,10 +33,10 @@ module.exports = {
         .addSubcommand(subcommand =>
             subcommand
                 .setName('list')
-                .setDescription('See warnings for a user')
+                .setDescription('See warnings for a member')
                 .addUserOption(option => 
                     option.setName('target')
-                    .setDescription('The user to check')
+                    .setDescription('The member to check')
                     .setRequired(true)))
         // 3. REMOVE
         .addSubcommand(subcommand =>
@@ -69,9 +69,9 @@ module.exports = {
             // 2. Create the Embed
             const embed = new EmbedBuilder()
                 .setColor(0xFF0000)
-                .setTitle('<:yes:1297814648417943565> User Warned')
-                .setDescription(`**User:** ${target.tag}\n**Reason:** ${reason}\n**Moderator:** ${interaction.user.tag}`)
-                .setThumbnail(target.displayAvatarURL())
+                .setTitle('⚠️ Member Warned Successfully') // Changed to Member
+                .setDescription(`**Member:** ${target.tag}\n**Reason:** ${reason}\n**Moderator:** ${interaction.user.tag}`) // Changed to Member
+                .setThumbnail(target.displayAvatarURL());
 
             // 3. Create the Timestamp Button (GMT+7)
             const thailandTime = moment().tz('Asia/Bangkok').format('DD/MM/YYYY HH:mm');
@@ -79,8 +79,8 @@ module.exports = {
             const timeButton = new ButtonBuilder()
                 .setCustomId('warn_timestamp')
                 .setLabel(`${thailandTime} (GMT+7)`)
-                .setStyle(ButtonStyle.Secondary) // Grey
-                .setDisabled(true); // Unclickable
+                .setStyle(ButtonStyle.Secondary)
+                .setDisabled(true);
 
             const row = new ActionRowBuilder().addComponents(timeButton);
 

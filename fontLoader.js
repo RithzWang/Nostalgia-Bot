@@ -54,6 +54,18 @@ async function loadFonts() {
     const thaiPath = path.join(FONT_DIR, 'Thonburi-Bold.ttf');
     if (fs.existsSync(thaiPath)) GlobalFonts.registerFromPath(thaiPath, 'Thonburi');
 
+
+     const koreanPath = path.join(FONT_DIR, 'apple-sd-gothic-neo-bold.ttf');
+    if (fs.existsSync(koreanPath)) GlobalFonts.registerFromPath(koreanPath, 'Apple Gothic');
+
+
+    const japanesePath = path.join(FONT_DIR, 'hiragino-sans-gb.otf');
+    if (fs.existsSync(japanesePath)) GlobalFonts.registerFromPath(japanesePath, 'Hiragino Sans');
+
+
+   const chinesePath = path.join(FONT_DIR, 'pingfang-sc-bold.ttf');
+    if (fs.existsSync(chinesePath)) GlobalFonts.registerFromPath(chinesePath, 'Pingfang');
+
     const symbolPath = path.join(FONT_DIR, 'Symbol.ttf');
     if (fs.existsSync(symbolPath)) GlobalFonts.registerFromPath(symbolPath, 'Symbol');
 

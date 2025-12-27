@@ -1,17 +1,17 @@
-const { SlashCommandBuilder, AttachmentBuilder } = require('discord.js');
-const { createWelcomeImage } = require('../../../welcomeCanvas.js'); // Check your path!
+const { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { createWelcomeImage } = require('../../../welcomeCanvas.js'); // Adjust path to your file!
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('testwelcome')
-        .setDescription('Simulate the V2 welcome card for a specific user')
+        .setDescription('Simulate the welcome card for a specific user')
         .addUserOption(option => 
             option.setName('target')
             .setDescription('The user to generate the image for (default is you)')
         ),
     
     async execute(interaction) {
-        await interaction.deferReply(); 
+        await interaction.deferReply(); // Generating images takes time, so we defer
 
         try {
             // 1. Get the target member (or yourself)
@@ -21,106 +21,44 @@ module.exports = {
             const welcomeImageBuffer = await createWelcomeImage(member);
             const attachment = new AttachmentBuilder(welcomeImageBuffer, { name: 'welcome-image.png' });
 
-            // 3. Mock Data
+            // 3. Mock Data (Since this isn't a real join event, we fake the invite data)
             const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
             const memberCount = interaction.guild.memberCount;
             
-            // Fake inviter data
+            // Fake inviter data for the test
             const inviterName = interaction.user.username;
             const inviterId = interaction.user.id;
             const inviteCode = 'TEST-CODE';
-            const colourEmbed = '#2b2d31'; // Or your variable
-            const hexColor = parseInt(colourEmbed.replace('#', ''), 16);
+            const colourEmbed = '#888888'; // Replace with your variable
 
-            // 4. Construct V2 Payload
-            const v2Payload = {
-                flags: 1 << 15, // REQUIRED for V2
-                components: [
-                    // --- PART 1: Top Container (Text) ---
-                    {
-                        type: 1,
-                        components: [{
-                            type: 6, // Container
-                            accent_color: hexColor,
-                            components: [
-                                {
-                                    type: 7, // Header
-                                    content: [
-                                        { type: 8, content: "### Welcome to A2-Q Server" },
-                                        { type: 8, content: `-# <@${member.user.id}> \`(${member.user.username})\`` }
-                                    ],
-                                    accessory: { 
-                                        type: 2, style: 2, thumbnail: { url: member.user.displayAvatarURL() } 
-                                    }
-                                },
-                                {
-                                    type: 7, // Stats
-                                    content: [
-                                        { type: 8, content: `-# <:calendar:1439970556534329475> Account Created: ${accountCreated}` },
-                                        { type: 8, content: `-# <:users:1439970561953501214> Member Count: \`${memberCount}\`` },
-                                        { type: 8, content: `-# <:chain:1439970559105564672> Invited by <@${inviterId}> \`(${inviterName})\`` }
-                                    ]
-                                }
-                            ]
-                        }]
-                    },
+            // 4. Build Embed (Copied from your code)
+            const embed = new EmbedBuilder()
+                .setDescription(`### Welcome to A2-Q Server\n-# <@${member.user.id}> \`(${member.user.username})\`\n-# <:calendar:1439970556534329475> Account Created: ${accountCreated}\n-# <:users:1439970561953501214> Member Count: \`${memberCount}\`\n-# <:chain:1439970559105564672> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`)
+                .setThumbnail(member.user.displayAvatarURL())
+                .setImage('attachment://welcome-image.png')
+                .setColor(colourEmbed);
 
-                    // --- PART 2: Website Button (Middle) ---
-                    {
-                        type: 1, 
-                        components: [{
-                            type: 2, // Button
-                            style: 5, // Link
-                            label: `Visit Website`,
-                            url: 'https://ridouan.xyz/'
-                        }]
-                    },
+            // 5. Build Button
+            const unclickableButton = new ButtonBuilder()
+                .setLabel(`${member.user.id}`)
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji('1441133157855395911')
+                .setCustomId('hello_button_disabled')
+                .setDisabled(true);
 
-                    // --- PART 3: Image Container (Bottom) ---
-                    {
-                        type: 1,
-                        components: [{
-                            type: 6, // Container
-                            accent_color: hexColor,
-                            components: [{
-                                type: 7,
-                                content: [],
-                                accessory: {
-                                    type: 3, // Media
-                                    src: "attachment://welcome-image.png",
-                                    width: 0,
-                                    height: 0
-                                }
-                            }]
-                        }]
-                    },
+            const row = new ActionRowBuilder().addComponents(unclickableButton);
 
-                    // --- PART 4: ID Button (Footer) ---
-                    {
-                        type: 1,
-                        components: [{
-                            type: 2,
-                            style: 2, // Secondary
-                            label: `${member.user.id}`,
-                            emoji: { id: '1441133157855395911' },
-                            custom_id: 'hello_button_disabled',
-                            disabled: true
-                        }]
-                    }
-                ]
-            };
-
-            // 5. Send Result
-            // Note: We use the spread operator (...) to merge v2Payload properties into the editReply options
+            // 6. Send the result
             await interaction.editReply({ 
                 content: `**[SIMULATION]** Welcome card for ${member.user.tag}`,
-                ...v2Payload,
-                files: [attachment]
+                embeds: [embed], 
+                files: [attachment], 
+                components: [row] 
             });
 
         } catch (error) {
             console.error(error);
-            await interaction.editReply({ content: 'Something went wrong generating the test image.' });
+            await interaction.editReply({ content: 'Something went wrong generating the image.' });
         }
     }
 };

@@ -36,6 +36,7 @@ module.exports = {
                 .addIntegerOption(opt => opt.setName('winners').setDescription('Number of winners').setRequired(true))
                 .addStringOption(opt => opt.setName('prize').setDescription('The prize (Title)').setRequired(true))
                 .addStringOption(opt => opt.setName('description').setDescription('Extra details (Optional)').setRequired(false))
+                .addRoleOption(opt => opt.setName('role').setDescription('Only users with this role can join (Optional)').setRequired(false)) // <--- ADDED ROLE
                 .addChannelOption(opt => opt.setName('channel').setDescription('Where to post? (Optional)').addChannelTypes(ChannelType.GuildText))
         )
         // 2. END
@@ -60,6 +61,7 @@ module.exports = {
             const winnerCount = interaction.options.getInteger('winners');
             const prize = interaction.options.getString('prize');
             const description = interaction.options.getString('description');
+            const requiredRole = interaction.options.getRole('role'); // <--- Get Role
             const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
 
             const ms = parseDuration(durationStr);
@@ -80,15 +82,19 @@ module.exports = {
             const endTime = Date.now() + ms;
 
             // --- BUILD DESCRIPTION ---
-            const hostInfo = `**Hosted by:** ${interaction.user}\n**Winners:** ${winnerCount}\n**Ends:** <t:${Math.floor(endTime / 1000)}:R>`;
+            let hostInfo = `**Hosted by:** ${interaction.user}\n**Winners:** ${winnerCount}\n**Ends:** <t:${Math.floor(endTime / 1000)}:R>`;
             
-            // Changed Logic: Use -# for small text
+            // Add Role info if exists
+            if (requiredRole) {
+                hostInfo = `**Required Role:** ${requiredRole}\n` + hostInfo;
+            }
+
             const finalDescription = description 
                 ? `-# ${description}\n\n${hostInfo}` 
                 : hostInfo;
 
             const embed = new EmbedBuilder()
-                .setTitle(`🎉 ${prize} 🎉`)
+                .setTitle(`🎉 ${prize}`)
                 .setDescription(finalDescription)
                 .setColor(0x808080)
                 .setFooter({ text: 'Click the button below to join!' });
@@ -110,6 +116,7 @@ module.exports = {
                 hostId: interaction.user.id,
                 prize: prize,
                 description: description || null,
+                requiredRoleId: requiredRole ? requiredRole.id : null, // <--- Save Role ID
                 winnersCount: winnerCount,
                 startTimestamp: Date.now(),
                 endTimestamp: endTime,

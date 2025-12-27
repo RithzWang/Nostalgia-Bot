@@ -613,43 +613,41 @@ client.on('interactionCreate', async (interaction) => {
             return interaction.reply({ content: '<:no:1297814819105144862> Applications are closed.', flags: MessageFlags.Ephemeral });
         }
 
-        // Create the Modal
         const modal = new ModalBuilder()
             .setCustomId('application_modal')
             .setTitle('Staff Application');
 
-        // Inputs
+        // --- UPDATED QUESTIONS ---
         const nameInput = new TextInputBuilder()
             .setCustomId('app_name')
-            .setLabel("Name")
+            .setLabel("What is your name?") 
             .setStyle(TextInputStyle.Short)
             .setRequired(true);
 
         const ageInput = new TextInputBuilder()
             .setCustomId('app_age')
-            .setLabel("Age")
+            .setLabel("How old are you?")
             .setStyle(TextInputStyle.Short)
             .setRequired(true);
 
         const countryInput = new TextInputBuilder()
             .setCustomId('app_country')
-            .setLabel("Country")
+            .setLabel("Where are you from?")
             .setStyle(TextInputStyle.Short)
             .setRequired(true);
 
         const timezoneInput = new TextInputBuilder()
             .setCustomId('app_timezone')
-            .setLabel("Time Zone")
+            .setLabel("What is your time zone?")
             .setStyle(TextInputStyle.Short)
             .setRequired(true);
 
         const reasonInput = new TextInputBuilder()
             .setCustomId('app_reason')
-            .setLabel("Why do you want to join?")
-            .setStyle(TextInputStyle.Paragraph) // Big box
+            .setLabel("Why do you want to be staff?")
+            .setStyle(TextInputStyle.Paragraph)
             .setRequired(true);
 
-        // Add inputs to rows
         const r1 = new ActionRowBuilder().addComponents(nameInput);
         const r2 = new ActionRowBuilder().addComponents(ageInput);
         const r3 = new ActionRowBuilder().addComponents(countryInput);
@@ -666,7 +664,7 @@ client.on('interactionCreate', async (interaction) => {
         const config = await ApplicationConfig.findOne({ guildId: interaction.guild.id });
 
         if (!config || !config.logChannelId) {
-            return interaction.reply({ content: '<:no:1297814819105144862> Error: Log channel not found. Contact Admin.', flags: MessageFlags.Ephemeral });
+            return interaction.reply({ content: '<:no:1297814819105144862> Error: Log channel not found.', flags: MessageFlags.Ephemeral });
         }
 
         const logChannel = interaction.guild.channels.cache.get(config.logChannelId);
@@ -684,23 +682,22 @@ client.on('interactionCreate', async (interaction) => {
         // Build Log Embed
         const embed = new EmbedBuilder()
             .setTitle('📄 New Staff Application')
-            .setAuthor({ name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL() })
             .setColor(0x0099FF)
             .addFields(
-                { name: '👤 User', value: `<@${interaction.user.id}> (${interaction.user.id})`, inline: false },
-                { name: 'Name', value: name, inline: true },
-                { name: 'Age', value: age, inline: true },
-                { name: 'Country', value: country, inline: true },
+                { name: 'User', value: `<@${interaction.user.id}> (${interaction.user.id})`, inline: false },
+                { name: 'What is your name?', value: name, inline: true },
+                { name: 'How old are you?', value: age, inline: true },
+                { name: 'Where are you from?', value: country, inline: true },
                 { name: 'Time Zone', value: timezone, inline: true },
-                { name: 'Reason', value: reason, inline: false }
+                { name: 'Why do you want to be staff?', value: reason, inline: false }
             )
-            .setTimestamp();
 
         await logChannel.send({ embeds: [embed] });
 
         return interaction.reply({ content: '<:yes:1297814648417943565> Application submitted successfully!', flags: MessageFlags.Ephemeral });
     }
 });
+
 
 
 

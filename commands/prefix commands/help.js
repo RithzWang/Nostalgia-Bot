@@ -40,10 +40,10 @@ module.exports = {
             .setTitle('<:moderation:1447143480559140895> Moderation')
             .setDescription('Tools for staff members.')
             .addFields(
-                { name: '/kick', value: 'Kick a user.' },
-                { name: '/ban', value: 'Ban a user.' },
-                { name: '/timeout', value: 'Timeout a user.' },
-                { name: '/warn', value: 'Warn a user.' }
+                { name: '/kick', value: 'Kick a member.' },
+                { name: '/ban', value: 'Ban a member.' },
+                { name: '/timeout', value: 'Timeout a member.' },
+                { name: '/warn', value: 'Warn a member.' }
             );
         
         const generalEmbed = new EmbedBuilder()

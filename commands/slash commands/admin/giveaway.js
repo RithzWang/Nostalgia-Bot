@@ -93,24 +93,22 @@ module.exports = {
                 : hostInfo;
 
             const embed = new EmbedBuilder()
-                .setTitle(`🎉 ${prize}`)
+                .setTitle(`🎉 ${prize} 🎉`)
                 .setDescription(finalDescription)
                 .setColor(0x808080)
                 .setFooter({ text: 'Click the button below to join!' });
 
-            // Button 1: Join
             const joinButton = new ButtonBuilder()
                 .setCustomId('giveaway_join')
                 .setLabel('Join Giveaway')
                 .setStyle(ButtonStyle.Secondary)
                 .setEmoji('🎉');
 
-            // Button 2: Count (Disabled)
             const countButton = new ButtonBuilder()
                 .setCustomId('giveaway_count')
                 .setLabel('0 Entries')
                 .setStyle(ButtonStyle.Secondary)
-                .setDisabled(true); // Always disabled
+                .setDisabled(true);
 
             const row = new ActionRowBuilder().addComponents(joinButton, countButton);
 
@@ -174,12 +172,16 @@ module.exports = {
 
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
+            // --- BOOSTER LOGIC (25% More) ---
             let weightedPool = [];
             for (const userId of giveaway.participants) {
-                weightedPool.push(userId);
+                // Base: 4 entries
+                weightedPool.push(userId, userId, userId, userId); 
+                
                 try {
                     const member = await interaction.guild.members.fetch(userId).catch(() => null);
                     if (member && member.premiumSince) {
+                        // Booster: +1 entry (Total 5, which is +25% of 4)
                         weightedPool.push(userId); 
                     }
                 } catch (e) {}

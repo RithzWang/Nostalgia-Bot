@@ -1,9 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
-// Path breakdown:
-// ../ (up to 'slash commands')
-// ../ (up to 'commands')
-// ../ (up to 'src' or root)
-// Then into 'models/Sticky'
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags, EmbedBuilder } = require('discord.js');
 const Sticky = require('../../../src/models/Sticky'); 
 
 module.exports = {
@@ -37,11 +32,22 @@ module.exports = {
                 sticky = new Sticky({ channelId: interaction.channel.id, content: content });
             } else {
                 sticky.content = content;
-                sticky.lastMessageId = null; // Reset ID
+                sticky.lastMessageId = null; // Reset ID triggers a resend in your event listener
             }
 
             await sticky.save();
-            await interaction.reply({ content: '<:yes:1297814648417943565> Sticky message set!', flags: MessageFlags.Ephemeral });
+
+            // Create the Embed for preview/confirmation
+            const stickyEmbed = new EmbedBuilder()
+                .setTitle('Pinned Message')
+                .setDescription(content)
+                .setColor('#888888');
+
+            await interaction.reply({ 
+                content: '<:yes:1297814648417943565> Sticky message set! Here is a preview:', 
+                embeds: [stickyEmbed],
+                flags: MessageFlags.Ephemeral 
+            });
 
         } else if (subcommand === 'remove') {
             const sticky = await Sticky.findOneAndDelete({ channelId: interaction.channel.id });

@@ -82,13 +82,13 @@ module.exports = {
             // --- BUILD DESCRIPTION ---
             const hostInfo = `**Hosted by:** ${interaction.user}\n**Winners:** ${winnerCount}\n**Ends:** <t:${Math.floor(endTime / 1000)}:R>`;
             
-            // If description exists, wrap it in ```code block```, then add host info
+            // Changed Logic: Use -# for small text
             const finalDescription = description 
-                ? `\`\`\`\n${description}\n\`\`\`\n${hostInfo}` 
+                ? `-# ${description}\n\n${hostInfo}` 
                 : hostInfo;
 
             const embed = new EmbedBuilder()
-                .setTitle(`🎉 ${prize}`)
+                .setTitle(`🎉 ${prize} 🎉`)
                 .setDescription(finalDescription)
                 .setColor(0x808080)
                 .setFooter({ text: 'Click the button below to join!' });

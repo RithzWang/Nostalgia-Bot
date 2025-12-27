@@ -441,7 +441,7 @@ setInterval(async () => {
                 
                 winnersText = selected.map(id => `<@${id}>`).join(', ');
                 
-                await channel.send(`🎉 **CONGRATULATIONS!** 🎉\n${winnersText}\nYou won **${g.prize}**!`);
+                await channel.send(`🎉 **CONGRATULATIONS!**\n${winnersText} You won **${g.prize}**!`);
             } else {
                 await channel.send(`Giveaway ended, but no one joined. Prize: **${g.prize}**`);
             }
@@ -467,7 +467,7 @@ setInterval(async () => {
             const row = new ActionRowBuilder().addComponents(disableButton);
 
             const endedEmbed = EmbedBuilder.from(message.embeds[0])
-                .setTitle(`🎉 ${g.prize} (Ended) 🎉`) 
+                .setTitle(`🎉 ${g.prize} (Ended)`) 
                 .setColor(0x808080) 
                 .setDescription(finalDescription)
                 .setFooter(null);

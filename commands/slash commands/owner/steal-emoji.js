@@ -110,7 +110,7 @@ module.exports = {
                     const emoji = sourceGuild.emojis.cache.get(emojiId);
                     try {
                         const added = await interaction.guild.emojis.create({ 
-                            attachment: emoji.url, 
+                            attachment: emoji.imageURL(), 
                             name: emoji.name 
                         });
                         success.push(added.toString());

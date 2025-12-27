@@ -2,6 +2,8 @@ const {
     SlashCommandBuilder, 
     PermissionFlagsBits, 
     EmbedBuilder, 
+    ActionRowBuilder,
+    ButtonBuilder,
     MessageFlags 
 } = require('discord.js');
 
@@ -10,7 +12,7 @@ const Suggestion = require('../../../src/models/Suggestion');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('suggestion-admin')
+        .setName('suggestion')
         .setDescription('Admin commands for suggestions')
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
         // 1. SETUP
@@ -70,6 +72,7 @@ module.exports = {
             try {
                 const message = await channel.messages.fetch(msgId);
                 const oldEmbed = message.embeds[0];
+                const oldComponents = message.components[0]; // Get current buttons
 
                 // Determine Color and Title based on status
                 let color = 0x808080;
@@ -85,13 +88,26 @@ module.exports = {
 
                 const newEmbed = EmbedBuilder.from(oldEmbed)
                     .setColor(color)
-                    .spliceFields(0, 1) // Remove old Status field if it was at index 0 (optional logic, but cleaner to rebuild)
+                    .spliceFields(0, 1) // Remove old Status field
                     .setFields([
                         { name: 'Status', value: `${statusText} - ${reason}`, inline: false },
                         { name: 'Author', value: `<@${suggestion.authorId}>`, inline: true }
                     ]);
 
-                await message.edit({ embeds: [newEmbed] }); // Keep buttons or remove them? Usually keep them to show history.
+                // --- DISABLE BUTTONS LOGIC ---
+                let newRow = null;
+                if (oldComponents) {
+                    newRow = ActionRowBuilder.from(oldComponents);
+                    const disabledButtons = newRow.components.map(btn => 
+                        ButtonBuilder.from(btn).setDisabled(true)
+                    );
+                    newRow.setComponents(disabledButtons);
+                }
+
+                await message.edit({ 
+                    embeds: [newEmbed], 
+                    components: newRow ? [newRow] : [] // Update with disabled buttons
+                }); 
                 
                 suggestion.status = status;
                 await suggestion.save();
@@ -99,7 +115,8 @@ module.exports = {
                 return interaction.reply({ content: `<:yes:1297814648417943565> Suggestion marked as **${status}**.`, flags: MessageFlags.Ephemeral });
 
             } catch (err) {
-                return interaction.reply({ content: '<:no:1297814819105144862> Message not found.', flags: MessageFlags.Ephemeral });
+                console.error(err);
+                return interaction.reply({ content: '<:no:1297814819105144862> Message not found or error editing.', flags: MessageFlags.Ephemeral });
             }
         }
     }

@@ -617,7 +617,7 @@ client.on('interactionCreate', async (interaction) => {
             .setCustomId('application_modal')
             .setTitle('Staff Application');
 
-        // --- UPDATED QUESTIONS ---
+        // Questions
         const nameInput = new TextInputBuilder()
             .setCustomId('app_name')
             .setLabel("What is your name?") 
@@ -679,24 +679,46 @@ client.on('interactionCreate', async (interaction) => {
         const timezone = interaction.fields.getTextInputValue('app_timezone');
         const reason = interaction.fields.getTextInputValue('app_reason');
 
-        // Build Log Embed
+        // Build Log Embed (No Author, No Timestamp)
         const embed = new EmbedBuilder()
             .setTitle('📄 New Staff Application')
             .setColor(0x0099FF)
             .addFields(
-                { name: 'User', value: `<@${interaction.user.id}> (${interaction.user.id})`, inline: false },
+                { name: '👤 User', value: `<@${interaction.user.id}> (${interaction.user.id})`, inline: false },
                 { name: 'What is your name?', value: name, inline: true },
                 { name: 'How old are you?', value: age, inline: true },
                 { name: 'Where are you from?', value: country, inline: true },
                 { name: 'Time Zone', value: timezone, inline: true },
                 { name: 'Why do you want to be staff?', value: reason, inline: false }
-            )
+            );
 
-        await logChannel.send({ embeds: [embed] });
+        // Generate GMT+7 Timestamp Button
+        const now = new Date();
+        const timeString = now.toLocaleString('en-GB', { 
+            timeZone: 'Asia/Bangkok',
+            hour12: false,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+
+        const timeButton = new ButtonBuilder()
+            .setCustomId('app_log_time')
+            .setLabel(`Submitted at: ${timeString} (GMT+7)`)
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(true);
+
+        const row = new ActionRowBuilder().addComponents(timeButton);
+
+        await logChannel.send({ embeds: [embed], components: [row] });
 
         return interaction.reply({ content: '<:yes:1297814648417943565> Application submitted successfully!', flags: MessageFlags.Ephemeral });
     }
 });
+
 
 
 

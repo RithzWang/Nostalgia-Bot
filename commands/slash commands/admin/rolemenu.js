@@ -13,12 +13,12 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('rolemenu')
         .setDescription('Manage role selection menus')
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles)
         
         // 1. SETUP (New Menu)
         .addSubcommand(sub => {
             sub.setName('setup')
-                .setDescription('Create a NEW menu')
+                .setDescription('Create a NEW menu.')
                 // --- REQUIRED ---
                 .addStringOption(opt => opt.setName('title').setDescription('Embed Title').setRequired(true))
                 .addBooleanOption(opt => opt.setName('multi_select').setDescription('Can users select multiple roles? (True=Yes, False=Only 1)').setRequired(true))
@@ -27,7 +27,7 @@ module.exports = {
                 // --- OPTIONAL ---
                 .addStringOption(opt => opt.setName('emoji1').setDescription('Emoji for Role 1').setRequired(false))
                 .addChannelOption(opt => opt.setName('channel').setDescription('Where to post? (Optional)').addChannelTypes(ChannelType.GuildText))
-                .addStringOption(opt => opt.setName('message_id').setDescription('Old message ID to replace (Optional)').setRequired(false))
+                // REMOVED message_id option
                 
                 // Roles 2-10
                 .addRoleOption(opt => opt.setName('role2').setDescription('Role 2').setRequired(false))
@@ -78,17 +78,9 @@ module.exports = {
             const title = interaction.options.getString('title');
             const multiSelect = interaction.options.getBoolean('multi_select');
             const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
-            const oldMessageId = interaction.options.getString('message_id');
 
             if (!targetChannel.viewable || !targetChannel.permissionsFor(interaction.guild.members.me).has(PermissionFlagsBits.SendMessages)) {
                 return interaction.reply({ content: `<:no:1297814819105144862> I cannot send messages in ${targetChannel}.`, flags: MessageFlags.Ephemeral });
-            }
-
-            if (oldMessageId) {
-                try {
-                    const oldMsg = await targetChannel.messages.fetch(oldMessageId);
-                    if (oldMsg) await oldMsg.delete();
-                } catch (e) {}
             }
 
             const menu = new StringSelectMenuBuilder()

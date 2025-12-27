@@ -19,18 +19,17 @@ module.exports = {
         .addSubcommand(sub => {
             sub.setName('setup')
                 .setDescription('Create a NEW menu.')
-                // --- REQUIRED OPTIONS FIRST ---
+                // --- REQUIRED ---
                 .addStringOption(opt => opt.setName('title').setDescription('Embed Title').setRequired(true))
-                .addStringOption(opt => opt.setName('description').setDescription('Embed Description').setRequired(true))
                 .addBooleanOption(opt => opt.setName('multi_select').setDescription('Can users select multiple roles? (True=Yes, False=Only 1)').setRequired(true))
-                .addRoleOption(opt => opt.setName('role1').setDescription('Role 1 (Required)').setRequired(true)) // Moved Up
+                .addRoleOption(opt => opt.setName('role1').setDescription('Role 1 (Required)').setRequired(true))
                 
-                // --- OPTIONAL OPTIONS AFTER ---
+                // --- OPTIONAL ---
                 .addStringOption(opt => opt.setName('emoji1').setDescription('Emoji for Role 1').setRequired(false))
                 .addChannelOption(opt => opt.setName('channel').setDescription('Where to post? (Optional)').addChannelTypes(ChannelType.GuildText))
                 .addStringOption(opt => opt.setName('message_id').setDescription('Old message ID to replace (Optional)').setRequired(false))
                 
-                // Roles 2-10 (Optional)
+                // Roles 2-10
                 .addRoleOption(opt => opt.setName('role2').setDescription('Role 2').setRequired(false))
                 .addStringOption(opt => opt.setName('emoji2').setDescription('Emoji for Role 2').setRequired(false))
                 .addRoleOption(opt => opt.setName('role3').setDescription('Role 3').setRequired(false))
@@ -56,10 +55,8 @@ module.exports = {
         .addSubcommand(sub => 
             sub.setName('add')
                 .setDescription('Add a role to an EXISTING menu')
-                // Required First
                 .addStringOption(opt => opt.setName('message_id').setDescription('The Message ID of the menu').setRequired(true))
                 .addRoleOption(opt => opt.setName('role').setDescription('The role to add').setRequired(true))
-                // Optional After
                 .addStringOption(opt => opt.setName('emoji').setDescription('Emoji for this role').setRequired(false))
                 .addChannelOption(opt => opt.setName('channel').setDescription('Channel where the menu is (if not here)').addChannelTypes(ChannelType.GuildText))
         )
@@ -68,10 +65,8 @@ module.exports = {
         .addSubcommand(sub => 
             sub.setName('remove')
                 .setDescription('Remove a role from an EXISTING menu')
-                // Required First
                 .addStringOption(opt => opt.setName('message_id').setDescription('The Message ID of the menu').setRequired(true))
                 .addRoleOption(opt => opt.setName('role').setDescription('The role to remove').setRequired(true))
-                // Optional After
                 .addChannelOption(opt => opt.setName('channel').setDescription('Channel where the menu is (if not here)').addChannelTypes(ChannelType.GuildText))
         ),
 
@@ -81,7 +76,6 @@ module.exports = {
         // --- SETUP COMMAND ---
         if (sub === 'setup') {
             const title = interaction.options.getString('title');
-            const description = interaction.options.getString('description');
             const multiSelect = interaction.options.getBoolean('multi_select');
             const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
             const oldMessageId = interaction.options.getString('message_id');
@@ -99,10 +93,10 @@ module.exports = {
 
             const menu = new StringSelectMenuBuilder()
                 .setCustomId('role_select_menu')
-                .setPlaceholder('Select your roles...')
                 .setMinValues(0);
 
             let validRoleCount = 0;
+            let descriptionLines = [];
 
             for (let i = 1; i <= 10; i++) {
                 const role = interaction.options.getRole(`role${i}`);
@@ -112,20 +106,35 @@ module.exports = {
                     if (role.position >= interaction.guild.members.me.roles.highest.position) {
                         return interaction.reply({ content: `<:no:1297814819105144862> Role **${role.name}** is too high.`, flags: MessageFlags.Ephemeral });
                     }
+                    
                     const option = new StringSelectMenuOptionBuilder().setLabel(role.name).setValue(role.id);
-                    if (emoji) option.setEmoji(emoji);
+                    
+                    let lineText = role.name;
+                    if (emoji) {
+                        option.setEmoji(emoji);
+                        lineText = `${emoji} ${role.name}`;
+                    }
+                    
+                    descriptionLines.push(lineText);
                     menu.addOptions(option);
                     validRoleCount++;
                 }
             }
 
+            // --- PLACEHOLDER & MAX VALUES ---
             if (multiSelect) {
                 menu.setMaxValues(validRoleCount);
+                menu.setPlaceholder(`Select from ${validRoleCount} roles...`);
             } else {
                 menu.setMaxValues(1);
+                menu.setPlaceholder(`Select 1 out of ${validRoleCount} roles...`);
             }
 
-            const embed = new EmbedBuilder().setTitle(title).setDescription(description).setColor(0x808080);
+            const embed = new EmbedBuilder()
+                .setTitle(title)
+                .setDescription(descriptionLines.join('\n'))
+                .setColor(0x808080);
+
             const row = new ActionRowBuilder().addComponents(menu);
 
             await targetChannel.send({ embeds: [embed], components: [row] });
@@ -143,6 +152,7 @@ module.exports = {
                 const message = await targetChannel.messages.fetch(msgId);
                 if (!message) throw new Error();
 
+                const oldEmbed = message.embeds[0];
                 const oldActionRow = message.components[0];
                 const oldMenu = oldActionRow.components[0];
 
@@ -150,28 +160,41 @@ module.exports = {
                     return interaction.reply({ content: '<:no:1297814819105144862> That message is not a role menu.', flags: MessageFlags.Ephemeral });
                 }
 
+                // 1. Update Menu
                 const newMenu = StringSelectMenuBuilder.from(oldMenu);
+                const newOption = new StringSelectMenuOptionBuilder().setLabel(role.name).setValue(role.id);
                 
-                const newOption = new StringSelectMenuOptionBuilder()
-                    .setLabel(role.name)
-                    .setValue(role.id);
-                if (emoji) newOption.setEmoji(emoji);
+                let lineText = role.name;
+                if (emoji) {
+                    newOption.setEmoji(emoji);
+                    lineText = `${emoji} ${role.name}`;
+                }
 
                 newMenu.addOptions(newOption);
                 
-                // Smart Max Values
+                const newCount = newMenu.options.length;
+
+                // Update Max Values & Placeholder
                 if (oldMenu.data.max_values > 1) {
-                    newMenu.setMaxValues(newMenu.options.length);
+                    newMenu.setMaxValues(newCount);
+                    newMenu.setPlaceholder(`Select from ${newCount} roles...`);
                 } else {
                     newMenu.setMaxValues(1);
+                    newMenu.setPlaceholder(`Select 1 out of ${newCount} roles...`);
                 }
 
+                // 2. Update Embed Text
+                const newEmbed = EmbedBuilder.from(oldEmbed);
+                const currentDescription = newEmbed.data.description || "";
+                newEmbed.setDescription(currentDescription + '\n' + lineText);
+
                 const row = new ActionRowBuilder().addComponents(newMenu);
-                await message.edit({ components: [row] });
+                await message.edit({ embeds: [newEmbed], components: [row] });
 
                 return interaction.reply({ content: `<:yes:1297814648417943565> Added **${role.name}** to the menu!`, flags: MessageFlags.Ephemeral });
 
             } catch (err) {
+                console.log(err);
                 return interaction.reply({ content: '<:no:1297814819105144862> Message not found or invalid.', flags: MessageFlags.Ephemeral });
             }
         }
@@ -186,11 +209,12 @@ module.exports = {
                 const message = await targetChannel.messages.fetch(msgId);
                 if (!message) throw new Error();
 
+                const oldEmbed = message.embeds[0];
                 const oldActionRow = message.components[0];
                 const oldMenu = oldActionRow.components[0];
 
+                // 1. Update Menu
                 const newMenu = StringSelectMenuBuilder.from(oldMenu);
-                
                 const currentOptions = newMenu.options;
                 const filteredOptions = currentOptions.filter(opt => opt.data.value !== role.id);
 
@@ -203,16 +227,29 @@ module.exports = {
                 }
 
                 newMenu.setOptions(filteredOptions);
+                const newCount = filteredOptions.length;
 
-                // Smart Max Values
+                // Update Max Values & Placeholder
                 if (oldMenu.data.max_values > 1) {
-                    newMenu.setMaxValues(filteredOptions.length);
+                    newMenu.setMaxValues(newCount);
+                    newMenu.setPlaceholder(`Select from ${newCount} roles...`);
                 } else {
                     newMenu.setMaxValues(1);
+                    newMenu.setPlaceholder(`Select 1 out of ${newCount} roles...`);
                 }
 
+                // 2. Update Embed Text
+                const newEmbed = EmbedBuilder.from(oldEmbed);
+                const currentDescription = newEmbed.data.description || "";
+                const newDescription = currentDescription
+                    .split('\n')
+                    .filter(line => !line.includes(role.name))
+                    .join('\n');
+
+                newEmbed.setDescription(newDescription);
+
                 const row = new ActionRowBuilder().addComponents(newMenu);
-                await message.edit({ components: [row] });
+                await message.edit({ embeds: [newEmbed], components: [row] });
 
                 return interaction.reply({ content: `<:yes:1297814648417943565> Removed **${role.name}** from the menu!`, flags: MessageFlags.Ephemeral });
 

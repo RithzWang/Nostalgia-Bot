@@ -357,6 +357,115 @@ client.on('interactionCreate', async (interaction) => {
     }
 });
 
+// --- GIVEAWAY SYSTEM ---
+
+// 1. Handle Join Button
+client.on('interactionCreate', async (interaction) => {
+    if (!interaction.isButton()) return;
+    if (interaction.customId !== 'giveaway_join') return;
+
+    // Find the giveaway in DB
+    const giveaway = await Giveaway.findOne({ messageId: interaction.message.id });
+    if (!giveaway || giveaway.ended) {
+        return interaction.reply({ 
+            content: '<:no:1297814819105144862> This giveaway has ended.', 
+            flags: MessageFlags.Ephemeral 
+        });
+    }
+
+    // Check if already joined
+    if (giveaway.participants.includes(interaction.user.id)) {
+        return interaction.reply({ 
+            content: '<:no:1297814819105144862> You have already joined this giveaway.', 
+            flags: MessageFlags.Ephemeral 
+        });
+    }
+
+    // Add user to DB
+    giveaway.participants.push(interaction.user.id);
+    await giveaway.save();
+
+    return interaction.reply({ 
+        content: '<:yes:1297814648417943565> You have successfully joined the giveaway!', 
+        flags: MessageFlags.Ephemeral 
+    });
+});
+
+// 2. Auto-End Loop (Checks every 10 seconds)
+setInterval(async () => {
+    // Find giveaways that are NOT ended, but time HAS passed
+    const endedGiveaways = await Giveaway.find({ ended: false, endTimestamp: { $lte: Date.now() } });
+
+    for (const g of endedGiveaways) {
+        try {
+            const channel = client.channels.cache.get(g.channelId);
+            if (!channel) continue;
+
+            const message = await channel.messages.fetch(g.messageId).catch(() => null);
+            if (!message) continue;
+
+            let winnersText = "No valid entries.";
+            const participantCount = g.participants.length;
+
+            if (participantCount > 0) {
+                // --- BOOSTER LUCK LOGIC (2x Entries) ---
+                let weightedPool = [];
+                const guild = client.guilds.cache.get(g.guildId);
+
+                if (guild) {
+                    for (const userId of g.participants) {
+                        weightedPool.push(userId); // Entry #1 (Everyone)
+                        
+                        try {
+                            // Check if member is boosting
+                            const member = await guild.members.fetch(userId).catch(() => null);
+                            if (member && member.premiumSince) {
+                                weightedPool.push(userId); // Entry #2 (Booster Bonus)
+                            }
+                        } catch (e) { /* Ignore left members */ }
+                    }
+                } else {
+                    weightedPool = g.participants; // Fallback
+                }
+
+                // Shuffle & Pick
+                const shuffled = weightedPool.sort(() => 0.5 - Math.random());
+                const uniqueWinners = [...new Set(shuffled)]; 
+                const selected = uniqueWinners.slice(0, g.winnersCount);
+                
+                winnersText = selected.map(id => `<@${id}>`).join(', ');
+                
+                await channel.send(`🎉 **CONGRATULATIONS!** 🎉\n${winnersText}\nYou won **${g.prize}**!`);
+            } else {
+                await channel.send(`Giveaway ended, but no one joined. Prize: **${g.prize}**`);
+            }
+
+            // Update Embed to "Ended" style
+            const disableButton = new ButtonBuilder()
+                .setCustomId('giveaway_join')
+                .setLabel(`Ended (${participantCount} Entries)`)
+                .setStyle(ButtonStyle.Secondary)
+                .setDisabled(true);
+
+            const row = new ActionRowBuilder().addComponents(disableButton);
+
+            const endedEmbed = EmbedBuilder.from(message.embeds[0])
+                .setTitle(`🎉 ${g.prize} (Ended) 🎉`) // Grey Title
+                .setColor(0x808080) // Grey Color
+                .setDescription(`**Winner(s):** ${winnersText}\n**Host:** <@${g.hostId}>`);
+
+            await message.edit({ embeds: [endedEmbed], components: [row] });
+
+            // Mark as ended in DB
+            g.ended = true;
+            await g.save();
+
+        } catch (err) {
+            console.error(`Error ending giveaway ${g.messageId}:`, err);
+        }
+    }
+}, 10 * 1000); // Check every 10 seconds
+
 
 
 

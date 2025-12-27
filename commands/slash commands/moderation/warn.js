@@ -14,7 +14,7 @@ const moment = require('moment-timezone'); // <--- Required for GMT+7 time
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('warn')
-        .setDescription('Manage user warnings.')
+        .setDescription('Manage user warnings')
         .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
         // 1. ADD
         .addSubcommand(subcommand =>

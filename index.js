@@ -241,8 +241,6 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
 
 // --- INITIALIZATION ---
 // --- STICKY MESSAGE LOGIC ---
-const { EmbedBuilder } = require('discord.js'); // Make sure this is imported at the top!
-
 client.on('messageCreate', async (message) => {
     // 1. Ignore bots
     if (message.author.bot) return;

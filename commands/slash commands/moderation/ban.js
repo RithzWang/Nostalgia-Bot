@@ -4,18 +4,19 @@ const {
     EmbedBuilder, 
     ActionRowBuilder, 
     ButtonBuilder, 
-    ButtonStyle 
+    ButtonStyle,
+    MessageFlags // <--- Added
 } = require('discord.js');
 const moment = require('moment-timezone');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('ban')
-        .setDescription('Ban a user from the server')
+        .setDescription('Ban a member from the server')
         .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers)
         .addUserOption(option => 
             option.setName('target')
-            .setDescription('The user to ban')
+            .setDescription('The member to ban')
             .setRequired(true))
         .addStringOption(option => 
             option.setName('reason')
@@ -39,14 +40,23 @@ module.exports = {
 
         // --- ERROR CHECKS ---
         if (targetUser.id === interaction.user.id) {
-            return interaction.reply({ content: '<:no:1297814819105144862> You cannot ban yourself.', ephemeral: true });
+            return interaction.reply({ 
+                content: '<:no:1297814819105144862> You cannot ban yourself.', 
+                flags: MessageFlags.Ephemeral 
+            });
         }
         if (member) {
             if (!member.bannable) {
-                return interaction.reply({ content: '<:no:1297814819105144862> I cannot ban this user (they may have a higher role).', ephemeral: true });
+                return interaction.reply({ 
+                    content: '<:no:1297814819105144862> I cannot ban this member (they may have a higher role).', 
+                    flags: MessageFlags.Ephemeral 
+                });
             }
             if (interaction.member.roles.highest.position <= member.roles.highest.position) {
-                return interaction.reply({ content: '<:no:1297814819105144862> You cannot ban someone with a higher or equal role.', ephemeral: true });
+                return interaction.reply({ 
+                    content: '<:no:1297814819105144862> You cannot ban someone with a higher or equal role.', 
+                    flags: MessageFlags.Ephemeral 
+                });
             }
         }
 
@@ -63,8 +73,8 @@ module.exports = {
             // --- EMBED & BUTTON ---
             const embed = new EmbedBuilder()
                 .setColor(0xFF0000) // Red
-                .setTitle('<:yes:1297814648417943565> User Banned')
-                .setDescription(`**User:** ${targetUser.tag}\n**Reason:** ${reason}\n**Moderator:** ${interaction.user.tag}`)
+                .setTitle('<:yes:1297814648417943565> Member Banned Successfully')
+                .setDescription(`**Member:** ${targetUser.tag}\n**Reason:** ${reason}\n**Moderator:** ${interaction.user.tag}`)
                 .setThumbnail(targetUser.displayAvatarURL());
 
             const thailandTime = moment().tz('Asia/Bangkok').format('DD/MM/YYYY HH:mm');
@@ -76,11 +86,15 @@ module.exports = {
 
             const row = new ActionRowBuilder().addComponents(timeButton);
 
+            // Success message is public
             await interaction.reply({ embeds: [embed], components: [row] });
 
         } catch (error) {
             console.error(error);
-            await interaction.reply({ content: '<:no:1297814819105144862> There was an error trying to ban this user.', ephemeral: true });
+            await interaction.reply({ 
+                content: '<:no:1297814819105144862> There was an error trying to ban this member.', 
+                flags: MessageFlags.Ephemeral 
+            });
         }
     }
 };

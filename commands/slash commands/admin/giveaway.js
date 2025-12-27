@@ -9,10 +9,8 @@ const {
     ChannelType
 } = require('discord.js');
 
-// Path to your model (Go up 3 folders: admin -> slash commands -> commands -> src)
 const Giveaway = require('../../../src/models/Giveaway');
 
-// Helper to parse "10m", "2h", "1d"
 function parseDuration(str) {
     const match = str.match(/^(\d+)([smhd])$/);
     if (!match) return null;
@@ -30,22 +28,23 @@ module.exports = {
         .setName('giveaway')
         .setDescription('Manage giveaways')
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-        // 1. START COMMAND
+        // 1. START
         .addSubcommand(sub =>
             sub.setName('start')
                 .setDescription('Start a new giveaway')
                 .addStringOption(opt => opt.setName('duration').setDescription('Duration (e.g. 10m, 1h, 1d)').setRequired(true))
                 .addIntegerOption(opt => opt.setName('winners').setDescription('Number of winners').setRequired(true))
                 .addStringOption(opt => opt.setName('prize').setDescription('The prize (Title)').setRequired(true))
+                .addStringOption(opt => opt.setName('description').setDescription('Extra details (Optional)').setRequired(false))
                 .addChannelOption(opt => opt.setName('channel').setDescription('Where to post? (Optional)').addChannelTypes(ChannelType.GuildText))
         )
-        // 2. END COMMAND
+        // 2. END
         .addSubcommand(sub =>
             sub.setName('end')
                 .setDescription('End a giveaway early')
                 .addStringOption(opt => opt.setName('message_id').setDescription('The ID of the giveaway message').setRequired(true))
         )
-        // 3. REROLL COMMAND
+        // 3. REROLL
         .addSubcommand(sub =>
             sub.setName('reroll')
                 .setDescription('Reroll a winner')
@@ -60,6 +59,7 @@ module.exports = {
             const durationStr = interaction.options.getString('duration');
             const winnerCount = interaction.options.getInteger('winners');
             const prize = interaction.options.getString('prize');
+            const description = interaction.options.getString('description');
             const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
 
             const ms = parseDuration(durationStr);
@@ -70,7 +70,6 @@ module.exports = {
                 });
             }
 
-            // Permission Check
             if (!targetChannel.viewable || !targetChannel.permissionsFor(interaction.guild.members.me).has(PermissionFlagsBits.SendMessages)) {
                  return interaction.reply({ 
                     content: `<:no:1297814819105144862> I cannot send messages in ${targetChannel}.`, 
@@ -80,30 +79,37 @@ module.exports = {
 
             const endTime = Date.now() + ms;
 
-            // Embed with Prize as Title
+            // --- BUILD DESCRIPTION ---
+            const hostInfo = `**Hosted by:** ${interaction.user}\n**Winners:** ${winnerCount}\n**Ends:** <t:${Math.floor(endTime / 1000)}:R>`;
+            
+            // If description exists, wrap it in ```code block```, then add host info
+            const finalDescription = description 
+                ? `\`\`\`\n${description}\n\`\`\`\n${hostInfo}` 
+                : hostInfo;
+
             const embed = new EmbedBuilder()
                 .setTitle(`🎉 ${prize}`)
-                .setDescription(`**Hosted by:** ${interaction.user}\n**Winners:** ${winnerCount}\n**Ends:** <t:${Math.floor(endTime / 1000)}:R>`)
-                .setColor(0x808080) // Grey
+                .setDescription(finalDescription)
+                .setColor(0x808080)
                 .setFooter({ text: 'Click the button below to join!' });
 
             const button = new ButtonBuilder()
                 .setCustomId('giveaway_join')
                 .setLabel('Join Giveaway')
-                .setStyle(ButtonStyle.Primary)
+                .setStyle(ButtonStyle.Secondary)
                 .setEmoji('🎉');
 
             const row = new ActionRowBuilder().addComponents(button);
 
             const msg = await targetChannel.send({ embeds: [embed], components: [row] });
 
-            // Save to Database
             const newGiveaway = new Giveaway({
                 guildId: interaction.guild.id,
                 channelId: targetChannel.id,
                 messageId: msg.id,
                 hostId: interaction.user.id,
                 prize: prize,
+                description: description || null,
                 winnersCount: winnerCount,
                 startTimestamp: Date.now(),
                 endTimestamp: endTime,
@@ -131,7 +137,6 @@ module.exports = {
                 });
             }
 
-            // Set time to past to trigger the auto-ender in index.js
             giveaway.endTimestamp = Date.now() - 1000;
             await giveaway.save();
 
@@ -141,51 +146,43 @@ module.exports = {
             });
         }
 
-        // --- REROLL (With Booster Luck) ---
+        // --- REROLL ---
         else if (sub === 'reroll') {
             const msgId = interaction.options.getString('message_id');
             const giveaway = await Giveaway.findOne({ messageId: msgId, guildId: interaction.guild.id });
 
             if (!giveaway || !giveaway.ended || giveaway.participants.length === 0) {
                 return interaction.reply({ 
-                    content: '<:no:1297814819105144862> Cannot reroll (Invalid ID or no participants).', 
+                    content: '<:no:1297814819105144862> Cannot reroll.', 
                     flags: MessageFlags.Ephemeral 
                 });
             }
 
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-            // 1. Build Weighted Pool
             let weightedPool = [];
-            
             for (const userId of giveaway.participants) {
-                weightedPool.push(userId); // Add everyone once
-                
+                weightedPool.push(userId);
                 try {
-                    // Fetch member to check if boosting
                     const member = await interaction.guild.members.fetch(userId).catch(() => null);
                     if (member && member.premiumSince) {
-                        weightedPool.push(userId); // Add Booster AGAIN (2x Chance)
+                        weightedPool.push(userId); 
                     }
-                } catch (e) {
-                    // Ignore if user left server
-                }
+                } catch (e) {}
             }
 
-            // 2. Pick Winner
             if (weightedPool.length === 0) {
-                return interaction.editReply({ content: '<:no:1297814819105144862> No valid members found to reroll.' });
+                return interaction.editReply({ content: '<:no:1297814819105144862> No valid members found.' });
             }
 
             const winnerId = weightedPool[Math.floor(Math.random() * weightedPool.length)];
             const giveawayChannel = interaction.guild.channels.cache.get(giveaway.channelId);
             
-            // 3. Announce
             if (giveawayChannel) {
                 await giveawayChannel.send(`🎉 **New Winner:** <@${winnerId}>! You won **${giveaway.prize}**!`);
                 return interaction.editReply({ content: `<:yes:1297814648417943565> Rerolled!` });
             } else {
-                return interaction.editReply({ content: `<:no:1297814819105144862> Could not find the giveaway channel.` });
+                return interaction.editReply({ content: `<:no:1297814819105144862> Could not find channel.` });
             }
         }
     }

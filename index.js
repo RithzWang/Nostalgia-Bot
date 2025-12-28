@@ -170,31 +170,79 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
     }
 });
 
+
+
 // --- GIVEAWAY END LOOP ---
 setInterval(async () => {
     const endedGiveaways = await Giveaway.find({ ended: false, endTimestamp: { $lte: Date.now() } });
+
     for (const g of endedGiveaways) {
         try {
             const guild = client.guilds.cache.get(g.guildId);
             const channel = client.channels.cache.get(g.channelId);
-            const message = await channel?.messages.fetch(g.messageId).catch(() => null);
+            if (!channel) continue;
+
+            const message = await channel.messages.fetch(g.messageId).catch(() => null);
             if (!message) continue;
 
             let winnersText = "No valid entries.";
-            if (g.participants.length > 0) {
-                const winners = g.participants.sort(() => 0.5 - Math.random()).slice(0, g.winnersCount);
-                winnersText = winners.map(id => `<@${id}>`).join(', ');
-                await channel.send(`🎉 **CONGRATULATIONS!**\n${winnersText}, You won **${g.prize}**!`);
+            const participantCount = g.participants.length;
+
+            if (participantCount > 0) {
+                // Shuffle and pick winners
+                const shuffled = g.participants.sort(() => 0.5 - Math.random());
+                const selectedWinners = shuffled.slice(0, g.winnersCount);
+                
+                if (selectedWinners.length > 0) {
+                     winnersText = selectedWinners.map(id => `<@${id}>`).join(', ');
+                     await channel.send(`🎉 **CONGRATULATIONS!**\n${winnersText}, You won **${g.prize}**!`);
+                }
             }
 
-            const endedEmbed = EmbedBuilder.from(message.embeds[0]).setColor(0x808080).setTitle(`🎉 ${g.prize}`)
-                .setDescription(`**Winner(s):** ${winnersText}\n**Host:** <@${g.hostId}>`);
+            // --- RESTORED ENDED DESCRIPTION ---
+            let hostInfo = `**Winner(s):** ${winnersText}\n**Host:** <@${g.hostId}>`;
+            if (g.requiredRoleId) {
+                hostInfo = `**Required Role:** <@&${g.requiredRoleId}>\n` + hostInfo;
+            }
             
-            await message.edit({ embeds: [endedEmbed], components: [] });
-            g.ended = true; await g.save();
-        } catch (e) { console.error(e); }
+            const finalDescription = g.description 
+                ? `-# ${g.description}\n\n${hostInfo}` 
+                : hostInfo;
+
+            // --- RESTORED DISABLED BUTTONS ---
+            const endedButton = new ButtonBuilder()
+                .setCustomId('giveaway_ended')
+                .setLabel('Giveaway Ended')
+                .setStyle(ButtonStyle.Secondary)
+                .setDisabled(true);
+
+            const countButton = new ButtonBuilder()
+                .setCustomId('giveaway_count_ended')
+                .setLabel(`${participantCount} Entries`)
+                .setStyle(ButtonStyle.Secondary)
+                .setDisabled(true);
+
+            const row = new ActionRowBuilder().addComponents(endedButton, countButton);
+
+            const endedEmbed = EmbedBuilder.from(message.embeds[0])
+                .setTitle(`🎉 ${g.prize}`) 
+                .setColor(0x808080) 
+                .setDescription(finalDescription)
+                .setFooter(null);
+
+            await message.edit({ embeds: [endedEmbed], components: [row] });
+
+            g.ended = true;
+            await g.save();
+
+        } catch (err) {
+            console.error(`Error ending giveaway ${g.messageId}:`, err);
+        }
     }
 }, 15000);
+
+
+
 
 // --- DB & LOGIN ---
 (async () => {

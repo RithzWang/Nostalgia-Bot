@@ -199,8 +199,12 @@ setInterval(async () => {
                 }
             }
 
-            // --- RESTORED ENDED DESCRIPTION ---
-            let hostInfo = `**Winner(s):** ${winnersText}\n**Host:** <@${g.hostId}>`;
+            // --- DYNAMIC TIMESTAMP (e.g., 5 minutes ago) ---
+            const endRelative = `<t:${Math.floor(g.endTimestamp / 1000)}:R>`;
+
+            // --- FORMATTED ENDED DESCRIPTION ---
+            let hostInfo = `**Winner(s):** ${winnersText}\n**Host:** <@${g.hostId}>\n**Ended:** ${endRelative}`;
+            
             if (g.requiredRoleId) {
                 hostInfo = `**Required Role:** <@&${g.requiredRoleId}>\n` + hostInfo;
             }
@@ -209,7 +213,7 @@ setInterval(async () => {
                 ? `-# ${g.description}\n\n${hostInfo}` 
                 : hostInfo;
 
-            // --- RESTORED DISABLED BUTTONS ---
+            // --- BUTTONS ---
             const endedButton = new ButtonBuilder()
                 .setCustomId('giveaway_ended')
                 .setLabel('Giveaway Ended')
@@ -240,6 +244,7 @@ setInterval(async () => {
         }
     }
 }, 15000);
+
 
 
 

@@ -119,10 +119,10 @@ module.exports = {
             // Placeholder Logic
             if (multiSelect) {
                 menu.setMaxValues(validRoleCount);
-                menu.setPlaceholder(`Select from ${validRoleCount} roles...`);
+                menu.setPlaceholder(`Select from ${validRoleCount} roles`);
             } else {
                 menu.setMaxValues(1);
-                menu.setPlaceholder(`Select 1 out of ${validRoleCount} roles...`);
+                menu.setPlaceholder(`Select one out of ${validRoleCount} roles`);
             }
 
             const embed = new EmbedBuilder()

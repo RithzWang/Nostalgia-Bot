@@ -64,7 +64,7 @@ for (const file of eventFiles) {
 const invitesCache = new Collection();
 
 // --- READY EVENT ---
-client.on('ready', async () => {
+client.on('clientReady', async () => {
     console.log(`Logged in as ${client.user.tag}`);
 
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);

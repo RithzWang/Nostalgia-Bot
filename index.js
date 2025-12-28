@@ -14,7 +14,7 @@ const {
     REST, 
     Routes,
     MessageFlags,
-    // v2 Components
+    // Discord Components v2 Builders
     ContainerBuilder, 
     TextDisplayBuilder, 
     SeparatorBuilder,
@@ -70,7 +70,6 @@ const invitesCache = new Collection();
 // --- READY EVENT ---
 client.on('clientReady', async () => {
     console.log(`Logged in as ${client.user.tag}`);
-
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
     try {
         await rest.put(Routes.applicationGuildCommands(client.user.id, serverID), { body: client.slashDatas });
@@ -92,38 +91,47 @@ client.on('clientReady', async () => {
     }, 30000);
 });
 
-// --- UPDATED WELCOMER (V2 All-in-One Container) ---
+// --- UPDATED WELCOMER (Fixed V2 All-in-One Container) ---
 const { createWelcomeImage } = require('./welcomeCanvas.js');
 
 client.on('guildMemberAdd', async (member) => {
     if (member.user.bot || member.guild.id !== serverID) return;
 
+    setTimeout(async () => {
+        try {
+            let newNickname = `🌱 • ${member.displayName}`.substring(0, 32);
+            await member.setNickname(newNickname);
+        } catch (e) {}
+    }, 5000);
+
     try {
+        const newInvites = await member.guild.invites.fetch().catch(() => new Collection());
+        let usedInvite = newInvites.find(inv => inv.uses > (invitesCache.get(inv.code) || 0));
+        newInvites.each(inv => invitesCache.set(inv.code, inv.uses));
+
+        const inviterName = usedInvite?.inviter ? usedInvite.inviter.username : 'Unknown';
+        const inviterId = usedInvite?.inviter ? usedInvite.inviter.id : 'Unknown';
+        const inviteCode = usedInvite ? usedInvite.code : 'Unknown';
         const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
+
         const buffer = await createWelcomeImage(member);
         const attachment = new AttachmentBuilder(buffer, { name: 'welcome-image.png' });
 
-        // 1. Define Builders
         const titleText = new TextDisplayBuilder().setContent(`### 👋 Welcome to ${member.guild.name}!`);
         const userTag = new TextDisplayBuilder().setContent(`<@${member.user.id}> \`(${member.user.username})\``);
         const statsText = new TextDisplayBuilder().setContent(
             `<:calendar:1439970556534329475> **Account Created:** ${accountCreated}\n` +
             `<:users:1439970561953501214> **Member Count:** \`${member.guild.memberCount}\`\n` +
-            `<:chain:1439970559105564672> **Invited by** <@${member.id}> using a link.`
+            `<:chain:1439970559105564672> **Invited by** <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode})`
         );
 
         const welcomeImage = new FileBuilder().setURL('attachment://welcome-image.png');
 
-        // 2. Build the Container
-        // We use addComponents for the non-text items
+        // FIXED: Using .setComponents() to handle Separator and Image inside Container
         const container = new ContainerBuilder()
             .addTextDisplayComponents(titleText, userTag, statsText)
-            .addComponents(
-                new SeparatorBuilder(), 
-                welcomeImage
-            ); 
+            .setComponents([new SeparatorBuilder(), welcomeImage]); 
 
-        // 3. Rows
         const linkRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setLabel('Information').setStyle(ButtonStyle.Link).setURL('https://discord.com').setEmoji('📋'),
             new ButtonBuilder().setLabel('Chat').setStyle(ButtonStyle.Link).setURL('https://discord.com').setEmoji('💬')
@@ -137,21 +145,19 @@ client.on('guildMemberAdd', async (member) => {
         if (channel) {
             await channel.send({ 
                 files: [attachment],
-                flags: [MessageFlags.IsComponentsV2], // Enabling V2
+                flags: [MessageFlags.IsComponentsV2], 
                 components: [ container, linkRow, idRow ]
             });
         }
     } catch (e) { console.error("Welcomer V2 Error:", e); }
 });
 
-
-// --- ROLE LOGGING ---
+// --- ROLE LOGGING (UNCHANGED) ---
 client.on('guildMemberUpdate', (oldMember, newMember) => {
     if (newMember.user.bot) return;
     const specifiedRolesSet = new Set(roleforLog);
     const addedRoles = newMember.roles.cache.filter(role => specifiedRolesSet.has(role.id) && !oldMember.roles.cache.has(role.id));
     const removedRoles = oldMember.roles.cache.filter(role => specifiedRolesSet.has(role.id) && !newMember.roles.cache.has(role.id));
-
     const logChannel = newMember.guild.channels.cache.get(roleupdateLog);
     if (!logChannel) return;
 
@@ -184,9 +190,10 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
     }
 });
 
-// --- GIVEAWAY LOOP ---
+// --- GIVEAWAY END LOOP (Updated for Components v2) ---
 setInterval(async () => {
     const endedGiveaways = await Giveaway.find({ ended: false, endTimestamp: { $lte: Date.now() } });
+
     for (const g of endedGiveaways) {
         try {
             const channel = client.channels.cache.get(g.channelId);
@@ -213,7 +220,7 @@ setInterval(async () => {
 
             await message.edit({ embeds: [], flags: [MessageFlags.IsComponentsV2], components: [container, new SeparatorBuilder(), row] });
             g.ended = true; await g.save();
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error("Giveaway End Error:", e); }
     }
 }, 15000);
 

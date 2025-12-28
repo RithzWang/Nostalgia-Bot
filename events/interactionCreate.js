@@ -128,7 +128,6 @@ module.exports = {
                 flags: [MessageFlags.IsComponentsV2], // Enabling v2 functionality
                 components: [
                     container,
-                    new SeparatorBuilder(), // Horizontal line separator
                     new ActionRowBuilder().addComponents(timeBtn)
                 ] 
             });

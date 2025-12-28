@@ -93,7 +93,7 @@ module.exports = {
                 : hostInfo;
 
             const embed = new EmbedBuilder()
-                .setTitle(`🎉 ${prize} 🎉`)
+                .setTitle(`🎉 ${prize}`)
                 .setDescription(finalDescription)
                 .setColor(0x808080)
                 .setFooter({ text: 'Click the button below to join!' });

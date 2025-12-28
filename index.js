@@ -6,7 +6,7 @@ const {
     Partials, 
     Collection, 
     EmbedBuilder,
-    ActivityType, 
+    ActivityType,
     AttachmentBuilder, 
     ActionRowBuilder, 
     ButtonBuilder, 
@@ -17,7 +17,8 @@ const {
     // v2 Components
     ContainerBuilder, 
     TextDisplayBuilder, 
-    SeparatorBuilder
+    SeparatorBuilder,
+    FileBuilder // Added for v2 Welcome Image
 } = require('discord.js');
 
 const mongoose = require('mongoose');
@@ -92,7 +93,7 @@ client.on('clientReady', async () => {
     }, 30000);
 });
 
-// --- YOUR ORIGINAL WELCOMER (UNCHANGED) ---
+// --- UPDATED WELCOMER (Discord Components v2) ---
 const { createWelcomeImage } = require('./welcomeCanvas.js');
 client.on('guildMemberAdd', async (member) => {
     if (member.user.bot || member.guild.id !== serverID) return;
@@ -112,24 +113,58 @@ client.on('guildMemberAdd', async (member) => {
         const inviterName = usedInvite?.inviter ? usedInvite.inviter.username : 'Unknown';
         const inviterId = usedInvite?.inviter ? usedInvite.inviter.id : 'Unknown';
         const inviteCode = usedInvite ? usedInvite.code : 'Unknown';
+        const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
 
         const buffer = await createWelcomeImage(member);
         const attachment = new AttachmentBuilder(buffer, { name: 'welcome-image.png' });
-        
-        const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
-        
-        const embed = new EmbedBuilder()
-            .setDescription(`### Welcome to A2-Q Server\n-# <@${member.user.id}> \`(${member.user.username})\`\n-# <:calendar:1439970556534329475> Account Created: ${accountCreated}\n-# <:users:1439970561953501214> Member Count: \`${member.guild.memberCount}\`\n-# <:chain:1439970559105564672> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`)
-            .setThumbnail(member.user.displayAvatarURL())
-            .setImage('attachment://welcome-image.png')
-            .setColor(colourEmbed);
 
+        // v2 Text Builders
+        const titleText = new TextDisplayBuilder()
+            .setContent(`### 👋 Welcome to ${member.guild.name}!`);
+
+        const detailsText = new TextDisplayBuilder()
+            .setContent(
+                `- <@${member.user.id}> \`(${member.user.username})\`\n` +
+                `- <:calendar:1439970556534329475> **Account Created:** ${accountCreated}\n` +
+                `- <:users:1439970561953501214> **Member Count:** \`${member.guild.memberCount}\`\n` +
+                `- <:chain:1439970559105564672> **Invited by** <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode})`
+            );
+
+        // v2 Container
+        const container = new ContainerBuilder()
+            .addTextDisplayComponents(titleText, detailsText);
+
+        // v2 File Builder for the Welcome Image
+        const imageComponent = new FileBuilder()
+            .setURL('attachment://welcome-image.png');
+
+        // Button Row (v2 allows these above the image)
         const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setLabel(`${member.user.id}`).setStyle(ButtonStyle.Secondary).setEmoji('1441133157855395911').setCustomId('hello_disabled').setDisabled(true)
+            new ButtonBuilder()
+                .setLabel('Frequently Asked Questions')
+                .setStyle(ButtonStyle.Link)
+                .setURL('https://discord.com') // Replace with your FAQ link
+                .setEmoji('❓'),
+            new ButtonBuilder()
+                .setLabel('Country Tags')
+                .setStyle(ButtonStyle.Link)
+                .setURL('https://discord.com') // Replace with your link
+                .setEmoji('🌍')
         );
 
         const channel = client.channels.cache.get(welcomeLog);
-        if (channel) channel.send({ embeds: [embed], files: [attachment], components: [row] });
+        if (channel) {
+            await channel.send({ 
+                files: [attachment],
+                flags: [MessageFlags.IsComponentsV2], // Enabling V2 Components
+                components: [
+                    container,
+                    new SeparatorBuilder(),
+                    row,           // Buttons show above image
+                    imageComponent // Welcome image at the bottom
+                ]
+            });
+        }
     } catch (e) { console.error(e); }
 });
 
@@ -204,13 +239,13 @@ setInterval(async () => {
 
             // --- V2 BUILDERS ---
             const titleText = new TextDisplayBuilder()
-                .setContent(`# 🎉 ${g.prize}`); // Heading 1
+                .setContent(`# 🎉 ${g.prize}`); 
 
             const infoText = new TextDisplayBuilder()
                 .setContent(`**Winner(s):** ${winnersText}\n**Host:** <@${g.hostId}>\n**Ended:** ${endRelative}${g.requiredRoleId ? `\n**Required Role:** <@&${g.requiredRoleId}>` : ""}`);
 
             const container = new ContainerBuilder()
-                .addTextDisplayComponents(titleText, infoText); // Container as modern Embed
+                .addTextDisplayComponents(titleText, infoText); 
 
             // --- EXISTING BUTTONS ---
             const row = new ActionRowBuilder().addComponents(
@@ -228,11 +263,11 @@ setInterval(async () => {
 
             // Update message using v2 flag
             await message.edit({
-                embeds: [], // Clears legacy embed
+                embeds: [], 
                 flags: [MessageFlags.IsComponentsV2], 
                 components: [
                     container, 
-                    new SeparatorBuilder(), // Clean horizontal line
+                    new SeparatorBuilder(), 
                     row
                 ]
             });

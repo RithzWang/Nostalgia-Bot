@@ -133,41 +133,55 @@ module.exports = {
             return interaction.editReply({ content: res });
         }
 
-        // --- 4. MODAL SUBMISSION (v2 Update) ---
-        if (interaction.isModalSubmit() && interaction.customId === 'application_modal') {
-            const config = await ApplicationConfig.findOne({ guildId: interaction.guild.id });
-            const logChannel = interaction.guild.channels.cache.get(config?.logChannelId);
-            if (!logChannel) return interaction.reply({ content: 'Error: Log channel not found.', flags: MessageFlags.Ephemeral });
+        // --- 4. MODAL SUBMISSION (v2 All-in-One Container) ---
+if (interaction.isModalSubmit() && interaction.customId === 'application_modal') {
+    const config = await ApplicationConfig.findOne({ guildId: interaction.guild.id });
+    const logChannel = interaction.guild.channels.cache.get(config?.logChannelId);
+    
+    if (!logChannel) return interaction.reply({ content: 'Error: Log channel not found.', flags: MessageFlags.Ephemeral });
 
-            // Using TextDisplayBuilder for content
-            const titleText = new TextDisplayBuilder().setContent(`### 📄 New Staff Application`);
-            const detailsText = new TextDisplayBuilder().setContent(
-                `**User:** <@${interaction.user.id}>\n` +
-                `**Name:** ${interaction.fields.getTextInputValue('app_name')}\n` +
-                `**Age:** ${interaction.fields.getTextInputValue('app_age')}\n` +
-                `**Country:** ${interaction.fields.getTextInputValue('app_country')}\n` +
-                `**Time Zone:** ${interaction.fields.getTextInputValue('app_timezone')}`
-            );
-            const reasonText = new TextDisplayBuilder().setContent(`**Reason for applying:**\n${interaction.fields.getTextInputValue('app_reason')}`);
+    // 1. Create Text Components
+    const titleText = new TextDisplayBuilder()
+        .setContent(`### 📄 New Staff Application`);
 
-            // Modern Container
-            const container = new ContainerBuilder().addTextDisplayComponents(titleText, detailsText);
-            
-            const timeBtn = new ButtonBuilder().setCustomId('time').setDisabled(true).setStyle(ButtonStyle.Secondary)
-                .setLabel(`${new Date().toLocaleString('en-GB', { timeZone: 'Asia/Bangkok', hour12: false })} (GMT+7)`);
+    const detailsText = new TextDisplayBuilder()
+        .setContent(
+            `**User:** <@${interaction.user.id}>\n` +
+            `**Name:** ${interaction.fields.getTextInputValue('app_name')}\n` +
+            `**Age:** ${interaction.fields.getTextInputValue('app_age')}\n` +
+            `**Country:** ${interaction.fields.getTextInputValue('app_country')}\n` +
+            `**Time Zone:** ${interaction.fields.getTextInputValue('app_timezone')}`
+        );
 
-            await logChannel.send({ 
-                // Required Flag
-                flags: [MessageFlags.IsComponentsV2], 
-                components: [
-                    container,
-                    new SeparatorBuilder(), // Native line separator
-                    reasonText,
-                    new ActionRowBuilder().addComponents(timeBtn)
-                ] 
-            });
+    const reasonText = new TextDisplayBuilder()
+        .setContent(`**Reason for applying:**\n${interaction.fields.getTextInputValue('app_reason')}`);
 
-            return interaction.reply({ content: '<:yes:1297814648417943565> Application submitted!', flags: MessageFlags.Ephemeral });
-        }
-    }
-};
+    // 2. Create the All-in-One Container
+    // Adding all text components here keeps them in the same "box"
+    const container = new ContainerBuilder()
+        .addTextDisplayComponents(titleText, detailsText, reasonText);
+
+    // 3. Create the Timestamp Button
+    const timeBtn = new ButtonBuilder()
+        .setCustomId('time_disabled')
+        .setDisabled(true)
+        .setStyle(ButtonStyle.Secondary)
+        .setLabel(`${new Date().toLocaleString('en-GB', { timeZone: 'Asia/Bangkok', hour12: false })} (GMT+7)`);
+
+    const buttonRow = new ActionRowBuilder().addComponents(timeBtn);
+
+    // 4. Send with V2 Flag
+    await logChannel.send({ 
+        flags: [MessageFlags.IsComponentsV2], 
+        components: [
+            container,
+            new SeparatorBuilder(), // Adds a native line before the button
+            buttonRow
+        ] 
+    });
+
+    return interaction.reply({ 
+        content: '<:yes:1297814648417943565> Your application has been submitted to the staff logs!', 
+        flags: MessageFlags.Ephemeral 
+    });
+}

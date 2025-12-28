@@ -187,7 +187,7 @@ setInterval(async () => {
                 await channel.send(`🎉 **CONGRATULATIONS!**\n${winnersText}, You won **${g.prize}**!`);
             }
 
-            const endedEmbed = EmbedBuilder.from(message.embeds[0]).setColor(0x808080).setTitle(`🎉 ${g.prize} (ENDED)`)
+            const endedEmbed = EmbedBuilder.from(message.embeds[0]).setColor(0x808080).setTitle(`🎉 ${g.prize}`)
                 .setDescription(`**Winner(s):** ${winnersText}\n**Host:** <@${g.hostId}>`);
             
             await message.edit({ embeds: [endedEmbed], components: [] });

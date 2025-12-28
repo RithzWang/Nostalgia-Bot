@@ -116,7 +116,7 @@ module.exports = {
                 `**Country:** ${interaction.fields.getTextInputValue('app_country')}\n` +
                 `**Time Zone:** ${interaction.fields.getTextInputValue('app_timezone')}`
             );
-            const reasonText = new TextDisplayBuilder().setContent(`**Reason for applying:**\n${interaction.fields.getTextInputValue('app_reason')}`);
+            const reasonText = new TextDisplayBuilder().setContent(`**Reason For Applying:**\n${interaction.fields.getTextInputValue('app_reason')}`);
 
             // Add all text components to the same container
             const container = new ContainerBuilder().addTextDisplayComponents(titleText, detailsText, reasonText);

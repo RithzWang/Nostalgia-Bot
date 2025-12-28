@@ -89,7 +89,7 @@ module.exports = {
             }
 
             const finalDescription = description 
-                ? `-# ${description}\n\n${hostInfo}` 
+                ? `-# ${description}\n${hostInfo}` 
                 : hostInfo;
 
             const embed = new EmbedBuilder()

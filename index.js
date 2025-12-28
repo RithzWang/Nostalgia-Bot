@@ -93,11 +93,13 @@ client.on('clientReady', async () => {
     }, 30000);
 });
 
-// --- UPDATED WELCOMER (Discord Components v2) ---
+// --- UPDATED WELCOMER (V2 All-in-One Container) ---
 const { createWelcomeImage } = require('./welcomeCanvas.js');
+
 client.on('guildMemberAdd', async (member) => {
     if (member.user.bot || member.guild.id !== serverID) return;
 
+    // Nickname logic
     setTimeout(async () => {
         try {
             let newNickname = `🌱 • ${member.displayName}`.substring(0, 32);
@@ -118,55 +120,49 @@ client.on('guildMemberAdd', async (member) => {
         const buffer = await createWelcomeImage(member);
         const attachment = new AttachmentBuilder(buffer, { name: 'welcome-image.png' });
 
-        // v2 Text Builders
-        const titleText = new TextDisplayBuilder()
-            .setContent(`### 👋 Welcome to ${member.guild.name}!`);
+        // 1. Create Text Components
+        const titleText = new TextDisplayBuilder().setContent(`### Welcome to ${member.guild.name}!`);
+        const userTag = new TextDisplayBuilder().setContent(`<@${member.user.id}> \`(${member.user.username})\``);
+        const statsText = new TextDisplayBuilder().setContent(
+            `<:calendar:1439970556534329475> **Account Created:** ${accountCreated}\n` +
+            `<:users:1439970561953501214> **Member Count:** \`${member.guild.memberCount}\`\n` +
+            `<:chain:1439970559105564672> **Invited by** <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode})`
+        );
 
-        const detailsText = new TextDisplayBuilder()
-            .setContent(
-                `- <@${member.user.id}> \`(${member.user.username})\`\n` +
-                `- <:calendar:1439970556534329475> **Account Created:** ${accountCreated}\n` +
-                `- <:users:1439970561953501214> **Member Count:** \`${member.guild.memberCount}\`\n` +
-                `- <:chain:1439970559105564672> **Invited by** <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode})`
-            );
+        // 2. Create Image Component
+        const welcomeImage = new FileBuilder().setURL('attachment://welcome-image.png');
 
-        // v2 Container
+        // 3. Create the Container - Everything inside here is grouped
         const container = new ContainerBuilder()
-            .addTextDisplayComponents(titleText, detailsText);
+            .addTextDisplayComponents(titleText, userTag, statsText)
+            .addComponent(new SeparatorBuilder()) // Line inside the container
+            .addComponent(welcomeImage);           // Image inside the container
 
-        // v2 File Builder for the Welcome Image
-        const imageComponent = new FileBuilder()
-            .setURL('attachment://welcome-image.png');
+        // 4. Button Rows (Link buttons and ID label)
+        const linkRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setLabel('Information').setStyle(ButtonStyle.Link).setURL('https://discord.com').setEmoji('📋'),
+            new ButtonBuilder().setLabel('Chat').setStyle(ButtonStyle.Link).setURL('https://discord.com').setEmoji('💬')
+        );
 
-        // Button Row (v2 allows these above the image)
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setLabel('Frequently Asked Questions')
-                .setStyle(ButtonStyle.Link)
-                .setURL('https://discord.com') // Replace with your FAQ link
-                .setEmoji('❓'),
-            new ButtonBuilder()
-                .setLabel('Country Tags')
-                .setStyle(ButtonStyle.Link)
-                .setURL('https://discord.com') // Replace with your link
-                .setEmoji('🌍')
+        const idRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setLabel(`${member.user.id}`).setStyle(ButtonStyle.Secondary).setEmoji('1441133157855395911').setCustomId('user_id_display').setDisabled(true)
         );
 
         const channel = client.channels.cache.get(welcomeLog);
         if (channel) {
             await channel.send({ 
                 files: [attachment],
-                flags: [MessageFlags.IsComponentsV2], // Enabling V2 Components
+                flags: [MessageFlags.IsComponentsV2], // Enabling V2
                 components: [
-                    container,
-                    new SeparatorBuilder(),
-                    row,           // Buttons show above image
-                    imageComponent // Welcome image at the bottom
+                    container, // Text, Separator, and Image are all grouped here
+                    linkRow,
+                    idRow
                 ]
             });
         }
     } catch (e) { console.error(e); }
 });
+
 
 // --- YOUR ORIGINAL ROLE LOGGING (UNCHANGED) ---
 client.on('guildMemberUpdate', (oldMember, newMember) => {

@@ -57,40 +57,66 @@ module.exports = {
                 if (mode === '1') { // Verify Mode
                     if (hasRole) return interaction.reply({ content: `<:no:1297814819105144862> Already verified.`, flags: MessageFlags.Ephemeral });
                     await interaction.member.roles.add(role);
-                    return interaction.reply({ content: `<:yes:1297814648417943565> Verified as **${role.name}**.`, flags: MessageFlags.Ephemeral });
+                    return interaction.reply({ content: `<:yes:1297814648417943565> **Verified as** ${role.name}.`, flags: MessageFlags.Ephemeral });
                 } else { // Toggle Mode
                     if (hasRole) {
                         await interaction.member.roles.remove(role);
-                        return interaction.reply({ content: `<:yes:1297814648417943565> Removed **${role.name}**.`, flags: MessageFlags.Ephemeral });
+                        return interaction.reply({ content: `<:yes:1297814648417943565> **Removed** ${role.name}.`, flags: MessageFlags.Ephemeral });
                     } else {
                         await interaction.member.roles.add(role);
-                        return interaction.reply({ content: `<:yes:1297814648417943565> Added **${role.name}**.`, flags: MessageFlags.Ephemeral });
+                        return interaction.reply({ content: `<:yes:1297814648417943565> **Added** ${role.name}.`, flags: MessageFlags.Ephemeral });
                     }
                 }
             }
 
-            // B. GIVEAWAY JOIN
-            if (interaction.customId === 'giveaway_join') {
-                const giveaway = await Giveaway.findOne({ messageId: interaction.message.id });
-                if (!giveaway || giveaway.ended) return interaction.reply({ content: 'Giveaway ended.', flags: MessageFlags.Ephemeral });
+         // --- GIVEAWAY JOIN/LEAVE HANDLER ---
+if (interaction.isButton() && interaction.customId === 'giveaway_join') {
+    const giveaway = await Giveaway.findOne({ messageId: interaction.message.id });
+    
+    if (!giveaway || giveaway.ended) {
+        return interaction.reply({ 
+            content: '<:no:1297814819105144862> This giveaway has ended.', 
+            flags: MessageFlags.Ephemeral 
+        });
+    }
 
-                let msg = '';
-                if (giveaway.participants.includes(interaction.user.id)) {
-                    giveaway.participants = giveaway.participants.filter(id => id !== interaction.user.id);
-                    msg = 'Left giveaway.';
-                } else {
-                    giveaway.participants.push(interaction.user.id);
-                    msg = 'Joined giveaway!';
-                }
-                await giveaway.save();
+    if (giveaway.requiredRoleId && !interaction.member.roles.cache.has(giveaway.requiredRoleId)) {
+        return interaction.reply({ 
+            content: `<:no:1297814819105144862> You must have the <@&${giveaway.requiredRoleId}> role to join this giveaway.`, 
+            flags: MessageFlags.Ephemeral 
+        });
+    }
 
-                const row = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setCustomId('giveaway_join').setLabel('Join Giveaway').setStyle(ButtonStyle.Secondary).setEmoji('🎉'),
-                    new ButtonBuilder().setCustomId('giveaway_count').setLabel(`${giveaway.participants.length} Entries`).setStyle(ButtonStyle.Secondary).setDisabled(true)
-                );
-                await interaction.message.edit({ components: [row] });
-                return interaction.reply({ content: msg, flags: MessageFlags.Ephemeral });
-            }
+    let responseContent = '';
+    if (giveaway.participants.includes(interaction.user.id)) {
+        giveaway.participants = giveaway.participants.filter(id => id !== interaction.user.id);
+        responseContent = '<:no:1297814819105144862> You have **left** the giveaway.';
+    } else {
+        giveaway.participants.push(interaction.user.id);
+        responseContent = '<:yes:1297814648417943565> You have successfully **joined** the giveaway!';
+    }
+
+    await giveaway.save();
+
+    // Re-create the buttons to update the entry count
+    const joinButton = new ButtonBuilder()
+        .setCustomId('giveaway_join')
+        .setLabel('Join Giveaway')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('🎉');
+
+    const countButton = new ButtonBuilder()
+        .setCustomId('giveaway_count')
+        .setLabel(`${giveaway.participants.length} Entries`)
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(true);
+
+    const row = new ActionRowBuilder().addComponents(joinButton, countButton);
+
+    await interaction.message.edit({ components: [row] });
+    return interaction.reply({ content: responseContent, flags: MessageFlags.Ephemeral });
+}
+
 
             // C. APPLICATION MODAL OPEN
             if (interaction.customId === 'app_apply_btn') {

@@ -7,7 +7,7 @@ const {
     ModalBuilder, 
     TextInputBuilder, 
     TextInputStyle,
-    // Add these v2 imports
+    // Discord Components v2 Builders
     ContainerBuilder,
     TextDisplayBuilder,
     SeparatorBuilder
@@ -20,6 +20,7 @@ module.exports = {
     name: 'interactionCreate',
     async execute(interaction, client) {
 
+        // --- 1. SLASH COMMAND HANDLER ---
         if (interaction.isChatInputCommand()) {
             const command = client.slashCommands.get(interaction.commandName);
             if (!command) return;
@@ -34,7 +35,9 @@ module.exports = {
             }
         }
 
+        // --- 2. BUTTON HANDLERS ---
         if (interaction.isButton()) {
+
             // A. ROLE BUTTONS
             if (interaction.customId.startsWith('role_')) {
                 const parts = interaction.customId.split('_');
@@ -51,7 +54,7 @@ module.exports = {
                     return interaction.reply({ content: `<:yes:1297814648417943565> **Verified as** ${role.name}.`, flags: MessageFlags.Ephemeral });
                 } else {
                     if (hasRole) {
-                        await member.roles.remove(role);
+                        await interaction.member.roles.remove(role);
                         return interaction.reply({ content: `<:yes:1297814648417943565> **Removed** ${role.name}.`, flags: MessageFlags.Ephemeral });
                     } else {
                         await interaction.member.roles.add(role);
@@ -64,10 +67,6 @@ module.exports = {
             if (interaction.customId === 'giveaway_join') {
                 const giveaway = await Giveaway.findOne({ messageId: interaction.message.id });
                 if (!giveaway || giveaway.ended) return interaction.reply({ content: '<:no:1297814819105144862> This giveaway has ended.', flags: MessageFlags.Ephemeral });
-
-                if (giveaway.requiredRoleId && !interaction.member.roles.cache.has(giveaway.requiredRoleId)) {
-                    return interaction.reply({ content: `<:no:1297814819105144862> You must have the <@&${giveaway.requiredRoleId}> role to join.`, flags: MessageFlags.Ephemeral });
-                }
 
                 let responseContent = '';
                 if (giveaway.participants.includes(interaction.user.id)) {
@@ -90,9 +89,6 @@ module.exports = {
 
             // C. STAFF APPLICATION MODAL OPEN
             if (interaction.customId === 'app_apply_btn') {
-                const config = await ApplicationConfig.findOne({ guildId: interaction.guild.id });
-                if (!config || !config.enabled) return interaction.reply({ content: 'Applications closed.', flags: MessageFlags.Ephemeral });
-
                 const modal = new ModalBuilder().setCustomId('application_modal').setTitle('Staff Application');
                 const q1 = new TextInputBuilder().setCustomId('app_name').setLabel("What is your name?").setStyle(TextInputStyle.Short).setRequired(true);
                 const q2 = new TextInputBuilder().setCustomId('app_age').setLabel("How old are you?").setStyle(TextInputStyle.Short).setRequired(true);
@@ -105,83 +101,39 @@ module.exports = {
             }
         }
 
-        // --- 3. SELECT MENU HANDLERS ---
-        if (interaction.isStringSelectMenu() && interaction.customId === 'role_select_menu') {
-            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-            const selectedRoleIds = interaction.values;
-            const allRoleIds = interaction.component.options.map(opt => opt.value);
-            const added = [], removed = [];
+        // --- 3. MODAL SUBMISSION (Components v2 Layout) ---
+        if (interaction.isModalSubmit() && interaction.customId === 'application_modal') {
+            const config = await ApplicationConfig.findOne({ guildId: interaction.guild.id });
+            const logChannel = interaction.guild.channels.cache.get(config?.logChannelId);
+            if (!logChannel) return interaction.reply({ content: 'Error: Log channel not found.', flags: MessageFlags.Ephemeral });
 
-            for (const roleId of allRoleIds) {
-                const role = interaction.guild.roles.cache.get(roleId);
-                if (!role) continue;
-                if (selectedRoleIds.includes(roleId)) {
-                    if (!interaction.member.roles.cache.has(roleId)) {
-                        await interaction.member.roles.add(role);
-                        added.push(role.name);
-                    }
-                } else {
-                    if (interaction.member.roles.cache.has(roleId)) {
-                        await interaction.member.roles.remove(role);
-                        removed.push(role.name);
-                    }
-                }
-            }
-            let res = (added.length || removed.length) ? '' : 'No changes.';
-            if (added.length) res += `<:yes:1297814648417943565> **Added:** ${added.join(', ')}\n`;
-            if (removed.length) res += `<:no:1297814819105144862> **Removed:** ${removed.join(', ')}`;
-            return interaction.editReply({ content: res });
+            // Using TextDisplayBuilders for the container content
+            const titleText = new TextDisplayBuilder().setContent(`### 📄 New Staff Application`);
+            const detailsText = new TextDisplayBuilder().setContent(
+                `**User:** <@${interaction.user.id}>\n` +
+                `**Name:** ${interaction.fields.getTextInputValue('app_name')}\n` +
+                `**Age:** ${interaction.fields.getTextInputValue('app_age')}\n` +
+                `**Country:** ${interaction.fields.getTextInputValue('app_country')}\n` +
+                `**Time Zone:** ${interaction.fields.getTextInputValue('app_timezone')}`
+            );
+            const reasonText = new TextDisplayBuilder().setContent(`**Reason for applying:**\n${interaction.fields.getTextInputValue('app_reason')}`);
+
+            // Add all text components to the same container
+            const container = new ContainerBuilder().addTextDisplayComponents(titleText, detailsText, reasonText);
+
+            const timeBtn = new ButtonBuilder().setCustomId('time_disabled').setDisabled(true).setStyle(ButtonStyle.Secondary)
+                .setLabel(`${new Date().toLocaleString('en-GB', { timeZone: 'Asia/Bangkok', hour12: false })} (GMT+7)`);
+
+            await logChannel.send({ 
+                flags: [MessageFlags.IsComponentsV2], // Enabling v2 functionality
+                components: [
+                    container,
+                    new SeparatorBuilder(), // Horizontal line separator
+                    new ActionRowBuilder().addComponents(timeBtn)
+                ] 
+            });
+
+            return interaction.reply({ content: '<:yes:1297814648417943565> Application submitted!', flags: MessageFlags.Ephemeral });
         }
-
-        // --- 4. MODAL SUBMISSION (v2 All-in-One Container) ---
-if (interaction.isModalSubmit() && interaction.customId === 'application_modal') {
-    const config = await ApplicationConfig.findOne({ guildId: interaction.guild.id });
-    const logChannel = interaction.guild.channels.cache.get(config?.logChannelId);
-    
-    if (!logChannel) return interaction.reply({ content: 'Error: Log channel not found.', flags: MessageFlags.Ephemeral });
-
-    // 1. Create Text Components
-    const titleText = new TextDisplayBuilder()
-        .setContent(`### 📄 New Staff Application`);
-
-    const detailsText = new TextDisplayBuilder()
-        .setContent(
-            `**User:** <@${interaction.user.id}>\n` +
-            `**Name:** ${interaction.fields.getTextInputValue('app_name')}\n` +
-            `**Age:** ${interaction.fields.getTextInputValue('app_age')}\n` +
-            `**Country:** ${interaction.fields.getTextInputValue('app_country')}\n` +
-            `**Time Zone:** ${interaction.fields.getTextInputValue('app_timezone')}`
-        );
-
-    const reasonText = new TextDisplayBuilder()
-        .setContent(`**Reason for applying:**\n${interaction.fields.getTextInputValue('app_reason')}`);
-
-    // 2. Create the All-in-One Container
-    // Adding all text components here keeps them in the same "box"
-    const container = new ContainerBuilder()
-        .addTextDisplayComponents(titleText, detailsText, reasonText);
-
-    // 3. Create the Timestamp Button
-    const timeBtn = new ButtonBuilder()
-        .setCustomId('time_disabled')
-        .setDisabled(true)
-        .setStyle(ButtonStyle.Secondary)
-        .setLabel(`${new Date().toLocaleString('en-GB', { timeZone: 'Asia/Bangkok', hour12: false })} (GMT+7)`);
-
-    const buttonRow = new ActionRowBuilder().addComponents(timeBtn);
-
-    // 4. Send with V2 Flag
-    await logChannel.send({ 
-        flags: [MessageFlags.IsComponentsV2], 
-        components: [
-            container,
-            new SeparatorBuilder(), // Adds a native line before the button
-            buttonRow
-        ] 
-    });
-
-    return interaction.reply({ 
-        content: '<:yes:1297814648417943565> Your application has been submitted to the staff logs!', 
-        flags: MessageFlags.Ephemeral 
-    });
-}
+    }
+};

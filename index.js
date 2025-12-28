@@ -13,12 +13,7 @@ const {
     ButtonStyle, 
     REST, 
     Routes,
-    MessageFlags,
-    // Discord Components v2 Builders
-    ContainerBuilder, 
-    TextDisplayBuilder, 
-    SeparatorBuilder,
-    FileBuilder 
+    MessageFlags
 } = require('discord.js');
 
 const mongoose = require('mongoose');
@@ -91,12 +86,10 @@ client.on('clientReady', async () => {
     }, 30000);
 });
 
-// --- UPDATED WELCOMER (Fixed V2 All-in-One Container) ---
+// --- ORIGINAL WELCOMER (RESTORED) ---
 const { createWelcomeImage } = require('./welcomeCanvas.js');
-
 client.on('guildMemberAdd', async (member) => {
     if (member.user.bot || member.guild.id !== serverID) return;
-
     setTimeout(async () => {
         try {
             let newNickname = `🌱 • ${member.displayName}`.substring(0, 32);
@@ -109,50 +102,30 @@ client.on('guildMemberAdd', async (member) => {
         let usedInvite = newInvites.find(inv => inv.uses > (invitesCache.get(inv.code) || 0));
         newInvites.each(inv => invitesCache.set(inv.code, inv.uses));
 
-        const inviterName = usedInvite?.inviter ? usedInvite.inviter.username : 'Unknown';
         const inviterId = usedInvite?.inviter ? usedInvite.inviter.id : 'Unknown';
+        const inviterName = usedInvite?.inviter ? usedInvite.inviter.username : 'Unknown';
         const inviteCode = usedInvite ? usedInvite.code : 'Unknown';
-        const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
 
         const buffer = await createWelcomeImage(member);
         const attachment = new AttachmentBuilder(buffer, { name: 'welcome-image.png' });
+        const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
+        
+        const embed = new EmbedBuilder()
+            .setDescription(`### Welcome to A2-Q Server\n-# <@${member.user.id}> \`(${member.user.username})\`\n-# <:calendar:1439970556534329475> Account Created: ${accountCreated}\n-# <:users:1439970561953501214> Member Count: \`${member.guild.memberCount}\`\n-# <:chain:1439970559105564672> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`)
+            .setThumbnail(member.user.displayAvatarURL())
+            .setImage('attachment://welcome-image.png')
+            .setColor(colourEmbed);
 
-        const titleText = new TextDisplayBuilder().setContent(`### 👋 Welcome to ${member.guild.name}!`);
-        const userTag = new TextDisplayBuilder().setContent(`<@${member.user.id}> \`(${member.user.username})\``);
-        const statsText = new TextDisplayBuilder().setContent(
-            `<:calendar:1439970556534329475> **Account Created:** ${accountCreated}\n` +
-            `<:users:1439970561953501214> **Member Count:** \`${member.guild.memberCount}\`\n` +
-            `<:chain:1439970559105564672> **Invited by** <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode})`
-        );
-
-        const welcomeImage = new FileBuilder().setURL('attachment://welcome-image.png');
-
-        // FIXED: Using .setComponents() to handle Separator and Image inside Container
-        const container = new ContainerBuilder()
-            .addTextDisplayComponents(titleText, userTag, statsText)
-            .setComponents([new SeparatorBuilder(), welcomeImage]); 
-
-        const linkRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setLabel('Information').setStyle(ButtonStyle.Link).setURL('https://discord.com').setEmoji('📋'),
-            new ButtonBuilder().setLabel('Chat').setStyle(ButtonStyle.Link).setURL('https://discord.com').setEmoji('💬')
-        );
-
-        const idRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setLabel(`${member.user.id}`).setStyle(ButtonStyle.Secondary).setEmoji('1441133157855395911').setCustomId('user_id_display').setDisabled(true)
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setLabel(`${member.user.id}`).setStyle(ButtonStyle.Secondary).setEmoji('1441133157855395911').setCustomId('hello_disabled').setDisabled(true)
         );
 
         const channel = client.channels.cache.get(welcomeLog);
-        if (channel) {
-            await channel.send({ 
-                files: [attachment],
-                flags: [MessageFlags.IsComponentsV2], 
-                components: [ container, linkRow, idRow ]
-            });
-        }
-    } catch (e) { console.error("Welcomer V2 Error:", e); }
+        if (channel) channel.send({ embeds: [embed], files: [attachment], components: [row] });
+    } catch (e) { console.error(e); }
 });
 
-// --- ROLE LOGGING (UNCHANGED) ---
+// --- ROLE LOGGING ---
 client.on('guildMemberUpdate', (oldMember, newMember) => {
     if (newMember.user.bot) return;
     const specifiedRolesSet = new Set(roleforLog);
@@ -169,9 +142,8 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
         return `${names.slice(0, -1).join(', ')}, and ${names.slice(-1)}`;
     };
 
-    const plural = (roles) => roles.size === 1 ? 'role' : 'roles';
     let content = '';
-
+    const plural = (roles) => roles.size === 1 ? 'role' : 'roles';
     if (addedRoles.size > 0 && removedRoles.size > 0) {
         content = `<:yes:1297814648417943565> ${newMember.user} has been added ${formatRoles(addedRoles)} ${plural(addedRoles)} and removed ${formatRoles(removedRoles)} ${plural(removedRoles)}!`;
     } else if (addedRoles.size > 0) {
@@ -190,14 +162,14 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
     }
 });
 
-// --- GIVEAWAY END LOOP (Updated for Components v2) ---
+// --- RESTORED GIVEAWAY END LOOP (Legacy Embed Style) ---
 setInterval(async () => {
     const endedGiveaways = await Giveaway.find({ ended: false, endTimestamp: { $lte: Date.now() } });
-
     for (const g of endedGiveaways) {
         try {
             const channel = client.channels.cache.get(g.channelId);
-            const message = await channel?.messages.fetch(g.messageId).catch(() => null);
+            if (!channel) continue;
+            const message = await channel.messages.fetch(g.messageId).catch(() => null);
             if (!message) continue;
 
             let winnersText = "No valid entries.";
@@ -207,20 +179,23 @@ setInterval(async () => {
                 await channel.send(`🎉 **CONGRATULATIONS!**\n${winnersText}, You won **${g.prize}**!`);
             }
 
-            const container = new ContainerBuilder()
-                .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent(`# 🎉 ${g.prize}`),
-                    new TextDisplayBuilder().setContent(`**Winner(s):** ${winnersText}\n**Host:** <@${g.hostId}>\n**Ended:** <t:${Math.floor(g.endTimestamp / 1000)}:R>`)
-                );
+            const endRelative = `<t:${Math.floor(g.endTimestamp / 1000)}:R>`;
+            const hostInfo = `**Winner(s):** ${winnersText}\n**Host:** <@${g.hostId}>\n**Ended:** ${endRelative}`;
+            
+            const endedEmbed = EmbedBuilder.from(message.embeds[0])
+                .setTitle(`🎉 ${g.prize}`) 
+                .setColor(0x808080) 
+                .setDescription(g.description ? `-# ${g.description}\n${hostInfo}` : hostInfo)
+                .setFooter(null);
 
             const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('giveaway_ended').setLabel('Giveaway Ended').setStyle(ButtonStyle.Secondary).setDisabled(true),
-                new ButtonBuilder().setCustomId('giveaway_count_ended').setLabel(`${g.participants.length} Entries`).setStyle(ButtonStyle.Secondary).setDisabled(true)
+                new ButtonBuilder().setCustomId('ended').setLabel('Giveaway Ended').setStyle(ButtonStyle.Secondary).setDisabled(true),
+                new ButtonBuilder().setCustomId('count').setLabel(`${g.participants.length} Entries`).setStyle(ButtonStyle.Secondary).setDisabled(true)
             );
 
-            await message.edit({ embeds: [], flags: [MessageFlags.IsComponentsV2], components: [container, new SeparatorBuilder(), row] });
+            await message.edit({ embeds: [endedEmbed], components: [row] });
             g.ended = true; await g.save();
-        } catch (e) { console.error("Giveaway End Error:", e); }
+        } catch (e) { console.error(e); }
     }
 }, 15000);
 

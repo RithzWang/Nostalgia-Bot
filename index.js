@@ -5,7 +5,7 @@ const {
     GatewayIntentBits, 
     Partials, 
     Collection, 
-    EmbedBuilder, 
+    EmbedBuilder,
     ActivityType, 
     AttachmentBuilder, 
     ActionRowBuilder, 
@@ -13,7 +13,11 @@ const {
     ButtonStyle, 
     REST, 
     Routes,
-    MessageFlags
+    MessageFlags,
+    // v2 Components
+    ContainerBuilder, 
+    TextDisplayBuilder, 
+    SeparatorBuilder
 } = require('discord.js');
 
 const mongoose = require('mongoose');
@@ -88,7 +92,7 @@ client.on('clientReady', async () => {
     }, 30000);
 });
 
-// --- YOUR ORIGINAL WELCOMER ---
+// --- YOUR ORIGINAL WELCOMER (UNCHANGED) ---
 const { createWelcomeImage } = require('./welcomeCanvas.js');
 client.on('guildMemberAdd', async (member) => {
     if (member.user.bot || member.guild.id !== serverID) return;
@@ -129,7 +133,7 @@ client.on('guildMemberAdd', async (member) => {
     } catch (e) { console.error(e); }
 });
 
-// --- YOUR ORIGINAL ROLE LOGGING ---
+// --- YOUR ORIGINAL ROLE LOGGING (UNCHANGED) ---
 client.on('guildMemberUpdate', (oldMember, newMember) => {
     if (newMember.user.bot) return;
     const specifiedRolesSet = new Set(roleforLog);
@@ -170,9 +174,7 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
     }
 });
 
-
-
-// --- GIVEAWAY END LOOP ---
+// --- GIVEAWAY END LOOP (Updated for Components v2) ---
 setInterval(async () => {
     const endedGiveaways = await Giveaway.find({ ended: false, endTimestamp: { $lte: Date.now() } });
 
@@ -189,7 +191,6 @@ setInterval(async () => {
             const participantCount = g.participants.length;
 
             if (participantCount > 0) {
-                // Shuffle and pick winners
                 const shuffled = g.participants.sort(() => 0.5 - Math.random());
                 const selectedWinners = shuffled.slice(0, g.winnersCount);
                 
@@ -199,42 +200,42 @@ setInterval(async () => {
                 }
             }
 
-            // --- DYNAMIC TIMESTAMP (e.g., 5 minutes ago) ---
             const endRelative = `<t:${Math.floor(g.endTimestamp / 1000)}:R>`;
 
-            // --- FORMATTED ENDED DESCRIPTION ---
-            let hostInfo = `**Winner(s):** ${winnersText}\n**Host:** <@${g.hostId}>\n**Ended:** ${endRelative}`;
-            
-            if (g.requiredRoleId) {
-                hostInfo = `**Required Role:** <@&${g.requiredRoleId}>\n` + hostInfo;
-            }
-            
-            const finalDescription = g.description 
-                ? `-# ${g.description}\n\n${hostInfo}` 
-                : hostInfo;
+            // --- V2 BUILDERS ---
+            const titleText = new TextDisplayBuilder()
+                .setContent(`# 🎉 ${g.prize}`); // Heading 1
 
-            // --- BUTTONS ---
-            const endedButton = new ButtonBuilder()
-                .setCustomId('giveaway_ended')
-                .setLabel('Giveaway Ended')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(true);
+            const infoText = new TextDisplayBuilder()
+                .setContent(`**Winner(s):** ${winnersText}\n**Host:** <@${g.hostId}>\n**Ended:** ${endRelative}${g.requiredRoleId ? `\n**Required Role:** <@&${g.requiredRoleId}>` : ""}`);
 
-            const countButton = new ButtonBuilder()
-                .setCustomId('giveaway_count_ended')
-                .setLabel(`${participantCount} Entries`)
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(true);
+            const container = new ContainerBuilder()
+                .addTextDisplayComponents(titleText, infoText); // Container as modern Embed
 
-            const row = new ActionRowBuilder().addComponents(endedButton, countButton);
+            // --- EXISTING BUTTONS ---
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId('giveaway_ended')
+                    .setLabel('Giveaway Ended')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(true),
+                new ButtonBuilder()
+                    .setCustomId('giveaway_count_ended')
+                    .setLabel(`${participantCount} Entries`)
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(true)
+            );
 
-            const endedEmbed = EmbedBuilder.from(message.embeds[0])
-                .setTitle(`🎉 ${g.prize}`) 
-                .setColor(0x808080) 
-                .setDescription(finalDescription)
-                .setFooter(null);
-
-            await message.edit({ embeds: [endedEmbed], components: [row] });
+            // Update message using v2 flag
+            await message.edit({
+                embeds: [], // Clears legacy embed
+                flags: [MessageFlags.IsComponentsV2], 
+                components: [
+                    container, 
+                    new SeparatorBuilder(), // Clean horizontal line
+                    row
+                ]
+            });
 
             g.ended = true;
             await g.save();
@@ -244,10 +245,6 @@ setInterval(async () => {
         }
     }
 }, 15000);
-
-
-
-
 
 // --- DB & LOGIN ---
 (async () => {

@@ -47,6 +47,7 @@ client.slashDatas = [];
 
 require('./handlers/commandHandler')(client);
 
+// EVENT LOADER (Triggers interactionCreate.js and messageCreate.js)
 const eventsPath = path.join(__dirname, 'events');
 const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
 
@@ -65,6 +66,7 @@ const invitesCache = new Collection();
 // --- READY EVENT ---
 client.on('clientReady', async () => {
     console.log(`Logged in as ${client.user.tag}`);
+
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
     try {
         await rest.put(Routes.applicationGuildCommands(client.user.id, serverID), { body: client.slashDatas });
@@ -86,10 +88,11 @@ client.on('clientReady', async () => {
     }, 30000);
 });
 
-// --- ORIGINAL WELCOMER (RESTORED) ---
+// --- YOUR ORIGINAL WELCOMER ---
 const { createWelcomeImage } = require('./welcomeCanvas.js');
 client.on('guildMemberAdd', async (member) => {
     if (member.user.bot || member.guild.id !== serverID) return;
+
     setTimeout(async () => {
         try {
             let newNickname = `🌱 • ${member.displayName}`.substring(0, 32);
@@ -102,12 +105,13 @@ client.on('guildMemberAdd', async (member) => {
         let usedInvite = newInvites.find(inv => inv.uses > (invitesCache.get(inv.code) || 0));
         newInvites.each(inv => invitesCache.set(inv.code, inv.uses));
 
-        const inviterId = usedInvite?.inviter ? usedInvite.inviter.id : 'Unknown';
         const inviterName = usedInvite?.inviter ? usedInvite.inviter.username : 'Unknown';
+        const inviterId = usedInvite?.inviter ? usedInvite.inviter.id : 'Unknown';
         const inviteCode = usedInvite ? usedInvite.code : 'Unknown';
 
         const buffer = await createWelcomeImage(member);
         const attachment = new AttachmentBuilder(buffer, { name: 'welcome-image.png' });
+        
         const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
         
         const embed = new EmbedBuilder()
@@ -125,16 +129,18 @@ client.on('guildMemberAdd', async (member) => {
     } catch (e) { console.error(e); }
 });
 
-// --- ROLE LOGGING ---
+// --- YOUR ORIGINAL ROLE LOGGING ---
 client.on('guildMemberUpdate', (oldMember, newMember) => {
     if (newMember.user.bot) return;
     const specifiedRolesSet = new Set(roleforLog);
     const addedRoles = newMember.roles.cache.filter(role => specifiedRolesSet.has(role.id) && !oldMember.roles.cache.has(role.id));
     const removedRoles = oldMember.roles.cache.filter(role => specifiedRolesSet.has(role.id) && !newMember.roles.cache.has(role.id));
+
     const logChannel = newMember.guild.channels.cache.get(roleupdateLog);
     if (!logChannel) return;
 
     const silentOptions = { allowedMentions: { parse: [] } };
+
     const formatRoles = (roles) => {
         const names = roles.map(role => `**${role.name}**`);
         if (names.length === 1) return names[0];
@@ -142,8 +148,9 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
         return `${names.slice(0, -1).join(', ')}, and ${names.slice(-1)}`;
     };
 
-    let content = '';
     const plural = (roles) => roles.size === 1 ? 'role' : 'roles';
+    let content = '';
+
     if (addedRoles.size > 0 && removedRoles.size > 0) {
         content = `<:yes:1297814648417943565> ${newMember.user} has been added ${formatRoles(addedRoles)} ${plural(addedRoles)} and removed ${formatRoles(removedRoles)} ${plural(removedRoles)}!`;
     } else if (addedRoles.size > 0) {
@@ -153,6 +160,7 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
     }
 
     if (!content) return;
+
     if (roleupdateMessageID) {
         logChannel.messages.fetch(roleupdateMessageID).then(m => m.edit({ content, ...silentOptions })).catch(() => {
             logChannel.send({ content, ...silentOptions }).then(m => roleupdateMessageID = m.id);
@@ -161,6 +169,7 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
         logChannel.send({ content, ...silentOptions }).then(m => roleupdateMessageID = m.id);
     }
 });
+
 
 // --- RESTORED GIVEAWAY END LOOP (Legacy Embed Style) ---
 setInterval(async () => {
@@ -198,6 +207,10 @@ setInterval(async () => {
         } catch (e) { console.error(e); }
     }
 }, 15000);
+
+
+
+
 
 // --- DB & LOGIN ---
 (async () => {

@@ -13,56 +13,41 @@ const {
     ButtonStyle, 
     REST, 
     Routes,
-    MessageFlags,
-    TextInputStyle,
-    TextInputBuilder,
-    ModalBuilder // Needed for Silent messages
+    MessageFlags
 } = require('discord.js');
 
-// Database Library
 const mongoose = require('mongoose');
-
-const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas'); 
 const moment = require('moment-timezone');
 const keep_alive = require('./keep_alive.js');
 const { loadFonts } = require('./fontLoader');
 
 // --- CONFIGURATION ---
-// 1. Load the config
 const config = require("./config.json");
-const Sticky = require('./src/models/Sticky');
 const Giveaway = require('./src/models/Giveaway');
-const ApplicationConfig = require('./src/models/ApplicationConfig'); // Check path
 
-
-// 2. Extract constants (WE DO NOT extract roleupdateMessageID here)
-const { prefix, serverID, serversID, welcomeLog, roleupdateLog, roleforLog, colourEmbed } = config;
-
-// 3. Define the variable separately as 'let' so we can change it
-// If it's in config, we load it, otherwise it starts as null
+const { prefix, serverID, welcomeLog, roleupdateLog, roleforLog, colourEmbed } = config;
 let roleupdateMessageID = config.roleupdateMessageID || null;
-
 
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
-        GatewayIntentBits.DirectMessages,
         GatewayIntentBits.GuildMembers,
         GatewayIntentBits.GuildMessageReactions,
         GatewayIntentBits.GuildPresences,
-        GatewayIntentBits.GuildMessagePolls
     ],
     partials: [ Partials.Channel, Partials.Message, Partials.Reaction, Partials.GuildMember, Partials.User ],
-    ws: {
-        properties: {
-            browser: 'Discord iOS'
-        }
-    }
 });
 
-// --- LOGIC LOADING
+// --- DYNAMIC LOADERS ---
+client.prefixCommands = new Collection(); 
+client.slashCommands = new Collection();
+client.slashDatas = []; 
+
+require('./handlers/commandHandler')(client);
+
+// EVENT LOADER (Triggers interactionCreate.js and messageCreate.js)
 const eventsPath = path.join(__dirname, 'events');
 const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
 
@@ -76,32 +61,17 @@ for (const file of eventFiles) {
     }
 }
 
-
-// --- COMMAND LOADING ---
-client.prefixCommands = new Collection(); 
-client.slashCommands = new Collection();
-client.slashDatas = []; 
-
-require('./handlers/commandHandler')(client);
-
 const invitesCache = new Collection();
 
-// --- EVENTS ---
-client.on('clientReady', async (readyClient) => {
-    console.log(`Logged in as ${readyClient.user.tag}`);
+// --- READY EVENT ---
+client.on('ready', async () => {
+    console.log(`Logged in as ${client.user.tag}`);
 
-    // AUTO-DEPLOY SLASH COMMANDS
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
     try {
-        console.log(`Started refreshing ${client.slashDatas.length} application (/) commands.`);
-        await rest.put(
-            Routes.applicationGuildCommands(readyClient.user.id, serverID),
-            { body: client.slashDatas }, 
-        );
-        console.log('✅ Successfully reloaded application (/) commands.');
-    } catch (error) {
-        console.error('❌ Error deploying commands:', error);
-    }
+        await rest.put(Routes.applicationGuildCommands(client.user.id, serverID), { body: client.slashDatas });
+        console.log('✅ Slash Commands Deployed.');
+    } catch (e) { console.error(e); }
 
     const guild = client.guilds.cache.get(serverID);
     if(guild) {
@@ -110,173 +80,128 @@ client.on('clientReady', async (readyClient) => {
     }
 
     setInterval(() => {
-        const currentTime = moment().tz('Asia/Bangkok');
-        const thailandTime = currentTime.format('HH:mm');
-
-        readyClient.user.setPresence({
-            activities: [{
-                name: 'customstatus',
-                type: ActivityType.Custom,
-                state: `⏳ ${thailandTime} (GMT+7)`
-            }],
+        const thailandTime = moment().tz('Asia/Bangkok').format('HH:mm');
+        client.user.setPresence({
+            activities: [{ name: 'customstatus', type: ActivityType.Custom, state: `⏳ ${thailandTime} (GMT+7)` }],
             status: 'idle' 
         });
-    }, 5000);
+    }, 30000);
 });
 
-client.on('messageCreate', message => {
-    if (!message.content.startsWith(prefix) || message.author.bot) return;
-    const args = message.content.slice(prefix.length).split(/ +/);
-    const commandName = args.shift().toLowerCase();
-    const command = client.prefixCommands.get(commandName);
-    
-    if (!command) return;
-    try { command.execute(message, args); } catch (error) { console.error(error); }
-});
-
-client.on('interactionCreate', async interaction => {
-    if (!interaction.isChatInputCommand()) return;
-    const command = client.slashCommands.get(interaction.commandName);
-    if (!command) return;
-    try { await command.execute(interaction); } catch (error) { console.error(error); }
-});
-
-// --- WELCOMER ---
+// --- YOUR ORIGINAL WELCOMER ---
 const { createWelcomeImage } = require('./welcomeCanvas.js');
-
 client.on('guildMemberAdd', async (member) => {
-    if (member.user.bot) return;
-    if (member.guild.id !== serverID) return;
+    if (member.user.bot || member.guild.id !== serverID) return;
 
-    // 1. Handle Nickname
     setTimeout(async () => {
-        if (!member.guild.members.cache.has(member.id)) return;
-
-        const prefixName = "🌱 • ";
-        let newNickname = prefixName + member.displayName;
-        if (newNickname.length > 32) newNickname = newNickname.substring(0, 32);
-
         try {
+            let newNickname = `🌱 • ${member.displayName}`.substring(0, 32);
             await member.setNickname(newNickname);
-            console.log(`Changed nickname for ${member.user.tag}`);
-        } catch (error) {
-            console.error(`Could not rename ${member.user.tag}:`, error.message);
-        }
+        } catch (e) {}
     }, 5000);
 
-    // 2. Handle Welcome Image & Invites
     try {
         const newInvites = await member.guild.invites.fetch().catch(() => new Collection());
         let usedInvite = newInvites.find(inv => inv.uses > (invitesCache.get(inv.code) || 0));
-        
-        if (newInvites.size > 0) {
-             newInvites.each(inv => invitesCache.set(inv.code, inv.uses));
-        }
+        newInvites.each(inv => invitesCache.set(inv.code, inv.uses));
 
-        const inviterName = usedInvite && usedInvite.inviter ? usedInvite.inviter.username : 'Unknown';
-        const inviterId = usedInvite && usedInvite.inviter ? usedInvite.inviter.id : 'Unknown';
+        const inviterName = usedInvite?.inviter ? usedInvite.inviter.username : 'Unknown';
+        const inviterId = usedInvite?.inviter ? usedInvite.inviter.id : 'Unknown';
         const inviteCode = usedInvite ? usedInvite.code : 'Unknown';
 
-        const welcomeImageBuffer = await createWelcomeImage(member);
-        const attachment = new AttachmentBuilder(welcomeImageBuffer, { name: 'welcome-image.png' });
+        const buffer = await createWelcomeImage(member);
+        const attachment = new AttachmentBuilder(buffer, { name: 'welcome-image.png' });
         
         const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
-        const memberCount = member.guild.memberCount;
         
         const embed = new EmbedBuilder()
-            .setDescription(`### Welcome to A2-Q Server\n-# <@${member.user.id}> \`(${member.user.username})\`\n-# <:calendar:1439970556534329475> Account Created: ${accountCreated}\n-# <:users:1439970561953501214> Member Count: \`${memberCount}\`\n-# <:chain:1439970559105564672> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`)
+            .setDescription(`### Welcome to A2-Q Server\n-# <@${member.user.id}> \`(${member.user.username})\`\n-# <:calendar:1439970556534329475> Account Created: ${accountCreated}\n-# <:users:1439970561953501214> Member Count: \`${member.guild.memberCount}\`\n-# <:chain:1439970559105564672> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`)
             .setThumbnail(member.user.displayAvatarURL())
             .setImage('attachment://welcome-image.png')
             .setColor(colourEmbed);
 
-        const unclickableButton = new ButtonBuilder()
-            .setLabel(`${member.user.id}`)
-            .setStyle(ButtonStyle.Secondary)
-            .setEmoji('1441133157855395911')
-            .setCustomId('hello_button_disabled')
-            .setDisabled(true);
-
-        const row = new ActionRowBuilder().addComponents(unclickableButton);
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setLabel(`${member.user.id}`).setStyle(ButtonStyle.Secondary).setEmoji('1441133157855395911').setCustomId('hello_disabled').setDisabled(true)
+        );
 
         const channel = client.channels.cache.get(welcomeLog);
-        if (channel) {
-            channel.send({ embeds: [embed], files: [attachment], components: [row] });
-        }
-    } catch (err) {
-        console.error("Error in Welcomer:", err);
-    }
+        if (channel) channel.send({ embeds: [embed], files: [attachment], components: [row] });
+    } catch (e) { console.error(e); }
 });
 
-// --- ROLE LOGGING (YOUR ORIGINAL LOGIC) ---
+// --- YOUR ORIGINAL ROLE LOGGING ---
 client.on('guildMemberUpdate', (oldMember, newMember) => {
     if (newMember.user.bot) return;
-
     const specifiedRolesSet = new Set(roleforLog);
-
     const addedRoles = newMember.roles.cache.filter(role => specifiedRolesSet.has(role.id) && !oldMember.roles.cache.has(role.id));
     const removedRoles = oldMember.roles.cache.filter(role => specifiedRolesSet.has(role.id) && !newMember.roles.cache.has(role.id));
 
     const logChannel = newMember.guild.channels.cache.get(roleupdateLog);
     if (!logChannel) return;
 
-    const silentMessageOptions = {
-        allowedMentions: { parse: [] },
-    };
-
-    const editMessage = (messageContent) => {
-        if (!messageContent.trim()) return;
-        
-        // Use the variable we defined at the top
-        if (roleupdateMessageID) {
-            logChannel.messages.fetch(roleupdateMessageID)
-                .then(msg => msg.edit({ content: messageContent, ...silentMessageOptions })) 
-                .catch(console.error);
-        } else {
-            logChannel.send({ content: messageContent, ...silentMessageOptions })
-                .then(msg => { roleupdateMessageID = msg.id; }) // Only possible because it's a 'let' now
-                .catch(console.error);
-        }
-    };
+    const silentOptions = { allowedMentions: { parse: [] } };
 
     const formatRoles = (roles) => {
-        const roleNames = roles.map(role => `**${role.name}**`);
-        if (roleNames.length === 1) return roleNames[0];
-        if (roleNames.length === 2) return `${roleNames[0]} and ${roleNames[1]}`;
-        return `${roleNames.slice(0, -1).join(', ')}, and ${roleNames.slice(-1)}`;
+        const names = roles.map(role => `**${role.name}**`);
+        if (names.length === 1) return names[0];
+        if (names.length === 2) return `${names[0]} and ${names[1]}`;
+        return `${names.slice(0, -1).join(', ')}, and ${names.slice(-1)}`;
     };
 
     const plural = (roles) => roles.size === 1 ? 'role' : 'roles';
-    let roleUpdateMessage = '';
+    let content = '';
 
     if (addedRoles.size > 0 && removedRoles.size > 0) {
-        roleUpdateMessage = `<:yes:1297814648417943565> ${newMember.user} has been added ${formatRoles(addedRoles)} ${plural(addedRoles)} and removed ${formatRoles(removedRoles)} ${plural(removedRoles)}!`;
+        content = `<:yes:1297814648417943565> ${newMember.user} has been added ${formatRoles(addedRoles)} ${plural(addedRoles)} and removed ${formatRoles(removedRoles)} ${plural(removedRoles)}!`;
     } else if (addedRoles.size > 0) {
-        roleUpdateMessage = `<:yes:1297814648417943565> ${newMember.user} has been added ${formatRoles(addedRoles)} ${plural(addedRoles)}!`;
+        content = `<:yes:1297814648417943565> ${newMember.user} has been added ${formatRoles(addedRoles)} ${plural(addedRoles)}!`;
     } else if (removedRoles.size > 0) {
-        roleUpdateMessage = `<:yes:1297814648417943565> ${newMember.user} has been removed ${formatRoles(removedRoles)} ${plural(removedRoles)}!`;
+        content = `<:yes:1297814648417943565> ${newMember.user} has been removed ${formatRoles(removedRoles)} ${plural(removedRoles)}!`;
     }
 
-    editMessage(roleUpdateMessage);
+    if (!content) return;
+
+    if (roleupdateMessageID) {
+        logChannel.messages.fetch(roleupdateMessageID).then(m => m.edit({ content, ...silentOptions })).catch(() => {
+            logChannel.send({ content, ...silentOptions }).then(m => roleupdateMessageID = m.id);
+        });
+    } else {
+        logChannel.send({ content, ...silentOptions }).then(m => roleupdateMessageID = m.id);
+    }
 });
 
+// --- GIVEAWAY END LOOP ---
+setInterval(async () => {
+    const endedGiveaways = await Giveaway.find({ ended: false, endTimestamp: { $lte: Date.now() } });
+    for (const g of endedGiveaways) {
+        try {
+            const guild = client.guilds.cache.get(g.guildId);
+            const channel = client.channels.cache.get(g.channelId);
+            const message = await channel?.messages.fetch(g.messageId).catch(() => null);
+            if (!message) continue;
 
+            let winnersText = "No valid entries.";
+            if (g.participants.length > 0) {
+                const winners = g.participants.sort(() => 0.5 - Math.random()).slice(0, g.winnersCount);
+                winnersText = winners.map(id => `<@${id}>`).join(', ');
+                await channel.send(`🎉 **CONGRATULATIONS!**\n${winnersText}, You won **${g.prize}**!`);
+            }
 
+            const endedEmbed = EmbedBuilder.from(message.embeds[0]).setColor(0x808080).setTitle(`🎉 ${g.prize} (ENDED)`)
+                .setDescription(`**Winner(s):** ${winnersText}\n**Host:** <@${g.hostId}>`);
+            
+            await message.edit({ embeds: [endedEmbed], components: [] });
+            g.ended = true; await g.save();
+        } catch (e) { console.error(e); }
+    }
+}, 15000);
+
+// --- DB & LOGIN ---
 (async () => {
     try {
-        // Connect to Database (Render Safe)
-        if (process.env.MONGO_TOKEN) {
-            // We use the variable name 'MyBotData' for your DB folder
-            await mongoose.connect(process.env.MONGO_TOKEN, { dbName: 'MyBotData' });
-            console.log("✅ Connected to MongoDB!");
-        } else {
-            console.log("⚠️ No MONGO_TOKEN found. Database features will not work.");
-        }
-
-        console.log("⏳ Starting font check...");
+        await mongoose.connect(process.env.MONGO_TOKEN, { dbName: 'MyBotData' });
+        console.log("✅ MongoDB Connected.");
         await loadFonts(); 
-        console.log("🚀 Fonts loaded. Logging in...");
         await client.login(process.env.TOKEN);
-    } catch (error) {
-        console.error("❌ Failed to start bot:", error);
-    }
+    } catch (e) { console.error(e); }
 })();

@@ -199,10 +199,10 @@ module.exports = {
 
                 if (oldMenu.data.max_values > 1) {
                     newMenu.setMaxValues(newCount);
-                    newMenu.setPlaceholder(`Select from ${newCount} roles...`);
+                    newMenu.setPlaceholder(`Select from ${newCount} roles`);
                 } else {
                     newMenu.setMaxValues(1);
-                    newMenu.setPlaceholder(`Select 1 out of ${newCount} roles...`);
+                    newMenu.setPlaceholder(`Select one out of ${newCount} roles`);
                 }
 
                 const newEmbed = EmbedBuilder.from(oldEmbed);

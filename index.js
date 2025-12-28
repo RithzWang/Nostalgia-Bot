@@ -98,41 +98,32 @@ const { createWelcomeImage } = require('./welcomeCanvas.js');
 client.on('guildMemberAdd', async (member) => {
     if (member.user.bot || member.guild.id !== serverID) return;
 
-    setTimeout(async () => {
-        try {
-            let newNickname = `🌱 • ${member.displayName}`.substring(0, 32);
-            await member.setNickname(newNickname);
-        } catch (e) {}
-    }, 5000);
-
     try {
-        const newInvites = await member.guild.invites.fetch().catch(() => new Collection());
-        let usedInvite = newInvites.find(inv => inv.uses > (invitesCache.get(inv.code) || 0));
-        newInvites.each(inv => invitesCache.set(inv.code, inv.uses));
-
-        const inviterName = usedInvite?.inviter ? usedInvite.inviter.username : 'Unknown';
-        const inviterId = usedInvite?.inviter ? usedInvite.inviter.id : 'Unknown';
-        const inviteCode = usedInvite ? usedInvite.code : 'Unknown';
         const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
-
         const buffer = await createWelcomeImage(member);
         const attachment = new AttachmentBuilder(buffer, { name: 'welcome-image.png' });
 
+        // 1. Define Builders
         const titleText = new TextDisplayBuilder().setContent(`### 👋 Welcome to ${member.guild.name}!`);
         const userTag = new TextDisplayBuilder().setContent(`<@${member.user.id}> \`(${member.user.username})\``);
         const statsText = new TextDisplayBuilder().setContent(
             `<:calendar:1439970556534329475> **Account Created:** ${accountCreated}\n` +
             `<:users:1439970561953501214> **Member Count:** \`${member.guild.memberCount}\`\n` +
-            `<:chain:1439970559105564672> **Invited by** <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode})`
+            `<:chain:1439970559105564672> **Invited by** <@${member.id}> using a link.`
         );
 
         const welcomeImage = new FileBuilder().setURL('attachment://welcome-image.png');
 
-        // FIXED: Replaced .addComponent with .addComponents
+        // 2. Build the Container
+        // We use addComponents for the non-text items
         const container = new ContainerBuilder()
             .addTextDisplayComponents(titleText, userTag, statsText)
-            .addComponents(new SeparatorBuilder(), welcomeImage); 
+            .addComponents(
+                new SeparatorBuilder(), 
+                welcomeImage
+            ); 
 
+        // 3. Rows
         const linkRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setLabel('Information').setStyle(ButtonStyle.Link).setURL('https://discord.com').setEmoji('📋'),
             new ButtonBuilder().setLabel('Chat').setStyle(ButtonStyle.Link).setURL('https://discord.com').setEmoji('💬')
@@ -146,12 +137,13 @@ client.on('guildMemberAdd', async (member) => {
         if (channel) {
             await channel.send({ 
                 files: [attachment],
-                flags: [MessageFlags.IsComponentsV2], 
+                flags: [MessageFlags.IsComponentsV2], // Enabling V2
                 components: [ container, linkRow, idRow ]
             });
         }
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("Welcomer V2 Error:", e); }
 });
+
 
 // --- ROLE LOGGING ---
 client.on('guildMemberUpdate', (oldMember, newMember) => {

@@ -96,18 +96,54 @@ module.exports = {
                 const q4 = new TextInputBuilder().setCustomId('app_timezone').setLabel("What is your time zone?").setStyle(TextInputStyle.Short).setRequired(true);
                 const q5 = new TextInputBuilder().setCustomId('app_reason').setLabel("Why do you want to be staff?").setStyle(TextInputStyle.Paragraph).setRequired(true);
 
-                modal.addComponents(new ActionRowBuilder().addComponents(q1), new ActionRowBuilder().addComponents(q2), new ActionRowBuilder().addComponents(q3), new ActionRowBuilder().addComponents(q4), new ActionRowBuilder().addComponents(q5));
+                modal.addComponents(
+                    new ActionRowBuilder().addComponents(q1), 
+                    new ActionRowBuilder().addComponents(q2), 
+                    new ActionRowBuilder().addComponents(q3), 
+                    new ActionRowBuilder().addComponents(q4), 
+                    new ActionRowBuilder().addComponents(q5)
+                );
                 await interaction.showModal(modal);
             }
         }
 
-        // --- 3. MODAL SUBMISSION (Components v2 Layout) ---
+        // --- 3. SELECT MENU HANDLERS (Role Menu Restored) ---
+        if (interaction.isStringSelectMenu()) {
+            if (interaction.customId === 'role_select_menu') {
+                await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+                const selectedRoleIds = interaction.values;
+                const allRoleIds = interaction.component.options.map(opt => opt.value);
+                const added = [], removed = [];
+
+                for (const roleId of allRoleIds) {
+                    const role = interaction.guild.roles.cache.get(roleId);
+                    if (!role) continue;
+                    if (selectedRoleIds.includes(roleId)) {
+                        if (!interaction.member.roles.cache.has(roleId)) {
+                            await interaction.member.roles.add(role);
+                            added.push(role.name);
+                        }
+                    } else {
+                        if (interaction.member.roles.cache.has(roleId)) {
+                            await interaction.member.roles.remove(role);
+                            removed.push(role.name);
+                        }
+                    }
+                }
+                let res = (added.length || removed.length) ? '' : 'No changes.';
+                if (added.length) res += `<:yes:1297814648417943565> **Added:** ${added.join(', ')}\n`;
+                if (removed.length) res += `<:no:1297814819105144862> **Removed:** ${removed.join(', ')}`;
+                return interaction.editReply({ content: res });
+            }
+        }
+
+        // --- 4. MODAL SUBMISSION (Stable V2 Layout) ---
         if (interaction.isModalSubmit() && interaction.customId === 'application_modal') {
             const config = await ApplicationConfig.findOne({ guildId: interaction.guild.id });
             const logChannel = interaction.guild.channels.cache.get(config?.logChannelId);
             if (!logChannel) return interaction.reply({ content: 'Error: Log channel not found.', flags: MessageFlags.Ephemeral });
 
-            // Using TextDisplayBuilders for the container content
+            // Using TextDisplayBuilders
             const titleText = new TextDisplayBuilder().setContent(`### 📄 New Staff Application`);
             const detailsText = new TextDisplayBuilder().setContent(
                 `**User:** <@${interaction.user.id}>\n` +
@@ -118,14 +154,17 @@ module.exports = {
             );
             const reasonText = new TextDisplayBuilder().setContent(`**Reason For Applying:**\n${interaction.fields.getTextInputValue('app_reason')}`);
 
-            // Add all text components to the same container
+            // Stable container logic: Text displays go here
             const container = new ContainerBuilder().addTextDisplayComponents(titleText, detailsText, reasonText);
 
-            const timeBtn = new ButtonBuilder().setCustomId('time_disabled').setDisabled(true).setStyle(ButtonStyle.Secondary)
+            const timeBtn = new ButtonBuilder()
+                .setCustomId('time_disabled')
+                .setDisabled(true)
+                .setStyle(ButtonStyle.Secondary)
                 .setLabel(`${new Date().toLocaleString('en-GB', { timeZone: 'Asia/Bangkok', hour12: false })} (GMT+7)`);
 
             await logChannel.send({ 
-                flags: [MessageFlags.IsComponentsV2], // Enabling v2 functionality
+                flags: [MessageFlags.IsComponentsV2], 
                 components: [
                     container,
                     new ActionRowBuilder().addComponents(timeBtn)

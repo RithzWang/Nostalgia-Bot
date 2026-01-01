@@ -48,20 +48,11 @@ module.exports = {
             let data = await ThanksLB.findOne({ guildId });
             if (!data) data = new ThanksLB({ guildId, startDate: Date.now() });
 
-            // Calculate Reset Timestamp for Footer
-            const now = new Date();
-            const resetTime = new Date(now);
-            resetTime.setUTCHours(0, 0, 0, 0); 
-            if (now > resetTime) resetTime.setDate(resetTime.getDate() + 1);
-            // We use a different format for footer usually, but R works if stringified.
-            // However, Footers don't support discord timestamps (<t:x:R>). 
-            // So we will just say "Daily at 07:00 AM" or keep it simple.
-            
             const embed = new EmbedBuilder()
                 .setTitle('Thanks Leaderboard')
-                .setDescription('No data yet.') // Placeholder until populated
+                .setDescription('No data yet.') 
                 .setColor(0x808080)
-                .setFooter({ text: 'Page 1 • Resets daily at 07:00 AM (GMT+7)' });
+                .setFooter({ text: 'Page 1' }); // <--- CLEAN FOOTER (No reset text)
 
             const dateStr = new Date(data.startDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Bangkok' });
 
@@ -161,7 +152,6 @@ async function updateLeaderboardVisual(client, guildId, page = 1) {
         const start = (page - 1) * ITEMS_PER_PAGE;
         const currentData = sorted.slice(start, start + ITEMS_PER_PAGE);
 
-        // CLEAN LIST: Just 1. User - Count
         const description = currentData.map((u, i) => {
             const rank = start + i + 1;
             return `\`${rank}.\` <@${u.userId}> — **${u.count}** thanks`;
@@ -170,18 +160,11 @@ async function updateLeaderboardVisual(client, guildId, page = 1) {
         const startMillis = data.startDate || Date.now();
         const dateStr = new Date(startMillis).toLocaleDateString('en-GB', { timeZone: 'Asia/Bangkok' });
 
-        // Calculate hours remaining for footer text (Timestamps don't work in footer)
-        const now = new Date();
-        const resetTime = new Date(now);
-        resetTime.setUTCHours(0, 0, 0, 0); 
-        if (now > resetTime) resetTime.setDate(resetTime.getDate() + 1);
-        const hoursLeft = Math.ceil((resetTime - now) / (1000 * 60 * 60));
-
         const embed = EmbedBuilder.from(msg.embeds[0])
-            .setDescription(description) // <--- JUST THE LIST
+            .setDescription(description)
             .setColor(0x808080)
             .setTimestamp(null)
-            .setFooter({ text: `Page ${page} of ${totalPages} • Next Reset in ~${hoursLeft}h` }); // Cleaner Footer
+            .setFooter({ text: `Page ${page} of ${totalPages}` }); // <--- CLEAN FOOTER (No reset text)
 
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('thanks_prev').setEmoji('⬅️').setStyle(ButtonStyle.Secondary).setDisabled(page === 1),

@@ -4,7 +4,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('deletedm')
         .setDescription('Owner Only: Delete all bot messages in a specific User DM')
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
         .addStringOption(option =>
             option.setName('userid')
                 .setDescription('The User ID to clear messages from')

@@ -3,8 +3,8 @@ const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('disc
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('purge')
-        .setDescription('Delete messages (skips pinned) and show user stats')
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
+        .setDescription('Delete messages')
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addIntegerOption(option =>
             option.setName('amount')
                 .setDescription('Number of messages to check (Max 100)')

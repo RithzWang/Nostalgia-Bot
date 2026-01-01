@@ -28,10 +28,10 @@ module.exports = {
 
     async execute(interaction) {
         // Configuration
-        const allowedChannelId = '1446065407713607812';
-        const logChannelId = '1187771223791378522';
-        const infoMessageId = '1446221552084582430';
-        const registeredRoleId = '1446058693631148043';
+        const allowedChannelId = '1456197056250122352';
+        const logChannelId = '1456197056988319871';
+        const infoMessageId = '1456202328813076622';
+        const registeredRoleId = '1456197055117787136';
 
         // --- HELPER: LOGGING FUNCTION ---
         async function sendLog(title, desc, color, targetMember) {

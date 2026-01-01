@@ -13,22 +13,24 @@ module.exports = {
             subcommand
                 .setName('create')
                 .setDescription('Create a message embed')
-                .addStringOption(option =>
-                    option.setName('title')
-                        .setDescription('The title of the embed')
-                )
-                .addStringOption(option =>
-                    option.setName('description')
-                        .setDescription('The description of the embed')
-                )
-                .addStringOption(option =>
-                    option.setName('color')
-                        .setDescription('Hex color (e.g. #FF0000). Default is #888888')
-                )
+                .addStringOption(option => option.setName('title').setDescription('The title of the embed'))
+                .addStringOption(option => option.setName('description').setDescription('The description of the embed'))
+                .addStringOption(option => option.setName('color').setDescription('Hex color (e.g. #FF0000)'))
                 .addChannelOption(option =>
                     option.setName('channel')
-                        .setDescription('Where to send it? Empty = Here')
-                        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+                        .setDescription('Where to send it?')
+                        // ADDED ALL RELEVANT TEXT CHANNEL TYPES HERE
+                        .addChannelTypes(
+                            ChannelType.GuildText, 
+                            ChannelType.GuildAnnouncement, 
+                            ChannelType.PublicThread, 
+                            ChannelType.PrivateThread, 
+                            ChannelType.GuildVoice // Voice channels have text chat too!
+                        )
+                )
+                .addBooleanOption(option => 
+                    option.setName('publish')
+                        .setDescription('Automatically publish if sent to an Announcement channel?')
                 )
         )
 
@@ -39,27 +41,20 @@ module.exports = {
             subcommand
                 .setName('edit')
                 .setDescription('Edit an existing embed')
-                .addStringOption(option =>
-                    option.setName('message_id')
-                        .setDescription('The ID of the message to edit')
-                        .setRequired(true)
-                )
-                .addStringOption(option =>
-                    option.setName('title')
-                        .setDescription('New title (Leave empty to keep current)')
-                )
-                .addStringOption(option =>
-                    option.setName('description')
-                        .setDescription('New description (Leave empty to keep current)')
-                )
-                .addStringOption(option =>
-                    option.setName('color')
-                        .setDescription('New color (Leave empty to keep current)')
-                )
+                .addStringOption(option => option.setName('message_id').setDescription('ID of the message').setRequired(true))
+                .addStringOption(option => option.setName('title').setDescription('New title'))
+                .addStringOption(option => option.setName('description').setDescription('New description'))
+                .addStringOption(option => option.setName('color').setDescription('New color'))
                 .addChannelOption(option =>
                     option.setName('channel')
-                        .setDescription('Which channel is the message in? Empty = Here')
-                        .addChannelTypes(ChannelType.GuildText)
+                        .setDescription('Which channel is the message in?')
+                        .addChannelTypes(
+                            ChannelType.GuildText, 
+                            ChannelType.GuildAnnouncement, 
+                            ChannelType.PublicThread, 
+                            ChannelType.PrivateThread,
+                            ChannelType.GuildVoice
+                        )
                 )
         ),
 
@@ -67,48 +62,45 @@ module.exports = {
         const subcommand = interaction.options.getSubcommand();
         const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
         
-        // ==========================
-        // LOGIC: CREATE
-        // ==========================
         if (subcommand === 'create') {
             const title = interaction.options.getString('title');
             const description = interaction.options.getString('description');
             const color = interaction.options.getString('color') || '#888888';
+            const publish = interaction.options.getBoolean('publish') || false;
 
-            // Validation: Ensure at least Title or Description is provided
             if (!title && !description) {
                 return interaction.reply({
-                    content: '<:no:1297814819105144862> You must provide at least a Title or a Description!',
+                    content: '❌ You must provide at least a Title or a Description!',
                     flags: MessageFlags.Ephemeral
                 });
             }
 
             try {
-                const embed = new EmbedBuilder()
-                    .setColor(color);
-                
+                const embed = new EmbedBuilder().setColor(color);
                 if (title) embed.setTitle(title);
                 if (description) embed.setDescription(description);
 
-                await targetChannel.send({ embeds: [embed] });
+                const sentMessage = await targetChannel.send({ embeds: [embed] });
+
+                // AUTOMATICALLY PUBLISH IF IT'S AN ANNOUNCEMENT CHANNEL
+                if (publish && targetChannel.type === ChannelType.GuildAnnouncement) {
+                    await sentMessage.crosspost();
+                }
 
                 await interaction.reply({
-                    content: `<:yes:1297814648417943565> I sent the embed in ${targetChannel}`,
+                    content: `✅ Embed sent in ${targetChannel}${publish ? ' and published!' : '.'}`,
                     flags: MessageFlags.Ephemeral
                 });
 
             } catch (error) {
                 console.error(error);
                 await interaction.reply({
-                    content: `<:no:1297814819105144862> Failed to send embed. Check color format (use #Hex) or permissions.`,
+                    content: `❌ Failed to send. Ensure I have "Send Messages" and "Embed Links" permissions in ${targetChannel}.`,
                     flags: MessageFlags.Ephemeral
                 });
             }
         }
 
-        // ==========================
-        // LOGIC: EDIT
-        // ==========================
         else if (subcommand === 'edit') {
             const messageId = interaction.options.getString('message_id');
             const newTitle = interaction.options.getString('title');
@@ -116,44 +108,27 @@ module.exports = {
             const newColor = interaction.options.getString('color');
 
             try {
-                // 1. Fetch the message
                 const messageToEdit = await targetChannel.messages.fetch(messageId);
 
-                // 2. Validate ownership and content
                 if (messageToEdit.author.id !== interaction.client.user.id) {
-                    return interaction.reply({
-                        content: `<:no:1297814819105144862> I can only edit my own messages.`,
-                        flags: MessageFlags.Ephemeral
-                    });
-                }
-                if (messageToEdit.embeds.length === 0) {
-                    return interaction.reply({
-                        content: `<:no:1297814819105144862> That message doesn’t have an embed to edit.`,
-                        flags: MessageFlags.Ephemeral
-                    });
+                    return interaction.reply({ content: `❌ I can only edit my own messages.`, flags: MessageFlags.Ephemeral });
                 }
 
-                // 3. Get existing embed and modify it
-                const existingEmbed = messageToEdit.embeds[0];
-                const newEmbed = new EmbedBuilder(existingEmbed.data); // Copy old data
-
-                // Only update fields if the user provided something new
+                const newEmbed = new EmbedBuilder(messageToEdit.embeds[0]?.data || {});
                 if (newTitle) newEmbed.setTitle(newTitle);
                 if (newDescription) newEmbed.setDescription(newDescription);
                 if (newColor) newEmbed.setColor(newColor);
 
-                // 4. Update the message
                 await messageToEdit.edit({ embeds: [newEmbed] });
 
                 await interaction.reply({
-                    content: `<:yes:1297814648417943565> I successfully edited the embed in ${targetChannel}.`,
+                    content: `✅ Edited embed in ${targetChannel}.`,
                     flags: MessageFlags.Ephemeral
                 });
 
             } catch (error) {
-                console.error(error);
                 await interaction.reply({
-                    content: `<:no:1297814819105144862> I could not find message with ID \`${messageId}\` in ${targetChannel}.`,
+                    content: `❌ Could not find message ID \`${messageId}\` in ${targetChannel}.`,
                     flags: MessageFlags.Ephemeral
                 });
             }

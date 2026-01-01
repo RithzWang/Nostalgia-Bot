@@ -53,8 +53,8 @@ module.exports = {
 
         // 1. Create Embed
         const embed = new EmbedBuilder()
-            .setTitle('💖 Thank You')
-            .setDescription(`<@${userId}> thanked <@${target.id}>\nThey now have **${newCount}** thanks.\n\nSee leaderboard ${channelLink}`)
+            .setTitle('Thank You 💖')
+            .setDescription(`<@${userId}> thanked <@${target.id}>\nThey now have **${newCount}** thanks.\n\nSee leaderboard [Click Here](https://discord.com/channels/1456197054782111756/1456345518962905171)`)
             .setColor(0x808080);
 
         // 2. Create Time Button (dd/mm/yyyy, hh:mm:ss (GMT+7))

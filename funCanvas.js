@@ -66,7 +66,7 @@ module.exports = {
         // Bounty
         ctx.font = `bold 100px ${FONT_STACK}`;
         ctx.fillStyle = '#8B0000';
-        ctx.fillText(`$${bounty.toLocaleString()}`, width / 2, 1030);
+        ctx.fillText(`﷼${bounty.toLocaleString()}`, width / 2, 1030);
 
         return canvas.toBuffer('image/png');
     },

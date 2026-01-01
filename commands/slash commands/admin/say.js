@@ -23,8 +23,18 @@ module.exports = {
                 )
                 .addChannelOption(option =>
                     option.setName('channel')
-                        .setDescription('Where to send it? Empty = Here')
-                        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+                        .setDescription('Where to send it?')
+                        .addChannelTypes(
+                            ChannelType.GuildText, 
+                            ChannelType.GuildAnnouncement, 
+                            ChannelType.PublicThread, 
+                            ChannelType.PrivateThread, 
+                            ChannelType.GuildVoice
+                        )
+                )
+                .addBooleanOption(option => 
+                    option.setName('publish')
+                        .setDescription('Publish if sent to an Announcement channel?')
                 )
         )
 
@@ -50,8 +60,14 @@ module.exports = {
                 )
                 .addChannelOption(option =>
                     option.setName('channel')
-                        .setDescription('Which channel is the message in? Empty = Here')
-                        .addChannelTypes(ChannelType.GuildText)
+                        .setDescription('Which channel is the message in?')
+                        .addChannelTypes(
+                            ChannelType.GuildText, 
+                            ChannelType.GuildAnnouncement, 
+                            ChannelType.PublicThread, 
+                            ChannelType.PrivateThread,
+                            ChannelType.GuildVoice
+                        )
                 )
         ),
 
@@ -59,44 +75,40 @@ module.exports = {
         const subcommand = interaction.options.getSubcommand();
         const content = interaction.options.getString('content');
         const shouldMention = interaction.options.getBoolean('mention');
-        
-        // Default to current channel if no channel is selected
+        const publish = interaction.options.getBoolean('publish') || false;
         const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
 
-        // Determine Allowed Mentions logic
-        // If true: Allow 'users', 'roles', and 'everyone' to be pinged
-        // If false: Allow NOTHING to be pinged (silent)
         const allowedMentions = shouldMention 
             ? { parse: ['users', 'roles', 'everyone'] } 
             : { parse: [] };
 
-        // ===========================================
-        // LOGIC FOR /say send
-        // ===========================================
+        // --- LOGIC FOR SEND ---
         if (subcommand === 'send') {
             try {
-                // FIXED: Options object must be inside send({ ... })
-                await targetChannel.send({ 
+                const sentMessage = await targetChannel.send({ 
                     content: content, 
                     allowedMentions: allowedMentions 
                 });
+
+                // Check for announcement channel and publish if requested
+                if (publish && targetChannel.type === ChannelType.GuildAnnouncement) {
+                    await sentMessage.crosspost();
+                }
                 
                 await interaction.reply({ 
-                    content: `<:yes:1297814648417943565> I sent the message to ${targetChannel}. (Mentions: ${shouldMention ? 'ON' : 'OFF'})`, 
+                    content: `<:yes:1297814648417943565> Sent to ${targetChannel}.${publish ? ' (Published)' : ''}`, 
                     flags: MessageFlags.Ephemeral 
                 });
             } catch (error) {
                 console.error(error);
                 await interaction.reply({ 
-                    content: `<:no:1297814819105144862> I cannot send messages in ${targetChannel}. Please check my permissions!`, 
+                    content: `<:no:1297814819105144862> Failed to send. Check permissions in ${targetChannel}.`, 
                     flags: MessageFlags.Ephemeral 
                 });
             }
         }
 
-        // ===========================================
-        // LOGIC FOR /say edit
-        // ===========================================
+        // --- LOGIC FOR EDIT ---
         else if (subcommand === 'edit') {
             const messageId = interaction.options.getString('message_id');
 
@@ -105,26 +117,24 @@ module.exports = {
 
                 if (messageToEdit.author.id !== interaction.client.user.id) {
                     return interaction.reply({ 
-                        content: `I can only edit my own messages.`, 
+                        content: `❌ I can only edit my own messages.`, 
                         flags: MessageFlags.Ephemeral 
                     });
                 }
 
-                // FIXED: Options object must be inside edit({ ... })
                 await messageToEdit.edit({ 
                     content: content, 
                     allowedMentions: allowedMentions 
                 });
 
                 await interaction.reply({ 
-                    content: `<:yes:1297814648417943565> I successfully edited the message in ${targetChannel}.`, 
+                    content: `<:yes:1297814648417943565> Message edited in ${targetChannel}.`, 
                     flags: MessageFlags.Ephemeral 
                 });
 
             } catch (error) {
-                console.error(error);
                 await interaction.reply({ 
-                    content: `<:no:1297814819105144862> I couldn’t find that message in ${targetChannel}. Please check the Message ID!`, 
+                    content: `<:no:1297814819105144862> Could not find message ID \`${messageId}\` in ${targetChannel}.`, 
                     flags: MessageFlags.Ephemeral 
                 });
             }

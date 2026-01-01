@@ -58,7 +58,7 @@ module.exports = {
             // So we will just say "Daily at 07:00 AM" or keep it simple.
             
             const embed = new EmbedBuilder()
-                .setTitle('💖 Community Gratitude Board')
+                .setTitle('Thanks Leaderboard')
                 .setDescription('No data yet.') // Placeholder until populated
                 .setColor(0x808080)
                 .setFooter({ text: 'Page 1 • Resets daily at 07:00 AM (GMT+7)' });

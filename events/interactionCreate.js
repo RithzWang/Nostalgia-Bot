@@ -63,24 +63,6 @@ module.exports = {
                 }
             }
 
-// Inside your interactionCreate.js execute function:
-
-if (interaction.isChatInputCommand()) {
-    // ... your normal command handling logic ...
-} 
-else if (interaction.isAutocomplete()) { // <--- ADD THIS BLOCK
-    const command = client.slashCommands.get(interaction.commandName);
-    if (!command) return;
-
-    try {
-        await command.autocomplete(interaction);
-    } catch (error) {
-        console.error(error);
-    }
-}
-
-
-
 
             // B. GIVEAWAY JOIN/LEAVE
             if (interaction.customId === 'giveaway_join') {

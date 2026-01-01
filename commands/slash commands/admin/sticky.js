@@ -4,12 +4,12 @@ const Sticky = require('../../../src/models/Sticky');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('sticky')
-        .setDescription('Manage sticky messages.')
+        .setDescription('Manage sticky messages')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addSubcommand(subcommand =>
             subcommand
                 .setName('set')
-                .setDescription('Set a sticky message for this channel.')
+                .setDescription('Set a sticky message for this channel')
                 .addStringOption(option => 
                     option.setName('message')
                     .setDescription('The message to stick.')
@@ -17,7 +17,7 @@ module.exports = {
         .addSubcommand(subcommand =>
             subcommand
                 .setName('remove')
-                .setDescription('Stop the sticky message in this channel.')),
+                .setDescription('Stop the sticky message in this channel')),
 
     async execute(interaction) {
         const subcommand = interaction.options.getSubcommand();

@@ -13,16 +13,14 @@ module.exports = {
         .setName('create-invite')
         .setDescription('Creates a permanent invite for a specific channel (Owner Only)')
         .setDefaultMemberPermissions(PermissionFlagsBits.CreateInstantInvite)
-        .setDMPermission(false) // Disable in DMs
+        .setDMPermission(false)
         .addChannelOption(option => 
             option.setName('channel')
                 .setDescription('The channel to create the invite for (defaults to current)')
                 .addChannelTypes(
                     ChannelType.GuildText, 
-                    ChannelType.GuildVoice, 
                     ChannelType.GuildAnnouncement,
-                    ChannelType.GuildStageVoice,
-                    ChannelType.GuildForum
+                    ChannelType.GuildVoice // Added back
                 )
         ),
 
@@ -39,10 +37,20 @@ module.exports = {
         let targetChannel = interaction.options.getChannel('channel') || interaction.channel;
 
         try {
-            // 3. CRITICAL FIX: Fetch the full channel object to ensure we have methods like createInvite
+            // 3. Fetch full channel object
             targetChannel = await interaction.guild.channels.fetch(targetChannel.id);
 
-            // 4. Permission Check: Does the BOT have permission in that specific channel?
+            // 4. Validate Channel Type
+            const allowedTypes = [ChannelType.GuildText, ChannelType.GuildAnnouncement, ChannelType.GuildVoice];
+            
+            if (!allowedTypes.includes(targetChannel.type)) {
+                return interaction.reply({ 
+                    content: `<:no:1297814819105144862> You can only create invites for **Text**, **Announcement**, or **Voice** channels.`, 
+                    flags: MessageFlags.Ephemeral 
+                });
+            }
+
+            // 5. Permission Check
             if (!targetChannel.permissionsFor(interaction.guild.members.me).has(PermissionFlagsBits.CreateInstantInvite)) {
                 return interaction.reply({ 
                     content: `<:no:1297814819105144862> I do not have permission to create invites in ${targetChannel}. \nCheck the channel settings > Permissions > **Create Invite**.`, 
@@ -50,9 +58,9 @@ module.exports = {
                 });
             }
 
-            // 5. Create the invite
+            // 6. Create the invite
             const invite = await targetChannel.createInvite({
-                maxAge: 0,   // Permanent (0 seconds)
+                maxAge: 0,   // Permanent
                 maxUses: 0,  // Unlimited
                 unique: true,
                 reason: `Requested by Owner (${interaction.user.tag})`
@@ -66,7 +74,7 @@ module.exports = {
         } catch (err) {
             console.error('Failed to create invite:', err);
             await interaction.reply({ 
-                content: `<:no:1297814819105144862> Failed to create invite. \n**Error:** \`${err.message}\`\n(Make sure I have "View Channel" and "Create Invite" permissions there!)`,
+                content: `<:no:1297814819105144862> Failed to create invite. \n**Error:** \`${err.message}\``,
                 flags: MessageFlags.Ephemeral 
             });
         }

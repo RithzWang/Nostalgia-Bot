@@ -26,10 +26,7 @@ module.exports = {
                         .setDescription('Where to send it?')
                         .addChannelTypes(
                             ChannelType.GuildText, 
-                            ChannelType.GuildAnnouncement, 
-                            ChannelType.PublicThread, 
-                            ChannelType.PrivateThread, 
-                            ChannelType.GuildVoice
+                            ChannelType.GuildAnnouncement
                         )
                 )
                 .addBooleanOption(option => 
@@ -63,10 +60,7 @@ module.exports = {
                         .setDescription('Which channel is the message in?')
                         .addChannelTypes(
                             ChannelType.GuildText, 
-                            ChannelType.GuildAnnouncement, 
-                            ChannelType.PublicThread, 
-                            ChannelType.PrivateThread,
-                            ChannelType.GuildVoice
+                            ChannelType.GuildAnnouncement
                         )
                 )
         ),

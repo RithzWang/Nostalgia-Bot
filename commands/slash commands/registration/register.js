@@ -31,7 +31,8 @@ module.exports = {
         const allowedChannelId = '1456197056250122352';
         const logChannelId = '1456197056988319871';
         const infoMessageId = '1456202328813076622';
-        const registeredRoleId = '1456197055117787136';
+        const registeredRoleId = '1456197055117787136'; // Role to ADD
+        const unverifiedRoleId = '1456238105345527932'; // Role to REMOVE
 
         // --- HELPER: LOGGING FUNCTION ---
         async function sendLog(title, desc, color, targetMember) {
@@ -53,7 +54,7 @@ module.exports = {
                 .setStyle(ButtonStyle.Secondary)
                 .setDisabled(true);
 
-            // Run in background (no await)
+            // Run in background
             logChannel.send({ embeds: [embed], components: [new ActionRowBuilder().addComponents(button)] }).catch(console.error);
         }
 
@@ -68,7 +69,6 @@ module.exports = {
                 const role = interaction.guild.roles.cache.get(registeredRoleId);
                 const totalRegistered = role ? role.members.size : 'N/A';
 
-                // Updated text: Removed "submit" from the command mention
                 const newDescription = `to be able to chat and connect to voice channels, use the command **</register:1446387435130064941>**\n\n> \`name:\` followed by your name\n> \`country:\` followed by your country’s flag emoji\n\n**Example:**\n\`\`\`\n/register name: Naif country: 🇬🇧\n\`\`\``;
 
                 const countButton = new ButtonBuilder()
@@ -81,7 +81,7 @@ module.exports = {
 
                 if (infoMessage.embeds.length > 0) {
                     const updatedEmbed = EmbedBuilder.from(infoMessage.embeds[0]).setDescription(newDescription);
-                    // Run in background (no await)
+                    // Run in background
                     infoMessage.edit({ embeds: [updatedEmbed], components: [row] }).catch(console.error);
                 }
             } catch (err) {
@@ -90,7 +90,7 @@ module.exports = {
         }
 
         // ===========================================
-        // MAIN EXECUTION (formerly 'submit')
+        // MAIN EXECUTION
         // ===========================================
         
         // 1. Channel Check
@@ -117,9 +117,16 @@ module.exports = {
         }
 
         try {
-            // 4. Perform Actions BEFORE Replying
+            // 4. Perform Actions
+            // A. Add Registered Role
             await member.roles.add(registeredRoleId);
+
+            // B. Remove Unverified Role (if they have it)
+            if (member.roles.cache.has(unverifiedRoleId)) {
+                await member.roles.remove(unverifiedRoleId).catch(console.error);
+            }
             
+            // C. Nickname Update
             const isOwner = member.id === interaction.guild.ownerId;
             const isHigher = member.roles.highest.position >= interaction.guild.members.me.roles.highest.position;
             let warning = "";
@@ -130,19 +137,18 @@ module.exports = {
                 warning = " (Nickname check: Role too high)";
             }
 
-            // Run these in background so we can reply faster
+            // D. Background Tasks
             sendLog('New Registration', `User: ${member}\nName: **${name}**\nFrom: ${country}\n${warning}`, Colors.Green, member);
             updateInfoMessage();
 
-            // 5. Send SINGLE Immediate Reply
+            // 5. Send SINGLE Immediate Reply (UPDATED MESSAGE)
             return interaction.reply({ 
-                content: `<:yes:1297814648417943565> Your registration is complete.${warning ? "\n*" + warning + "*" : ""}`,
+                content: `<:yes:1297814648417943565> You’re now a member of the server.${warning ? "\n*" + warning + "*" : ""}`,
                 flags: MessageFlags.Ephemeral
             });
 
         } catch (error) {
             console.error(error);
-            // Only reply with error if we haven't replied yet
             if (!interaction.replied) {
                 return interaction.reply({ content: "<:no:1297814819105144862> Error during registration.", flags: MessageFlags.Ephemeral });
             }

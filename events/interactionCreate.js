@@ -16,7 +16,7 @@ const {
 const Giveaway = require('../src/models/Giveaway');
 const ApplicationConfig = require('../src/models/ApplicationConfig');
 const ThanksLB = require('../src/models/ThanksLB'); // <--- NEW IMPORT
-const { updateLeaderboardVisual } = require('../commands/slash commands/social/thanksLeaderboard'); // <--- NEW IMPORT
+const { updateLeaderboardVisual } = require('../commands/slash commands/leaderboard/thanksLeaderboard'); // <--- NEW IMPORT
 
 module.exports = {
     name: 'interactionCreate',

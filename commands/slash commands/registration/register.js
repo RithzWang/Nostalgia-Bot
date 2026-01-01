@@ -21,7 +21,7 @@ module.exports = {
         )
         .addStringOption(option => 
             option.setName('country')
-                .setDescription('Your country flag emoji')
+                .setDescription('Your country’s flag emoji')
                 .setRequired(true)
         )
         .setDefaultMemberPermissions(PermissionFlagsBits.SendMessages),

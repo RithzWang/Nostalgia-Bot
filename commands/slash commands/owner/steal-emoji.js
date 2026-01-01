@@ -16,7 +16,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('steal-emoji')
         .setDescription('Copy emojis from another server (Owner Only)')
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuildExpressions),
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
     async execute(interaction) {
         if (interaction.user.id !== OWNER_ID) {

@@ -12,7 +12,7 @@ module.exports = {
                .setDescription('Create the leaderboard message')
                .addChannelOption(opt => opt.setName('channel').setDescription('Where to post?').addChannelTypes(ChannelType.GuildText))
         )
-        // 2. RESET (Global)
+        // 2. RESET
         .addSubcommand(sub => 
             sub.setName('reset')
                .setDescription('Reset ALL thanks counts to 0 and update start date')
@@ -22,11 +22,18 @@ module.exports = {
             sub.setName('disable')
                .setDescription('Stop and delete the leaderboard data')
         )
-        // 4. REFILL (New Admin Command)
+        // 4. REFILL LIMIT
         .addSubcommand(sub => 
             sub.setName('refill-limit')
                .setDescription('Reset the daily limit for a specific user')
                .addUserOption(opt => opt.setName('user').setDescription('The user to refill').setRequired(true))
+        )
+        // 5. REMOVE
+        .addSubcommand(sub => 
+            sub.setName('remove')
+               .setDescription('Remove a user or decrease their thanks count')
+               .addUserOption(opt => opt.setName('target').setDescription('The user to manage').setRequired(true))
+               .addIntegerOption(opt => opt.setName('amount').setDescription('Amount to remove (Leave empty to remove user entirely)').setMinValue(1))
         ),
 
     async execute(interaction) {
@@ -41,11 +48,20 @@ module.exports = {
             let data = await ThanksLB.findOne({ guildId });
             if (!data) data = new ThanksLB({ guildId, startDate: Date.now() });
 
+            // Calculate Reset Timestamp for Footer
+            const now = new Date();
+            const resetTime = new Date(now);
+            resetTime.setUTCHours(0, 0, 0, 0); 
+            if (now > resetTime) resetTime.setDate(resetTime.getDate() + 1);
+            // We use a different format for footer usually, but R works if stringified.
+            // However, Footers don't support discord timestamps (<t:x:R>). 
+            // So we will just say "Daily at 07:00 AM" or keep it simple.
+            
             const embed = new EmbedBuilder()
-                .setTitle('Thanks Leaderboard')
-                .setDescription('No data yet. Start thanking people!')
+                .setTitle('💖 Community Gratitude Board')
+                .setDescription('No data yet.') // Placeholder until populated
                 .setColor(0x808080)
-                .setFooter({ text: 'Page 1' }); // <--- CLEAN FOOTER
+                .setFooter({ text: 'Page 1 • Resets daily at 07:00 AM (GMT+7)' });
 
             const dateStr = new Date(data.startDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Bangkok' });
 
@@ -66,33 +82,46 @@ module.exports = {
             return interaction.editReply(`<:yes:1297814648417943565> Leaderboard created in ${channel}.`);
         }
 
-        // --- REFILL LIMIT (New) ---
-        if (sub === 'refill-limit') {
-            const target = interaction.options.getUser('user');
-            
-            // Find User in DB
+        // --- REMOVE ---
+        if (sub === 'remove') {
+            const target = interaction.options.getUser('target');
+            const amount = interaction.options.getInteger('amount');
             const data = await ThanksLB.findOne({ guildId });
-            if (!data) return interaction.reply({ content: 'Leaderboard not set up yet.', flags: MessageFlags.Ephemeral });
+            if (!data) return interaction.reply({ content: 'Leaderboard not active.', flags: MessageFlags.Ephemeral });
 
-            const usageIndex = data.usage.findIndex(u => u.userId === target.id);
-            if (usageIndex !== -1) {
-                // Reset their usage to 0
-                data.usage[usageIndex].thanksUsed = 0;
-                await data.save();
-                return interaction.reply({ content: `<:yes:1297814648417943565> Refilled daily limit for **${target.username}**. They can now thank 3 people.`, flags: MessageFlags.Ephemeral });
+            const userIndex = data.users.findIndex(u => u.userId === target.id);
+            if (userIndex === -1) return interaction.reply({ content: 'User not on leaderboard.', flags: MessageFlags.Ephemeral });
+
+            if (amount) {
+                data.users[userIndex].count -= amount;
+                if (data.users[userIndex].count <= 0) data.users.splice(userIndex, 1);
             } else {
-                return interaction.reply({ content: `<:no:1297814819105144862> **${target.username}** hasn't used any thanks yet today.`, flags: MessageFlags.Ephemeral });
+                data.users.splice(userIndex, 1);
             }
+            await data.save();
+            await updateLeaderboardVisual(interaction.client, guildId);
+            return interaction.reply({ content: `<:yes:1297814648417943565> Updated **${target.username}**.`, flags: MessageFlags.Ephemeral });
         }
 
-        // --- RESET GLOBAL ---
+        // --- REFILL LIMIT ---
+        if (sub === 'refill-limit') {
+            const target = interaction.options.getUser('user');
+            const data = await ThanksLB.findOne({ guildId });
+            if (!data) return interaction.reply({ content: 'Leaderboard not set up.', flags: MessageFlags.Ephemeral });
+            const usageIndex = data.usage.findIndex(u => u.userId === target.id);
+            if (usageIndex !== -1) {
+                data.usage[usageIndex].thanksUsed = 0;
+                await data.save();
+                return interaction.reply({ content: `<:yes:1297814648417943565> Refilled limits for **${target.username}**.`, flags: MessageFlags.Ephemeral });
+            }
+            return interaction.reply({ content: 'User has not used any thanks today.', flags: MessageFlags.Ephemeral });
+        }
+
+        // --- RESET ---
         if (sub === 'reset') {
-            await ThanksLB.findOneAndUpdate({ guildId }, { 
-                users: [],
-                startDate: Date.now() 
-            });
+            await ThanksLB.findOneAndUpdate({ guildId }, { users: [], startDate: Date.now() });
             await updateLeaderboardVisual(interaction.client, guildId);
-            return interaction.reply({ content: '<:yes:1297814648417943565> Leaderboard reset. Start date updated.', flags: MessageFlags.Ephemeral });
+            return interaction.reply({ content: '<:yes:1297814648417943565> Leaderboard reset.', flags: MessageFlags.Ephemeral });
         }
 
         // --- DISABLE ---
@@ -106,7 +135,7 @@ module.exports = {
                 } catch (e) {}
             }
             await ThanksLB.deleteOne({ guildId });
-            return interaction.reply({ content: '<:yes:1297814648417943565> Thanks Leaderboard disabled.', flags: MessageFlags.Ephemeral });
+            return interaction.reply({ content: '<:yes:1297814648417943565> Disabled.', flags: MessageFlags.Ephemeral });
         }
     }
 };
@@ -132,23 +161,27 @@ async function updateLeaderboardVisual(client, guildId, page = 1) {
         const start = (page - 1) * ITEMS_PER_PAGE;
         const currentData = sorted.slice(start, start + ITEMS_PER_PAGE);
 
+        // CLEAN LIST: Just 1. User - Count
         const description = currentData.map((u, i) => {
             const rank = start + i + 1;
-            let medal = '`' + rank + '.`';
-            if (rank === 1) medal = '🥇';
-            if (rank === 2) medal = '🥈';
-            if (rank === 3) medal = '🥉';
-            return `${medal} <@${u.userId}> — **${u.count}** thanks`;
+            return `\`${rank}.\` <@${u.userId}> — **${u.count}** thanks`;
         }).join('\n') || 'No thanks given yet.';
 
         const startMillis = data.startDate || Date.now();
         const dateStr = new Date(startMillis).toLocaleDateString('en-GB', { timeZone: 'Asia/Bangkok' });
 
+        // Calculate hours remaining for footer text (Timestamps don't work in footer)
+        const now = new Date();
+        const resetTime = new Date(now);
+        resetTime.setUTCHours(0, 0, 0, 0); 
+        if (now > resetTime) resetTime.setDate(resetTime.getDate() + 1);
+        const hoursLeft = Math.ceil((resetTime - now) / (1000 * 60 * 60));
+
         const embed = EmbedBuilder.from(msg.embeds[0])
-            .setDescription(description)
+            .setDescription(description) // <--- JUST THE LIST
             .setColor(0x808080)
             .setTimestamp(null)
-            .setFooter({ text: `Page ${page} of ${totalPages}` }); // <--- REMOVED RESET TEXT HERE
+            .setFooter({ text: `Page ${page} of ${totalPages} • Next Reset in ~${hoursLeft}h` }); // Cleaner Footer
 
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('thanks_prev').setEmoji('⬅️').setStyle(ButtonStyle.Secondary).setDisabled(page === 1),

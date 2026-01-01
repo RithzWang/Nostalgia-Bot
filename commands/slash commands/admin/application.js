@@ -25,10 +25,7 @@ module.exports = {
                         .setDescription('Where to post the Apply button')
                         .addChannelTypes(
                             ChannelType.GuildText, 
-                            ChannelType.GuildAnnouncement, 
-                            ChannelType.PublicThread, 
-                            ChannelType.PrivateThread, 
-                            ChannelType.GuildVoice
+                            ChannelType.GuildAnnouncement
                         )
                         .setRequired(true)
                 )
@@ -37,10 +34,7 @@ module.exports = {
                         .setDescription('Where to send filled forms')
                         .addChannelTypes(
                             ChannelType.GuildText, 
-                            ChannelType.GuildAnnouncement, 
-                            ChannelType.PublicThread, 
-                            ChannelType.PrivateThread, 
-                            ChannelType.GuildVoice
+                            ChannelType.GuildAnnouncement
                         )
                         .setRequired(true)
                 )
@@ -166,8 +160,6 @@ Click the **"Apply Now"** button below to start your application.`)
 
             // 2. Update DB
             config.enabled = false;
-            // We usually keep the log channel in DB in case you re-enable, but setting it to null is fine if that's your preference
-            // config.logChannelId = null; 
             await config.save();
 
             return interaction.reply({ 

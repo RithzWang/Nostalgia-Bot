@@ -20,8 +20,31 @@ module.exports = {
         .addSubcommand(sub =>
             sub.setName('enable')
                 .setDescription('Open applications')
-                .addChannelOption(opt => opt.setName('channel').setDescription('Where to post the Apply button').addChannelTypes(ChannelType.GuildText).setRequired(true))
-                .addChannelOption(opt => opt.setName('log').setDescription('Where to send filled forms').addChannelTypes(ChannelType.GuildText).setRequired(true))
+                .addChannelOption(opt => 
+                    opt.setName('channel')
+                        .setDescription('Where to post the Apply button')
+                        .addChannelTypes(
+                            ChannelType.GuildText, 
+                            ChannelType.GuildAnnouncement, 
+                            ChannelType.PublicThread, 
+                            ChannelType.PrivateThread, 
+                            ChannelType.GuildVoice
+                        )
+                        .setRequired(true)
+                )
+                .addChannelOption(opt => 
+                    opt.setName('log')
+                        .setDescription('Where to send filled forms')
+                        .addChannelTypes(
+                            ChannelType.GuildText, 
+                            ChannelType.GuildAnnouncement, 
+                            ChannelType.PublicThread, 
+                            ChannelType.PrivateThread, 
+                            ChannelType.GuildVoice
+                        )
+                        .setRequired(true)
+                )
+                .addBooleanOption(opt => opt.setName('publish').setDescription('Publish the application message? (Announcements only)'))
         )
         // 2. DISABLE
         .addSubcommand(sub =>
@@ -36,12 +59,17 @@ module.exports = {
         if (sub === 'enable') {
             const appChannel = interaction.options.getChannel('channel');
             const logChannel = interaction.options.getChannel('log');
+            const publish = interaction.options.getBoolean('publish') || false;
 
+            // Check bot permissions in target channels
             if (!appChannel.viewable || !logChannel.viewable) {
-                return interaction.reply({ content: '<:no:1297814819105144862> I need permission to see/send in those channels.', flags: MessageFlags.Ephemeral });
+                return interaction.reply({ 
+                    content: '<:no:1297814819105144862> I need permission to see/send in those channels.', 
+                    flags: MessageFlags.Ephemeral 
+                });
             }
 
-            // 1. Create the Embed (With Standard Text)
+            // 1. Create the Embed
             const embed = new EmbedBuilder()
                 .setTitle('📝 Staff Applications Open')
                 .setDescription(`We are currently looking for dedicated members to join our staff team! If you are passionate about this community and want to help keep it safe and fun, please apply below.
@@ -63,23 +91,40 @@ Click the **"Apply Now"** button below to start your application.`)
 
             const row = new ActionRowBuilder().addComponents(btn);
 
-            // 2. Send Message
-            const msg = await appChannel.send({ embeds: [embed], components: [row] });
+            try {
+                // 2. Send Message
+                const msg = await appChannel.send({ embeds: [embed], components: [row] });
 
-            // 3. Save to DB
-            await ApplicationConfig.findOneAndUpdate(
-                { guildId: interaction.guild.id },
-                { 
-                    guildId: interaction.guild.id,
-                    appChannelId: appChannel.id,
-                    logChannelId: logChannel.id,
-                    messageId: msg.id,
-                    enabled: true
-                },
-                { upsert: true }
-            );
+                // 3. Auto-Publish Logic
+                if (publish && appChannel.type === ChannelType.GuildAnnouncement) {
+                    await msg.crosspost();
+                }
 
-            return interaction.reply({ content: `<:yes:1297814648417943565> Applications opened in ${appChannel} and logs set to ${logChannel}.`, flags: MessageFlags.Ephemeral });
+                // 4. Save to DB
+                await ApplicationConfig.findOneAndUpdate(
+                    { guildId: interaction.guild.id },
+                    { 
+                        guildId: interaction.guild.id,
+                        appChannelId: appChannel.id,
+                        logChannelId: logChannel.id,
+                        messageId: msg.id,
+                        enabled: true
+                    },
+                    { upsert: true }
+                );
+
+                return interaction.reply({ 
+                    content: `<:yes:1297814648417943565> Applications opened in ${appChannel}${publish ? ' (Published)' : ''} and logs set to ${logChannel}.`, 
+                    flags: MessageFlags.Ephemeral 
+                });
+
+            } catch (error) {
+                console.error(error);
+                return interaction.reply({ 
+                    content: '<:no:1297814819105144862> Failed to setup application system. Check my permissions.', 
+                    flags: MessageFlags.Ephemeral 
+                });
+            }
         }
 
         // --- DISABLE ---
@@ -87,7 +132,10 @@ Click the **"Apply Now"** button below to start your application.`)
             const config = await ApplicationConfig.findOne({ guildId: interaction.guild.id });
 
             if (!config || !config.enabled) {
-                return interaction.reply({ content: '<:no:1297814819105144862> Applications are already disabled or not set up.', flags: MessageFlags.Ephemeral });
+                return interaction.reply({ 
+                    content: '<:no:1297814819105144862> Applications are already disabled or not set up.', 
+                    flags: MessageFlags.Ephemeral 
+                });
             }
 
             // 1. Try to find the old message and edit it to "Closed"
@@ -118,10 +166,14 @@ Click the **"Apply Now"** button below to start your application.`)
 
             // 2. Update DB
             config.enabled = false;
-            config.logChannelId = null; 
+            // We usually keep the log channel in DB in case you re-enable, but setting it to null is fine if that's your preference
+            // config.logChannelId = null; 
             await config.save();
 
-            return interaction.reply({ content: '<:yes:1297814648417943565> Applications disabled.', flags: MessageFlags.Ephemeral });
+            return interaction.reply({ 
+                content: '<:yes:1297814648417943565> Applications disabled.', 
+                flags: MessageFlags.Ephemeral 
+            });
         }
     }
 };

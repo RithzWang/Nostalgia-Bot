@@ -10,7 +10,7 @@ module.exports = {
         .addSubcommand(sub => 
             sub.setName('enable')
                .setDescription('Create the leaderboard message')
-               .addChannelOption(opt => opt.setName('channel').setDescription('Where to post?').addChannelTypes(ChannelType.GuildText))
+               .addChannelOption(opt => opt.setName('channel').setDescription('Where to post? (Leave empty for default)').addChannelTypes(ChannelType.GuildText))
         )
         // 2. RESET
         .addSubcommand(sub => 
@@ -37,14 +37,28 @@ module.exports = {
         // --- ENABLE ---
         if (sub === 'enable') {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-            const channel = interaction.options.getChannel('channel') || interaction.channel;
+            
+            // 1. Try to get the selected channel
+            let channel = interaction.options.getChannel('channel');
+
+            // 2. If no channel selected, try your SPECIFIC ID
+            if (!channel) {
+                try {
+                    channel = await interaction.guild.channels.fetch('1456345518962905171');
+                } catch (error) {
+                    console.log("Could not fetch hardcoded channel, falling back to current channel.");
+                }
+            }
+
+            // 3. If still no channel, use the one the command was run in
+            if (!channel) channel = interaction.channel;
 
             let data = await ThanksLB.findOne({ guildId });
             if (!data) data = new ThanksLB({ guildId, startDate: Date.now() });
 
             const embed = new EmbedBuilder()
                 .setTitle('Thanks Leaderboard')
-                .setDescription('No data yet.') 
+                .setDescription('`1.`') 
                 .setColor(0x808080)
                 .setFooter({ text: 'Page 1' });
 
@@ -56,6 +70,7 @@ module.exports = {
                 new ButtonBuilder().setCustomId('thanks_next').setEmoji('➡️').setStyle(ButtonStyle.Secondary).setDisabled(true)
             );
 
+            // Send to the resolved channel
             const msg = await channel.send({ embeds: [embed], components: [row] });
 
             data.channelId = channel.id;

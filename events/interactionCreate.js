@@ -130,7 +130,7 @@ module.exports = {
                         }
                     }
                 }
-                let res = (added.length || removed.length) ? '' : 'No changes.';
+                let res = (added.length || removed.length) ? '' : 'No changes 🤔';
                 if (added.length) res += `<:yes:1297814648417943565> **Added:** ${added.join(', ')}\n`;
                 if (removed.length) res += `<:no:1297814819105144862> **Removed:** ${removed.join(', ')}`;
                 return interaction.editReply({ content: res });

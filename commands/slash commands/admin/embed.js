@@ -21,10 +21,7 @@ module.exports = {
                         .setDescription('Where to send/edit it?')
                         .addChannelTypes(
                             ChannelType.GuildText, 
-                            ChannelType.GuildAnnouncement, 
-                            ChannelType.PublicThread, 
-                            ChannelType.PrivateThread, 
-                            ChannelType.GuildVoice
+                            ChannelType.GuildAnnouncement
                         )
                 )
                 .addStringOption(option => 
@@ -51,7 +48,10 @@ module.exports = {
                 .addChannelOption(option =>
                     option.setName('channel')
                         .setDescription('Which channel is the message in?')
-                        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement, ChannelType.PublicThread, ChannelType.PrivateThread, ChannelType.GuildVoice)
+                        .addChannelTypes(
+                            ChannelType.GuildText, 
+                            ChannelType.GuildAnnouncement
+                        )
                 )
         ),
 

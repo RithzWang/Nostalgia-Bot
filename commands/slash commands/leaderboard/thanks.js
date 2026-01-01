@@ -53,23 +53,28 @@ module.exports = {
 
         // 1. Create Embed
         const embed = new EmbedBuilder()
-            .setTitle('Thanks')
-            .setDescription(`<@${userId}> thanked <@${target.id}>\n\nThey now have **${newCount}** thanks.\nSee leaderboard ${channelLink}`)
+            .setTitle('💖 Thank You')
+            .setDescription(`<@${userId}> thanked <@${target.id}>\nThey now have **${newCount}** thanks.\n\nSee leaderboard ${channelLink}`)
             .setColor(0x808080);
 
-        // 2. Create Time Button (GMT+7)
-        const timeStr = new Date().toLocaleString('en-GB', { 
+        // 2. Create Time Button (dd/mm/yyyy, hh:mm:ss (GMT+7))
+        const now = new Date();
+        const timeStr = now.toLocaleString('en-GB', { 
             timeZone: 'Asia/Bangkok', 
             hour12: false,
-            day: '2-digit', month: '2-digit', year: 'numeric', 
-            hour: '2-digit', minute: '2-digit'
-        });
+            day: '2-digit', 
+            month: '2-digit', 
+            year: 'numeric', 
+            hour: '2-digit', 
+            minute: '2-digit',
+            second: '2-digit'
+        }) + ' (GMT+7)';
 
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId('thanks_time')
                 .setLabel(timeStr)
-                .setStyle(ButtonStyle.Secondary) // Grey
+                .setStyle(ButtonStyle.Secondary)
                 .setDisabled(true)
         );
 

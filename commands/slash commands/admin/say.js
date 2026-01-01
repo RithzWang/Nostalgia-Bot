@@ -24,7 +24,7 @@ module.exports = {
                 .addChannelOption(option =>
                     option.setName('channel')
                         .setDescription('Where to send it? Empty = Here')
-                        .addChannelTypes(ChannelType.GuildText)
+                        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
                 )
         )
 

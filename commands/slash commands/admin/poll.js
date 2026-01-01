@@ -61,30 +61,43 @@ module.exports = {
         const duration = interaction.options.getInteger('duration') || 24;
         const allowMultiselect = interaction.options.getBoolean('multiselect') || false;
         const publish = interaction.options.getBoolean('publish') || false;
-        const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
-
-        const answers = [];
-        for (let i = 1; i <= 10; i++) {
-            const text = interaction.options.getString(`answer${i}`);
-            const emoji = interaction.options.getString(`emoji${i}`);
-            if (text) {
-                const answerObj = { text: text };
-                if (emoji) answerObj.emoji = emoji.trim(); 
-                answers.push(answerObj);
-            }
-        }
-
-        const pollData = {
-            question: { text: questionText },
-            answers: answers,
-            duration: duration,
-            allowMultiselect: allowMultiselect,
-        };
+        
+        // 1. Get the channel (or default to current)
+        let targetChannel = interaction.options.getChannel('channel') || interaction.channel;
 
         try {
+            // ⚠️ CRITICAL FIX: Fetch the FULL channel object to prevent "Invalid Channel" errors
+            targetChannel = await interaction.guild.channels.fetch(targetChannel.id);
+
+            // 2. Strict Type Check (Text & Announcement Only)
+            const validTypes = [ChannelType.GuildText, ChannelType.GuildAnnouncement];
+            if (!validTypes.includes(targetChannel.type)) {
+                return interaction.reply({ 
+                    content: `<:no:1297814819105144862> Polls can only be sent to **Text** or **Announcement** channels.`, 
+                    flags: MessageFlags.Ephemeral 
+                });
+            }
+
+            const answers = [];
+            for (let i = 1; i <= 10; i++) {
+                const text = interaction.options.getString(`answer${i}`);
+                const emoji = interaction.options.getString(`emoji${i}`);
+                if (text) {
+                    const answerObj = { text: text };
+                    if (emoji) answerObj.emoji = emoji.trim(); 
+                    answers.push(answerObj);
+                }
+            }
+
+            const pollData = {
+                question: { text: questionText },
+                answers: answers,
+                duration: duration,
+                allowMultiselect: allowMultiselect,
+            };
+
             const sentPoll = await targetChannel.send({ poll: pollData });
 
-            // AUTO-PUBLISH logic
             if (publish && targetChannel.type === ChannelType.GuildAnnouncement) {
                 await sentPoll.crosspost();
             }
@@ -96,8 +109,12 @@ module.exports = {
 
         } catch (error) {
             console.error(error);
+            // Handle permission errors gracefully
+            if (error.code === 50013) {
+                 return interaction.reply({ content: '<:no:1297814819105144862> I am missing permissions in that channel (Send Messages or Send Polls).', flags: MessageFlags.Ephemeral });
+            }
             await interaction.reply({ 
-                content: '<:no:1297814819105144862> Failed to create poll. Ensure emojis are valid and I have "Send Polls" permission.', 
+                content: `<:no:1297814819105144862> Failed to create poll. Error: \`${error.message}\``, 
                 flags: MessageFlags.Ephemeral 
             });
         }

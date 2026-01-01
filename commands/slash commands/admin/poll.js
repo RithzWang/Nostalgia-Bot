@@ -17,10 +17,7 @@ module.exports = {
                 .setDescription('Where to post this poll?')
                 .addChannelTypes(
                     ChannelType.GuildText, 
-                    ChannelType.GuildAnnouncement, 
-                    ChannelType.PublicThread, 
-                    ChannelType.PrivateThread, 
-                    ChannelType.GuildVoice
+                    ChannelType.GuildAnnouncement
                 )
         )
         .addIntegerOption(option =>
@@ -39,7 +36,7 @@ module.exports = {
         .addBooleanOption(option => option.setName('multiselect').setDescription('Allow multiple votes? (Default: False)'))
         .addBooleanOption(option => option.setName('publish').setDescription('Publish if sent to an Announcement channel?'))
 
-        // --- 3. EMOJIS & EXTRA ANSWERS (Condensed for brevity, same as your logic) ---
+        // --- 3. EMOJIS & EXTRA ANSWERS ---
         .addStringOption(option => option.setName('emoji1').setDescription('Emoji for answer 1'))
         .addStringOption(option => option.setName('emoji2').setDescription('Emoji for answer 2'))
         .addStringOption(option => option.setName('answer3').setDescription('Answer 3'))

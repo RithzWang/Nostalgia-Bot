@@ -22,13 +22,7 @@ module.exports = {
             sub.setName('disable')
                .setDescription('Stop and delete the leaderboard data')
         )
-        // 4. REFILL LIMIT
-        .addSubcommand(sub => 
-            sub.setName('refill-limit')
-               .setDescription('Reset the daily limit for a specific user')
-               .addUserOption(opt => opt.setName('user').setDescription('The user to refill').setRequired(true))
-        )
-        // 5. REMOVE
+        // 4. REMOVE
         .addSubcommand(sub => 
             sub.setName('remove')
                .setDescription('Remove a user or decrease their thanks count')
@@ -52,7 +46,7 @@ module.exports = {
                 .setTitle('Thanks Leaderboard')
                 .setDescription('No data yet.') 
                 .setColor(0x808080)
-                .setFooter({ text: 'Page 1' }); // <--- CLEAN FOOTER (No reset text)
+                .setFooter({ text: 'Page 1' });
 
             const dateStr = new Date(data.startDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Bangkok' });
 
@@ -92,20 +86,6 @@ module.exports = {
             await data.save();
             await updateLeaderboardVisual(interaction.client, guildId);
             return interaction.reply({ content: `<:yes:1297814648417943565> Updated **${target.username}**.`, flags: MessageFlags.Ephemeral });
-        }
-
-        // --- REFILL LIMIT ---
-        if (sub === 'refill-limit') {
-            const target = interaction.options.getUser('user');
-            const data = await ThanksLB.findOne({ guildId });
-            if (!data) return interaction.reply({ content: 'Leaderboard not set up.', flags: MessageFlags.Ephemeral });
-            const usageIndex = data.usage.findIndex(u => u.userId === target.id);
-            if (usageIndex !== -1) {
-                data.usage[usageIndex].thanksUsed = 0;
-                await data.save();
-                return interaction.reply({ content: `<:yes:1297814648417943565> Refilled limits for **${target.username}**.`, flags: MessageFlags.Ephemeral });
-            }
-            return interaction.reply({ content: 'User has not used any thanks today.', flags: MessageFlags.Ephemeral });
         }
 
         // --- RESET ---
@@ -164,7 +144,7 @@ async function updateLeaderboardVisual(client, guildId, page = 1) {
             .setDescription(description)
             .setColor(0x808080)
             .setTimestamp(null)
-            .setFooter({ text: `Page ${page} of ${totalPages}` }); // <--- CLEAN FOOTER (No reset text)
+            .setFooter({ text: `Page ${page} of ${totalPages}` });
 
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('thanks_prev').setEmoji('⬅️').setStyle(ButtonStyle.Secondary).setDisabled(page === 1),

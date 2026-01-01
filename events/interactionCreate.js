@@ -9,18 +9,22 @@ const {
     TextInputStyle,
     // Discord Components v2 Builders
     ContainerBuilder,
-    TextDisplayBuilder,
-    SeparatorBuilder
+    TextDisplayBuilder
 } = require('discord.js');
 
+// --- IMPORTS ---
 const Giveaway = require('../src/models/Giveaway');
 const ApplicationConfig = require('../src/models/ApplicationConfig');
+const ThanksLB = require('../src/models/ThanksLB'); // <--- NEW IMPORT
+const { updateLeaderboardVisual } = require('../commands/slash commands/social/thanksLeaderboard'); // <--- NEW IMPORT
 
 module.exports = {
     name: 'interactionCreate',
     async execute(interaction, client) {
 
-        // --- 1. SLASH COMMAND HANDLER ---
+        // ===============================================
+        // 1. SLASH COMMAND HANDLER
+        // ===============================================
         if (interaction.isChatInputCommand()) {
             const command = client.slashCommands.get(interaction.commandName);
             if (!command) return;
@@ -35,7 +39,9 @@ module.exports = {
             }
         }
 
-        // --- 2. BUTTON HANDLERS ---
+        // ===============================================
+        // 2. BUTTON HANDLERS
+        // ===============================================
         if (interaction.isButton()) {
 
             // A. ROLE BUTTONS
@@ -48,18 +54,23 @@ module.exports = {
                 if (!role) return interaction.reply({ content: '<:no:1297814819105144862> Role not found.', flags: MessageFlags.Ephemeral });
 
                 const hasRole = interaction.member.roles.cache.has(roleId);
-                if (mode === '1') {
-                    if (hasRole) return interaction.reply({ content: `<:no:1297814819105144862> Already verified.`, flags: MessageFlags.Ephemeral });
-                    await interaction.member.roles.add(role);
-                    return interaction.reply({ content: `<:yes:1297814648417943565> **Verified as** ${role.name}.`, flags: MessageFlags.Ephemeral });
-                } else {
-                    if (hasRole) {
-                        await interaction.member.roles.remove(role);
-                        return interaction.reply({ content: `<:yes:1297814648417943565> **Removed** ${role.name}.`, flags: MessageFlags.Ephemeral });
-                    } else {
+                
+                try {
+                    if (mode === '1') {
+                        if (hasRole) return interaction.reply({ content: `<:no:1297814819105144862> Already verified.`, flags: MessageFlags.Ephemeral });
                         await interaction.member.roles.add(role);
-                        return interaction.reply({ content: `<:yes:1297814648417943565> **Added** ${role.name}.`, flags: MessageFlags.Ephemeral });
+                        return interaction.reply({ content: `<:yes:1297814648417943565> **Verified as** ${role.name}.`, flags: MessageFlags.Ephemeral });
+                    } else {
+                        if (hasRole) {
+                            await interaction.member.roles.remove(role);
+                            return interaction.reply({ content: `<:yes:1297814648417943565> **Removed** ${role.name}.`, flags: MessageFlags.Ephemeral });
+                        } else {
+                            await interaction.member.roles.add(role);
+                            return interaction.reply({ content: `<:yes:1297814648417943565> **Added** ${role.name}.`, flags: MessageFlags.Ephemeral });
+                        }
                     }
+                } catch (e) {
+                    return interaction.reply({ content: "❌ I cannot manage this role.", flags: MessageFlags.Ephemeral });
                 }
             }
 
@@ -106,9 +117,27 @@ module.exports = {
                 );
                 await interaction.showModal(modal);
             }
+
+            // D. THANKS LEADERBOARD PAGINATION (⬅️ / ➡️)
+            if (['thanks_prev', 'thanks_next'].includes(interaction.customId)) {
+                // Acknowledge the click so the button doesn't say "Interaction Failed"
+                await interaction.deferUpdate();
+
+                const data = await ThanksLB.findOne({ guildId: interaction.guild.id });
+                if (data) {
+                    let newPage = data.currentPage;
+                    if (interaction.customId === 'thanks_prev') newPage--;
+                    else newPage++;
+
+                    // Call the helper function to update the message visually
+                    await updateLeaderboardVisual(client, interaction.guild.id, newPage);
+                }
+            }
         }
 
-        // --- 3. SELECT MENU HANDLERS (Role Menu Restored) ---
+        // ===============================================
+        // 3. SELECT MENU HANDLERS
+        // ===============================================
         if (interaction.isStringSelectMenu()) {
             if (interaction.customId === 'role_select_menu') {
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -119,17 +148,21 @@ module.exports = {
                 for (const roleId of allRoleIds) {
                     const role = interaction.guild.roles.cache.get(roleId);
                     if (!role) continue;
-                    if (selectedRoleIds.includes(roleId)) {
-                        if (!interaction.member.roles.cache.has(roleId)) {
-                            await interaction.member.roles.add(role);
-                            added.push(role.name);
+                    
+                    const hasRole = interaction.member.roles.cache.has(roleId);
+                    try {
+                        if (selectedRoleIds.includes(roleId)) {
+                            if (!hasRole) {
+                                await interaction.member.roles.add(role);
+                                added.push(role.name);
+                            }
+                        } else {
+                            if (hasRole) {
+                                await interaction.member.roles.remove(role);
+                                removed.push(role.name);
+                            }
                         }
-                    } else {
-                        if (interaction.member.roles.cache.has(roleId)) {
-                            await interaction.member.roles.remove(role);
-                            removed.push(role.name);
-                        }
-                    }
+                    } catch (e) {}
                 }
                 let res = (added.length || removed.length) ? '' : 'No changes 🤔';
                 if (added.length) res += `<:yes:1297814648417943565> **Added:** ${added.join(', ')}\n`;
@@ -138,41 +171,47 @@ module.exports = {
             }
         }
 
-        // --- 4. MODAL SUBMISSION (Stable V2 Layout) ---
+        // ===============================================
+        // 4. MODAL SUBMISSION
+        // ===============================================
         if (interaction.isModalSubmit() && interaction.customId === 'application_modal') {
             const config = await ApplicationConfig.findOne({ guildId: interaction.guild.id });
             const logChannel = interaction.guild.channels.cache.get(config?.logChannelId);
             if (!logChannel) return interaction.reply({ content: 'Error: Log channel not found.', flags: MessageFlags.Ephemeral });
 
-            // Using TextDisplayBuilders
-            const titleText = new TextDisplayBuilder().setContent(`### 📄 New Staff Application`);
-            const detailsText = new TextDisplayBuilder().setContent(
-                `**User:** <@${interaction.user.id}>\n` +
-                `**Name:** ${interaction.fields.getTextInputValue('app_name')}\n` +
-                `**Age:** ${interaction.fields.getTextInputValue('app_age')}\n` +
-                `**Country:** ${interaction.fields.getTextInputValue('app_country')}\n` +
-                `**Time Zone:** ${interaction.fields.getTextInputValue('app_timezone')}`
-            );
-            const reasonText = new TextDisplayBuilder().setContent(`**Reason For Applying:**\n${interaction.fields.getTextInputValue('app_reason')}`);
+            // Using TextDisplayBuilders (V2)
+            try {
+                const titleText = new TextDisplayBuilder().setContent(`### 📄 New Staff Application`);
+                const detailsText = new TextDisplayBuilder().setContent(
+                    `**User:** <@${interaction.user.id}>\n` +
+                    `**Name:** ${interaction.fields.getTextInputValue('app_name')}\n` +
+                    `**Age:** ${interaction.fields.getTextInputValue('app_age')}\n` +
+                    `**Country:** ${interaction.fields.getTextInputValue('app_country')}\n` +
+                    `**Time Zone:** ${interaction.fields.getTextInputValue('app_timezone')}`
+                );
+                const reasonText = new TextDisplayBuilder().setContent(`**Reason For Applying:**\n${interaction.fields.getTextInputValue('app_reason')}`);
 
-            // Stable container logic: Text displays go here
-            const container = new ContainerBuilder().addTextDisplayComponents(titleText, detailsText, reasonText);
+                const container = new ContainerBuilder().addTextDisplayComponents(titleText, detailsText, reasonText);
 
-            const timeBtn = new ButtonBuilder()
-                .setCustomId('time_disabled')
-                .setDisabled(true)
-                .setStyle(ButtonStyle.Secondary)
-                .setLabel(`${new Date().toLocaleString('en-GB', { timeZone: 'Asia/Bangkok', hour12: false })} (GMT+7)`);
+                const timeBtn = new ButtonBuilder()
+                    .setCustomId('time_disabled')
+                    .setDisabled(true)
+                    .setStyle(ButtonStyle.Secondary)
+                    .setLabel(`${new Date().toLocaleString('en-GB', { timeZone: 'Asia/Bangkok', hour12: false })} (GMT+7)`);
 
-            await logChannel.send({ 
-                flags: [MessageFlags.IsComponentsV2], 
-                components: [
-                    container,
-                    new ActionRowBuilder().addComponents(timeBtn)
-                ] 
-            });
+                await logChannel.send({ 
+                    flags: [MessageFlags.IsComponentsV2], 
+                    components: [
+                        container,
+                        new ActionRowBuilder().addComponents(timeBtn)
+                    ] 
+                });
 
-            return interaction.reply({ content: '<:yes:1297814648417943565> Application submitted!', flags: MessageFlags.Ephemeral });
+                return interaction.reply({ content: '<:yes:1297814648417943565> Application submitted!', flags: MessageFlags.Ephemeral });
+            } catch (error) {
+                console.error("Failed to send V2 component application:", error);
+                return interaction.reply({ content: '❌ Failed to submit application.', flags: MessageFlags.Ephemeral });
+            }
         }
     }
 };

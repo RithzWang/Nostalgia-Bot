@@ -4,7 +4,8 @@ const {
     ButtonBuilder, 
     ButtonStyle, 
     ActionRowBuilder,
-    MessageFlags 
+    MessageFlags,
+    ChannelType
 } = require('discord.js');
 
 module.exports = {
@@ -21,7 +22,14 @@ module.exports = {
                 .addChannelOption(option => 
                     option.setName('channel')
                     .setDescription('The channel where the message is.')
-                    .setRequired(true))
+                    .setRequired(true)
+                    .addChannelTypes(
+                        ChannelType.GuildText, 
+                        ChannelType.GuildAnnouncement, 
+                        ChannelType.PublicThread, 
+                        ChannelType.PrivateThread, 
+                        ChannelType.GuildVoice
+                    ))
                 .addStringOption(option => 
                     option.setName('message_id')
                     .setDescription('The ID of the message.')
@@ -44,7 +52,6 @@ module.exports = {
                         { name: 'Green (Success)', value: 'Success' },
                         { name: 'Red (Danger)', value: 'Danger' }
                     ))
-                // NEW OPTION HERE
                 .addBooleanOption(option => 
                     option.setName('verify')
                     .setDescription('True: User gets role but cannot remove it. False: User can toggle role on/off.')
@@ -62,7 +69,14 @@ module.exports = {
                 .addChannelOption(option => 
                     option.setName('channel')
                     .setDescription('The channel where the message is.')
-                    .setRequired(true))
+                    .setRequired(true)
+                    .addChannelTypes(
+                        ChannelType.GuildText, 
+                        ChannelType.GuildAnnouncement, 
+                        ChannelType.PublicThread, 
+                        ChannelType.PrivateThread, 
+                        ChannelType.GuildVoice
+                    ))
                 .addStringOption(option => 
                     option.setName('message_id')
                     .setDescription('The ID of the message.')
@@ -96,11 +110,11 @@ module.exports = {
             const text = interaction.options.getString('text');
             const colorStr = interaction.options.getString('colour');
             const emoji = interaction.options.getString('emoji');
-            const isVerify = interaction.options.getBoolean('verify'); // Get the verify setting
+            const isVerify = interaction.options.getBoolean('verify'); 
 
             if (role.position >= interaction.guild.members.me.roles.highest.position) {
                 return interaction.reply({ 
-                    content: '<:checkno:1447177716205092966> That role is higher than my highest role. I cannot give it.', 
+                    content: '<:no:1297814819105144862> That role is higher than my highest role. I cannot give it.', 
                     flags: MessageFlags.Ephemeral 
                 });
             }
@@ -113,7 +127,6 @@ module.exports = {
                     'Danger': ButtonStyle.Danger
                 };
 
-                // STORE SETTING IN ID: role_ID_1 (Verify) or role_ID_0 (Toggle)
                 const modeFlag = isVerify ? '1' : '0';
                 const button = new ButtonBuilder()
                     .setCustomId(`role_${role.id}_${modeFlag}`) 
@@ -161,19 +174,17 @@ module.exports = {
         // ==========================================
         } else if (subcommand === 'remove') {
             try {
-                // We check if it starts with the role ID (ignores the _0 or _1 at the end)
                 const targetPrefix = `role_${role.id}`;
                 let found = false;
 
                 const newComponents = message.components.map(row => {
                     const newRow = ActionRowBuilder.from(row);
                     const filteredComponents = newRow.components.filter(component => {
-                        // Check if the ID *starts with* our target
                         if (component.data.custom_id && component.data.custom_id.startsWith(targetPrefix)) {
                             found = true;
-                            return false; // Remove it
+                            return false; 
                         }
-                        return true; // Keep it
+                        return true; 
                     });
                     newRow.setComponents(filteredComponents);
                     return newRow;

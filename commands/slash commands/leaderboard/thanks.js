@@ -1,11 +1,11 @@
-const { SlashCommandBuilder, MessageFlags } = require('discord.js');
+const { SlashCommandBuilder, MessageFlags, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const ThanksLB = require('../../../src/models/ThanksLB');
 const { updateLeaderboardVisual } = require('./thanksLeaderboard');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('thanks')
-        .setDescription('Give a thanks to someone') // Removed "(Max 3 per day)"
+        .setDescription('Give a thanks to someone')
         .addUserOption(opt => 
             opt.setName('to')
                .setDescription('The user to thank')
@@ -31,16 +31,16 @@ module.exports = {
             return interaction.reply({ content: "⚠️ The Thanks system is not enabled yet.", flags: MessageFlags.Ephemeral });
         }
 
-        // --- PROCESS THANKS (Unlimited) ---
-        // We no longer check usage arrays or timestamps. Just add the point.
-
+        // --- PROCESS THANKS ---
         const targetIndex = data.users.findIndex(u => u.userId === target.id);
+        let newCount = 0;
+
         if (targetIndex === -1) {
-            // New person receiving thanks
             data.users.push({ userId: target.id, count: 1 });
+            newCount = 1;
         } else {
-            // Existing person
             data.users[targetIndex].count += 1;
+            newCount = data.users[targetIndex].count;
         }
 
         await data.save();
@@ -48,9 +48,31 @@ module.exports = {
         // Update the visual leaderboard
         updateLeaderboardVisual(interaction.client, guildId, data.currentPage); 
 
-        // Reply (Removed "You have X thanks left")
-        return interaction.reply({ 
-            content: `💖 **${interaction.user.displayName}** thanked <@${target.id}>!\nThey now have **${targetIndex === -1 ? 1 : data.users[targetIndex].count}** thanks.` 
+        // --- PREPARE RESPONSE ---
+        const channelLink = data.channelId ? `<#${data.channelId}>` : 'the leaderboard channel';
+
+        // 1. Create Embed
+        const embed = new EmbedBuilder()
+            .setTitle('Thanks')
+            .setDescription(`<@${userId}> thanked <@${target.id}>\n\nThey now have **${newCount}** thanks.\nSee leaderboard ${channelLink}`)
+            .setColor(0x808080);
+
+        // 2. Create Time Button (GMT+7)
+        const timeStr = new Date().toLocaleString('en-GB', { 
+            timeZone: 'Asia/Bangkok', 
+            hour12: false,
+            day: '2-digit', month: '2-digit', year: 'numeric', 
+            hour: '2-digit', minute: '2-digit'
         });
+
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('thanks_time')
+                .setLabel(timeStr)
+                .setStyle(ButtonStyle.Secondary) // Grey
+                .setDisabled(true)
+        );
+
+        return interaction.reply({ embeds: [embed], components: [row] });
     }
 };

@@ -7,27 +7,21 @@ module.exports = {
         .setDefaultMemberPermissions(PermissionFlagsBits.SendPolls)
 
         // --- 1. REQUIRED OPTIONS ---
-        .addStringOption(option =>
-            option.setName('question')
-                .setDescription('The question to ask')
-                .setRequired(true)
-        )
-        .addStringOption(option => 
-            option.setName('answer1')
-                .setDescription('First answer')
-                .setRequired(true)
-        )
-        .addStringOption(option => 
-            option.setName('answer2')
-                .setDescription('Second answer')
-                .setRequired(true)
-        )
+        .addStringOption(option => option.setName('question').setDescription('The question to ask').setRequired(true))
+        .addStringOption(option => option.setName('answer1').setDescription('First answer').setRequired(true))
+        .addStringOption(option => option.setName('answer2').setDescription('Second answer').setRequired(true))
 
         // --- 2. SETTINGS ---
         .addChannelOption(option =>
             option.setName('channel')
-                .setDescription('Where to post this poll? Empty = Here')
-                .addChannelTypes(ChannelType.GuildText)
+                .setDescription('Where to post this poll?')
+                .addChannelTypes(
+                    ChannelType.GuildText, 
+                    ChannelType.GuildAnnouncement, 
+                    ChannelType.PublicThread, 
+                    ChannelType.PrivateThread, 
+                    ChannelType.GuildVoice
+                )
         )
         .addIntegerOption(option =>
             option.setName('duration')
@@ -42,57 +36,42 @@ module.exports = {
                     { name: '1 Week', value: 168 }
                 )
         )
-        .addBooleanOption(option =>
-            option.setName('multiselect')
-                .setDescription('Allow multiple votes? (Default: False)')
-        )
+        .addBooleanOption(option => option.setName('multiselect').setDescription('Allow multiple votes? (Default: False)'))
+        .addBooleanOption(option => option.setName('publish').setDescription('Publish if sent to an Announcement channel?'))
 
-        // --- 3. EMOJIS FOR REQUIRED ANSWERS ---
+        // --- 3. EMOJIS & EXTRA ANSWERS (Condensed for brevity, same as your logic) ---
         .addStringOption(option => option.setName('emoji1').setDescription('Emoji for answer 1'))
         .addStringOption(option => option.setName('emoji2').setDescription('Emoji for answer 2'))
-
-        // --- 4. EXTRA ANSWERS (3-10) ---
-        // We chain these in pairs (Answer + Emoji) so they appear logically in the menu
         .addStringOption(option => option.setName('answer3').setDescription('Answer 3'))
         .addStringOption(option => option.setName('emoji3').setDescription('Emoji for answer 3'))
-        
         .addStringOption(option => option.setName('answer4').setDescription('Answer 4'))
         .addStringOption(option => option.setName('emoji4').setDescription('Emoji for answer 4'))
-
         .addStringOption(option => option.setName('answer5').setDescription('Answer 5'))
         .addStringOption(option => option.setName('emoji5').setDescription('Emoji for answer 5'))
-
         .addStringOption(option => option.setName('answer6').setDescription('Answer 6'))
         .addStringOption(option => option.setName('emoji6').setDescription('Emoji for answer 6'))
-
         .addStringOption(option => option.setName('answer7').setDescription('Answer 7'))
         .addStringOption(option => option.setName('emoji7').setDescription('Emoji for answer 7'))
-
         .addStringOption(option => option.setName('answer8').setDescription('Answer 8'))
         .addStringOption(option => option.setName('emoji8').setDescription('Emoji for answer 8'))
-
         .addStringOption(option => option.setName('answer9').setDescription('Answer 9'))
         .addStringOption(option => option.setName('emoji9').setDescription('Emoji for answer 9'))
-
         .addStringOption(option => option.setName('answer10').setDescription('Answer 10'))
         .addStringOption(option => option.setName('emoji10').setDescription('Emoji for answer 10')),
 
     async execute(interaction) {
-        // 1. Get Options
         const questionText = interaction.options.getString('question');
         const duration = interaction.options.getInteger('duration') || 24;
         const allowMultiselect = interaction.options.getBoolean('multiselect') || false;
+        const publish = interaction.options.getBoolean('publish') || false;
         const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
 
-        // 2. Build Answers (Loop increased to 10)
         const answers = [];
         for (let i = 1; i <= 10; i++) {
             const text = interaction.options.getString(`answer${i}`);
             const emoji = interaction.options.getString(`emoji${i}`);
-
             if (text) {
                 const answerObj = { text: text };
-                // Only add emoji if provided and not empty
                 if (emoji) answerObj.emoji = emoji.trim(); 
                 answers.push(answerObj);
             }
@@ -106,19 +85,22 @@ module.exports = {
         };
 
         try {
-            // STEP A: Send the poll
-            await targetChannel.send({ poll: pollData });
+            const sentPoll = await targetChannel.send({ poll: pollData });
 
-            // STEP B: Confirm
+            // AUTO-PUBLISH logic
+            if (publish && targetChannel.type === ChannelType.GuildAnnouncement) {
+                await sentPoll.crosspost();
+            }
+
             await interaction.reply({ 
-                content: `<:yes:1297814648417943565> I created a poll in ${targetChannel}`, 
+                content: `<:yes:1297814648417943565> Poll created in ${targetChannel}.${publish ? ' (Published)' : ''}`, 
                 flags: MessageFlags.Ephemeral 
             });
 
         } catch (error) {
             console.error(error);
             await interaction.reply({ 
-                content: '<:no:1297814819105144862> Failed to send poll. Check my permissions or ensure the emojis are valid!', 
+                content: '<:no:1297814819105144862> Failed to create poll. Ensure emojis are valid and I have "Send Polls" permission.', 
                 flags: MessageFlags.Ephemeral 
             });
         }

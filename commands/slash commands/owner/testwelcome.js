@@ -5,6 +5,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('testwelcome')
         .setDescription('Simulate the welcome card for a specific user')
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
         .addUserOption(option => 
             option.setName('target')
             .setDescription('The user to generate the image for (default is you)')

@@ -1,7 +1,7 @@
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 
 // Use the same font stack as your welcome image to support Arabic/Thai/Emojis
-const FONT_STACK = '"gg sans Bold", "SF Pro Semi", "SFArabic", "Thonburi", "Apple Gothic", "Hiragino Sans", "Pingfang", "Apple Color Emoji", sans-serif';
+const FONT_STACK = '"gg sans Bold", "Geeza Bold", "Thonburi", "Apple Gothic", "Hiragino Sans", "Pingfang", "Apple Color Emoji", "Symbol", "Apple Symbols", "Noto Symbol", "Noto Symbol 2", "Noto Math", "Noto Hieroglyphs", "Noto Music", sans-serif';
 
 module.exports = {
     

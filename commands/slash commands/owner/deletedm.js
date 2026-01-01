@@ -1,9 +1,10 @@
-const { SlashCommandBuilder, MessageFlags } = require('discord.js');
+const { SlashCommandBuilder, MessageFlags, PermissionFlagsBits } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('deletedm')
         .setDescription('Owner Only: Delete all bot messages in a specific User DM')
+        // 1. Added permission requirement here (hides command from regular members)
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
         .addStringOption(option =>
             option.setName('userid')

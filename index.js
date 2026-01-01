@@ -90,9 +90,22 @@ client.on('clientReady', async () => {
 
 // --- YOUR ORIGINAL WELCOMER ---
 const { createWelcomeImage } = require('./welcomeCanvas.js');
+
 client.on('guildMemberAdd', async (member) => {
     if (member.user.bot || member.guild.id !== serverID) return;
 
+    // 1. Add BOTH Roles Immediately
+    // Role 1: Unverified Role
+    // Role 2: The extra role you requested (1456197055092625573)
+    const rolesToAdd = ['1456238105345527932', '1456197055092625573'];
+    
+    try {
+        await member.roles.add(rolesToAdd);
+    } catch (e) {
+        console.error("Failed to add joining roles:", e);
+    }
+
+    // 2. Set Nickname (Delayed 5s)
     setTimeout(async () => {
         try {
             let newNickname = `🌱 • ${member.displayName}`.substring(0, 32);
@@ -101,6 +114,7 @@ client.on('guildMemberAdd', async (member) => {
     }, 5000);
 
     try {
+        // 3. Handle Invites Tracking
         const newInvites = await member.guild.invites.fetch().catch(() => new Collection());
         let usedInvite = newInvites.find(inv => inv.uses > (invitesCache.get(inv.code) || 0));
         newInvites.each(inv => invitesCache.set(inv.code, inv.uses));
@@ -109,6 +123,7 @@ client.on('guildMemberAdd', async (member) => {
         const inviterId = usedInvite?.inviter ? usedInvite.inviter.id : 'Unknown';
         const inviteCode = usedInvite ? usedInvite.code : 'Unknown';
 
+        // 4. Generate Welcome Image & Embed
         const buffer = await createWelcomeImage(member);
         const attachment = new AttachmentBuilder(buffer, { name: 'welcome-image.png' });
         
@@ -121,13 +136,20 @@ client.on('guildMemberAdd', async (member) => {
             .setColor(colourEmbed);
 
         const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setLabel(`${member.user.id}`).setStyle(ButtonStyle.Secondary).setEmoji('1441133157855395911').setCustomId('hello_disabled').setDisabled(true)
+            new ButtonBuilder()
+                .setLabel(`${member.user.id}`)
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji('1441133157855395911')
+                .setCustomId('hello_disabled')
+                .setDisabled(true)
         );
 
         const channel = client.channels.cache.get(welcomeLog);
         if (channel) channel.send({ embeds: [embed], files: [attachment], components: [row] });
+
     } catch (e) { console.error(e); }
 });
+
 
 // --- YOUR ORIGINAL ROLE LOGGING ---
 client.on('guildMemberUpdate', (oldMember, newMember) => {

@@ -34,7 +34,7 @@ module.exports = {
             } catch (err) {
                 console.error("Sticky Error:", err);
             }
-        }, 5000);
+        }, 3000);
 
         stickyTimers.set(message.channel.id, timer);
     },

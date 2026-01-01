@@ -1,14 +1,4 @@
-const { 
-    SlashCommandBuilder, 
-    PermissionFlagsBits, 
-    EmbedBuilder, 
-    ActionRowBuilder, 
-    ButtonBuilder, 
-    ButtonStyle, 
-    MessageFlags,
-    ChannelType
-} = require('discord.js');
-
+const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, ChannelType } = require('discord.js');
 const ApplicationConfig = require('../../../src/models/ApplicationConfig');
 
 module.exports = {
@@ -16,156 +6,65 @@ module.exports = {
         .setName('application')
         .setDescription('Manage staff applications')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-        // 1. ENABLE
-        .addSubcommand(sub =>
-            sub.setName('enable')
-                .setDescription('Open applications')
-                .addChannelOption(opt => 
-                    opt.setName('channel')
-                        .setDescription('Where to post the Apply button')
-                        .addChannelTypes(
-                            ChannelType.GuildText, 
-                            ChannelType.GuildAnnouncement
-                        )
-                        .setRequired(true)
-                )
-                .addChannelOption(opt => 
-                    opt.setName('log')
-                        .setDescription('Where to send filled forms')
-                        .addChannelTypes(
-                            ChannelType.GuildText, 
-                            ChannelType.GuildAnnouncement
-                        )
-                        .setRequired(true)
-                )
-                .addBooleanOption(opt => opt.setName('publish').setDescription('Publish the application message? (Announcements only)'))
+        .addSubcommand(sub => sub.setName('enable').setDescription('Open applications')
+            .addChannelOption(opt => opt.setName('channel').setDescription('Apply button channel').addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement).setRequired(true))
+            .addChannelOption(opt => opt.setName('log').setDescription('Log channel').addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement).setRequired(true))
+            .addBooleanOption(opt => opt.setName('publish').setDescription('Publish?'))
         )
-        // 2. DISABLE
-        .addSubcommand(sub =>
-            sub.setName('disable')
-                .setDescription('Close applications and disable the button')
-        ),
+        .addSubcommand(sub => sub.setName('disable').setDescription('Close applications')),
 
     async execute(interaction) {
         const sub = interaction.options.getSubcommand();
 
-        // --- ENABLE ---
         if (sub === 'enable') {
-            const appChannel = interaction.options.getChannel('channel');
-            const logChannel = interaction.options.getChannel('log');
-            const publish = interaction.options.getBoolean('publish') || false;
-
-            // Check bot permissions in target channels
-            if (!appChannel.viewable || !logChannel.viewable) {
-                return interaction.reply({ 
-                    content: '<:no:1297814819105144862> I need permission to see/send in those channels.', 
-                    flags: MessageFlags.Ephemeral 
-                });
-            }
-
-            // 1. Create the Embed
-            const embed = new EmbedBuilder()
-                .setTitle('📝 Staff Applications Open')
-                .setDescription(`We are currently looking for dedicated members to join our staff team! If you are passionate about this community and want to help keep it safe and fun, please apply below.
-
-**Requirements:**
-• Must be active on the server.
-• Must be able to handle stressful situations calmly.
-• Must have a clean moderation history.
-• Must be willing to work as a team.
-
-Click the **"Apply Now"** button below to start your application.`)
-                .setColor(0x57F287); // Green
-
-            const btn = new ButtonBuilder()
-                .setCustomId('app_apply_btn')
-                .setLabel('Apply Now')
-                .setStyle(ButtonStyle.Success)
-                .setEmoji('📩');
-
-            const row = new ActionRowBuilder().addComponents(btn);
-
             try {
-                // 2. Send Message
+                // FETCH BOTH CHANNELS (The Fix)
+                const appChannel = await interaction.guild.channels.fetch(interaction.options.getChannel('channel').id);
+                const logChannel = await interaction.guild.channels.fetch(interaction.options.getChannel('log').id);
+                const publish = interaction.options.getBoolean('publish') || false;
+
+                if (!appChannel.viewable || !logChannel.viewable) return interaction.reply({ content: '<:no:1297814819105144862> I need permissions in those channels.', flags: MessageFlags.Ephemeral });
+
+                const embed = new EmbedBuilder()
+                    .setTitle('📝 Staff Applications Open')
+                    .setDescription(`We are currently looking for dedicated members...\n\nClick the **"Apply Now"** button below.`)
+                    .setColor(0x57F287);
+
+                const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('app_apply_btn').setLabel('Apply Now').setStyle(ButtonStyle.Success).setEmoji('📩'));
+
                 const msg = await appChannel.send({ embeds: [embed], components: [row] });
+                if (publish && appChannel.type === ChannelType.GuildAnnouncement) await msg.crosspost();
 
-                // 3. Auto-Publish Logic
-                if (publish && appChannel.type === ChannelType.GuildAnnouncement) {
-                    await msg.crosspost();
-                }
-
-                // 4. Save to DB
                 await ApplicationConfig.findOneAndUpdate(
                     { guildId: interaction.guild.id },
-                    { 
-                        guildId: interaction.guild.id,
-                        appChannelId: appChannel.id,
-                        logChannelId: logChannel.id,
-                        messageId: msg.id,
-                        enabled: true
-                    },
+                    { guildId: interaction.guild.id, appChannelId: appChannel.id, logChannelId: logChannel.id, messageId: msg.id, enabled: true },
                     { upsert: true }
                 );
 
-                return interaction.reply({ 
-                    content: `<:yes:1297814648417943565> Applications opened in ${appChannel}${publish ? ' (Published)' : ''} and logs set to ${logChannel}.`, 
-                    flags: MessageFlags.Ephemeral 
-                });
-
-            } catch (error) {
-                console.error(error);
-                return interaction.reply({ 
-                    content: '<:no:1297814819105144862> Failed to setup application system. Check my permissions.', 
-                    flags: MessageFlags.Ephemeral 
-                });
+                return interaction.reply({ content: `<:yes:1297814648417943565> System enabled in ${appChannel}.`, flags: MessageFlags.Ephemeral });
+            } catch (e) {
+                return interaction.reply({ content: `<:no:1297814819105144862> Error: ${e.message}`, flags: MessageFlags.Ephemeral });
             }
-        }
-
-        // --- DISABLE ---
+        } 
         else if (sub === 'disable') {
             const config = await ApplicationConfig.findOne({ guildId: interaction.guild.id });
+            if (!config || !config.enabled) return interaction.reply({ content: '<:no:1297814819105144862> Not enabled.', flags: MessageFlags.Ephemeral });
 
-            if (!config || !config.enabled) {
-                return interaction.reply({ 
-                    content: '<:no:1297814819105144862> Applications are already disabled or not set up.', 
-                    flags: MessageFlags.Ephemeral 
-                });
-            }
-
-            // 1. Try to find the old message and edit it to "Closed"
             try {
-                const channel = interaction.guild.channels.cache.get(config.appChannelId);
+                const channel = await interaction.guild.channels.fetch(config.appChannelId).catch(() => null);
                 if (channel) {
-                    const msg = await channel.messages.fetch(config.messageId);
+                    const msg = await channel.messages.fetch(config.messageId).catch(() => null);
                     if (msg) {
-                        const disabledBtn = new ButtonBuilder()
-                            .setCustomId('app_apply_btn')
-                            .setLabel('Applications Closed')
-                            .setStyle(ButtonStyle.Secondary) // Grey
-                            .setDisabled(true); // LOCK IT
-
-                        const row = new ActionRowBuilder().addComponents(disabledBtn);
-                        
-                        const closedEmbed = EmbedBuilder.from(msg.embeds[0])
-                            .setTitle('📝 Staff Applications Closed')
-                            .setDescription('Applications are currently closed. Thank you for your interest.')
-                            .setColor(0xED4245); // Red
-
+                        const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('app_apply_btn').setLabel('Closed').setStyle(ButtonStyle.Secondary).setDisabled(true));
+                        const closedEmbed = EmbedBuilder.from(msg.embeds[0]).setTitle('📝 Staff Applications Closed').setColor(0xED4245);
                         await msg.edit({ embeds: [closedEmbed], components: [row] });
                     }
                 }
-            } catch (e) {
-                console.log("Could not edit application message (maybe deleted):", e);
-            }
+            } catch (e) {}
 
-            // 2. Update DB
             config.enabled = false;
             await config.save();
-
-            return interaction.reply({ 
-                content: '<:yes:1297814648417943565> Applications disabled.', 
-                flags: MessageFlags.Ephemeral 
-            });
+            return interaction.reply({ content: '<:yes:1297814648417943565> Disabled.', flags: MessageFlags.Ephemeral });
         }
     }
 };

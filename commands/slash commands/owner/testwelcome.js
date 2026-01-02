@@ -10,7 +10,6 @@ const {
     ContainerBuilder,
     TextDisplayBuilder,
     SectionBuilder,
-    ImageBuilder,
     MediaGalleryBuilder,
     SeparatorBuilder,
     SeparatorSpacingSize
@@ -29,7 +28,6 @@ module.exports = {
         ),
     
     async execute(interaction) {
-        // Enable Ephemeral (Hidden) mode if you prefer, or keep standard
         await interaction.deferReply(); 
 
         try {
@@ -45,7 +43,7 @@ module.exports = {
             const inviterName = interaction.user.username;
             const inviterId = interaction.user.id;
             const inviteCode = 'TEST-CODE';
-            const colourEmbed = 0x888888; // Use Hex number for V2 (0x...) instead of string '#'
+            const colourEmbed = 0x888888; 
 
             // 3. Build V2 Components
             
@@ -60,9 +58,9 @@ module.exports = {
             const mainSection = new SectionBuilder()
                 .addTextDisplayComponents(welcomeHeader)
                 .addTextDisplayComponents(welcomeBody)
-                .setAccessory(
-                    new ImageBuilder().setUrl(member.user.displayAvatarURL({ extension: 'png', size: 256 }))
-                );
+                .setAccessory({ 
+                    url: member.user.displayAvatarURL({ extension: 'png', size: 256 }) 
+                }); // <--- FIX: Used plain object instead of ImageBuilder
 
             // C. Button Row
             const buttonRow = new ActionRowBuilder().addComponents(
@@ -76,11 +74,11 @@ module.exports = {
 
             // D. Welcome Image Gallery
             const gallery = new MediaGalleryBuilder()
-                .addImages(
-                    new ImageBuilder().setUrl('attachment://welcome-image.png')
-                );
+                .addImages({ 
+                    url: 'attachment://welcome-image.png' 
+                }); // <--- FIX: Used plain object instead of ImageBuilder
 
-            // E. Separator (Optional, adds a line between text and image)
+            // E. Separator
             const separator = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small);
 
             // 4. Build Final Container

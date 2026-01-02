@@ -132,11 +132,11 @@ module.exports = {
         }
 
         // ===============================================
-        // 3. SELECT MENU HANDLERS (UPDATED TO V2)
+        // 3. SELECT MENU HANDLERS
         // ===============================================
         if (interaction.isStringSelectMenu()) {
             if (interaction.customId === 'role_select_menu') {
-                // Defer immediately to prevent "Application did not respond"
+                // Defer immediately
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
                 const selectedRoleIds = interaction.values;
@@ -165,29 +165,15 @@ module.exports = {
                     }
                 }
 
-                // --- V2 RESULT CONTAINER ---
-                let resultText = "";
-                let accentColor = 0x808080; // Grey default
+                // --- PLAIN TEXT RESPONSE ---
+                let res = (added.length || removed.length) ? '' : 'No changes 🤔';
+                if (added.length) res += `<:yes:1297814648417943565> **Added:** ${added.join(', ')}\n`;
+                if (removed.length) res += `<:no:1297814819105144862> **Removed:** ${removed.join(', ')}`;
 
-                if (added.length || removed.length) {
-                    accentColor = 0x57F287; // Green for success
-                    if (added.length) resultText += `### <:yes:1297814648417943565> Roles Added\n${added.join(', ')}\n\n`;
-                    if (removed.length) resultText += `### <:no:1297814819105144862> Roles Removed\n${removed.join(', ')}`;
-                } else {
-                    accentColor = 0xED4245; // Red for no change
-                    resultText = "### No changes made 🤔\nYou selected the exact roles you already have.";
-                }
-
-                const responseContainer = new ContainerBuilder()
-                    .setAccentColor(accentColor)
-                    .addTextDisplayComponents(
-                        new TextDisplayBuilder().setContent(resultText)
-                    );
-
+                // Send simple text reply (Removed Container logic)
                 return interaction.editReply({ 
-                    content: '', 
-                    components: [responseContainer], 
-                    flags: MessageFlags.IsComponentsV2
+                    content: res,
+                    components: [] 
                 });
             }
         }

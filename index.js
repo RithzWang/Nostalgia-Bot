@@ -13,7 +13,10 @@ const {
     ButtonStyle, 
     REST, 
     Routes,
-    MessageFlags
+    MessageFlags,
+    ContainerBuilder,      // V2 Component
+    TextDisplayBuilder,    // V2 Component
+    SeparatorBuilder,      // V2 Component
 } = require('discord.js');
 
 const mongoose = require('mongoose');

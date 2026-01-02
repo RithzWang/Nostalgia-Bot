@@ -49,34 +49,35 @@ module.exports = {
             
             // A. Text Content
             const welcomeHeader = new TextDisplayBuilder()
-                .setContent('### Welcome to A2-Q Server');
+                .setContent('# Welcome to A2-Q Server');
                 
             const welcomeBody = new TextDisplayBuilder()
                 .setContent(`-# <@${member.user.id}> \`(${member.user.username})\`\n-# <:calendar:1439970556534329475> Account Created: ${accountCreated}\n-# <:users:1439970561953501214> Member Count: \`${memberCount}\`\n-# <:chain:1439970559105564672> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`);
 
-            // B. Section (Groups Text + Avatar Thumbnail)
+            // B. Section (Text Only - Avatar Removed)
             const mainSection = new SectionBuilder()
                 .addTextDisplayComponents(welcomeHeader)
-                .addTextDisplayComponents(welcomeBody)
-                .setAccessory({ 
-                    url: member.user.displayAvatarURL({ extension: 'png', size: 256 }) 
-                }); // <--- FIX: Used plain object instead of ImageBuilder
+                .addTextDisplayComponents(welcomeBody);
 
             // C. Button Row
             const buttonRow = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
-                    .setLabel(`${member.user.id}`)
-                    .setStyle(ButtonStyle.Secondary)
-                    .setEmoji('1441133157855395911')
-                    .setCustomId('hello_button_disabled')
-                    .setDisabled(true)
+                    .setLabel('Information')
+                    .setEmoji('📋')
+                    .setStyle(ButtonStyle.Link)
+                    .setURL('https://discord.com'), // Replace with your link
+                new ButtonBuilder()
+                    .setLabel('Registration')
+                    .setEmoji('📝')
+                    .setStyle(ButtonStyle.Link)
+                    .setURL('https://google.com')   // Replace with your link
             );
 
             // D. Welcome Image Gallery
             const gallery = new MediaGalleryBuilder()
                 .addImages({ 
                     url: 'attachment://welcome-image.png' 
-                }); // <--- FIX: Used plain object instead of ImageBuilder
+                });
 
             // E. Separator
             const separator = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small);
@@ -84,8 +85,8 @@ module.exports = {
             // 4. Build Final Container
             const container = new ContainerBuilder()
                 .setAccentColor(colourEmbed)
-                .addSectionComponents(mainSection)  // Text + Thumbnail
-                .addActionRowComponents(buttonRow)  // ID Button
+                .addSectionComponents(mainSection)  // Text Only
+                .addActionRowComponents(buttonRow)  // Buttons
                 .addSeparatorComponents(separator)  // Line
                 .addMediaGalleryComponents(gallery); // Big Image
 

@@ -136,26 +136,64 @@ client.on('guildMemberAdd', async (member) => {
         
         const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
         
-        const embed = new EmbedBuilder()
-            .setDescription(`### Welcome to A2-Q Server\n-# <@${member.user.id}> \`(${member.user.username})\`\n-# <:calendar:1456242387243499613> Account Created: ${accountCreated}\n-# <:users:1456242343303971009> Member Count: \`${member.guild.memberCount}\`\n-# <:chain:1456242418717556776> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`)
-            .setThumbnail(member.user.displayAvatarURL())
-            .setImage('attachment://welcome-image.png')
-            .setColor(colourEmbed);
+        const welcomeHeader = new TextDisplayBuilder()
+            .setContent('# Welcome to A2-Q Server');
+            
+        const welcomeBody = new TextDisplayBuilder()
+            .setContent(`-# <@${member.user.id}> \`(${member.user.username})\`\n-# <:calendar:1456242387243499613> Account Created: ${accountCreated}\n-# <:users:1456242343303971009> Member Count: \`${member.guild.memberCount}\`\n-# <:chain:1456242418717556776> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`);
 
-        const row = new ActionRowBuilder().addComponents(
+        // 2. The "Thumbnail" Section
+        // In V2, we use a Section to group Text + Accessory (Avatar) side-by-side
+        const mainSection = new SectionBuilder()
+            .addTextDisplayComponents(welcomeHeader) // Header
+            .addTextDisplayComponents(welcomeBody)   // Stats
+            .setAccessory(
+                new ImageBuilder().setUrl(member.user.displayAvatarURL({ extension: 'png' })) // The Thumbnail
+            );
+
+        // 3. Link Buttons (Action Row)
+        const buttonRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
-                .setLabel(`${member.user.id}`)
-                .setStyle(ButtonStyle.Secondary)
-                .setEmoji('1441133157855395911')
-                .setCustomId('hello_disabled')
-                .setDisabled(true)
+                .setLabel('Information')
+                .setEmoji('📋')
+                .setStyle(ButtonStyle.Link)
+                .setURL('https://discord.com'), // Replace with your link
+            new ButtonBuilder()
+                .setLabel('Registration')
+                .setEmoui('📝')
+                .setStyle(ButtonStyle.Link)
+                .setURL('https://google.com')   // Replace with your link
         );
 
+        // 4. Separator
+        const separator = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small);
+
+        // 5. Welcome Image (Big Image at bottom)
+        const welcomeImageGallery = new MediaGalleryBuilder()
+            .addImages(
+                new ImageBuilder().setUrl('attachment://welcome-image.png')
+            );
+
+        // 6. Build the Final Container
+        const container = new ContainerBuilder()
+            .setAccentColor(0x808080)
+            .addSectionComponents(mainSection)       // Adds Text + Thumbnail
+            .addActionRowComponents(buttonRow)       // Adds Buttons
+            .addSeparatorComponents(separator)       // Adds Line
+            .addMediaGalleryComponents(welcomeImageGallery); // Adds Big Image
+
         const channel = client.channels.cache.get(welcomeLog);
-        if (channel) channel.send({ embeds: [embed], files: [attachment], components: [row] });
+        
+        if (channel) {
+            channel.send({ 
+                content: '', 
+                components: [container], 
+                files: [attachment], // Must include the file for "attachment://" to work
+                flags: MessageFlags.IsComponentsV2 
+            });
+        }
 
     } catch (e) { console.error(e); }
-});
 
 
 // --- YOUR ORIGINAL ROLE LOGGING ---

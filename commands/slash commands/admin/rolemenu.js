@@ -82,7 +82,7 @@ module.exports = {
                     }
                     const option = new StringSelectMenuOptionBuilder().setLabel(role.name).setValue(role.id);
                     if (emoji) option.setEmoji(emoji);
-                    descriptionLines.push(`**${emoji ? emoji + ' ' : ''}${role.name}**`);
+                    descriptionLines.push(`> **${emoji ? emoji + ' ' : ''}${role.name}**`);
                     menu.addOptions(option);
                     validRoleCount++;
                 }
@@ -107,8 +107,9 @@ module.exports = {
             const container = new ContainerBuilder()
                 .setAccentColor(0x808080)
                 .addTextDisplayComponents(titleText) 
-                .addSeparatorComponents(separator)   
+                   
                 .addTextDisplayComponents(bodyText)
+                .addSeparatorComponents(separator)
                 .addActionRowComponents(menuRow);
 
             const payload = { 

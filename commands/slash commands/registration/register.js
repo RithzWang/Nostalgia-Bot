@@ -86,7 +86,7 @@ module.exports = {
                     .setContent('### <:registration:1447143542643490848> Registration');
 
                 const descText = new TextDisplayBuilder()
-                    .setContent(`to be able to chat and connect to voice channels, use the command **</register:1456308351309971647>**\n\n> \`name:\` followed by your desired name\n> \`country:\` followed by your country’s flag emoji\n\n**Usage:**\n\`\`\`\n/register name: Naif country: 🇯🇴\n\`\`\``);
+                    .setContent(`to be able to chat and connect to voice channels, use the command **</register:1456632994189021187>**\n\n> \`name:\` followed by your desired name\n> \`country:\` followed by your country’s flag emoji\n\n**Usage:**\n\`\`\`\n/register name: Naif country: 🇯🇴\n\`\`\``);
 
                 // 2. Button Accessory (The "Total Registered" Button)
                 const countButton = new ButtonBuilder()

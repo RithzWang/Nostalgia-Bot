@@ -11,9 +11,7 @@ const {
     ContainerBuilder,
     TextDisplayBuilder,
     SectionBuilder,
-    SeparatorBuilder,       // <--- ADDED
-    SeparatorSpacingSize,   // <--- ADDED
-    ThumbnailBuilder 
+    ThumbnailBuilder // Imported to be safe
 } = require('discord.js');
 
 module.exports = {
@@ -64,52 +62,58 @@ module.exports = {
             logChannel.send({ embeds: [embed], components: [new ActionRowBuilder().addComponents(button)] }).catch(console.error);
         }
 
-        // --- HELPER: UPDATE INFO MESSAGE ---
+        // --- HELPER: UPDATE INFO MESSAGE (FIXED V2) ---
         async function updateInfoMessage() {
             console.log("DEBUG: Starting Info Message Update...");
             try {
                 const infoChannel = interaction.guild.channels.cache.get(allowedChannelId);
-                if (!infoChannel) return;
+                if (!infoChannel) {
+                    console.log("DEBUG: Info channel not found.");
+                    return;
+                }
                 
                 const infoMessage = await infoChannel.messages.fetch(infoMessageId).catch(() => null);
-                if (!infoMessage) return;
+                if (!infoMessage) {
+                    console.log("DEBUG: Info message not found (check ID).");
+                    return;
+                }
                 
                 const role = interaction.guild.roles.cache.get(registeredRoleId);
                 const totalRegistered = role ? role.members.size : 'N/A';
 
-                // 1. Define Texts
+                // 1. Text Content
                 const headerText = new TextDisplayBuilder()
                     .setContent('### <:registration:1447143542643490848> Registration');
 
                 const descText = new TextDisplayBuilder()
                     .setContent(`to be able to chat and connect to voice channels, use the command **</register:1456308351309971647>**\n\n> \`name:\` followed by your desired name\n> \`country:\` followed by your country’s flag emoji\n\n**Usage:**\n\`\`\`\n/register name: Naif country: 🇯🇴\n\`\`\``);
 
-                // 2. Create Section (Holds both texts)
-                const mainSection = new SectionBuilder();
-                mainSection.addTextDisplayComponents(headerText);
-                mainSection.addTextDisplayComponents(descText);
-
-                // 3. Create Separator
-                const separator = new SeparatorBuilder()
-                    .setSpacing(SeparatorSpacingSize.Small);
-
-                // 4. Create Button & Row
+                // 2. Button Accessory (The "Total Registered" Button)
                 const countButton = new ButtonBuilder()
                     .setCustomId('total_registered_stats')
                     .setLabel(`Total Registered: ${totalRegistered}`)
                     .setStyle(ButtonStyle.Secondary)
                     .setDisabled(true);
 
-                const buttonRow = new ActionRowBuilder().addComponents(countButton);
+                // 3. Create Section
+                const mainSection = new SectionBuilder();
+                mainSection.addTextDisplayComponents(headerText);
+                mainSection.addTextDisplayComponents(descText);
+                
+                // FIX: Add the button INSIDE the section using the method we saw in your logs
+                if (typeof mainSection.setButtonAccessory === 'function') {
+                     mainSection.setButtonAccessory(countButton);
+                } else {
+                    console.log("⚠️ Warning: setButtonAccessory not found on SectionBuilder");
+                }
 
-                // 5. Create Container (Section -> Separator -> Button)
+                // 4. Create Container
+                // We do NOT add a separate ActionRow, as the button is now inside the Section
                 const container = new ContainerBuilder()
                     .setAccentColor(0x808080)
-                    .addSectionComponents(mainSection)
-                    .addSeparatorComponents(separator)
-                    .addActionRowComponents(buttonRow);
+                    .addSectionComponents(mainSection);
 
-                // 6. Edit Message
+                // 5. Edit Message
                 await infoMessage.edit({ 
                     content: '', 
                     embeds: [], 

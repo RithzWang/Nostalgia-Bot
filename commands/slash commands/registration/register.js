@@ -11,8 +11,8 @@ const {
     ContainerBuilder,
     TextDisplayBuilder,
     SectionBuilder,
-    SeparatorBuilder,
-    SeparatorSpacingSize
+    SeparatorBuilder,       // Added
+    SeparatorSpacingSize    // Added
 } = require('discord.js');
 
 module.exports = {
@@ -63,8 +63,9 @@ module.exports = {
             logChannel.send({ embeds: [embed], components: [new ActionRowBuilder().addComponents(button)] }).catch(console.error);
         }
 
-        // --- HELPER: UPDATE INFO MESSAGE ---
+        // --- HELPER: UPDATE INFO MESSAGE (WITH SEPARATOR) ---
         async function updateInfoMessage() {
+            console.log("DEBUG: Starting Info Message Update...");
             try {
                 const infoChannel = interaction.guild.channels.cache.get(allowedChannelId);
                 if (!infoChannel) return;
@@ -82,30 +83,32 @@ module.exports = {
                 const descText = new TextDisplayBuilder()
                     .setContent(`to be able to chat and connect to voice channels, use the command **</register:1456308351309971647>**\n\n> \`name:\` followed by your desired name\n> \`country:\` followed by your country’s flag emoji\n\n**Usage:**\n\`\`\`\n/register name: Naif country: 🇯🇴\n\`\`\``);
 
-                // 2. The Section
-                const mainSection = new SectionBuilder()
-                    .addTextDisplayComponents(headerText)
-                    .addTextDisplayComponents(descText);
+                // 2. Main Section
+                const mainSection = new SectionBuilder();
+                mainSection.addTextDisplayComponents(headerText);
+                mainSection.addTextDisplayComponents(descText);
 
-                // 3. The Separator
-                const separator = new SeparatorBuilder()
-                    .setSpacing(SeparatorSpacingSize.Small);
+                // 3. Separator
+                const separator = new SeparatorBuilder();
+                separator.setSpacing(SeparatorSpacingSize.Small);
 
-                // 4. The Button
+                // 4. Button Row
+                // Using a Link Button style to be safe, pointing to the current channel
+                // This prevents "Expected ButtonBuilder" validation errors in some V2 implementations
                 const countButton = new ButtonBuilder()
-                    .setCustomId('total_registered_stats')
                     .setLabel(`Total Registered: ${totalRegistered}`)
-                    .setStyle(ButtonStyle.Secondary)
+                    .setStyle(ButtonStyle.Link)
+                    .setURL(`https://discord.com/channels/${interaction.guild.id}/${allowedChannelId}`)
                     .setDisabled(true);
 
                 const buttonRow = new ActionRowBuilder().addComponents(countButton);
 
-                // 5. Build Container
+                // 5. Create Container
                 const container = new ContainerBuilder()
-                    .setAccentColor(0x808080) // <--- CHANGED TO GREY
+                    .setAccentColor(0x808080)
                     .addSectionComponents(mainSection)
-                    .addSeparatorComponents(separator)
-                    .addActionRowComponents(buttonRow);
+                    .addSeparatorComponents(separator) // <--- Separator Added Here
+                    .addActionRowComponents(buttonRow); // <--- Button Row Added Here
 
                 // 6. Edit Message
                 await infoMessage.edit({ 
@@ -114,9 +117,10 @@ module.exports = {
                     components: [container], 
                     flags: MessageFlags.IsComponentsV2 
                 });
+                console.log("DEBUG: Info Message Updated Successfully.");
 
             } catch (err) {
-                console.error("Update Info Error:", err);
+                console.error("DEBUG CRASH in updateInfoMessage:", err);
             }
         }
 
@@ -161,7 +165,7 @@ module.exports = {
                 warning = " (Nickname check: Role too high)";
             }
 
-            // Run Background Tasks
+            // Run these but don't await them to block the reply
             sendLog('New Registration', `User: ${member}\nName: **${name}**\nFrom: ${country}\n${warning}`, Colors.Green, member);
             updateInfoMessage();
 

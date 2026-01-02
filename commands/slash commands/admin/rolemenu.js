@@ -185,8 +185,9 @@ module.exports = {
                 const newContainer = new ContainerBuilder()
                     .setAccentColor(oldContainer.accentColor || 0x808080)
                     .addTextDisplayComponents(titleText)
-                    .addSeparatorComponents(separator)
+             
                     .addTextDisplayComponents(newBodyText)
+                    .addSeparatorComponents(separator)
                     .addActionRowComponents(newMenuRow);
 
                 await message.edit({ 

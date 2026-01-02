@@ -1,13 +1,14 @@
 const { 
     SlashCommandBuilder, 
     PermissionFlagsBits, 
+    ActionRowBuilder, 
     StringSelectMenuBuilder, 
     StringSelectMenuOptionBuilder,
     MessageFlags,
     ChannelType,
-    ContainerBuilder,      // V2 Component
-    TextDisplayBuilder,    // V2 Component
-    SeparatorBuilder,      // V2 Component
+    ContainerBuilder,      
+    TextDisplayBuilder,    
+    SeparatorBuilder,      
     SeparatorSpacingSize
 } = require('discord.js');
 
@@ -87,8 +88,11 @@ module.exports = {
                 }
             }
 
+            // UPDATED: Dynamic placeholder text
             menu.setMaxValues(multiSelect ? validRoleCount : 1);
-            menu.setPlaceholder(multiSelect ? `Select multiple roles` : `Select one role`);
+            menu.setPlaceholder(multiSelect 
+                ? `Select multiple roles` 
+                : `Select one out of ${validRoleCount} roles`);
 
             // --- V2 COMPONENT CONSTRUCTION ---
             
@@ -96,18 +100,20 @@ module.exports = {
             const separator = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small);
             const bodyText = new TextDisplayBuilder().setContent(descriptionLines.join('\n'));
 
+            // Wrap menu in ActionRow (Required for V2 Containers)
+            const menuRow = new ActionRowBuilder().addComponents(menu);
+
             // The Container (Wrapper)
             const container = new ContainerBuilder()
                 .setAccentColor(0x808080)
                 .addTextDisplayComponents(titleText) 
                 .addSeparatorComponents(separator)   
                 .addTextDisplayComponents(bodyText)
-                // NEW: Add the menu DIRECTLY to the container
-                .addInteractiveComponents(menu); 
+                .addActionRowComponents(menuRow);
 
             const payload = { 
                 content: '', 
-                components: [container], // Only the container is sent!
+                components: [container], 
                 flags: MessageFlags.IsComponentsV2 
             };
 
@@ -138,13 +144,12 @@ module.exports = {
             try {
                 const message = await targetChannel.messages.fetch(msgId);
                 
-                // DATA EXTRACTION (V2 Handling)
+                // DATA EXTRACTION
                 const oldContainer = message.components[0]; 
-                
-                // We assume Index 3 is the Menu now (Title=0, Sep=1, Body=2, Menu=3)
-                const oldMenuComponent = oldContainer.components[3]; 
+                const oldMenuRow = oldContainer.components[3]; // Index 3 is the ActionRow inside Container
                 const oldBodyText = oldContainer.components[2].content; 
                 
+                const oldMenuComponent = oldMenuRow.components[0];
                 const newMenu = StringSelectMenuBuilder.from(oldMenuComponent);
                 
                 // Rebuild Container Parts
@@ -164,20 +169,28 @@ module.exports = {
                     newBodyContent = oldBodyText.split('\n').filter(l => !l.includes(role.name)).join('\n');
                 }
 
-                newMenu.setMaxValues(oldMenuComponent.max_values > 1 ? newMenu.options.length : 1);
+                // Update text limits and Placeholder
+                const isMultiSelect = oldMenuComponent.max_values > 1;
+                const newCount = newMenu.options.length;
+                
+                newMenu.setMaxValues(isMultiSelect ? newCount : 1);
+                newMenu.setPlaceholder(isMultiSelect 
+                    ? `Select multiple roles` 
+                    : `Select one out of ${newCount} roles`);
                 
                 const newBodyText = new TextDisplayBuilder().setContent(newBodyContent);
+                const newMenuRow = new ActionRowBuilder().addComponents(newMenu);
 
-                // Rebuild Container with Menu INSIDE
+                // Rebuild Container
                 const newContainer = new ContainerBuilder()
                     .setAccentColor(oldContainer.accentColor || 0x808080)
                     .addTextDisplayComponents(titleText)
                     .addSeparatorComponents(separator)
                     .addTextDisplayComponents(newBodyText)
-                    .addInteractiveComponents(newMenu); // Menu goes back inside
+                    .addActionRowComponents(newMenuRow);
 
                 await message.edit({ 
-                    components: [newContainer], // No external action rows
+                    components: [newContainer], 
                     flags: MessageFlags.IsComponentsV2
                 });
                 

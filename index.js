@@ -16,11 +16,11 @@ const {
     MessageFlags,
     ContainerBuilder,
     TextDisplayBuilder,
-    SectionBuilder,      // Needed for Thumbnail layout
-    ImageBuilder,        // Needed for images
-    MediaGalleryBuilder, // Needed for the big welcome image
+    SectionBuilder,
+    MediaGalleryBuilder,
     SeparatorBuilder,
-    SeparatorSpacingSize
+    SeparatorSpacingSize,
+    ThumbnailBuilder // <--- 1. ADDED THIS IMPORT
 } = require('discord.js');
 
 const mongoose = require('mongoose');
@@ -54,7 +54,7 @@ client.slashDatas = [];
 
 require('./handlers/commandHandler')(client);
 
-// EVENT LOADER (Triggers interactionCreate.js and messageCreate.js)
+// EVENT LOADER
 const eventsPath = path.join(__dirname, 'events');
 const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
 
@@ -95,7 +95,7 @@ client.on('clientReady', async () => {
     }, 30000);
 });
 
-// --- WELCOMER EVENT ---
+// --- WELCOMER EVENT (FIXED) ---
 const { createWelcomeImage } = require('./welcomeCanvas.js');
 
 client.on('guildMemberAdd', async (member) => {
@@ -135,34 +135,24 @@ client.on('guildMemberAdd', async (member) => {
         
         // --- V2 COMPONENT BUILD START ---
 
+        // A. Text
         const welcomeHeader = new TextDisplayBuilder();
         welcomeHeader.setContent('# Welcome to A2-Q Server');
             
         const welcomeBody = new TextDisplayBuilder();
         welcomeBody.setContent(`-# <@${member.user.id}> \`(${member.user.username})\`\n-# <:calendar:1456242387243499613> Account Created: ${accountCreated}\n-# <:users:1456242343303971009> Member Count: \`${member.guild.memberCount}\`\n-# <:chain:1456242418717556776> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`);
 
+        // B. Section with Avatar (FIXED)
         const mainSection = new SectionBuilder();
         mainSection.addTextDisplayComponents(welcomeHeader);
         mainSection.addTextDisplayComponents(welcomeBody);
 
-        // --- AVATAR SAFETY BLOCK ---
-        try {
-            const avatarObj = { url: member.user.displayAvatarURL({ extension: 'png' }) };
-            
-            if (typeof mainSection.setAccessory === 'function') {
-                mainSection.setAccessory(avatarObj);
-            } else if (typeof mainSection.setAccessoryComponent === 'function') {
-                mainSection.setAccessoryComponent(avatarObj);
-            } else if (typeof mainSection.addAccessoryComponent === 'function') {
-                mainSection.addAccessoryComponent(avatarObj);
-            } else if (typeof mainSection.addAccessory === 'function') {
-                mainSection.addAccessory(avatarObj);
-            }
-        } catch (err) {
-            console.log("Could not add Avatar thumbnail (skipped):", err.message);
-        }
-        // ---------------------------
+        // FIX: Using setThumbnailAccessory
+        const avatarThumbnail = new ThumbnailBuilder();
+        avatarThumbnail.setUrl(member.user.displayAvatarURL({ extension: 'png' }));
+        mainSection.setThumbnailAccessory(avatarThumbnail);
 
+        // C. Buttons
         const buttonRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setLabel('Information')
@@ -176,13 +166,15 @@ client.on('guildMemberAdd', async (member) => {
                 .setURL('https://google.com')
         );
 
+        // D. Separator
         const separator = new SeparatorBuilder();
         separator.setSpacing(SeparatorSpacingSize.Small);
 
-        // FIX: Using addItems
+        // E. Gallery (Using addItems)
         const welcomeImageGallery = new MediaGalleryBuilder();
         welcomeImageGallery.addItems({ url: 'attachment://welcome-image.png' });
 
+        // F. Final Container
         const container = new ContainerBuilder();
         container.setAccentColor(0x808080);
         container.addSectionComponents(mainSection);
@@ -203,11 +195,6 @@ client.on('guildMemberAdd', async (member) => {
 
     } catch (e) { console.error(e); }
 });
-
-
-
-
-
 
 // --- YOUR ORIGINAL ROLE LOGGING ---
 client.on('guildMemberUpdate', (oldMember, newMember) => {
@@ -250,7 +237,6 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
     }
 });
 
-
 // --- RESTORED GIVEAWAY END LOOP (Legacy Embed Style) ---
 setInterval(async () => {
     const endedGiveaways = await Giveaway.find({ ended: false, endTimestamp: { $lte: Date.now() } });
@@ -287,10 +273,6 @@ setInterval(async () => {
         } catch (e) { console.error(e); }
     }
 }, 15000);
-
-
-
-
 
 // --- DB & LOGIN ---
 (async () => {

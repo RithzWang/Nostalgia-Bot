@@ -58,6 +58,9 @@ module.exports = {
         ),
 
     async execute(interaction) {
+        // FIX 1: Defer immediately to prevent "Application did not respond"
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
         const sub = interaction.options.getSubcommand();
         const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
 
@@ -78,7 +81,7 @@ module.exports = {
 
                 if (role) {
                     if (role.position >= interaction.guild.members.me.roles.highest.position) {
-                        return interaction.reply({ content: `<:no:1297814819105144862> Role **${role.name}** is higher than my top role!`, flags: MessageFlags.Ephemeral });
+                        return interaction.editReply({ content: `<:no:1297814819105144862> Role **${role.name}** is higher than my top role!` });
                     }
                     const option = new StringSelectMenuOptionBuilder().setLabel(role.name).setValue(role.id);
                     if (emoji) option.setEmoji(emoji);
@@ -94,13 +97,11 @@ module.exports = {
                 : `Select one out of ${validRoleCount} roles`);
 
             // --- V2 COMPONENT CONSTRUCTION ---
-            
             const titleText = new TextDisplayBuilder().setContent(`### ${title}`); 
             const separator = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small);
             const bodyText = new TextDisplayBuilder().setContent(descriptionLines.join('\n'));
             const menuRow = new ActionRowBuilder().addComponents(menu);
 
-            // The Container (Wrapper)
             const container = new ContainerBuilder()
                 .setAccentColor(0x808080)
                 .addTextDisplayComponents(titleText) 
@@ -119,37 +120,32 @@ module.exports = {
                 if (reuseMessageId) {
                     const oldMsg = await targetChannel.messages.fetch(reuseMessageId);
                     
-                    // --- FIX START: Use a Loading Container ---
-                    // We cannot use plain text here because the message is locked in "V2 Mode".
-                    
                     const loadingContainer = new ContainerBuilder()
-                        .setAccentColor(0xFEE75C) // Yellow "Working" color
+                        .setAccentColor(0xFEE75C)
                         .addTextDisplayComponents(
                             new TextDisplayBuilder().setContent('### 🔄 Updating Menu...\nPlease wait.')
                         );
 
                     await oldMsg.edit({ 
                         content: '', 
-                        components: [loadingContainer], // Valid V2 Payload
+                        components: [loadingContainer], 
                         flags: MessageFlags.IsComponentsV2
                     });
 
                     // Wait 3 Seconds
                     await new Promise(resolve => setTimeout(resolve, 3000));
 
-                    // Apply the new V2 Menu
                     finalMessage = await oldMsg.edit(payload);
-                    // --- FIX END ---
                 } else {
                     finalMessage = await targetChannel.send(payload);
                 }
 
                 if (publish && targetChannel.type === ChannelType.GuildAnnouncement) await finalMessage.crosspost();
 
-                return interaction.reply({ content: `<:yes:1297814648417943565> V2 Menu ready in ${targetChannel}!`, flags: MessageFlags.Ephemeral });
+                return interaction.editReply({ content: `<:yes:1297814648417943565> V2 Menu ready in ${targetChannel}!` });
             } catch (e) {
                 console.error(e);
-                return interaction.reply({ content: '<:no:1297814819105144862> Failed to create menu. Check permissions or Message ID.', flags: MessageFlags.Ephemeral });
+                return interaction.editReply({ content: '<:no:1297814819105144862> Failed to create menu. Check permissions or Message ID.' });
             }
         }
 
@@ -162,7 +158,6 @@ module.exports = {
             try {
                 const message = await targetChannel.messages.fetch(msgId);
                 
-                // DATA EXTRACTION
                 const oldContainer = message.components[0]; 
                 const oldMenuRow = oldContainer.components[3]; 
                 const oldBodyText = oldContainer.components[1].content; 
@@ -170,7 +165,6 @@ module.exports = {
                 const oldMenuComponent = oldMenuRow.components[0];
                 const newMenu = StringSelectMenuBuilder.from(oldMenuComponent);
                 
-                // Rebuild Container Parts
                 const titleText = new TextDisplayBuilder().setContent(oldContainer.components[0].content);
                 const separator = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small);
                 
@@ -187,7 +181,6 @@ module.exports = {
                     newBodyContent = oldBodyText.split('\n').filter(l => !l.includes(role.name)).join('\n');
                 }
 
-                // Update text limits and Placeholder
                 const isMultiSelect = oldMenuComponent.max_values > 1;
                 const newCount = newMenu.options.length;
                 
@@ -199,7 +192,6 @@ module.exports = {
                 const newBodyText = new TextDisplayBuilder().setContent(newBodyContent);
                 const newMenuRow = new ActionRowBuilder().addComponents(newMenu);
 
-                // Rebuild Container
                 const newContainer = new ContainerBuilder()
                     .setAccentColor(oldContainer.accentColor || 0x808080)
                     .addTextDisplayComponents(titleText)
@@ -212,10 +204,10 @@ module.exports = {
                     flags: MessageFlags.IsComponentsV2
                 });
                 
-                return interaction.reply({ content: `<:yes:1297814648417943565> Menu updated!`, flags: MessageFlags.Ephemeral });
+                return interaction.editReply({ content: `<:yes:1297814648417943565> Menu updated!` });
             } catch (err) {
                 console.error(err);
-                return interaction.reply({ content: '<:no:1297814819105144862> Could not edit menu. Ensure it is a V2 menu.', flags: MessageFlags.Ephemeral });
+                return interaction.editReply({ content: '<:no:1297814819105144862> Could not edit menu. Ensure it is a V2 menu.' });
             }
         }
     }

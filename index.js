@@ -101,18 +101,15 @@ const { createWelcomeImage } = require('./welcomeCanvas.js');
 client.on('guildMemberAdd', async (member) => {
     if (member.user.bot || member.guild.id !== serverID) return;
 
-    // 1. Add BOTH Roles Immediately
-    // Role 1: Unverified Role
-    // Role 2: The extra role you requested (1456197055092625573)
+    // 1. Add Roles
     const rolesToAdd = ['1456238105345527932', '1456197055092625573'];
-    
     try {
         await member.roles.add(rolesToAdd);
     } catch (e) {
         console.error("Failed to add joining roles:", e);
     }
 
-    // 2. Set Nickname (Delayed 5s)
+    // 2. Set Nickname
     setTimeout(async () => {
         try {
             let newNickname = `🌱 • ${member.displayName}`.substring(0, 32);
@@ -121,7 +118,7 @@ client.on('guildMemberAdd', async (member) => {
     }, 5000);
 
     try {
-        // 3. Handle Invites Tracking
+        // 3. Handle Invites
         const newInvites = await member.guild.invites.fetch().catch(() => new Collection());
         let usedInvite = newInvites.find(inv => inv.uses > (invitesCache.get(inv.code) || 0));
         newInvites.each(inv => invitesCache.set(inv.code, inv.uses));
@@ -130,57 +127,45 @@ client.on('guildMemberAdd', async (member) => {
         const inviterId = usedInvite?.inviter ? usedInvite.inviter.id : 'Unknown';
         const inviteCode = usedInvite ? usedInvite.code : 'Unknown';
 
-        // 4. Generate Welcome Image & Embed
+        // 4. Generate Image & V2 Container
         const buffer = await createWelcomeImage(member);
         const attachment = new AttachmentBuilder(buffer, { name: 'welcome-image.png' });
         
         const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
         
-        const welcomeHeader = new TextDisplayBuilder()
-            .setContent('# Welcome to A2-Q Server');
-            
+        const welcomeHeader = new TextDisplayBuilder().setContent('# Welcome to A2-Q Server');
         const welcomeBody = new TextDisplayBuilder()
             .setContent(`-# <@${member.user.id}> \`(${member.user.username})\`\n-# <:calendar:1456242387243499613> Account Created: ${accountCreated}\n-# <:users:1456242343303971009> Member Count: \`${member.guild.memberCount}\`\n-# <:chain:1456242418717556776> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`);
 
-        // 2. The "Thumbnail" Section
-        // In V2, we use a Section to group Text + Accessory (Avatar) side-by-side
         const mainSection = new SectionBuilder()
-            .addTextDisplayComponents(welcomeHeader) // Header
-            .addTextDisplayComponents(welcomeBody)   // Stats
-            .setAccessory(
-                new ImageBuilder().setUrl(member.user.displayAvatarURL({ extension: 'png' })) // The Thumbnail
-            );
+            .addTextDisplayComponents(welcomeHeader)
+            .addTextDisplayComponents(welcomeBody)
+            .setAccessory(new ImageBuilder().setUrl(member.user.displayAvatarURL({ extension: 'png' })));
 
-        // 3. Link Buttons (Action Row)
         const buttonRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setLabel('Information')
                 .setEmoji('📋')
                 .setStyle(ButtonStyle.Link)
-                .setURL('https://discord.com'), // Replace with your link
+                .setURL('https://discord.com'),
             new ButtonBuilder()
                 .setLabel('Registration')
-                .setEmoui('📝')
+                .setEmoji('📝') // ✅ FIXED TYPO HERE (was setEmoui)
                 .setStyle(ButtonStyle.Link)
-                .setURL('https://google.com')   // Replace with your link
+                .setURL('https://google.com')
         );
 
-        // 4. Separator
         const separator = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small);
 
-        // 5. Welcome Image (Big Image at bottom)
         const welcomeImageGallery = new MediaGalleryBuilder()
-            .addImages(
-                new ImageBuilder().setUrl('attachment://welcome-image.png')
-            );
+            .addImages(new ImageBuilder().setUrl('attachment://welcome-image.png'));
 
-        // 6. Build the Final Container
         const container = new ContainerBuilder()
             .setAccentColor(0x808080)
-            .addSectionComponents(mainSection)       // Adds Text + Thumbnail
-            .addActionRowComponents(buttonRow)       // Adds Buttons
-            .addSeparatorComponents(separator)       // Adds Line
-            .addMediaGalleryComponents(welcomeImageGallery); // Adds Big Image
+            .addSectionComponents(mainSection)
+            .addActionRowComponents(buttonRow)
+            .addSeparatorComponents(separator)
+            .addMediaGalleryComponents(welcomeImageGallery);
 
         const channel = client.channels.cache.get(welcomeLog);
         
@@ -188,12 +173,14 @@ client.on('guildMemberAdd', async (member) => {
             channel.send({ 
                 content: '', 
                 components: [container], 
-                files: [attachment], // Must include the file for "attachment://" to work
+                files: [attachment], 
                 flags: MessageFlags.IsComponentsV2 
             });
         }
 
     } catch (e) { console.error(e); }
+}); // ✅ FIXED: Added closing brackets here
+
 
 
 // --- YOUR ORIGINAL ROLE LOGGING ---

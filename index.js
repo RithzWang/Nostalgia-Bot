@@ -95,7 +95,7 @@ client.on('clientReady', async () => {
     }, 30000);
 });
 
-// --- YOUR ORIGINAL WELCOMER ---
+// --- WELCOMER EVENT ---
 const { createWelcomeImage } = require('./welcomeCanvas.js');
 
 client.on('guildMemberAdd', async (member) => {
@@ -127,20 +127,26 @@ client.on('guildMemberAdd', async (member) => {
         const inviterId = usedInvite?.inviter ? usedInvite.inviter.id : 'Unknown';
         const inviteCode = usedInvite ? usedInvite.code : 'Unknown';
 
-        // 4. Generate Image & V2 Container
+        // 4. Generate Image
         const buffer = await createWelcomeImage(member);
         const attachment = new AttachmentBuilder(buffer, { name: 'welcome-image.png' });
         
         const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
         
-        const welcomeHeader = new TextDisplayBuilder().setContent('# Welcome to A2-Q Server');
+        // --- V2 COMPONENT BUILD START ---
+
+        const welcomeHeader = new TextDisplayBuilder()
+            .setContent('### Welcome to A2-Q Server');
+            
         const welcomeBody = new TextDisplayBuilder()
             .setContent(`-# <@${member.user.id}> \`(${member.user.username})\`\n-# <:calendar:1456242387243499613> Account Created: ${accountCreated}\n-# <:users:1456242343303971009> Member Count: \`${member.guild.memberCount}\`\n-# <:chain:1456242418717556776> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`);
 
         const mainSection = new SectionBuilder()
             .addTextDisplayComponents(welcomeHeader)
             .addTextDisplayComponents(welcomeBody)
-            .setAccessory(new ImageBuilder().setUrl(member.user.displayAvatarURL({ extension: 'png' })));
+            .setAccessory({ 
+                url: member.user.displayAvatarURL({ extension: 'png' }) 
+            }); // <--- FIX 1: Removed ImageBuilder
 
         const buttonRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
@@ -150,7 +156,7 @@ client.on('guildMemberAdd', async (member) => {
                 .setURL('https://discord.com'),
             new ButtonBuilder()
                 .setLabel('Registration')
-                .setEmoji('📝') // ✅ FIXED TYPO HERE (was setEmoui)
+                .setEmoji('📝')
                 .setStyle(ButtonStyle.Link)
                 .setURL('https://google.com')
         );
@@ -158,7 +164,9 @@ client.on('guildMemberAdd', async (member) => {
         const separator = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small);
 
         const welcomeImageGallery = new MediaGalleryBuilder()
-            .addImages(new ImageBuilder().setUrl('attachment://welcome-image.png'));
+            .addImages({ 
+                url: 'attachment://welcome-image.png' 
+            }); // <--- FIX 2: Removed ImageBuilder
 
         const container = new ContainerBuilder()
             .setAccentColor(0x808080)
@@ -179,7 +187,8 @@ client.on('guildMemberAdd', async (member) => {
         }
 
     } catch (e) { console.error(e); }
-}); // ✅ FIXED: Added closing brackets here
+});
+
 
 
 

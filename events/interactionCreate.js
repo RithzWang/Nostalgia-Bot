@@ -15,8 +15,8 @@ const {
 // --- IMPORTS ---
 const Giveaway = require('../src/models/Giveaway');
 const ApplicationConfig = require('../src/models/ApplicationConfig');
-const ThanksLB = require('../src/models/ThanksLB'); // <--- NEW IMPORT
-const { updateLeaderboardVisual } = require('../commands/slash commands/leaderboard/thanksLeaderboard'); // <--- NEW IMPORT
+const ThanksLB = require('../src/models/ThanksLB'); 
+const { updateLeaderboardVisual } = require('../commands/slash commands/leaderboard/thanksLeaderboard');
 
 module.exports = {
     name: 'interactionCreate',
@@ -120,27 +120,25 @@ module.exports = {
 
             // D. THANKS LEADERBOARD PAGINATION (⬅️ / ➡️)
             if (['thanks_prev', 'thanks_next'].includes(interaction.customId)) {
-                // Acknowledge the click so the button doesn't say "Interaction Failed"
                 await interaction.deferUpdate();
-
                 const data = await ThanksLB.findOne({ guildId: interaction.guild.id });
                 if (data) {
                     let newPage = data.currentPage;
                     if (interaction.customId === 'thanks_prev') newPage--;
                     else newPage++;
-
-                    // Call the helper function to update the message visually
                     await updateLeaderboardVisual(client, interaction.guild.id, newPage);
                 }
             }
         }
 
         // ===============================================
-        // 3. SELECT MENU HANDLERS
+        // 3. SELECT MENU HANDLERS (UPDATED TO V2)
         // ===============================================
         if (interaction.isStringSelectMenu()) {
             if (interaction.customId === 'role_select_menu') {
+                // Defer immediately to prevent "Application did not respond"
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
                 const selectedRoleIds = interaction.values;
                 const allRoleIds = interaction.component.options.map(opt => opt.value);
                 const added = [], removed = [];
@@ -162,12 +160,35 @@ module.exports = {
                                 removed.push(role.name);
                             }
                         }
-                    } catch (e) {}
+                    } catch (e) {
+                        console.error(`Error toggling role ${roleId}:`, e);
+                    }
                 }
-                let res = (added.length || removed.length) ? '' : 'No changes 🤔';
-                if (added.length) res += `<:yes:1297814648417943565> **Added:** ${added.join(', ')}\n`;
-                if (removed.length) res += `<:no:1297814819105144862> **Removed:** ${removed.join(', ')}`;
-                return interaction.editReply({ content: res });
+
+                // --- V2 RESULT CONTAINER ---
+                let resultText = "";
+                let accentColor = 0x808080; // Grey default
+
+                if (added.length || removed.length) {
+                    accentColor = 0x57F287; // Green for success
+                    if (added.length) resultText += `### <:yes:1297814648417943565> Roles Added\n${added.join(', ')}\n\n`;
+                    if (removed.length) resultText += `### <:no:1297814819105144862> Roles Removed\n${removed.join(', ')}`;
+                } else {
+                    accentColor = 0xED4245; // Red for no change
+                    resultText = "### No changes made 🤔\nYou selected the exact roles you already have.";
+                }
+
+                const responseContainer = new ContainerBuilder()
+                    .setAccentColor(accentColor)
+                    .addTextDisplayComponents(
+                        new TextDisplayBuilder().setContent(resultText)
+                    );
+
+                return interaction.editReply({ 
+                    content: '', 
+                    components: [responseContainer], 
+                    flags: MessageFlags.IsComponentsV2
+                });
             }
         }
 

@@ -20,7 +20,7 @@ const {
     MediaGalleryBuilder,
     SeparatorBuilder,
     SeparatorSpacingSize,
-    ThumbnailBuilder // <--- 1. ADDED THIS IMPORT
+    ThumbnailBuilder 
 } = require('discord.js');
 
 const mongoose = require('mongoose');
@@ -147,9 +147,11 @@ client.on('guildMemberAdd', async (member) => {
         mainSection.addTextDisplayComponents(welcomeHeader);
         mainSection.addTextDisplayComponents(welcomeBody);
 
-        // FIX: Using setThumbnailAccessory
-        const avatarThumbnail = new ThumbnailBuilder();
-        avatarThumbnail.setUrl(member.user.displayAvatarURL({ extension: 'png' }));
+        // FIX: Passing the URL directly in the constructor
+        const avatarThumbnail = new ThumbnailBuilder({ 
+            url: member.user.displayAvatarURL({ extension: 'png' }) 
+        });
+        
         mainSection.setThumbnailAccessory(avatarThumbnail);
 
         // C. Buttons
@@ -237,7 +239,7 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
     }
 });
 
-// --- RESTORED GIVEAWAY END LOOP (Legacy Embed Style) ---
+// --- RESTORED GIVEAWAY END LOOP ---
 setInterval(async () => {
     const endedGiveaways = await Giveaway.find({ ended: false, endTimestamp: { $lte: Date.now() } });
     for (const g of endedGiveaways) {

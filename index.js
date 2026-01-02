@@ -14,9 +14,13 @@ const {
     REST, 
     Routes,
     MessageFlags,
-    ContainerBuilder,      // V2 Component
-    TextDisplayBuilder,    // V2 Component
-    SeparatorBuilder,      // V2 Component
+    ContainerBuilder,
+    TextDisplayBuilder,
+    SectionBuilder,      // Needed for Thumbnail layout
+    ImageBuilder,        // Needed for images
+    MediaGalleryBuilder, // Needed for the big welcome image
+    SeparatorBuilder,
+    SeparatorSpacingSize
 } = require('discord.js');
 
 const mongoose = require('mongoose');

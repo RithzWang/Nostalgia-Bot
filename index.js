@@ -135,18 +135,30 @@ client.on('guildMemberAdd', async (member) => {
         
         // --- V2 COMPONENT BUILD START ---
 
-        const welcomeHeader = new TextDisplayBuilder()
-            .setContent('### Welcome to A2-Q Server');
+        const welcomeHeader = new TextDisplayBuilder();
+        welcomeHeader.setContent('# Welcome to A2-Q Server');
             
-        const welcomeBody = new TextDisplayBuilder()
-            .setContent(`-# <@${member.user.id}> \`(${member.user.username})\`\n-# <:calendar:1456242387243499613> Account Created: ${accountCreated}\n-# <:users:1456242343303971009> Member Count: \`${member.guild.memberCount}\`\n-# <:chain:1456242418717556776> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`);
+        const welcomeBody = new TextDisplayBuilder();
+        welcomeBody.setContent(`-# <@${member.user.id}> \`(${member.user.username})\`\n-# <:calendar:1456242387243499613> Account Created: ${accountCreated}\n-# <:users:1456242343303971009> Member Count: \`${member.guild.memberCount}\`\n-# <:chain:1456242418717556776> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`);
 
-        const mainSection = new SectionBuilder()
-            .addTextDisplayComponents(welcomeHeader)
-            .addTextDisplayComponents(welcomeBody)
-            .setAccessory({ 
-                url: member.user.displayAvatarURL({ extension: 'png' }) 
-            }); // <--- FIX 1: Removed ImageBuilder
+        const mainSection = new SectionBuilder();
+        mainSection.addTextDisplayComponents(welcomeHeader);
+        mainSection.addTextDisplayComponents(welcomeBody);
+
+        // --- AVATAR SAFETY BLOCK ---
+        try {
+            const avatarObj = { url: member.user.displayAvatarURL({ extension: 'png' }) };
+            if (typeof mainSection.setAccessory === 'function') {
+                mainSection.setAccessory(avatarObj);
+            } else if (typeof mainSection.setAccessoryComponent === 'function') {
+                mainSection.setAccessoryComponent(avatarObj);
+            } else if (typeof mainSection.addAccessory === 'function') {
+                mainSection.addAccessory(avatarObj);
+            } 
+        } catch (err) {
+            console.log("Could not add Avatar thumbnail:", err.message);
+        }
+        // ---------------------------
 
         const buttonRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
@@ -163,17 +175,16 @@ client.on('guildMemberAdd', async (member) => {
 
         const separator = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small);
 
-        const welcomeImageGallery = new MediaGalleryBuilder()
-            .addImages({ 
-                url: 'attachment://welcome-image.png' 
-            }); // <--- FIX 2: Removed ImageBuilder
+        // FIX: Using .addItems (Confirmed from your logs)
+        const welcomeImageGallery = new MediaGalleryBuilder();
+        welcomeImageGallery.addItems({ url: 'attachment://welcome-image.png' });
 
-        const container = new ContainerBuilder()
-            .setAccentColor(0x808080)
-            .addSectionComponents(mainSection)
-            .addActionRowComponents(buttonRow)
-            .addSeparatorComponents(separator)
-            .addMediaGalleryComponents(welcomeImageGallery);
+        const container = new ContainerBuilder();
+        container.setAccentColor(0x808080);
+        container.addSectionComponents(mainSection);
+        container.addActionRowComponents(buttonRow);
+        container.addSeparatorComponents(separator);
+        container.addMediaGalleryComponents(welcomeImageGallery);
 
         const channel = client.channels.cache.get(welcomeLog);
         
@@ -188,6 +199,7 @@ client.on('guildMemberAdd', async (member) => {
 
     } catch (e) { console.error(e); }
 });
+
 
 
 

@@ -95,21 +95,22 @@ client.on('clientReady', async () => {
     }, 30000);
 });
 
-// --- WELCOMER EVENT (FIXED) ---
+// --- YOUR ORIGINAL WELCOMER ---
 const { createWelcomeImage } = require('./welcomeCanvas.js');
 
 client.on('guildMemberAdd', async (member) => {
     if (member.user.bot || member.guild.id !== serverID) return;
 
-    // 1. Add Roles
+    // 1. Add BOTH Roles Immediately
     const rolesToAdd = ['1456238105345527932', '1456197055092625573'];
+    
     try {
         await member.roles.add(rolesToAdd);
     } catch (e) {
         console.error("Failed to add joining roles:", e);
     }
 
-    // 2. Set Nickname
+    // 2. Set Nickname (Delayed 5s)
     setTimeout(async () => {
         try {
             let newNickname = `🌱 • ${member.displayName}`.substring(0, 32);
@@ -118,7 +119,7 @@ client.on('guildMemberAdd', async (member) => {
     }, 5000);
 
     try {
-        // 3. Handle Invites
+        // 3. Handle Invites Tracking
         const newInvites = await member.guild.invites.fetch().catch(() => new Collection());
         let usedInvite = newInvites.find(inv => inv.uses > (invitesCache.get(inv.code) || 0));
         newInvites.each(inv => invitesCache.set(inv.code, inv.uses));
@@ -127,76 +128,32 @@ client.on('guildMemberAdd', async (member) => {
         const inviterId = usedInvite?.inviter ? usedInvite.inviter.id : 'Unknown';
         const inviteCode = usedInvite ? usedInvite.code : 'Unknown';
 
-        // 4. Generate Image
+        // 4. Generate Welcome Image & Embed
         const buffer = await createWelcomeImage(member);
         const attachment = new AttachmentBuilder(buffer, { name: 'welcome-image.png' });
         
         const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
         
-        // --- V2 COMPONENT BUILD START ---
-
-        // A. Text
-        const welcomeHeader = new TextDisplayBuilder();
-        welcomeHeader.setContent('# Welcome to A2-Q Server');
-            
-        const welcomeBody = new TextDisplayBuilder();
-        welcomeBody.setContent(`-# <@${member.user.id}> \`(${member.user.username})\`\n-# <:calendar:1456242387243499613> Account Created: ${accountCreated}\n-# <:users:1456242343303971009> Member Count: \`${member.guild.memberCount}\`\n-# <:chain:1456242418717556776> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`);
-
-        // B. Section with Avatar (FIXED)
-        const mainSection = new SectionBuilder();
-        mainSection.addTextDisplayComponents(welcomeHeader);
-        mainSection.addTextDisplayComponents(welcomeBody);
-
-        // FIX: Passing the URL directly in the constructor
-        const avatarThumbnail = new ThumbnailBuilder({ 
-            url: member.user.displayAvatarURL({ extension: 'png' }) 
-        });
-        
-        mainSection.setThumbnailAccessory(avatarThumbnail);
-
-        // C. Buttons
-        const buttonRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setLabel('Information')
-                .setEmoji('📋')
-                .setStyle(ButtonStyle.Link)
-                .setURL('https://discord.com'),
-            new ButtonBuilder()
-                .setLabel('Registration')
-                .setEmoji('📝')
-                .setStyle(ButtonStyle.Link)
-                .setURL('https://google.com')
-        );
-
-        // D. Separator
-        const separator = new SeparatorBuilder();
-        separator.setSpacing(SeparatorSpacingSize.Small);
-
-        // E. Gallery (Using addItems)
-        const welcomeImageGallery = new MediaGalleryBuilder();
-        welcomeImageGallery.addItems({ url: 'attachment://welcome-image.png' });
-
-        // F. Final Container
-        const container = new ContainerBuilder();
-        container.setAccentColor(0x808080);
-        container.addSectionComponents(mainSection);
-        container.addActionRowComponents(buttonRow);
-        container.addSeparatorComponents(separator);
-        container.addMediaGalleryComponents(welcomeImageGallery);
+        const embed = new EmbedBuilder()
+            .setColor(colourEmbed)
+            .setThumbnail(member.user.displayAvatarURL())
+            .setImage('attachment://welcome-image.png')
+            .setDescription(`### Welcome to A2-Q Server\n-# <@${member.user.id}> \`(${member.user.username})\`\n-# <:calendar:1456242387243499613> Account Created: ${accountCreated}\n-# <:users:1456242343303971009> Member Count: \`${member.guild.memberCount}\`\n-# <:chain:1456242418717556776> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`);
 
         const channel = client.channels.cache.get(welcomeLog);
         
         if (channel) {
-            channel.send({ 
-                content: '', 
-                components: [container], 
-                files: [attachment], 
-                flags: MessageFlags.IsComponentsV2 
+            // Note: You had a button in your original request, but it's optional here.
+            // If you want the ID button back, add it to 'components'.
+            await channel.send({ 
+                embeds: [embed], 
+                files: [attachment] 
             });
         }
 
     } catch (e) { console.error(e); }
 });
+
 
 // --- YOUR ORIGINAL ROLE LOGGING ---
 client.on('guildMemberUpdate', (oldMember, newMember) => {

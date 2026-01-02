@@ -10,7 +10,8 @@ const {
     // V2 Imports
     ContainerBuilder,
     TextDisplayBuilder,
-    SectionBuilder
+    SectionBuilder,
+    ThumbnailBuilder // Imported to be safe
 } = require('discord.js');
 
 module.exports = {
@@ -35,10 +36,10 @@ module.exports = {
         const allowedChannelId = '1456197056250122352';
         const logChannelId = '1456197056988319871';
         const infoMessageId = '1456202328813076622';
-        const registeredRoleId = '1456197055117787136'; // Role to ADD
-        const unverifiedRoleId = '1456238105345527932'; // Role to REMOVE
+        const registeredRoleId = '1456197055117787136'; 
+        const unverifiedRoleId = '1456238105345527932'; 
 
-        // --- HELPER: LOGGING FUNCTION ---
+        // --- HELPER: LOGGING ---
         async function sendLog(title, desc, color, targetMember) {
             const logChannel = interaction.guild.channels.cache.get(logChannelId);
             if (!logChannel) return;
@@ -58,60 +59,71 @@ module.exports = {
                 .setStyle(ButtonStyle.Secondary)
                 .setDisabled(true);
 
-            // Run in background
             logChannel.send({ embeds: [embed], components: [new ActionRowBuilder().addComponents(button)] }).catch(console.error);
         }
 
-        // --- HELPER: UPDATE INFO MESSAGE FUNCTION (V2 CONTAINER) ---
+        // --- HELPER: UPDATE INFO MESSAGE (FIXED V2) ---
         async function updateInfoMessage() {
+            console.log("DEBUG: Starting Info Message Update...");
             try {
                 const infoChannel = interaction.guild.channels.cache.get(allowedChannelId);
-                if (!infoChannel) return;
+                if (!infoChannel) {
+                    console.log("DEBUG: Info channel not found.");
+                    return;
+                }
                 
-                const infoMessage = await infoChannel.messages.fetch(infoMessageId);
+                const infoMessage = await infoChannel.messages.fetch(infoMessageId).catch(() => null);
+                if (!infoMessage) {
+                    console.log("DEBUG: Info message not found (check ID).");
+                    return;
+                }
                 
                 const role = interaction.guild.roles.cache.get(registeredRoleId);
                 const totalRegistered = role ? role.members.size : 'N/A';
 
-                // 1. Build Header
+                // 1. Text Content
                 const headerText = new TextDisplayBuilder()
                     .setContent('### <:registration:1447143542643490848> Registration');
 
-                // 2. Build Description
                 const descText = new TextDisplayBuilder()
                     .setContent(`to be able to chat and connect to voice channels, use the command **</register:1456308351309971647>**\n\n> \`name:\` followed by your desired name\n> \`country:\` followed by your country’s flag emoji\n\n**Usage:**\n\`\`\`\n/register name: Naif country: 🇯🇴\n\`\`\``);
 
-                // 3. Create Section
-                const mainSection = new SectionBuilder()
-                    .addTextDisplayComponents(headerText)
-                    .addTextDisplayComponents(descText);
-
-                // 4. Create Stats Button
+                // 2. Button Accessory (The "Total Registered" Button)
                 const countButton = new ButtonBuilder()
                     .setCustomId('total_registered_stats')
                     .setLabel(`Total Registered: ${totalRegistered}`)
                     .setStyle(ButtonStyle.Secondary)
                     .setDisabled(true);
 
-                const row = new ActionRowBuilder().addComponents(countButton);
+                // 3. Create Section
+                const mainSection = new SectionBuilder();
+                mainSection.addTextDisplayComponents(headerText);
+                mainSection.addTextDisplayComponents(descText);
+                
+                // FIX: Add the button INSIDE the section using the method we saw in your logs
+                if (typeof mainSection.setButtonAccessory === 'function') {
+                     mainSection.setButtonAccessory(countButton);
+                } else {
+                    console.log("⚠️ Warning: setButtonAccessory not found on SectionBuilder");
+                }
 
-                // 5. Create Container
+                // 4. Create Container
+                // We do NOT add a separate ActionRow, as the button is now inside the Section
                 const container = new ContainerBuilder()
-                    .setAccentColor(0x2B2D31) // Dark/Grey background
-                    .addSectionComponents(mainSection)
-                    .addActionRowComponents(row);
+                    .setAccentColor(0x2B2D31)
+                    .addSectionComponents(mainSection);
 
-                // 6. Edit Message
-                // We clear 'embeds' to ensure only the Container shows
-                infoMessage.edit({ 
+                // 5. Edit Message
+                await infoMessage.edit({ 
                     content: '', 
                     embeds: [], 
                     components: [container], 
                     flags: MessageFlags.IsComponentsV2 
-                }).catch(console.error);
+                });
+                console.log("DEBUG: Info Message Updated Successfully.");
 
             } catch (err) {
-                console.error("Info update failed:", err);
+                console.error("DEBUG CRASH in updateInfoMessage:", err);
             }
         }
 
@@ -119,7 +131,6 @@ module.exports = {
         // MAIN EXECUTION
         // ===========================================
         
-        // 1. Channel Check
         if (interaction.channelId !== allowedChannelId) {
             return interaction.reply({ 
                 content: `<:no:1297814819105144862> Please use <#${allowedChannelId}> to register.`, 
@@ -127,13 +138,11 @@ module.exports = {
             });
         }
 
-        // 2. Already Registered Check
         const member = interaction.member;
         if (member.roles.cache.has(registeredRoleId)) {
             return interaction.reply({ content: `<:no:1297814819105144862> **You are already registered!**`, flags: MessageFlags.Ephemeral });
         }
 
-        // 3. Validation
         const name = interaction.options.getString('name');
         const country = interaction.options.getString('country');
         const newNickname = `${country} | ${name}`;
@@ -143,16 +152,12 @@ module.exports = {
         }
 
         try {
-            // 4. Perform Actions
-            // A. Add Registered Role
             await member.roles.add(registeredRoleId);
 
-            // B. Remove Unverified Role (if they have it)
             if (member.roles.cache.has(unverifiedRoleId)) {
                 await member.roles.remove(unverifiedRoleId).catch(console.error);
             }
             
-            // C. Nickname Update
             const isOwner = member.id === interaction.guild.ownerId;
             const isHigher = member.roles.highest.position >= interaction.guild.members.me.roles.highest.position;
             let warning = "";
@@ -163,11 +168,10 @@ module.exports = {
                 warning = " (Nickname check: Role too high)";
             }
 
-            // D. Background Tasks
+            // Run these but don't await them to block the reply
             sendLog('New Registration', `User: ${member}\nName: **${name}**\nFrom: ${country}\n${warning}`, Colors.Green, member);
             updateInfoMessage();
 
-            // 5. Send SINGLE Immediate Reply (UPDATED MESSAGE)
             return interaction.reply({ 
                 content: `<:yes:1297814648417943565> You’re now a member of the server.${warning ? "\n*" + warning + "*" : ""}`,
                 flags: MessageFlags.Ephemeral

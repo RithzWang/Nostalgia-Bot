@@ -6,7 +6,11 @@ const {
     ButtonStyle, 
     MessageFlags,
     Colors,
-    PermissionFlagsBits
+    PermissionFlagsBits,
+    // V2 Imports
+    ContainerBuilder,
+    TextDisplayBuilder,
+    SectionBuilder
 } = require('discord.js');
 
 module.exports = {
@@ -58,7 +62,7 @@ module.exports = {
             logChannel.send({ embeds: [embed], components: [new ActionRowBuilder().addComponents(button)] }).catch(console.error);
         }
 
-        // --- HELPER: UPDATE INFO MESSAGE FUNCTION ---
+        // --- HELPER: UPDATE INFO MESSAGE FUNCTION (V2 CONTAINER) ---
         async function updateInfoMessage() {
             try {
                 const infoChannel = interaction.guild.channels.cache.get(allowedChannelId);
@@ -69,8 +73,20 @@ module.exports = {
                 const role = interaction.guild.roles.cache.get(registeredRoleId);
                 const totalRegistered = role ? role.members.size : 'N/A';
 
-                const newDescription = `to be able to chat and connect to voice channels, use the command **</register:1456308351309971647>**\n\n> \`name:\` followed by your desired name\n> \`country:\` followed by your country’s flag emoji\n\n**Usage:**\n\`\`\`\n/register name: Naif country: 🇯🇴\n\`\`\``;
+                // 1. Build Header
+                const headerText = new TextDisplayBuilder()
+                    .setContent('### <:registration:1447143542643490848> Registration');
 
+                // 2. Build Description
+                const descText = new TextDisplayBuilder()
+                    .setContent(`to be able to chat and connect to voice channels, use the command **</register:1456308351309971647>**\n\n> \`name:\` followed by your desired name\n> \`country:\` followed by your country’s flag emoji\n\n**Usage:**\n\`\`\`\n/register name: Naif country: 🇯🇴\n\`\`\``);
+
+                // 3. Create Section
+                const mainSection = new SectionBuilder()
+                    .addTextDisplayComponents(headerText)
+                    .addTextDisplayComponents(descText);
+
+                // 4. Create Stats Button
                 const countButton = new ButtonBuilder()
                     .setCustomId('total_registered_stats')
                     .setLabel(`Total Registered: ${totalRegistered}`)
@@ -79,11 +95,21 @@ module.exports = {
 
                 const row = new ActionRowBuilder().addComponents(countButton);
 
-                if (infoMessage.embeds.length > 0) {
-                    const updatedEmbed = EmbedBuilder.from(infoMessage.embeds[0]).setDescription(newDescription);
-                    // Run in background
-                    infoMessage.edit({ embeds: [updatedEmbed], components: [row] }).catch(console.error);
-                }
+                // 5. Create Container
+                const container = new ContainerBuilder()
+                    .setAccentColor(0x2B2D31) // Dark/Grey background
+                    .addSectionComponents(mainSection)
+                    .addActionRowComponents(row);
+
+                // 6. Edit Message
+                // We clear 'embeds' to ensure only the Container shows
+                infoMessage.edit({ 
+                    content: '', 
+                    embeds: [], 
+                    components: [container], 
+                    flags: MessageFlags.IsComponentsV2 
+                }).catch(console.error);
+
             } catch (err) {
                 console.error("Info update failed:", err);
             }

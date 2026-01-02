@@ -11,7 +11,8 @@ const {
     SectionBuilder,
     MediaGalleryBuilder,
     SeparatorBuilder,
-    SeparatorSpacingSize
+    SeparatorSpacingSize,
+    ThumbnailBuilder  // <--- ADDED THIS IMPORT
 } = require('discord.js');
 
 const { createWelcomeImage } = require('../../../welcomeCanvas.js'); 
@@ -19,7 +20,7 @@ const { createWelcomeImage } = require('../../../welcomeCanvas.js');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('testwelcome')
-        .setDescription('Simulate the welcome card with debug info')
+        .setDescription('Simulate the welcome card for a specific user')
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
         .addUserOption(option => 
             option.setName('target')
@@ -45,54 +46,34 @@ module.exports = {
             const colourEmbed = 0x888888; 
 
             // 3. Build Components
+
+            // A. Text
             const welcomeHeader = new TextDisplayBuilder();
             welcomeHeader.setContent('# Welcome to A2-Q Server');
 
             const welcomeBody = new TextDisplayBuilder();
             welcomeBody.setContent(`-# <@${member.user.id}> \`(${member.user.username})\`\n-# <:calendar:1439970556534329475> Account Created: ${accountCreated}\n-# <:users:1439970561953501214> Member Count: \`${memberCount}\`\n-# <:chain:1439970559105564672> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`);
 
+            // B. Section with Avatar (FIXED)
             const mainSection = new SectionBuilder();
             mainSection.addTextDisplayComponents(welcomeHeader);
             mainSection.addTextDisplayComponents(welcomeBody);
 
-            // --- SUPER SAFE AVATAR ADDER ---
-            // This block checks available commands and prints them to console
-            try {
-                console.log("--- DEBUGGING SECTION BUILDER ---");
-                // This prints the SECRET command names to your console
-                const methods = Object.getOwnPropertyNames(Object.getPrototypeOf(mainSection));
-                console.log("Available Methods:", methods);
-                console.log("---------------------------------");
+            // Using the command found in your logs: setThumbnailAccessory
+            const avatarThumbnail = new ThumbnailBuilder();
+            avatarThumbnail.setUrl(member.user.displayAvatarURL({ extension: 'png' }));
+            mainSection.setThumbnailAccessory(avatarThumbnail);
 
-                const avatarObj = { url: member.user.displayAvatarURL({ extension: 'png' }) };
-
-                // Try to find the right command automatically
-                if (typeof mainSection.setAccessory === 'function') {
-                    mainSection.setAccessory(avatarObj);
-                } else if (typeof mainSection.setAccessoryComponent === 'function') {
-                    mainSection.setAccessoryComponent(avatarObj);
-                } else if (typeof mainSection.addAccessoryComponent === 'function') {
-                    mainSection.addAccessoryComponent(avatarObj);
-                } else if (typeof mainSection.addAccessory === 'function') {
-                    mainSection.addAccessory(avatarObj);
-                } else {
-                    console.log("⚠️ Could not find a method to add Avatar. Check the list above in console!");
-                }
-            } catch (err) {
-                console.log("Avatar failed to load, but bot is staying alive:", err.message);
-            }
-            // -------------------------------
-
-            // Buttons
-            const btn1 = new ButtonBuilder().setLabel('Info').setEmoji('📋').setStyle(ButtonStyle.Link).setURL('https://discord.com');
-            const btn2 = new ButtonBuilder().setLabel('Reg').setEmoji('📝').setStyle(ButtonStyle.Link).setURL('https://google.com');
+            // C. Buttons
+            const btn1 = new ButtonBuilder().setLabel('Information').setEmoji('📋').setStyle(ButtonStyle.Link).setURL('https://discord.com');
+            const btn2 = new ButtonBuilder().setLabel('Registration').setEmoji('📝').setStyle(ButtonStyle.Link).setURL('https://google.com');
             const buttonRow = new ActionRowBuilder().addComponents(btn1, btn2);
 
-            // Gallery (Using correct addItems)
+            // D. Gallery (Using addItems as proven before)
             const gallery = new MediaGalleryBuilder();
             gallery.addItems({ url: 'attachment://welcome-image.png' });
 
-            // Container
+            // E. Container
             const separator = new SeparatorBuilder();
             separator.setSpacing(SeparatorSpacingSize.Small);
 
@@ -103,7 +84,7 @@ module.exports = {
             container.addSeparatorComponents(separator);
             container.addMediaGalleryComponents(gallery);
 
-            // Send
+            // 4. Send
             await interaction.editReply({ 
                 content: `**[SIMULATION]** Welcome card for ${member.user.tag}`,
                 components: [container], 
@@ -112,8 +93,8 @@ module.exports = {
             });
 
         } catch (error) {
-            console.error("Critical Error:", error);
-            await interaction.editReply({ content: 'Something went wrong, check console.' });
+            console.error(error);
+            await interaction.editReply({ content: 'Something went wrong. Check console.' });
         }
     }
 };

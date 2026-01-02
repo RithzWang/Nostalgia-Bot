@@ -49,7 +49,7 @@ module.exports = {
             
             // A. Text Content
             const welcomeHeader = new TextDisplayBuilder()
-                .setContent('# Welcome to A2-Q Server');
+                .setContent('### Welcome to A2-Q Server');
                 
             const welcomeBody = new TextDisplayBuilder()
                 .setContent(`-# <@${member.user.id}> \`(${member.user.username})\`\n-# <:calendar:1439970556534329475> Account Created: ${accountCreated}\n-# <:users:1439970561953501214> Member Count: \`${memberCount}\`\n-# <:chain:1439970559105564672> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`);

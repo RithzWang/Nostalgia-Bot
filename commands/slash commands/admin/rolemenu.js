@@ -88,7 +88,6 @@ module.exports = {
                 }
             }
 
-            // UPDATED: Dynamic placeholder text
             menu.setMaxValues(multiSelect ? validRoleCount : 1);
             menu.setPlaceholder(multiSelect 
                 ? `Select multiple roles` 
@@ -99,8 +98,6 @@ module.exports = {
             const titleText = new TextDisplayBuilder().setContent(`### ${title}`); 
             const separator = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small);
             const bodyText = new TextDisplayBuilder().setContent(descriptionLines.join('\n'));
-
-            // Wrap menu in ActionRow (Required for V2 Containers)
             const menuRow = new ActionRowBuilder().addComponents(menu);
 
             // The Container (Wrapper)
@@ -120,22 +117,29 @@ module.exports = {
             try {
                 let finalMessage;
                 if (reuseMessageId) {
-                    // --- REUSE & RESET LOGIC START ---
                     const oldMsg = await targetChannel.messages.fetch(reuseMessageId);
                     
-                    // 1. Clear everything and show "Updating.."
+                    // --- FIX START: Use a Loading Container ---
+                    // We cannot use plain text here because the message is locked in "V2 Mode".
+                    
+                    const loadingContainer = new ContainerBuilder()
+                        .setAccentColor(0xFEE75C) // Yellow "Working" color
+                        .addTextDisplayComponents(
+                            new TextDisplayBuilder().setContent('### 🔄 Updating Menu...\nPlease wait.')
+                        );
+
                     await oldMsg.edit({ 
-                        content: 'Updating..', 
-                        embeds: [], 
-                        components: [] // Removes buttons/select menus
+                        content: '', 
+                        components: [loadingContainer], // Valid V2 Payload
+                        flags: MessageFlags.IsComponentsV2
                     });
 
-                    // 2. Wait 3 Seconds
+                    // Wait 3 Seconds
                     await new Promise(resolve => setTimeout(resolve, 3000));
 
-                    // 3. Apply the new V2 Menu
+                    // Apply the new V2 Menu
                     finalMessage = await oldMsg.edit(payload);
-                    // --- REUSE & RESET LOGIC END ---
+                    // --- FIX END ---
                 } else {
                     finalMessage = await targetChannel.send(payload);
                 }
@@ -160,9 +164,6 @@ module.exports = {
                 
                 // DATA EXTRACTION
                 const oldContainer = message.components[0]; 
-                
-                // Note: Indexing here depends on order. Based on setup above:
-                // 0: Title, 1: Body, 2: Separator, 3: ActionRow(Menu)
                 const oldMenuRow = oldContainer.components[3]; 
                 const oldBodyText = oldContainer.components[1].content; 
                 

@@ -96,7 +96,7 @@ module.exports = {
 
             // --- V2 COMPONENT CONSTRUCTION ---
             
-            const titleText = new TextDisplayBuilder().setContent(`# ${title}`); 
+            const titleText = new TextDisplayBuilder().setContent(`### ${title}`); 
             const separator = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small);
             const bodyText = new TextDisplayBuilder().setContent(descriptionLines.join('\n'));
 

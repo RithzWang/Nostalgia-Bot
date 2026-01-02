@@ -107,7 +107,6 @@ module.exports = {
             const container = new ContainerBuilder()
                 .setAccentColor(0x808080)
                 .addTextDisplayComponents(titleText) 
-                   
                 .addTextDisplayComponents(bodyText)
                 .addSeparatorComponents(separator)
                 .addActionRowComponents(menuRow);
@@ -121,8 +120,22 @@ module.exports = {
             try {
                 let finalMessage;
                 if (reuseMessageId) {
+                    // --- REUSE & RESET LOGIC START ---
                     const oldMsg = await targetChannel.messages.fetch(reuseMessageId);
+                    
+                    // 1. Clear everything and show "Updating.."
+                    await oldMsg.edit({ 
+                        content: 'Updating..', 
+                        embeds: [], 
+                        components: [] // Removes buttons/select menus
+                    });
+
+                    // 2. Wait 3 Seconds
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+
+                    // 3. Apply the new V2 Menu
                     finalMessage = await oldMsg.edit(payload);
+                    // --- REUSE & RESET LOGIC END ---
                 } else {
                     finalMessage = await targetChannel.send(payload);
                 }
@@ -132,7 +145,7 @@ module.exports = {
                 return interaction.reply({ content: `<:yes:1297814648417943565> V2 Menu ready in ${targetChannel}!`, flags: MessageFlags.Ephemeral });
             } catch (e) {
                 console.error(e);
-                return interaction.reply({ content: '<:no:1297814819105144862> Failed to create menu. Check permissions.', flags: MessageFlags.Ephemeral });
+                return interaction.reply({ content: '<:no:1297814819105144862> Failed to create menu. Check permissions or Message ID.', flags: MessageFlags.Ephemeral });
             }
         }
 
@@ -147,8 +160,11 @@ module.exports = {
                 
                 // DATA EXTRACTION
                 const oldContainer = message.components[0]; 
-                const oldMenuRow = oldContainer.components[3]; // Index 3 is the ActionRow inside Container
-                const oldBodyText = oldContainer.components[2].content; 
+                
+                // Note: Indexing here depends on order. Based on setup above:
+                // 0: Title, 1: Body, 2: Separator, 3: ActionRow(Menu)
+                const oldMenuRow = oldContainer.components[3]; 
+                const oldBodyText = oldContainer.components[1].content; 
                 
                 const oldMenuComponent = oldMenuRow.components[0];
                 const newMenu = StringSelectMenuBuilder.from(oldMenuComponent);
@@ -163,7 +179,7 @@ module.exports = {
                     const newOption = new StringSelectMenuOptionBuilder().setLabel(role.name).setValue(role.id);
                     if (emoji) newOption.setEmoji(emoji);
                     newMenu.addOptions(newOption);
-                    newBodyContent = oldBodyText + `\n**${emoji ? emoji + ' ' : ''}${role.name}**`;
+                    newBodyContent = oldBodyText + `\n> **${emoji ? emoji + ' ' : ''}${role.name}**`;
                 } else {
                     const filtered = newMenu.options.filter(o => o.data.value !== role.id);
                     newMenu.setOptions(filtered);
@@ -186,7 +202,6 @@ module.exports = {
                 const newContainer = new ContainerBuilder()
                     .setAccentColor(oldContainer.accentColor || 0x808080)
                     .addTextDisplayComponents(titleText)
-             
                     .addTextDisplayComponents(newBodyText)
                     .addSeparatorComponents(separator)
                     .addActionRowComponents(newMenuRow);

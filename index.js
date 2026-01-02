@@ -148,15 +148,18 @@ client.on('guildMemberAdd', async (member) => {
         // --- AVATAR SAFETY BLOCK ---
         try {
             const avatarObj = { url: member.user.displayAvatarURL({ extension: 'png' }) };
+            
             if (typeof mainSection.setAccessory === 'function') {
                 mainSection.setAccessory(avatarObj);
             } else if (typeof mainSection.setAccessoryComponent === 'function') {
                 mainSection.setAccessoryComponent(avatarObj);
+            } else if (typeof mainSection.addAccessoryComponent === 'function') {
+                mainSection.addAccessoryComponent(avatarObj);
             } else if (typeof mainSection.addAccessory === 'function') {
                 mainSection.addAccessory(avatarObj);
-            } 
+            }
         } catch (err) {
-            console.log("Could not add Avatar thumbnail:", err.message);
+            console.log("Could not add Avatar thumbnail (skipped):", err.message);
         }
         // ---------------------------
 
@@ -173,9 +176,10 @@ client.on('guildMemberAdd', async (member) => {
                 .setURL('https://google.com')
         );
 
-        const separator = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small);
+        const separator = new SeparatorBuilder();
+        separator.setSpacing(SeparatorSpacingSize.Small);
 
-        // FIX: Using .addItems (Confirmed from your logs)
+        // FIX: Using addItems
         const welcomeImageGallery = new MediaGalleryBuilder();
         welcomeImageGallery.addItems({ url: 'attachment://welcome-image.png' });
 
@@ -199,6 +203,7 @@ client.on('guildMemberAdd', async (member) => {
 
     } catch (e) { console.error(e); }
 });
+
 
 
 

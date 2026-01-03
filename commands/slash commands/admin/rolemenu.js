@@ -22,10 +22,13 @@ module.exports = {
         .addSubcommand(sub => {
             sub.setName('setup')
                 .setDescription('Create a NEW menu')
+                // 1. REQUIRED OPTIONS FIRST
                 .addStringOption(opt => opt.setName('title').setDescription('Menu Title').setRequired(true))
                 .addBooleanOption(opt => opt.setName('multi_select').setDescription('Allow multiple roles?').setRequired(true))
-                .addRoleOption(opt => opt.setName('required_role').setDescription('Only users with this role can use the menu (Optional)'))
                 .addRoleOption(opt => opt.setName('role1').setDescription('Role 1 (Required)').setRequired(true))
+                
+                // 2. OPTIONAL OPTIONS AFTER
+                .addRoleOption(opt => opt.setName('required_role').setDescription('Only users with this role can use the menu (Optional)'))
                 .addStringOption(opt => opt.setName('emoji1').setDescription('Emoji for Role 1'))
                 .addChannelOption(opt => 
                     opt.setName('channel')
@@ -34,7 +37,7 @@ module.exports = {
                 )
                 .addStringOption(opt => opt.setName('message_id').setDescription('Reuse a bot message ID'));
             
-            // Loop for Setup Roles 2-10 (Reduced to 9 to fit limit)
+            // Loop for Setup Roles 2-9
             for (let i = 2; i <= 9; i++) {
                 sub.addRoleOption(opt => opt.setName(`role${i}`).setDescription(`Role ${i}`))
                    .addStringOption(opt => opt.setName(`emoji${i}`).setDescription(`Emoji ${i}`));
@@ -46,10 +49,12 @@ module.exports = {
         .addSubcommand(sub => {
             sub.setName('add')
                 .setDescription('Add roles to an EXISTING menu')
+                // 1. REQUIRED FIRST
                 .addStringOption(opt => opt.setName('message_id').setDescription('The Message ID').setRequired(true))
-                .addChannelOption(opt => opt.setName('channel').setDescription('Channel where the menu is'))
-                // Role 1 (Required)
                 .addRoleOption(opt => opt.setName('role1').setDescription('Role 1 to add').setRequired(true))
+                
+                // 2. OPTIONAL AFTER
+                .addChannelOption(opt => opt.setName('channel').setDescription('Channel where the menu is'))
                 .addStringOption(opt => opt.setName('emoji1').setDescription('Emoji for Role 1'));
             
             // Roles 2-5 (Optional)
@@ -64,10 +69,12 @@ module.exports = {
         .addSubcommand(sub => {
             sub.setName('remove')
                 .setDescription('Remove roles from an EXISTING menu')
+                // 1. REQUIRED FIRST
                 .addStringOption(opt => opt.setName('message_id').setDescription('The Message ID').setRequired(true))
-                .addChannelOption(opt => opt.setName('channel').setDescription('Channel where the menu is'))
-                // Role 1 (Required)
-                .addRoleOption(opt => opt.setName('role1').setDescription('Role 1 to remove').setRequired(true));
+                .addRoleOption(opt => opt.setName('role1').setDescription('Role 1 to remove').setRequired(true))
+                
+                // 2. OPTIONAL AFTER
+                .addChannelOption(opt => opt.setName('channel').setDescription('Channel where the menu is'));
 
             // Roles 2-5 (Optional)
             for (let i = 2; i <= 5; i++) {

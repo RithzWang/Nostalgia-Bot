@@ -132,7 +132,7 @@ module.exports = {
         }
 
         // ===============================================
-        // 3. SELECT MENU HANDLERS (UPDATED)
+        // 3. SELECT MENU HANDLERS (UPDATED TO PLAIN TEXT)
         // ===============================================
         if (interaction.isStringSelectMenu()) {
             
@@ -183,30 +183,19 @@ module.exports = {
                     }
                 }
 
-                // --- BUILD V2 COMPONENT RESPONSE ---
+                // --- PLAIN TEXT RESPONSE ---
                 let feedbackText = '';
-                let accentColor = 0x95A5A6; // Default Grey (No changes)
-
-                // Reuse your exact text format
                 if (added.length || removed.length) {
-                    accentColor = 0x57F287; // Green (Success)
                     if (added.length) feedbackText += `<:yes:1297814648417943565> **Added:** ${added.join(', ')}\n`;
                     if (removed.length) feedbackText += `<:no:1297814819105144862> **Removed:** ${removed.join(', ')}`;
                 } else {
                     feedbackText = 'No changes 🤔';
                 }
 
-                const responseText = new TextDisplayBuilder().setContent(feedbackText);
-                
-                const responseContainer = new ContainerBuilder()
-                    .setAccentColor(accentColor)
-                    .addTextDisplayComponents(responseText);
-
-                // Reply with V2 Container
+                // Reply with Plain Text (No Container)
                 return interaction.editReply({ 
-                    content: '', 
-                    components: [responseContainer], 
-                    flags: MessageFlags.IsComponentsV2 
+                    content: feedbackText, 
+                    components: [] 
                 });
             }
         }

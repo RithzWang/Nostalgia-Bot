@@ -22,12 +22,12 @@ module.exports = {
         .addSubcommand(sub => {
             sub.setName('setup')
                 .setDescription('Create a NEW menu')
-                // 1. REQUIRED OPTIONS FIRST
+                // 1. REQUIRED FIRST
                 .addStringOption(opt => opt.setName('title').setDescription('Menu Title').setRequired(true))
                 .addBooleanOption(opt => opt.setName('multi_select').setDescription('Allow multiple roles?').setRequired(true))
                 .addRoleOption(opt => opt.setName('role1').setDescription('Role 1 (Required)').setRequired(true))
                 
-                // 2. OPTIONAL OPTIONS AFTER
+                // 2. OPTIONAL AFTER
                 .addRoleOption(opt => opt.setName('required_role').setDescription('Only users with this role can use the menu (Optional)'))
                 .addStringOption(opt => opt.setName('emoji1').setDescription('Emoji for Role 1'))
                 .addChannelOption(opt => 
@@ -45,19 +45,15 @@ module.exports = {
             return sub;
         })
 
-        // --- ADD COMMAND (Bulk 1-5) ---
+        // --- ADD COMMAND ---
         .addSubcommand(sub => {
             sub.setName('add')
                 .setDescription('Add roles to an EXISTING menu')
-                // 1. REQUIRED FIRST
                 .addStringOption(opt => opt.setName('message_id').setDescription('The Message ID').setRequired(true))
                 .addRoleOption(opt => opt.setName('role1').setDescription('Role 1 to add').setRequired(true))
-                
-                // 2. OPTIONAL AFTER
                 .addChannelOption(opt => opt.setName('channel').setDescription('Channel where the menu is'))
                 .addStringOption(opt => opt.setName('emoji1').setDescription('Emoji for Role 1'));
             
-            // Roles 2-5 (Optional)
             for (let i = 2; i <= 5; i++) {
                 sub.addRoleOption(opt => opt.setName(`role${i}`).setDescription(`Role ${i}`))
                    .addStringOption(opt => opt.setName(`emoji${i}`).setDescription(`Emoji ${i}`));
@@ -65,23 +61,27 @@ module.exports = {
             return sub;
         })
 
-        // --- REMOVE COMMAND (Bulk 1-5) ---
+        // --- REMOVE COMMAND ---
         .addSubcommand(sub => {
             sub.setName('remove')
                 .setDescription('Remove roles from an EXISTING menu')
-                // 1. REQUIRED FIRST
                 .addStringOption(opt => opt.setName('message_id').setDescription('The Message ID').setRequired(true))
                 .addRoleOption(opt => opt.setName('role1').setDescription('Role 1 to remove').setRequired(true))
-                
-                // 2. OPTIONAL AFTER
                 .addChannelOption(opt => opt.setName('channel').setDescription('Channel where the menu is'));
 
-            // Roles 2-5 (Optional)
             for (let i = 2; i <= 5; i++) {
                 sub.addRoleOption(opt => opt.setName(`role${i}`).setDescription(`Role ${i}`));
             }
             return sub;
-        }),
+        })
+
+        // --- NEW: REFRESH COMMAND ---
+        .addSubcommand(sub => 
+            sub.setName('refresh')
+                .setDescription('Update role names in the menu if you changed them in Server Settings')
+                .addStringOption(opt => opt.setName('message_id').setDescription('The Message ID').setRequired(true))
+                .addChannelOption(opt => opt.setName('channel').setDescription('Channel where the menu is'))
+        ),
 
     async execute(interaction) {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -107,7 +107,7 @@ module.exports = {
             let descriptionLines = [];
 
             if (requiredRole) {
-                descriptionLines.push(`<:lock:1457147730542465312> **Restricted to:** ${requiredRole.toString()}`);
+                descriptionLines.push(`🔒 **Restricted to:** ${requiredRole.toString()}`);
                 descriptionLines.push(''); 
             }
 
@@ -171,7 +171,6 @@ module.exports = {
                 } else {
                     await targetChannel.send(payload);
                 }
-
                 return interaction.editReply({ content: `<:yes:1297814648417943565> V2 Menu ready in ${targetChannel}!` });
             } catch (e) {
                 console.error(e);
@@ -180,78 +179,54 @@ module.exports = {
         }
 
         // ===============================================
-        // 2. ADD / REMOVE LOGIC (BULK)
+        // 2. ADD / REMOVE LOGIC
         // ===============================================
         else if (sub === 'add' || sub === 'remove') {
             const msgId = interaction.options.getString('message_id');
 
             try {
                 const message = await targetChannel.messages.fetch(msgId);
-                
-                // Retrieve Old Components
                 const oldContainer = message.components[0]; 
                 const oldMenuRow = oldContainer.components[3]; 
-                // Copy the menu so we can modify options
                 const newMenu = StringSelectMenuBuilder.from(oldMenuRow.components[0]);
 
                 const titleText = new TextDisplayBuilder().setContent(oldContainer.components[0].content);
                 const separator = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small);
                 
-                // We'll modify the text content line by line
                 let currentBodyLines = oldContainer.components[1].content.split('\n');
 
-                // --- ADD LOGIC ---
                 if (sub === 'add') {
                     for (let i = 1; i <= 5; i++) {
                         const role = interaction.options.getRole(`role${i}`);
                         const emoji = interaction.options.getString(`emoji${i}`);
-
                         if (role) {
-                            // Prevent duplicates
                             if (newMenu.options.some(o => o.data.value === role.id)) continue;
-
                             const newOption = new StringSelectMenuOptionBuilder().setLabel(role.name).setValue(role.id);
                             if (emoji) newOption.setEmoji(emoji);
-                            
                             newMenu.addOptions(newOption);
                             currentBodyLines.push(`> **${emoji ? emoji + ' ' : ''}${role.name}**`);
                         }
                     }
-                } 
-                
-                // --- REMOVE LOGIC ---
-                else {
+                } else {
                     for (let i = 1; i <= 5; i++) {
                         const role = interaction.options.getRole(`role${i}`);
                         if (role) {
-                            // Find the option to get the STORED label (handles renamed roles)
                             const optionToRemove = newMenu.options.find(o => o.data.value === role.id);
                             const nameToRemove = optionToRemove ? optionToRemove.data.label : role.name;
-
-                            // Remove from menu
                             const filtered = newMenu.options.filter(o => o.data.value !== role.id);
                             newMenu.setOptions(filtered);
-
-                            // Remove from text body
                             currentBodyLines = currentBodyLines.filter(l => !l.includes(nameToRemove));
                         }
                     }
                 }
 
-                // Update Select Menu Config (Max Values & Placeholder)
-                const isMultiSelect = newMenu.data.max_values > 1; // It keeps previous config
+                const isMultiSelect = newMenu.data.max_values > 1; 
                 const newCount = newMenu.options.length;
-                
                 newMenu.setMaxValues(isMultiSelect ? newCount : 1);
-                newMenu.setPlaceholder(isMultiSelect 
-                    ? `Select multiple roles` 
-                    : `Select one out of ${newCount} roles`);
+                newMenu.setPlaceholder(isMultiSelect ? `Select multiple roles` : `Select one out of ${newCount} roles`);
                 
-                // Rebuild Body Text
                 const newBodyText = new TextDisplayBuilder().setContent(currentBodyLines.join('\n'));
                 const newMenuRow = new ActionRowBuilder().addComponents(newMenu);
-
-                // Rebuild Container
                 const newContainer = new ContainerBuilder()
                     .setAccentColor(oldContainer.accentColor || 0x808080)
                     .addTextDisplayComponents(titleText)
@@ -259,15 +234,85 @@ module.exports = {
                     .addSeparatorComponents(separator)
                     .addActionRowComponents(newMenuRow);
 
-                await message.edit({ 
-                    components: [newContainer], 
-                    flags: MessageFlags.IsComponentsV2
-                });
-                
+                await message.edit({ components: [newContainer], flags: MessageFlags.IsComponentsV2 });
                 return interaction.editReply({ content: `<:yes:1297814648417943565> Menu updated successfully!` });
             } catch (err) {
                 console.error(err);
-                return interaction.editReply({ content: '<:no:1297814819105144862> Could not edit menu. Ensure it is a V2 menu.' });
+                return interaction.editReply({ content: '<:no:1297814819105144862> Could not edit menu.' });
+            }
+        }
+
+        // ===============================================
+        // 3. REFRESH LOGIC (NEW)
+        // ===============================================
+        else if (sub === 'refresh') {
+            const msgId = interaction.options.getString('message_id');
+
+            try {
+                const message = await targetChannel.messages.fetch(msgId);
+                const oldContainer = message.components[0];
+                const oldMenuRow = oldContainer.components[3];
+                const menu = StringSelectMenuBuilder.from(oldMenuRow.components[0]);
+
+                // 1. Rebuild Description Lines
+                let newBodyLines = [];
+                
+                // Check if there is a restriction (the 🔒 text)
+                const menuCustomId = menu.data.custom_id;
+                if (menuCustomId.startsWith('role_select_')) {
+                    const restrictionId = menuCustomId.replace('role_select_', '');
+                    if (restrictionId !== 'public' && restrictionId !== 'menu') {
+                        const restrictedRole = interaction.guild.roles.cache.get(restrictionId);
+                        if (restrictedRole) {
+                            newBodyLines.push(`<:lock:1457147730542465312> **Restricted to:** ${restrictedRole.toString()}`);
+                            newBodyLines.push('');
+                        }
+                    }
+                }
+
+                // 2. Loop through options and update them
+                const updatedOptions = [];
+                for (const option of menu.options) {
+                    const role = interaction.guild.roles.cache.get(option.data.value);
+                    const builder = new StringSelectMenuOptionBuilder(option.data);
+                    
+                    if (role) {
+                        // Found role? Update Label!
+                        builder.setLabel(role.name); 
+                        const emoji = option.data.emoji;
+                        
+                        // Re-add to text list with NEW name
+                        const emojiStr = emoji ? (emoji.id ? `<:${emoji.name}:${emoji.id}>` : emoji.name) : null;
+                        newBodyLines.push(`> **${emojiStr ? emojiStr + ' ' : ''}${role.name}**`);
+                        
+                        updatedOptions.push(builder);
+                    } else {
+                        // Role deleted? Skip it (removes from menu)
+                        // Or keep it but mark as deleted. Skipping is cleaner.
+                    }
+                }
+
+                menu.setOptions(updatedOptions);
+
+                // 3. Reconstruct Message
+                const titleText = new TextDisplayBuilder().setContent(oldContainer.components[0].content);
+                const separator = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small);
+                const newBodyText = new TextDisplayBuilder().setContent(newBodyLines.join('\n'));
+                const newMenuRow = new ActionRowBuilder().addComponents(menu);
+
+                const newContainer = new ContainerBuilder()
+                    .setAccentColor(oldContainer.accentColor || 0x808080)
+                    .addTextDisplayComponents(titleText)
+                    .addTextDisplayComponents(newBodyText)
+                    .addSeparatorComponents(separator)
+                    .addActionRowComponents(newMenuRow);
+
+                await message.edit({ components: [newContainer], flags: MessageFlags.IsComponentsV2 });
+                return interaction.editReply({ content: `<:yes:1297814648417943565> Menu refreshed with latest role names!` });
+
+            } catch (err) {
+                console.error(err);
+                return interaction.editReply({ content: '<:no:1297814819105144862> Failed to refresh menu. Check ID.' });
             }
         }
     }

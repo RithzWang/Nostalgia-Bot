@@ -132,11 +132,29 @@ module.exports = {
         }
 
         // ===============================================
-        // 3. SELECT MENU HANDLERS
+        // 3. SELECT MENU HANDLERS (UPDATED)
         // ===============================================
         if (interaction.isStringSelectMenu()) {
-            if (interaction.customId === 'role_select_menu') {
-                // Defer immediately
+            
+            // CHECK: Does the ID start with our prefix?
+            if (interaction.customId.startsWith('role_select_')) {
+
+                // 1. EXTRACT RESTRICTION
+                // Removes "role_select_" to get "public", "menu" (legacy), or "1234567890"
+                const restrictionId = interaction.customId.replace('role_select_', '');
+
+                // 2. CHECK PERMISSION
+                // If it's not "public" and not "menu" (your old legacy ID), treat it as a Role ID
+                if (restrictionId !== 'public' && restrictionId !== 'menu') {
+                    if (!interaction.member.roles.cache.has(restrictionId)) {
+                        return interaction.reply({
+                            content: `<:no:1297814819105144862> You need the <@&${restrictionId}> role to use this menu!`,
+                            flags: MessageFlags.Ephemeral
+                        });
+                    }
+                }
+
+                // 3. DEFER & PROCESS
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
                 const selectedRoleIds = interaction.values;
@@ -165,15 +183,30 @@ module.exports = {
                     }
                 }
 
-                // --- PLAIN TEXT RESPONSE ---
-                let res = (added.length || removed.length) ? '' : 'No changes 🤔';
-                if (added.length) res += `<:yes:1297814648417943565> **Added:** ${added.join(', ')}\n`;
-                if (removed.length) res += `<:no:1297814819105144862> **Removed:** ${removed.join(', ')}`;
+                // --- BUILD V2 COMPONENT RESPONSE ---
+                let feedbackText = '';
+                let accentColor = 0x95A5A6; // Default Grey (No changes)
 
-                // Send simple text reply (Removed Container logic)
+                // Reuse your exact text format
+                if (added.length || removed.length) {
+                    accentColor = 0x57F287; // Green (Success)
+                    if (added.length) feedbackText += `<:yes:1297814648417943565> **Added:** ${added.join(', ')}\n`;
+                    if (removed.length) feedbackText += `<:no:1297814819105144862> **Removed:** ${removed.join(', ')}`;
+                } else {
+                    feedbackText = 'No changes 🤔';
+                }
+
+                const responseText = new TextDisplayBuilder().setContent(feedbackText);
+                
+                const responseContainer = new ContainerBuilder()
+                    .setAccentColor(accentColor)
+                    .addTextDisplayComponents(responseText);
+
+                // Reply with V2 Container
                 return interaction.editReply({ 
-                    content: res,
-                    components: [] 
+                    content: '', 
+                    components: [responseContainer], 
+                    flags: MessageFlags.IsComponentsV2 
                 });
             }
         }

@@ -75,7 +75,7 @@ module.exports = {
             return sub;
         })
 
-        // --- NEW: REFRESH COMMAND ---
+        // --- REFRESH COMMAND ---
         .addSubcommand(sub => 
             sub.setName('refresh')
                 .setDescription('Update role names in the menu if you changed them in Server Settings')
@@ -107,7 +107,8 @@ module.exports = {
             let descriptionLines = [];
 
             if (requiredRole) {
-                descriptionLines.push(`🔒 **Restricted to:** ${requiredRole.toString()}`);
+                // CHANGED HERE: Custom Emoji
+                descriptionLines.push(`<:lock:1457147730542465312> **Restricted to:** ${requiredRole.toString()}`);
                 descriptionLines.push(''); 
             }
 
@@ -147,7 +148,8 @@ module.exports = {
             const payload = { 
                 content: '', 
                 components: [container], 
-                flags: MessageFlags.IsComponentsV2 
+                flags: MessageFlags.IsComponentsV2,
+                allowedMentions: { parse: [] } 
             };
 
             try {
@@ -234,7 +236,11 @@ module.exports = {
                     .addSeparatorComponents(separator)
                     .addActionRowComponents(newMenuRow);
 
-                await message.edit({ components: [newContainer], flags: MessageFlags.IsComponentsV2 });
+                await message.edit({ 
+                    components: [newContainer], 
+                    flags: MessageFlags.IsComponentsV2,
+                    allowedMentions: { parse: [] } 
+                });
                 return interaction.editReply({ content: `<:yes:1297814648417943565> Menu updated successfully!` });
             } catch (err) {
                 console.error(err);
@@ -243,7 +249,7 @@ module.exports = {
         }
 
         // ===============================================
-        // 3. REFRESH LOGIC (NEW)
+        // 3. REFRESH LOGIC
         // ===============================================
         else if (sub === 'refresh') {
             const msgId = interaction.options.getString('message_id');
@@ -254,47 +260,38 @@ module.exports = {
                 const oldMenuRow = oldContainer.components[3];
                 const menu = StringSelectMenuBuilder.from(oldMenuRow.components[0]);
 
-                // 1. Rebuild Description Lines
                 let newBodyLines = [];
                 
-                // Check if there is a restriction (the 🔒 text)
+                // Check restriction
                 const menuCustomId = menu.data.custom_id;
                 if (menuCustomId.startsWith('role_select_')) {
                     const restrictionId = menuCustomId.replace('role_select_', '');
                     if (restrictionId !== 'public' && restrictionId !== 'menu') {
                         const restrictedRole = interaction.guild.roles.cache.get(restrictionId);
                         if (restrictedRole) {
+                            // CHANGED HERE: Custom Emoji
                             newBodyLines.push(`<:lock:1457147730542465312> **Restricted to:** ${restrictedRole.toString()}`);
                             newBodyLines.push('');
                         }
                     }
                 }
 
-                // 2. Loop through options and update them
+                // Update Options
                 const updatedOptions = [];
                 for (const option of menu.options) {
                     const role = interaction.guild.roles.cache.get(option.data.value);
                     const builder = new StringSelectMenuOptionBuilder(option.data);
                     
                     if (role) {
-                        // Found role? Update Label!
                         builder.setLabel(role.name); 
                         const emoji = option.data.emoji;
-                        
-                        // Re-add to text list with NEW name
                         const emojiStr = emoji ? (emoji.id ? `<:${emoji.name}:${emoji.id}>` : emoji.name) : null;
                         newBodyLines.push(`> **${emojiStr ? emojiStr + ' ' : ''}${role.name}**`);
-                        
                         updatedOptions.push(builder);
-                    } else {
-                        // Role deleted? Skip it (removes from menu)
-                        // Or keep it but mark as deleted. Skipping is cleaner.
                     }
                 }
-
                 menu.setOptions(updatedOptions);
 
-                // 3. Reconstruct Message
                 const titleText = new TextDisplayBuilder().setContent(oldContainer.components[0].content);
                 const separator = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small);
                 const newBodyText = new TextDisplayBuilder().setContent(newBodyLines.join('\n'));
@@ -307,7 +304,11 @@ module.exports = {
                     .addSeparatorComponents(separator)
                     .addActionRowComponents(newMenuRow);
 
-                await message.edit({ components: [newContainer], flags: MessageFlags.IsComponentsV2 });
+                await message.edit({ 
+                    components: [newContainer], 
+                    flags: MessageFlags.IsComponentsV2,
+                    allowedMentions: { parse: [] } 
+                });
                 return interaction.editReply({ content: `<:yes:1297814648417943565> Menu refreshed with latest role names!` });
 
             } catch (err) {

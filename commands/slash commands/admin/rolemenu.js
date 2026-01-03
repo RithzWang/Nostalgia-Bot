@@ -31,7 +31,7 @@ module.exports = {
                         .setDescription('Where to post?')
                         .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
                 )
-                .addBooleanOption(opt => opt.setName('publish').setDescription('Publish if in an Announcement channel?'))
+                // REMOVED: publish option to save space
                 .addStringOption(opt => opt.setName('message_id').setDescription('Reuse a bot message ID'));
             
             for (let i = 2; i <= 10; i++) {
@@ -68,9 +68,9 @@ module.exports = {
         if (sub === 'setup') {
             const title = interaction.options.getString('title');
             const multiSelect = interaction.options.getBoolean('multi_select');
-            const publish = interaction.options.getBoolean('publish') || false;
             const reuseMessageId = interaction.options.getString('message_id');
             const requiredRole = interaction.options.getRole('required_role');
+            // REMOVED: publish variable
 
             const menuCustomId = requiredRole 
                 ? `role_select_${requiredRole.id}` 
@@ -147,7 +147,7 @@ module.exports = {
                     finalMessage = await targetChannel.send(payload);
                 }
 
-                if (publish && targetChannel.type === ChannelType.GuildAnnouncement) await finalMessage.crosspost();
+                // REMOVED: publish logic
 
                 return interaction.editReply({ content: `<:yes:1297814648417943565> V2 Menu ready in ${targetChannel}!` });
             } catch (e) {
@@ -185,7 +185,6 @@ module.exports = {
                 } else {
                     // FIX: Find the OLD name stored in the menu option
                     const optionToRemove = newMenu.options.find(o => o.data.value === role.id);
-                    // If we find it, use its label. If not, use current role name.
                     const nameToRemove = optionToRemove ? optionToRemove.data.label : role.name;
 
                     const filtered = newMenu.options.filter(o => o.data.value !== role.id);

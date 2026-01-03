@@ -23,6 +23,7 @@ module.exports = {
                 .setDescription('Create a NEW menu')
                 .addStringOption(opt => opt.setName('title').setDescription('Menu Title').setRequired(true))
                 .addBooleanOption(opt => opt.setName('multi_select').setDescription('Allow multiple roles?').setRequired(true))
+                .addRoleOption(opt => opt.setName('required_role').setDescription('Only users with this role can use the menu (Optional)'))
                 .addRoleOption(opt => opt.setName('role1').setDescription('Role 1 (Required)').setRequired(true))
                 .addStringOption(opt => opt.setName('emoji1').setDescription('Emoji for Role 1'))
                 .addChannelOption(opt => 
@@ -58,7 +59,6 @@ module.exports = {
         ),
 
     async execute(interaction) {
-        // FIX 1: Defer immediately to prevent "Application did not respond"
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         const sub = interaction.options.getSubcommand();
@@ -70,10 +70,20 @@ module.exports = {
             const multiSelect = interaction.options.getBoolean('multi_select');
             const publish = interaction.options.getBoolean('publish') || false;
             const reuseMessageId = interaction.options.getString('message_id');
+            const requiredRole = interaction.options.getRole('required_role');
 
-            const menu = new StringSelectMenuBuilder().setCustomId('role_select_menu').setMinValues(0);
+            const menuCustomId = requiredRole 
+                ? `role_select_${requiredRole.id}` 
+                : 'role_select_public';
+
+            const menu = new StringSelectMenuBuilder().setCustomId(menuCustomId).setMinValues(0);
             let validRoleCount = 0;
             let descriptionLines = [];
+
+            if (requiredRole) {
+                descriptionLines.push(`🔒 **Restricted to:** ${requiredRole.toString()}`);
+                descriptionLines.push(''); 
+            }
 
             for (let i = 1; i <= 10; i++) {
                 const role = interaction.options.getRole(`role${i}`);
@@ -96,7 +106,6 @@ module.exports = {
                 ? `Select multiple roles` 
                 : `Select one out of ${validRoleCount} roles`);
 
-            // --- V2 COMPONENT CONSTRUCTION ---
             const titleText = new TextDisplayBuilder().setContent(`### ${title}`); 
             const separator = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small);
             const bodyText = new TextDisplayBuilder().setContent(descriptionLines.join('\n'));
@@ -132,9 +141,7 @@ module.exports = {
                         flags: MessageFlags.IsComponentsV2
                     });
 
-                    // Wait 3 Seconds
                     await new Promise(resolve => setTimeout(resolve, 3000));
-
                     finalMessage = await oldMsg.edit(payload);
                 } else {
                     finalMessage = await targetChannel.send(payload);
@@ -176,9 +183,19 @@ module.exports = {
                     newMenu.addOptions(newOption);
                     newBodyContent = oldBodyText + `\n> **${emoji ? emoji + ' ' : ''}${role.name}**`;
                 } else {
+                    // FIX: Find the OLD name stored in the menu option
+                    const optionToRemove = newMenu.options.find(o => o.data.value === role.id);
+                    // If we find it, use its label. If not, use current role name.
+                    const nameToRemove = optionToRemove ? optionToRemove.data.label : role.name;
+
                     const filtered = newMenu.options.filter(o => o.data.value !== role.id);
                     newMenu.setOptions(filtered);
-                    newBodyContent = oldBodyText.split('\n').filter(l => !l.includes(role.name)).join('\n');
+
+                    // Filter using the stored name
+                    newBodyContent = oldBodyText
+                        .split('\n')
+                        .filter(l => !l.includes(nameToRemove))
+                        .join('\n');
                 }
 
                 const isMultiSelect = oldMenuComponent.max_values > 1;

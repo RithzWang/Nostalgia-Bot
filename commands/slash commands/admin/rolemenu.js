@@ -107,7 +107,7 @@ module.exports = {
             let descriptionLines = [];
 
             if (requiredRole) {
-                descriptionLines.push(`🔒 **Restricted to:** ${requiredRole.toString()}`);
+                descriptionLines.push(`<:lock:1457147730542465312> **Restricted to:** ${requiredRole.toString()}`);
                 descriptionLines.push(''); 
             }
 

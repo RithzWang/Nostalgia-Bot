@@ -223,7 +223,7 @@ module.exports = {
                     return interaction.reply({ content: "<:no:1297814819105144862> Error changing roles.", flags: MessageFlags.Ephemeral });
                 }
             }
-
+          }
 
         // ===============================================
         // 3. SELECT MENU HANDLERS (UPDATED TO PLAIN TEXT)

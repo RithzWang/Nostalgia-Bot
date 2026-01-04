@@ -27,7 +27,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('giveaway')
         .setDescription('Manage giveaways')
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         // 1. START
         .addSubcommand(sub =>
             sub.setName('start')

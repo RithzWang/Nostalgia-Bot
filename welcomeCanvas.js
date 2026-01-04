@@ -199,7 +199,7 @@ async function createWelcomeImage(member) {
     ctx.fillStyle = '#ffffff';
     // Increased shadow slightly since background is lighter now
     ctx.shadowColor = "rgba(0, 0, 0, 0.9)"; 
-    ctx.shadowBlur = 15;
+    ctx.shadowBlur = 10;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 4;
 
@@ -219,7 +219,7 @@ async function createWelcomeImage(member) {
     let usernameText;
 
     ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
-    ctx.shadowBlur = 15;
+    ctx.shadowBlur = 10;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 4;
 

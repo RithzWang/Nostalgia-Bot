@@ -14,6 +14,7 @@ const {
 } = require('discord.js');
 
 module.exports = {
+    guildOnly: true,
     data: new SlashCommandBuilder()
         .setName('registration')
         .setDescription('Manage the registration system')

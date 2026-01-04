@@ -140,10 +140,10 @@ client.on('guildMemberAdd', async (member) => {
                     .addTextDisplayComponents(
                         (header) => header.setContent('### Welcome to A2-Q Server'),
                         (body) => body.setContent(
-                            `**User:** <@${member.user.id}> \`(${member.user.username})\`\n` +
-                            `<:calendar:1456242387243499613> **Account Created:** ${accountCreated}\n` +
-                            `<:users:1456242343303971009> **Member Count:** \`${member.guild.memberCount}\`\n` +
-                            `<:chain:1456242418717556776> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`
+                            `<@${member.user.id}> \`(${member.user.username})\`\n` +
+                            `> <:calendar:1456242387243499613> Account Created: ${accountCreated}\n` +
+                            `> <:users:1456242343303971009> Member Count: \`${member.guild.memberCount}\`\n` +
+                            `> <:chain:1456242418717556776> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`
                         )
                     )
                     .setThumbnailAccessory((thumb) => 

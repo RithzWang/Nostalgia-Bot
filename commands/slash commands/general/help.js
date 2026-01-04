@@ -46,15 +46,17 @@ module.exports = {
                 container.addTextDisplayComponents(new TextDisplayBuilder().setContent(description));
             }
 
-            // Divider
-            container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
-
             // Commands List (Formatted like Embed Fields)
             if (fields.length > 0) {
+                // Add separator only if there are fields
+                container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
+                
                 const fieldText = fields.map(f => `**${f.name}**\n${f.value}`).join('\n\n');
                 container.addTextDisplayComponents(new TextDisplayBuilder().setContent(fieldText));
-                container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
             }
+
+            // Divider before menu
+            container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
 
             // Add Menu INSIDE the container
             container.addActionRowComponents(menuRow);
@@ -66,8 +68,18 @@ module.exports = {
         const pages = {
             home: {
                 title: 'A2-Q Server',
-                desc: 'A safe and well managed server made for fun — but taken seriously\n\n> We are a small community for **Minecraft** builders and **Brawl Stars** brawlers. Whether you want to grind trophies, build a base, or just hang out in VC, this is a safe place for friends to game together.\n\n**Owner Information\n<:discord:1446794842351865958> : [**Q1TN**](https://discord.com/users/837741275603009626)\n<:insta:1446793242040467486> : [**32r.6**](https://instagram.com/32r.6)\n<:spotify:1446793276073181277> : [**Q1TN**](https://open.spotify.com/user/31ljrymawsram5zmxn4sbutp7bxm)\n<:domain:1446793140395835583> : [**ridouan.xyz**](https://ridouan.xyz)}
-                
+                // FIXED: Used backticks (`) for multi-line string and merged Owner Info here
+                desc: `A safe and well managed server made for fun — but taken seriously\n
+> We are a small community for **Minecraft** builders and **Brawl Stars** brawlers. Whether you want to grind trophies, build a base, or just hang out in VC, this is a safe place for friends to game together.
+
+**Owner Information**
+<:discord:1446794842351865958> : [**Q1TN**](https://discord.com/users/837741275603009626)
+<:insta:1446793242040467486> : [**32r.6**](https://instagram.com/32r.6)
+<:spotify:1446793276073181277> : [**Q1TN**](https://open.spotify.com/user/31ljrymawsram5zmxn4sbutp7bxm)
+<:domain:1446793140395835583> : [**ridouan.xyz**](https://ridouan.xyz)
+
+-# Select a category below.`,
+                fields: [] // Empty fields because everything is in desc now
             },
             owner: {
                 title: '<:owner:1447143417711951872> Bot Owner',
@@ -126,7 +138,7 @@ module.exports = {
         const homeContainer = createInfoContainer(initialData.title, initialData.desc, initialData.fields);
 
         const response = await interaction.reply({
-            components: [homeContainer], // Container is the ONLY root component
+            components: [homeContainer], 
             flags: [MessageFlags.SuppressNotifications, MessageFlags.IsComponentsV2],
             fetchReply: true
         });
@@ -145,28 +157,27 @@ module.exports = {
             const selection = i.values[0];
             const data = pages[selection] || pages.home;
 
-            // Build new container based on selection
             const newContainer = createInfoContainer(data.title, data.desc, data.fields);
 
             await i.update({ components: [newContainer] });
         });
 
         collector.on('end', () => {
-            // Disable the menu inside the container
             const disabledMenu = StringSelectMenuBuilder.from(selectMenu)
                 .setDisabled(true)
                 .setPlaceholder('Menu Expired');
             
             const disabledRow = new ActionRowBuilder().addComponents(disabledMenu);
             
-            // Rebuild home container with disabled row
             const finalData = pages.home;
+            
+            // Manually recreate final container to ensure it looks right disabled
             const finalContainer = new ContainerBuilder()
                 .setAccentColor(0x888888)
                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(`### ${finalData.title}`))
                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(finalData.desc))
-                .addSeparatorComponents(new SeparatorBuilder())
-                .addActionRowComponents(disabledRow); // Disabled Menu inside
+                .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small))
+                .addActionRowComponents(disabledRow);
 
             interaction.editReply({ 
                 components: [finalContainer] 

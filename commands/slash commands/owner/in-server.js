@@ -15,6 +15,7 @@ const {
 const OWNER_ID = '837741275603009626'; 
 
 module.exports = {
+    guildOnly: true,
     data: new SlashCommandBuilder()
         .setName('in-server')
         .setDescription('Manage bot servers')

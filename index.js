@@ -140,10 +140,10 @@ client.on('guildMemberAdd', async (member) => {
                     .addTextDisplayComponents(
                         (header) => header.setContent('### Welcome to A2-Q Server'),
                         (body) => body.setContent(
-                            `<@${member.user.id}> \`(${member.user.username})\`\n` +
-                            `> <:calendar:1456242387243499613> Account Created: ${accountCreated}\n` +
-                            `> <:users:1456242343303971009> Member Count: \`${member.guild.memberCount}\`\n` +
-                            `> <:chain:1456242418717556776> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`
+                            `-# <@${member.user.id}> \`(${member.user.username})\`\n` +
+                            `-# <:calendar:1456242387243499613> Account Created: ${accountCreated}\n` +
+                            `-# <:users:1456242343303971009> Member Count: \`${member.guild.memberCount}\`\n` +
+                            `-# <:chain:1456242418717556776> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`
                         )
                     )
                     .setThumbnailAccessory((thumb) => 
@@ -155,17 +155,10 @@ client.on('guildMemberAdd', async (member) => {
             .addActionRowComponents((row) => 
                 row.setComponents(
                     new ButtonBuilder()
-                        .setLabel('Register')
+                        .setLabel('Don’t Forget to Register')
                         .setEmoji('📝')
                         .setStyle(ButtonStyle.Link)
-                        .setURL('https://discord.com/channels/1456197054782111756/1456197056250122352'),
-                    new ButtonBuilder()
-                        .setLabel('Chat')
-                        .setEmoji('🌍') // Corrected typo
-                        .setStyle(ButtonStyle.Link)
-                        .setURL('https://discord.com/channels/1456197054782111756/1456197056510165026')
-                )
-            )
+                        .setURL('https://discord.com/channels/1456197054782111756/1456197056250122352')
 
             // 3. Separator
             .addSeparatorComponents((sep) => 

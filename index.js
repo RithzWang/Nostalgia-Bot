@@ -100,11 +100,12 @@ client.on('clientReady', async () => {
 
 const { createWelcomeImage } = require('./welcomeCanvas.js');
 
-// --- YOUR ORIGINAL WELCOMER ---
+// --- IMPORT THE IMAGE GENERATOR (Required) ---
+
 client.on('guildMemberAdd', async (member) => {
     if (member.user.bot || member.guild.id !== serverID) return;
 
-    // 1. Roles & Nickname
+    // --- Roles & Nickname ---
     const rolesToAdd = ['1456238105345527932', '1456197055092625573'];
     try { 
         await member.roles.add(rolesToAdd); 
@@ -112,7 +113,7 @@ client.on('guildMemberAdd', async (member) => {
     } catch (e) {}
 
     try {
-        // 2. Invites & Data
+        // --- Invites & Data ---
         const newInvites = await member.guild.invites.fetch().catch(() => new Collection());
         let usedInvite = newInvites.find(inv => inv.uses > (invitesCache.get(inv.code) || 0));
         newInvites.each(inv => invitesCache.set(inv.code, inv.uses));
@@ -121,29 +122,32 @@ client.on('guildMemberAdd', async (member) => {
         const inviterId = usedInvite?.inviter ? usedInvite.inviter.id : 'Unknown';
         const inviteCode = usedInvite ? usedInvite.code : 'Unknown';
 
+        // --- Generate Image & Time ---
         const buffer = await createWelcomeImage(member);
         const attachment = new AttachmentBuilder(buffer, { name: 'welcome-image.png' });
         const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
 
-        // --- COMPONENT V2 CONSTRUCTION ---
+        // ==========================================
+        //        COMPONENTS V2 CONSTRUCTION
+        // ==========================================
 
-        // A. TEXT SECTION (Left) + AVATAR (Right)
+        // 1. MAIN SECTION (Text + Avatar)
+        // Corrected: Uses callback syntax based on your guide
         const mainSection = new SectionBuilder()
             .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent('### Welcome to A2-Q Server'),
-                new TextDisplayBuilder().setContent(`<@${member.user.id}> \`(${member.user.username})\``),
-                new TextDisplayBuilder().setContent(
+                (header) => header.setContent('### Welcome to A2-Q Server'),
+                (body) => body.setContent(
+                    `**User:** <@${member.user.id}> \`(${member.user.username})\`\n` +
                     `<:calendar:1456242387243499613> **Account Created:** ${accountCreated}\n` +
                     `<:users:1456242343303971009> **Member Count:** \`${member.guild.memberCount}\`\n` +
-                    // UPDATED LINE BELOW:
                     `<:chain:1456242418717556776> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`
                 )
             )
             .setThumbnailAccessory(
-                new ThumbnailBuilder({ media: { url: member.user.displayAvatarURL() } })
+                (thumb) => thumb.setURL(member.user.displayAvatarURL())
             );
 
-        // B. BUTTONS
+        // 2. BUTTONS
         const buttonRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setLabel('Register')
@@ -152,23 +156,26 @@ client.on('guildMemberAdd', async (member) => {
                 .setURL('https://discord.com/channels/1456197054782111756/1456197056250122352'), 
             new ButtonBuilder()
                 .setLabel('Chat')
-                .setEmoji('🌍')
+                .setEmoji('🌍') // Corrected typo
                 .setStyle(ButtonStyle.Link)
                 .setURL('https://discord.com/channels/1456197054782111756/1456197056510165026') 
         );
 
-        // C. SEPARATOR
+        // 3. SEPARATOR
         const divider = new SeparatorBuilder()
             .setSpacing(SeparatorSpacingSize.Small);
 
-        // D. IMAGE GALLERY
+        // 4. IMAGE GALLERY
+        // Corrected: Uses .addItems() with callback syntax
         const canvasGallery = new MediaGalleryBuilder()
-            .setMedia({
-                description: "Welcome Image",
-                url: "attachment://welcome-image.png" 
-            });
+            .addItems((item) => 
+                item
+                    .setDescription("Welcome Image")
+                    .setURL("attachment://welcome-image.png")
+            );
 
-        // E. CONTAINER
+        // 5. CONTAINER
+        // Note: Containers typically still use .addComponents() with built objects
         const mainContainer = new ContainerBuilder()
             .setAccentColor(0x888888)
             .addComponents(
@@ -178,6 +185,7 @@ client.on('guildMemberAdd', async (member) => {
                 canvasGallery 
             );
 
+        // --- SEND MESSAGE ---
         const channel = client.channels.cache.get(welcomeLog);
         if (channel) {
             await channel.send({ 
@@ -187,8 +195,9 @@ client.on('guildMemberAdd', async (member) => {
             });
         }
 
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("Welcome Error:", e); }
 });
+
 
 
 

@@ -3,6 +3,7 @@ const ThanksLB = require('../../../src/models/ThanksLB');
 const { updateLeaderboardVisual } = require('./thanksLeaderboard');
 
 module.exports = {
+    guildOnly: true,
     data: new SlashCommandBuilder()
         .setName('thanks')
         .setDescription('Give a thanks to someone')

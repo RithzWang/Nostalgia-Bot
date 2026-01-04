@@ -130,7 +130,7 @@ module.exports = {
 
             menu.setMaxValues(multiSelect ? validRoleCount : 1);
             menu.setPlaceholder(multiSelect 
-                ? `Select multiple roles` 
+                ? `Select one or multiple roles` 
                 : `Select one out of ${validRoleCount} roles`);
 
             const titleText = new TextDisplayBuilder().setContent(`### ${title}`); 

@@ -13,6 +13,7 @@ const {
 } = require('discord.js');
 
 module.exports = {
+    guildOnly: true,
     data: new SlashCommandBuilder()
         .setName('info')
         .setDescription('Shows a dynamic help menu'),

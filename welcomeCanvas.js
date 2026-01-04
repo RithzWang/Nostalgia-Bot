@@ -21,6 +21,7 @@ function isColorLight(hex) {
 }
 
 async function createWelcomeImage(member) {
+    // 1. Fetch user to get Banner/Accent/Avatar details
     const user = await member.user.fetch(true);
 
     const dim = {
@@ -75,25 +76,38 @@ async function createWelcomeImage(member) {
         ctx.fillStyle = '#1e1e1e';
         ctx.fillRect(0, 0, dim.width, dim.height);
     }
-    
-    // --- 4. Inner Frame ---
+
+    // --- 4. Inner Frame (NITRO LOGIC ADDED HERE) ---
     ctx.save();
     ctx.lineWidth = 40;
 
+    // DETECT NITRO SIGNALS:
+    // 1. Does the user have a Banner Image? (Standard users can't have this)
     const hasBanner = user.banner !== null;
+    // 2. Is the avatar animated? (Standard users can't have GIFs)
     const hasAnimatedAvatar = user.avatar && user.avatar.startsWith('a_');
+    
+    // If either is true, we treat them as "Nitro"
     const isNitro = hasBanner || hasAnimatedAvatar;
 
+    // Apply Logic: Must have Accent Color AND be Nitro
     if (user.hexAccentColor && isNitro) {
+        
         const gradient = ctx.createLinearGradient(0, 0, 0, dim.height);
         gradient.addColorStop(0, user.hexAccentColor);
+
+        // Smart Gradient Logic
         const isLight = isColorLight(user.hexAccentColor);
         const modifier = isLight ? -0.6 : 0.6;
+
         const secondaryColor = shadeColor(user.hexAccentColor, modifier);
         gradient.addColorStop(1, secondaryColor);
+
         ctx.strokeStyle = gradient;
+
     } else {
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        // DEFAULT for Non-Nitro (or Nitro users with no theme set)
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
     }
 
     ctx.beginPath();
@@ -111,17 +125,15 @@ async function createWelcomeImage(member) {
     const mainAvatarURL = member.displayAvatarURL({ extension: 'png', size: 512 });
     const mainAvatar = await loadImage(mainAvatarURL);
 
-    // --- UPDATED SHADOW (AVATAR) ---
+    // Shadow
     ctx.save();
     ctx.beginPath();
     ctx.arc(avatarX + avatarRadius, avatarY + avatarRadius, avatarRadius, 0, Math.PI * 2, true);
     ctx.closePath();
-    
-    ctx.shadowColor = 'rgba(255, 255, 255, 0.8)'; 
-    ctx.shadowBlur = 20; // Reduced blur (narrower distribution)
-    ctx.shadowOffsetX = 0; 
-    ctx.shadowOffsetY = 0;
-    
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+    ctx.shadowBlur = 35;
+    ctx.shadowOffsetX = 8;
+    ctx.shadowOffsetY = 8;
     ctx.fillStyle = '#000000';
     ctx.fill();
     ctx.restore();
@@ -151,14 +163,9 @@ async function createWelcomeImage(member) {
     // --- 6. Server Name ---
     ctx.save();
     ctx.font = 'bold 60px "Noto Sans", "ReemKufi Bold", "Symbol", "Apple Symbols", "Apple Color Emoji"';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'; 
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'bottom';
-    
-    // Server Name Shadow (Narrower and slight shift)
-    ctx.shadowColor = "rgba(255, 255, 255, 0.6)";
-    ctx.shadowBlur = 5; // Narrower
-    ctx.shadowOffsetY = 2; // Slight shift down
     ctx.fillText("A2-Q Server", dim.width - 70, dim.height - 70);
     ctx.restore();
 
@@ -167,12 +174,10 @@ async function createWelcomeImage(member) {
     let currentY = dim.height / 2 - 15;
 
     ctx.fillStyle = '#ffffff';
-
-    // --- UPDATED SHADOW (DISPLAY NAME) ---
-    ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
-    ctx.shadowBlur = 10; // Narrower distribution (was 20)
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 4; // Shifted slightly to the bottom
+    ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
+    ctx.shadowBlur = 15;
+    ctx.shadowOffsetX = 5;
+    ctx.shadowOffsetY = 5;
 
     const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>/g, '').trim();
     const displayName = cleanedDisplayName || user.username;
@@ -181,7 +186,7 @@ async function createWelcomeImage(member) {
     ctx.textAlign = 'left';
     ctx.fillText(displayName, textX, currentY);
 
-    // Reset shadow temporarily
+    // Reset shadow
     ctx.shadowColor = "transparent";
 
     // Username
@@ -189,11 +194,10 @@ async function createWelcomeImage(member) {
     const cleanedUsername = user.username.replace(/<a?:\w+:\d+>/g, '').trim();
     let usernameText;
 
-    // --- UPDATED SHADOW (USERNAME) ---
-    ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
-    ctx.shadowBlur = 10; // Narrower distribution (was 20)
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 4; // Shifted slightly to the bottom
+    ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
+    ctx.shadowBlur = 15;
+    ctx.shadowOffsetX = 5;
+    ctx.shadowOffsetY = 5;
 
     if (user.discriminator && user.discriminator !== '0') {
         usernameText = `${cleanedUsername}#${user.discriminator}`;

@@ -1,48 +1,54 @@
 const { 
     SlashCommandBuilder, 
+    PermissionFlagsBits, 
     AttachmentBuilder, 
+    ContainerBuilder, 
     ButtonBuilder, 
     ButtonStyle, 
-    PermissionFlagsBits,
-    ContainerBuilder,
-    MessageFlags,
-    SeparatorSpacingSize
+    MessageFlags, 
+    SeparatorSpacingSize 
 } = require('discord.js');
 
+// ⚠️ PATH CHECK: 
+// Since this file is in: commands/slash commands/admin/
+// We need to go up 3 folders (../../../) to reach the bot root where welcomeCanvas.js usually is.
+// If your file structure is different, adjust this path.
 const { createWelcomeImage } = require('../../../welcomeCanvas.js'); 
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('testwelcome')
-        .setDescription('Simulate the V2 welcome card for a specific user')
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+        .setName('test-welcome')
+        .setDescription('Simulate the welcome message for a user')
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addUserOption(option => 
             option.setName('target')
-            .setDescription('The user to generate the image for (default is you)')
+            .setDescription('The user to generate the welcome for (defaults to you)')
         ),
-    
+
     async execute(interaction) {
-        await interaction.deferReply(); 
+        // 1. Defer Reply (Image generation takes time)
+        await interaction.deferReply();
 
         try {
             const member = interaction.options.getMember('target') || interaction.member;
 
-            // 1. Generate Image
-            const welcomeImageBuffer = await createWelcomeImage(member);
-            const attachment = new AttachmentBuilder(welcomeImageBuffer, { name: 'welcome-image.png' });
+            // 2. Generate Image
+            const buffer = await createWelcomeImage(member);
+            const attachment = new AttachmentBuilder(buffer, { name: 'welcome-image.png' });
 
-            // 2. Mock Data 
+            // 3. Mock Data (Fake data to simulate what the bot usually calculates)
             const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
             const memberCount = interaction.guild.memberCount;
+            // We fake the inviter data since there isn't a real invite used in a test command
             const inviterName = interaction.user.username; 
             const inviterId = interaction.user.id;
             const inviteCode = 'TEST-CODE';
 
-            // 3. Build Container (Using IDs from your Welcome Event)
+            // 4. Build Container (EXACT COPY of your Main Event logic)
             const mainContainer = new ContainerBuilder()
-                .setAccentColor(0x888888) 
-
-                // A. Main Section
+                .setAccentColor(0x888888)
+                
+                // A. Main Section (Text + Avatar)
                 .addSectionComponents((section) => 
                     section
                         .addTextDisplayComponents(
@@ -59,7 +65,7 @@ module.exports = {
                         )
                 )
 
-                // B. Register Button
+                // B. Buttons (Register Button)
                 .addActionRowComponents((row) => 
                     row.setComponents(
                         new ButtonBuilder()
@@ -75,24 +81,23 @@ module.exports = {
                     sep.setSpacing(SeparatorSpacingSize.Small)
                 )
 
-                // D. Image Gallery
+                // D. Media Gallery (The Welcome Image)
                 .addMediaGalleryComponents((gallery) => 
                     gallery.addItems((item) => 
                         item.setURL("attachment://welcome-image.png")
                     )
                 );
 
-            // 4. Send Result
+            // 5. Send Message
             await interaction.editReply({ 
-                content: `**[SIMULATION]** Welcome V2 Card for ${member.user.tag}`,
-                flags: MessageFlags.IsComponentsV2, 
+                flags: [MessageFlags.IsComponentsV2], 
                 files: [attachment], 
                 components: [mainContainer] 
             });
 
         } catch (error) {
-            console.error(error);
-            await interaction.editReply({ content: '❌ Something went wrong generating the V2 image.' });
+            console.error("❌ Test Welcome Error:", error);
+            await interaction.editReply({ content: `❌ Error generating welcome: \`${error.message}\`` });
         }
     }
 };

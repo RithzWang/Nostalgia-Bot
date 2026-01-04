@@ -1,40 +1,41 @@
 const { Events } = require('discord.js');
+// 1. Use 'require' instead of 'import'
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const ChatBot = require('../src/models/ChatBot');
 
-import { GoogleGenAI } from "@google/genai";
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-const model = ai.generativeModel("gemini-1.5-flash");
+// 2. Initialize properly for CommonJS
+// Make sure you have GEMINI_API_KEY in your .env file
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-
+// 3. Use a safe model name (legacy SDK often needs "latest" suffix or "gemini-pro")
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
 module.exports = {
     name: Events.MessageCreate,
     async execute(message, client) {
-        // 1. Basic Filters
-        if (message.author.bot) return; // Ignore bots
-        if (!message.guild) return;     // Ignore DMs
-        if (message.content.startsWith('!')) return; // Ignore commands
+        // --- FILTERS ---
+        if (message.author.bot) return; 
+        if (!message.guild) return;     
+        if (message.content.startsWith('!')) return;
 
         try {
-            // 2. Check Database
-            // See if this server has a chatbot channel configured
+            // --- DATABASE CHECK ---
             const config = await ChatBot.findOne({ GuildID: message.guild.id });
-            
-            // If no config, or wrong channel, stop here
             if (!config || config.ChannelID !== message.channel.id) return;
 
-            // 3. Send "Typing..."
+            // --- SEND TYPING ---
             await message.channel.sendTyping();
 
-            // 4. Generate AI Response
-            if (!process.env.GEMINI_API_KEY) return console.log("Missing GEMINI_API_KEY");
+            if (!process.env.GEMINI_API_KEY) {
+                return console.log("❌ Error: Missing GEMINI_API_KEY in .env");
+            }
 
+            // --- GENERATE CONTENT ---
             const result = await model.generateContent(message.content);
             const response = await result.response;
             const text = response.text();
 
-            // 5. Send Reply (Handle long messages)
+            // --- SEND REPLY (SPLIT IF LONG) ---
             if (text.length > 2000) {
                 await message.reply(text.substring(0, 2000));
             } else {
@@ -43,8 +44,7 @@ module.exports = {
 
         } catch (error) {
             console.error("AI Chat Error:", error);
-            // Optional: React with emoji to show failure instead of spamming chat
-            // message.react('❌'); 
+            // Optional: await message.reply("My brain is disconnected!");
         }
     },
 };

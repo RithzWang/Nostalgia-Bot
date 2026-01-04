@@ -175,9 +175,9 @@ async function createWelcomeImage(member) {
 
     ctx.fillStyle = '#ffffff';
     ctx.shadowColor = "rgba(0, 0, 0, 0.7)";
-    ctx.shadowBlur = 15;
-    ctx.shadowOffsetX = 5;
-    ctx.shadowOffsetY = 5;
+    ctx.shadowBlur = 12;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 4;
 
     const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>/g, '').trim();
     const displayName = cleanedDisplayName || user.username;
@@ -195,9 +195,9 @@ async function createWelcomeImage(member) {
     let usernameText;
 
     ctx.shadowColor = "rgba(0, 0, 0, 0.7)";
-    ctx.shadowBlur = 15;
-    ctx.shadowOffsetX = 5;
-    ctx.shadowOffsetY = 5;
+    ctx.shadowBlur = 12;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 4;
 
     if (user.discriminator && user.discriminator !== '0') {
         usernameText = `${cleanedUsername}#${user.discriminator}`;

@@ -9,7 +9,6 @@ const {
 const OWNER_ID = '837741275603009626';
 
 module.exports = {
-    guildOnly: true,
     data: new SlashCommandBuilder()
         .setName('create-invite')
         .setDescription('Creates a permanent invite for a specific channel (Owner Only)')

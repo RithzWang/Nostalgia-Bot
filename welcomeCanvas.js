@@ -230,7 +230,7 @@ async function createWelcomeImage(member) {
     }
 
     ctx.font = '100px "SF Pro Text Regular", sans-serif';
-    ctx.fillStyle = '#e1e1e1'; // Slightly brighter grey for readability
+    ctx.fillStyle = '#d9d9d9'; // Slightly brighter grey for readability
     ctx.fillText(usernameText, textX, currentY);
 
     ctx.restore();

@@ -17,7 +17,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('replace')
         .setDescription('Reset a message and replace it with a Container')
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
         .addStringOption(option => 
             option.setName('message_id')
                 .setDescription('The ID of the message to edit')

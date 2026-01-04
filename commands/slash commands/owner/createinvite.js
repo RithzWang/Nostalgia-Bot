@@ -12,7 +12,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('create-invite')
         .setDescription('Creates a permanent invite for a specific channel (Owner Only)')
-        .setDefaultMemberPermissions(PermissionFlagsBits.CreateInstantInvite)
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
         .setDMPermission(false)
         .addChannelOption(option => 
             option.setName('channel')

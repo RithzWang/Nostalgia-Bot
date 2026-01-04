@@ -268,7 +268,7 @@ module.exports = {
 
                         // --- HARDCODED TEXT (Matching registration.js exactly) ---
                         newContainer.addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent('### <:registration:1447143542643490848> Registration')
+                            new TextDisplayBuilder().setContent('### <:registration:1447143542643490848> Server Registration')
                         );
                         newContainer.addTextDisplayComponents(
                             new TextDisplayBuilder().setContent(`To access chat and connect to voice channels, please register below.\n\n**Note:**\n\`Name\` : your desired name.\n\`Country\` : your country’s flag emoji.`)

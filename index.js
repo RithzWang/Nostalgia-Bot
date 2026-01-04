@@ -163,7 +163,7 @@ client.on('guildMemberAdd', async (member) => {
 
         // D. IMAGE GALLERY
         const canvasGallery = new MediaGalleryBuilder()
-            .addMedia({
+            .setMedia({
                 description: "Welcome Image",
                 url: "attachment://welcome-image.png" 
             });

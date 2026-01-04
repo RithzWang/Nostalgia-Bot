@@ -2,6 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, Butt
 const ThanksLB = require('../../../src/models/ThanksLB');
 
 module.exports = {
+    guildOnly: true,
     data: new SlashCommandBuilder()
         .setName('thanks-leaderboard')
         .setDescription('Manage the Thanks Leaderboard')

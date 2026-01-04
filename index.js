@@ -168,7 +168,7 @@ client.on('guildMemberAdd', async (member) => {
             .addSectionComponents((section) => 
                 section
                     .addTextDisplayComponents(
-                        (header) => header.setContent('### Welcome to A2-Q Server'),
+                        (header) => header.setContent('### Welcome to House of A2-Q'),
                         (body) => body.setContent(
                             `-# <@${member.user.id}> \`(${member.user.username})\`\n` +
                             `-# <:calendar:1456242387243499613> Account Created: ${accountCreated}\n` +

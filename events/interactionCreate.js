@@ -213,8 +213,8 @@ module.exports = {
                 return interaction.reply({ content: `<:no:1297814819105144862> You are already a member of the server!`, flags: MessageFlags.Ephemeral });
             }
             const modal = new ModalBuilder().setCustomId('reg_modal_submit').setTitle('Server Registration');
-            const nameInput = new TextInputBuilder().setCustomId('reg_name').setLabel("Your Desired Name").setStyle(TextInputStyle.Short).setMaxLength(15).setRequired(true);
-            const countryInput = new TextInputBuilder().setCustomId('reg_country').setLabel("Your Country Flag").setStyle(TextInputStyle.Short).setMaxLength(5).setRequired(true);
+            const nameInput = new TextInputBuilder().setCustomId('reg_name').setLabel("Name").setStyle(TextInputStyle.Short).setPlaceholder("your desired name (e.g. Naif)").setMaxLength(15).setRequired(true);
+            const countryInput = new TextInputBuilder().setCustomId('reg_country').setLabel("Country Flag").setStyle(TextInputStyle.Short).setPlaceholder("your country’s flag emoji (e.g. 🇵🇸)").setMaxLength(5).setRequired(true);
             modal.addComponents(new ActionRowBuilder().addComponents(nameInput), new ActionRowBuilder().addComponents(countryInput));
             await interaction.showModal(modal);
         }

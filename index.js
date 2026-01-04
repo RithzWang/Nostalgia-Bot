@@ -98,30 +98,18 @@ client.on('clientReady', async () => {
 });
 
 // --- YOUR ORIGINAL WELCOMER ---
-const { createWelcomeImage } = require('./welcomeCanvas.js');
-
 client.on('guildMemberAdd', async (member) => {
     if (member.user.bot || member.guild.id !== serverID) return;
 
-    // 1. Add BOTH Roles Immediately
+    // 1. Roles & Nickname
     const rolesToAdd = ['1456238105345527932', '1456197055092625573'];
-    
-    try {
-        await member.roles.add(rolesToAdd);
-    } catch (e) {
-        console.error("Failed to add joining roles:", e);
-    }
-
-    // 2. Set Nickname (Delayed 5s)
-    setTimeout(async () => {
-        try {
-            let newNickname = `🌱 • ${member.displayName}`.substring(0, 32);
-            await member.setNickname(newNickname);
-        } catch (e) {}
-    }, 5000);
+    try { 
+        await member.roles.add(rolesToAdd); 
+        setTimeout(() => member.setNickname(`🌱 • ${member.displayName}`.substring(0, 32)), 5000);
+    } catch (e) {}
 
     try {
-        // 3. Handle Invites Tracking
+        // 2. Invites & Data
         const newInvites = await member.guild.invites.fetch().catch(() => new Collection());
         let usedInvite = newInvites.find(inv => inv.uses > (invitesCache.get(inv.code) || 0));
         newInvites.each(inv => invitesCache.set(inv.code, inv.uses));
@@ -130,31 +118,75 @@ client.on('guildMemberAdd', async (member) => {
         const inviterId = usedInvite?.inviter ? usedInvite.inviter.id : 'Unknown';
         const inviteCode = usedInvite ? usedInvite.code : 'Unknown';
 
-        // 4. Generate Welcome Image & Embed
         const buffer = await createWelcomeImage(member);
         const attachment = new AttachmentBuilder(buffer, { name: 'welcome-image.png' });
-        
         const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
-        
-        const embed = new EmbedBuilder()
-            .setColor(colourEmbed)
-            .setThumbnail(member.user.displayAvatarURL())
-            .setImage('attachment://welcome-image.png')
-            .setDescription(`### Welcome to A2-Q Server\n-# <@${member.user.id}> \`(${member.user.username})\`\n-# <:calendar:1456242387243499613> Account Created: ${accountCreated}\n-# <:users:1456242343303971009> Member Count: \`${member.guild.memberCount}\`\n-# <:chain:1456242418717556776> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`);
+
+        // --- COMPONENT V2 CONSTRUCTION ---
+
+        // A. TEXT SECTION (Left) + AVATAR (Right)
+        const mainSection = new SectionBuilder()
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent('### Welcome to A2-Q Server'),
+                new TextDisplayBuilder().setContent(`<@${member.user.id}> \`(${member.user.username})\``),
+                new TextDisplayBuilder().setContent(
+                    `<:calendar:1456242387243499613> **Account Created:** ${accountCreated}\n` +
+                    `<:users:1456242343303971009> **Member Count:** \`${member.guild.memberCount}\`\n` +
+                    // UPDATED LINE BELOW:
+                    `<:chain:1456242418717556776> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`
+                )
+            )
+            .setThumbnailAccessory(
+                new ThumbnailBuilder({ media: { url: member.user.displayAvatarURL() } })
+            );
+
+        // B. BUTTONS
+        const buttonRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setLabel('Register')
+                .setEmoji('📝')
+                .setStyle(ButtonStyle.Link)
+                .setURL('https://discord.com/channels/1456197054782111756/1456197056250122352'), 
+            new ButtonBuilder()
+                .setLabel('Chat')
+                .setEmoui('🌍')
+                .setStyle(ButtonStyle.Link)
+                .setURL('https://discord.com/channels/1456197054782111756/1456197056510165026') 
+        );
+
+        // C. SEPARATOR
+        const divider = new SeparatorBuilder()
+            .setSpacing(SeparatorSpacingSize.Small);
+
+        // D. IMAGE GALLERY
+        const canvasGallery = new MediaGalleryBuilder()
+            .addMedia({
+                description: "Welcome Image",
+                url: "attachment://welcome-image.png" 
+            });
+
+        // E. CONTAINER
+        const mainContainer = new ContainerBuilder()
+            .setAccentColor(0x888888)
+            .addComponents(
+                mainSection, 
+                buttonRow,    
+                divider,
+                canvasGallery 
+            );
 
         const channel = client.channels.cache.get(welcomeLog);
-        
         if (channel) {
-            // Note: You had a button in your original request, but it's optional here.
-            // If you want the ID button back, add it to 'components'.
             await channel.send({ 
-                embeds: [embed], 
-                files: [attachment] 
+                flags: [MessageFlags.IsComponentsV2],
+                files: [attachment],
+                components: [mainContainer]
             });
         }
 
     } catch (e) { console.error(e); }
 });
+
 
 
 // --- YOUR ORIGINAL ROLE LOGGING ---

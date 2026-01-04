@@ -170,7 +170,7 @@ async function createWelcomeImage(member) {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'bottom';
-    ctx.fillText("House of A2-Q", dim.width - 70, dim.height - 70);
+    ctx.fillText("A2-Q Realm", dim.width - 70, dim.height - 70);
     ctx.restore();
 
     // --- 7. User Text ---

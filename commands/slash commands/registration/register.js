@@ -55,7 +55,7 @@ module.exports = {
             .setContent('### <:registration:1447143542643490848> Registration');
         
         const descText = new TextDisplayBuilder()
-            .setContent(`To access chat and voice channels, please register below.\n\n> **Note:**\n\`Name\` : followed by your desired name.\n\`Country\` : followed by your country’s flag emoji`);
+            .setContent(`To access chat and connect to voice channels, please register below.\n\n> **Note:**\n\`Name\` : followed by your desired name.\n\`Country\` : followed by your country’s flag emoji`);
 
         // 2. Buttons
         const registerBtn = new ButtonBuilder()

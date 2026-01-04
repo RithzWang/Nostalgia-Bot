@@ -7,14 +7,16 @@ const {
     ModalBuilder, 
     TextInputBuilder, 
     TextInputStyle,
+    Colors,
     // Discord Components v2 Builders
     ContainerBuilder,
-    TextDisplayBuilder
+    TextDisplayBuilder,
+    SeparatorBuilder,
+    SeparatorSpacingSize
 } = require('discord.js');
 
 // --- IMPORTS ---
 const Giveaway = require('../src/models/Giveaway');
-const ApplicationConfig = require('../src/models/ApplicationConfig');
 const ThanksLB = require('../src/models/ThanksLB'); 
 const { updateLeaderboardVisual } = require('../commands/slash commands/leaderboard/thanksLeaderboard');
 
@@ -40,11 +42,11 @@ module.exports = {
         }
 
         // ===============================================
-        // 2. BUTTON HANDLERS
+        // 2. GENERAL BUTTON HANDLERS
         // ===============================================
         if (interaction.isButton()) {
 
-            // A. LEGACY ROLE BUTTONS (Old System)
+            // A. LEGACY ROLE BUTTONS
             if (interaction.customId.startsWith('role_')) {
                 const parts = interaction.customId.split('_');
                 const roleId = parts[1];
@@ -54,7 +56,6 @@ module.exports = {
                 if (!role) return interaction.reply({ content: '<:no:1297814819105144862> Role not found.', flags: MessageFlags.Ephemeral });
 
                 const hasRole = interaction.member.roles.cache.has(roleId);
-                
                 try {
                     if (mode === '1') {
                         if (hasRole) return interaction.reply({ content: `<:no:1297814819105144862> Already verified.`, flags: MessageFlags.Ephemeral });
@@ -73,7 +74,6 @@ module.exports = {
                     return interaction.reply({ content: "❌ I cannot manage this role.", flags: MessageFlags.Ephemeral });
                 }
             }
-
 
             // B. GIVEAWAY JOIN/LEAVE
             if (interaction.customId === 'giveaway_join') {
@@ -99,26 +99,7 @@ module.exports = {
                 return interaction.reply({ content: responseContent, flags: MessageFlags.Ephemeral });
             }
 
-            // C. STAFF APPLICATION MODAL OPEN
-            if (interaction.customId === 'app_apply_btn') {
-                const modal = new ModalBuilder().setCustomId('application_modal').setTitle('Staff Application');
-                const q1 = new TextInputBuilder().setCustomId('app_name').setLabel("What is your name?").setStyle(TextInputStyle.Short).setRequired(true);
-                const q2 = new TextInputBuilder().setCustomId('app_age').setLabel("How old are you?").setStyle(TextInputStyle.Short).setRequired(true);
-                const q3 = new TextInputBuilder().setCustomId('app_country').setLabel("Where are you from?").setStyle(TextInputStyle.Short).setRequired(true);
-                const q4 = new TextInputBuilder().setCustomId('app_timezone').setLabel("What is your time zone?").setStyle(TextInputStyle.Short).setRequired(true);
-                const q5 = new TextInputBuilder().setCustomId('app_reason').setLabel("Why do you want to be staff?").setStyle(TextInputStyle.Paragraph).setRequired(true);
-
-                modal.addComponents(
-                    new ActionRowBuilder().addComponents(q1), 
-                    new ActionRowBuilder().addComponents(q2), 
-                    new ActionRowBuilder().addComponents(q3), 
-                    new ActionRowBuilder().addComponents(q4), 
-                    new ActionRowBuilder().addComponents(q5)
-                );
-                await interaction.showModal(modal);
-            }
-
-            // D. THANKS LEADERBOARD PAGINATION (⬅️ / ➡️)
+            // C. THANKS LEADERBOARD
             if (['thanks_prev', 'thanks_next'].includes(interaction.customId)) {
                 await interaction.deferUpdate();
                 const data = await ThanksLB.findOne({ guildId: interaction.guild.id });
@@ -130,54 +111,30 @@ module.exports = {
                 }
             }
 
-            // E. BUTTON ROLE HANDLER (Universal: Single & Multi)
+            // D. BUTTON ROLE HANDLER (Single & Multi)
             if (interaction.customId.startsWith('btn_role_') || interaction.customId.startsWith('btn_single_')) {
                 const isSingleMode = interaction.customId.startsWith('btn_single_');
-                
-                // 1. Extract Role ID
                 const roleId = interaction.customId.replace('btn_role_', '').replace('btn_single_', '');
                 const role = interaction.guild.roles.cache.get(roleId);
 
-                // 2. Validation
-                if (!role) {
-                    return interaction.reply({ 
-                        content: '<:no:1297814819105144862> Role not found (it may have been deleted).', 
-                        flags: MessageFlags.Ephemeral 
-                    });
-                }
-
-                if (role.position >= interaction.guild.members.me.roles.highest.position) {
-                    return interaction.reply({
-                         content: '<:no:1297814819105144862> I cannot manage this role (it is higher than mine).', 
-                         flags: MessageFlags.Ephemeral 
-                    });
-                }
+                if (!role) return interaction.reply({ content: '<:no:1297814819105144862> Role not found.', flags: MessageFlags.Ephemeral });
+                if (role.position >= interaction.guild.members.me.roles.highest.position) return interaction.reply({ content: '<:no:1297814819105144862> Role too high.', flags: MessageFlags.Ephemeral });
 
                 try {
-                    // 3. SINGLE MODE LOGIC (Radio Button Style)
                     if (isSingleMode) {
-                        // If they already have it, remove it (Toggle Off)
                         if (interaction.member.roles.cache.has(roleId)) {
                              await interaction.member.roles.remove(role);
-                             return interaction.reply({ 
-                                content: `<:no:1297814819105144862> **Removed:** ${role.name}`, 
-                                flags: MessageFlags.Ephemeral 
-                            });
+                             return interaction.reply({ content: `<:yes:1297814648417943565> **Removed:** ${role.name}`, flags: MessageFlags.Ephemeral });
                         }
-
-                        // Otherwise: Remove ALL other roles from this menu, then Add this one.
                         const rolesToRemove = [];
                         const removedNames = [];
-                        
-                        // Scan message components to find sibling buttons
-                        const container = interaction.message.components[0]; // V2 Container
+                        const container = interaction.message.components[0]; 
                         if (container) {
                             container.components.forEach(comp => {
-                                if (comp.type === 1) { // ActionRow
+                                if (comp.type === 1) { 
                                     comp.components.forEach(btn => {
                                         if (btn.customId.startsWith('btn_single_')) {
                                             const otherId = btn.customId.replace('btn_single_', '');
-                                            // If user has this other role (and it's not the target), mark for removal
                                             if (otherId !== roleId && interaction.member.roles.cache.has(otherId)) {
                                                 rolesToRemove.push(otherId);
                                                 const r = interaction.guild.roles.cache.get(otherId);
@@ -188,160 +145,140 @@ module.exports = {
                                 }
                             });
                         }
-
-                        // Perform Removal
-                        for (const rID of rolesToRemove) {
-                            await interaction.member.roles.remove(rID).catch(() => {});
-                        }
-
-                        // Add new role
+                        for (const rID of rolesToRemove) await interaction.member.roles.remove(rID).catch(() => {});
                         await interaction.member.roles.add(role);
-                        
-                        // Construct Message
                         let msg = `<:yes:1297814648417943565> **Added:** ${role.name}`;
-                        if (removedNames.length > 0) {
-                            msg += `\n<:no:1297814819105144862> **Removed:** ${removedNames.join(', ')}`;
-                        }
-
-                        return interaction.reply({ 
-                            content: msg, 
-                            flags: MessageFlags.Ephemeral 
-                        });
-                    } 
-                    
-                    // 4. MULTI MODE LOGIC (Standard Toggle)
-                    else {
+                        if (removedNames.length > 0) msg += `\n<:no:1297814819105144862> **Removed:** ${removedNames.join(', ')}`;
+                        return interaction.reply({ content: msg, flags: MessageFlags.Ephemeral });
+                    } else {
                         if (interaction.member.roles.cache.has(roleId)) {
                             await interaction.member.roles.remove(role);
-                            return interaction.reply({ 
-                                content: `<:no:1297814819105144862> **Removed:** ${role.name}`, 
-                                flags: MessageFlags.Ephemeral 
-                            });
+                            return interaction.reply({ content: `<:no:1297814819105144862> **Removed:** ${role.name}`, flags: MessageFlags.Ephemeral });
                         } else {
                             await interaction.member.roles.add(role);
-                            return interaction.reply({ 
-                                content: `<:yes:1297814648417943565> **Added:** ${role.name}`, 
-                                flags: MessageFlags.Ephemeral 
-                            });
+                            return interaction.reply({ content: `<:yes:1297814648417943565> **Added:** ${role.name}`, flags: MessageFlags.Ephemeral });
                         }
                     }
-
                 } catch (e) {
                     console.error(e);
                     return interaction.reply({ content: "<:no:1297814819105144862> Error changing roles.", flags: MessageFlags.Ephemeral });
                 }
             }
-        } 
+        }
 
         // ===============================================
-        // 3. SELECT MENU HANDLERS (UPDATED TO PLAIN TEXT)
+        // 3. SELECT MENU HANDLERS
         // ===============================================
         if (interaction.isStringSelectMenu()) {
-            
-            // CHECK: Does the ID start with our prefix?
             if (interaction.customId.startsWith('role_select_')) {
-
-                // 1. EXTRACT RESTRICTION
-                // Removes "role_select_" to get "public", "menu" (legacy), or "1234567890"
                 const restrictionId = interaction.customId.replace('role_select_', '');
-
-                // 2. CHECK PERMISSION
-                // If it's not "public" and not "menu" (your old legacy ID), treat it as a Role ID
                 if (restrictionId !== 'public' && restrictionId !== 'menu') {
                     if (!interaction.member.roles.cache.has(restrictionId)) {
-                        return interaction.reply({
-                            content: `<:no:1297814819105144862> You need the <@&${restrictionId}> role to use this menu!`,
-                            flags: MessageFlags.Ephemeral
-                        });
+                        return interaction.reply({ content: `<:no:1297814819105144862> You need the <@&${restrictionId}> role to use this menu!`, flags: MessageFlags.Ephemeral });
                     }
                 }
-
-                // 3. DEFER & PROCESS
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
                 const selectedRoleIds = interaction.values;
                 const allRoleIds = interaction.component.options.map(opt => opt.value);
                 const added = [], removed = [];
-
                 for (const roleId of allRoleIds) {
                     const role = interaction.guild.roles.cache.get(roleId);
                     if (!role) continue;
-                    
                     const hasRole = interaction.member.roles.cache.has(roleId);
                     try {
                         if (selectedRoleIds.includes(roleId)) {
-                            if (!hasRole) {
-                                await interaction.member.roles.add(role);
-                                added.push(role.name);
-                            }
+                            if (!hasRole) { await interaction.member.roles.add(role); added.push(role.name); }
                         } else {
-                            if (hasRole) {
-                                await interaction.member.roles.remove(role);
-                                removed.push(role.name);
-                            }
+                            if (hasRole) { await interaction.member.roles.remove(role); removed.push(role.name); }
                         }
-                    } catch (e) {
-                        console.error(`Error toggling role ${roleId}:`, e);
-                    }
+                    } catch (e) { console.error(`Error toggling role ${roleId}:`, e); }
                 }
-
-                // --- PLAIN TEXT RESPONSE ---
                 let feedbackText = '';
                 if (added.length || removed.length) {
                     if (added.length) feedbackText += `<:yes:1297814648417943565> **Added:** ${added.join(', ')}\n`;
                     if (removed.length) feedbackText += `<:no:1297814819105144862> **Removed:** ${removed.join(', ')}`;
-                } else {
-                    feedbackText = 'No changes 🤔';
-                }
-
-                // Reply with Plain Text (No Container)
-                return interaction.editReply({ 
-                    content: feedbackText, 
-                    components: [] 
-                });
+                } else { feedbackText = 'No changes 🤔'; }
+                return interaction.editReply({ content: feedbackText, components: [] });
             }
         }
 
         // ===============================================
-        // 4. MODAL SUBMISSION
+        // 4. REGISTRATION SYSTEM (Grouped)
         // ===============================================
-        if (interaction.isModalSubmit() && interaction.customId === 'application_modal') {
-            const config = await ApplicationConfig.findOne({ guildId: interaction.guild.id });
-            const logChannel = interaction.guild.channels.cache.get(config?.logChannelId);
-            if (!logChannel) return interaction.reply({ content: 'Error: Log channel not found.', flags: MessageFlags.Ephemeral });
+        
+        // --- STEP 1: OPEN REGISTRATION FORM (Button) ---
+        if (interaction.isButton() && interaction.customId === 'reg_btn_open') {
+            const REGISTERED_ROLE_ID = '1456197055117787136';
+            if (interaction.member.roles.cache.has(REGISTERED_ROLE_ID)) {
+                return interaction.reply({ content: `<:no:1297814819105144862> You are already registered!`, flags: MessageFlags.Ephemeral });
+            }
+            const modal = new ModalBuilder().setCustomId('reg_modal_submit').setTitle('Server Registration');
+            const nameInput = new TextInputBuilder().setCustomId('reg_name').setLabel("What is your name?").setStyle(TextInputStyle.Short).setMaxLength(15).setRequired(true);
+            const countryInput = new TextInputBuilder().setCustomId('reg_country').setLabel("Your Country Flag").setStyle(TextInputStyle.Short).setMaxLength(5).setRequired(true);
+            modal.addComponents(new ActionRowBuilder().addComponents(nameInput), new ActionRowBuilder().addComponents(countryInput));
+            await interaction.showModal(modal);
+        }
 
-            // Using TextDisplayBuilders (V2)
+        // --- STEP 2: PROCESS REGISTRATION (Modal Submit) ---
+        if (interaction.isModalSubmit() && interaction.customId === 'reg_modal_submit') {
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+            // CONFIG
+            const REGISTERED_ROLE_ID = '1456197055117787136';
+            const UNVERIFIED_ROLE_ID = '1456238105345527932'; 
+            const LOG_CHANNEL_ID = '1456197056988319871';
+
+            const name = interaction.fields.getTextInputValue('reg_name');
+            const country = interaction.fields.getTextInputValue('reg_country');
+            const newNickname = `${country} | ${name}`;
+            const member = interaction.member;
+
+            if (newNickname.length > 32) return interaction.editReply({ content: `<:no:1297814819105144862> Nickname too long.` });
+
             try {
-                const titleText = new TextDisplayBuilder().setContent(`### 📄 New Staff Application`);
-                const detailsText = new TextDisplayBuilder().setContent(
-                    `**User:** <@${interaction.user.id}>\n` +
-                    `**Name:** ${interaction.fields.getTextInputValue('app_name')}\n` +
-                    `**Age:** ${interaction.fields.getTextInputValue('app_age')}\n` +
-                    `**Country:** ${interaction.fields.getTextInputValue('app_country')}\n` +
-                    `**Time Zone:** ${interaction.fields.getTextInputValue('app_timezone')}`
-                );
-                const reasonText = new TextDisplayBuilder().setContent(`**Reason For Applying:**\n${interaction.fields.getTextInputValue('app_reason')}`);
+                // 1. Roles
+                await member.roles.add(REGISTERED_ROLE_ID);
+                if (member.roles.cache.has(UNVERIFIED_ROLE_ID)) {
+                    await member.roles.remove(UNVERIFIED_ROLE_ID).catch(err => console.error("Could not remove Unverified role:", err));
+                }
 
-                const container = new ContainerBuilder().addTextDisplayComponents(titleText, detailsText, reasonText);
+                // 2. Nickname
+                let warning = "";
+                if (member.id !== interaction.guild.ownerId && member.roles.highest.position < interaction.guild.members.me.roles.highest.position) {
+                    await member.setNickname(newNickname);
+                } else { warning = "\n*(Couldn't change nickname due to hierarchy)*"; }
 
-                const timeBtn = new ButtonBuilder()
-                    .setCustomId('time_disabled')
-                    .setDisabled(true)
-                    .setStyle(ButtonStyle.Secondary)
-                    .setLabel(`${new Date().toLocaleString('en-GB', { timeZone: 'Asia/Bangkok', hour12: false })} (GMT+7)`);
+                // 3. Log
+                const logChannel = interaction.guild.channels.cache.get(LOG_CHANNEL_ID);
+                if (logChannel) {
+                    const embed = new EmbedBuilder().setTitle('New Registration').setDescription(`User: ${member}\nName: **${name}**\nFrom: ${country}`).setColor(0x57F287).setThumbnail(member.user.displayAvatarURL());
+                    await logChannel.send({ embeds: [embed] });
+                }
 
-                await logChannel.send({ 
-                    flags: [MessageFlags.IsComponentsV2], 
-                    components: [
-                        container,
-                        new ActionRowBuilder().addComponents(timeBtn)
-                    ] 
-                });
+                // 4. Update Counter
+                try {
+                    const dashboardMsg = interaction.message; 
+                    if (dashboardMsg) {
+                        const oldContainer = dashboardMsg.components[0];
+                        const role = interaction.guild.roles.cache.get(REGISTERED_ROLE_ID);
+                        const newCount = role ? role.members.size : 'N/A';
+                        const newContainer = new ContainerBuilder().setAccentColor(oldContainer.accentColor || 0x57F287);
+                        oldContainer.components.forEach(c => {
+                            if(c.type === 7) newContainer.addTextDisplayComponents(TextDisplayBuilder.from(c));
+                            if(c.type === 9) newContainer.addSeparatorComponents(SeparatorBuilder.from(c));
+                        });
+                        const registerBtn = new ButtonBuilder().setCustomId('reg_btn_open').setLabel('Register').setStyle(ButtonStyle.Success);
+                        const countBtn = new ButtonBuilder().setCustomId('reg_btn_stats').setLabel(`Total Registered: ${newCount}`).setStyle(ButtonStyle.Secondary).setDisabled(true);
+                        newContainer.addActionRowComponents(new ActionRowBuilder().addComponents(registerBtn, countBtn));
+                        await dashboardMsg.edit({ components: [newContainer], flags: MessageFlags.IsComponentsV2 });
+                    }
+                } catch (e) { console.error("Counter update failed", e); }
 
-                return interaction.reply({ content: '<:yes:1297814648417943565> Application submitted!', flags: MessageFlags.Ephemeral });
+                return interaction.editReply({ content: `<:yes:1297814648417943565> **Welcome!** You are now registered.${warning}` });
+
             } catch (error) {
-                console.error("Failed to send V2 component application:", error);
-                return interaction.reply({ content: '❌ Failed to submit application.', flags: MessageFlags.Ephemeral });
+                console.error(error);
+                return interaction.editReply({ content: `<:no:1297814819105144862> Something went wrong.` });
             }
         }
     }

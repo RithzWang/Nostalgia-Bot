@@ -19,7 +19,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('test-welcome')
         .setDescription('Simulate the welcome message for a user')
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
         .addUserOption(option => 
             option.setName('target')
             .setDescription('The user to generate the welcome for (defaults to you)')
@@ -70,7 +70,7 @@ module.exports = {
                     row.setComponents(
                         new ButtonBuilder()
                             .setLabel('Don’t Forget To Register')
-                            .setEmoji('📝')
+                            .setEmoji('1447143542643490848')
                             .setStyle(ButtonStyle.Link)
                             .setURL('https://discord.com/channels/1456197054782111756/1456197056250122352')
                     )

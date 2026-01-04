@@ -69,7 +69,8 @@ async function createWelcomeImage(member) {
             ctx.drawImage(backgroundBuf, sx, 0, sourceWidth, backgroundBuf.height, 0, 0, dim.width, dim.height);
         }
 
-        ctx.filter = bannerURL ? 'blur(3px)' : 'blur(10px)';
+        // Reduced blur slightly since we don't have the dark overlay anymore
+        ctx.filter = bannerURL ? 'blur(2px)' : 'blur(5px)';
         ctx.drawImage(canvas, 0, 0);
         ctx.filter = 'none';
     } else {
@@ -77,17 +78,16 @@ async function createWelcomeImage(member) {
         ctx.fillRect(0, 0, dim.width, dim.height);
     }
 
-    // --- 4. Inner Frame (NITRO LOGIC ADDED HERE) ---
+    // --- REMOVED: Global Dark Overlay (Section 3) ---
+    // The code that made the whole image darker is now gone.
+
+    // --- 4. Inner Frame (NITRO LOGIC) ---
     ctx.save();
     ctx.lineWidth = 40;
 
     // DETECT NITRO SIGNALS:
-    // 1. Does the user have a Banner Image? (Standard users can't have this)
     const hasBanner = user.banner !== null;
-    // 2. Is the avatar animated? (Standard users can't have GIFs)
     const hasAnimatedAvatar = user.avatar && user.avatar.startsWith('a_');
-    
-    // If either is true, we treat them as "Nitro"
     const isNitro = hasBanner || hasAnimatedAvatar;
 
     // Apply Logic: Must have Accent Color AND be Nitro
@@ -96,7 +96,6 @@ async function createWelcomeImage(member) {
         const gradient = ctx.createLinearGradient(0, 0, 0, dim.height);
         gradient.addColorStop(0, user.hexAccentColor);
 
-        // Smart Gradient Logic
         const isLight = isColorLight(user.hexAccentColor);
         const modifier = isLight ? -0.6 : 0.6;
 
@@ -106,7 +105,6 @@ async function createWelcomeImage(member) {
         ctx.strokeStyle = gradient;
 
     } else {
-        // DEFAULT for Non-Nitro (or Nitro users with no theme set)
         ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
     }
 
@@ -160,13 +158,38 @@ async function createWelcomeImage(member) {
         }
     }
 
-    // --- 6. Server Name ---
+    // --- 6. Server Name (WITH DARK BACKGROUND BOX) ---
     ctx.save();
+    const serverName = "A2-Q Server";
     ctx.font = 'bold 60px "Noto Sans", "ReemKufi Bold", "Symbol", "Apple Symbols", "Apple Color Emoji"';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    
+    // Calculate Box Size
+    const nameMetrics = ctx.measureText(serverName);
+    const namePadding = 20; // Space around text
+    const nameHeight = 60; // Approx font height
+    
+    // Coordinates
+    const nameX = dim.width - 70; 
+    const nameY = dim.height - 70;
+
+    // Draw Dark Background Box
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)'; // Dark transparent
+    const boxWidth = nameMetrics.width + (namePadding * 2);
+    const boxHeight = nameHeight + namePadding;
+    
+    // Draw rect (Offset x by width to align right, offset y by height to align bottom)
+    ctx.fillRect(
+        nameX - nameMetrics.width - namePadding, 
+        nameY - nameHeight - (namePadding / 2), 
+        boxWidth, 
+        boxHeight
+    );
+
+    // Draw Text
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'bottom';
-    ctx.fillText("A2-Q Server", dim.width - 70, dim.height - 70);
+    ctx.fillText(serverName, nameX, nameY);
     ctx.restore();
 
     // --- 7. User Text ---
@@ -174,8 +197,9 @@ async function createWelcomeImage(member) {
     let currentY = dim.height / 2 - 15;
 
     ctx.fillStyle = '#ffffff';
-    ctx.shadowColor = "rgba(0, 0, 0, 0.7)";
-    ctx.shadowBlur = 12;
+    // Increased shadow slightly since background is lighter now
+    ctx.shadowColor = "rgba(0, 0, 0, 0.9)"; 
+    ctx.shadowBlur = 15;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 4;
 
@@ -194,8 +218,8 @@ async function createWelcomeImage(member) {
     const cleanedUsername = user.username.replace(/<a?:\w+:\d+>/g, '').trim();
     let usernameText;
 
-    ctx.shadowColor = "rgba(0, 0, 0, 0.7)";
-    ctx.shadowBlur = 12;
+    ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
+    ctx.shadowBlur = 15;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 4;
 
@@ -206,7 +230,7 @@ async function createWelcomeImage(member) {
     }
 
     ctx.font = '100px "SF Pro Text Regular", sans-serif';
-    ctx.fillStyle = '#b9bbbe';
+    ctx.fillStyle = '#e1e1e1'; // Slightly brighter grey for readability
     ctx.fillText(usernameText, textX, currentY);
 
     ctx.restore();

@@ -151,14 +151,17 @@ client.on('guildMemberAdd', async (member) => {
                     )
             )
 
-            // 2. Buttons (Inside an Action Row)
+            // 2. Buttons (Only Register Button)
             .addActionRowComponents((row) => 
                 row.setComponents(
                     new ButtonBuilder()
-                        .setLabel('Don’t Forget to Register')
+                        .setLabel('Don’t Forget To Register')
                         .setEmoji('📝')
                         .setStyle(ButtonStyle.Link)
                         .setURL('https://discord.com/channels/1456197054782111756/1456197056250122352')
+                    // Chat Button Removed Here
+                )
+            )
 
             // 3. Separator
             .addSeparatorComponents((sep) => 

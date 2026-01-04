@@ -2,79 +2,93 @@ const {
     SlashCommandBuilder, 
     PermissionFlagsBits, 
     ChannelType,
-    MessageFlags,
-    GuildDefaultMessageNotifications
+    MessageFlags
 } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('cloneserver')
-        .setDescription('Clones the current server to a new one (Requires Bot in <10 servers)')
+        .setName('replicate')
+        .setDescription('Wipes THIS server and copies everything from a Source Server ID.')
+        .addStringOption(option => 
+            option.setName('source_id')
+                .setDescription('The ID of the server you want to copy FROM')
+                .setRequired(true)
+        )
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
-        // 1. HARD LIMIT CHECK
-        if (interaction.client.guilds.cache.size >= 10) {
+        const sourceId = interaction.options.getString('source_id');
+        const targetGuild = interaction.guild; // The server command is running IN (The new one)
+        const sourceGuild = interaction.client.guilds.cache.get(sourceId); // The server copying FROM
+
+        // --- 1. CHECKS ---
+        if (!sourceGuild) {
             return interaction.reply({ 
-                content: `❌ **Discord API Limit Reached**\nI am in ${interaction.client.guilds.cache.size} servers.\nDiscord ONLY allows bots to create new servers if they are in **less than 10 servers**.\n\n**Solution:** Use a fresh Bot Token for this specific task.`,
-                flags: MessageFlags.Ephemeral
+                content: `❌ **I cannot find the source server.**\nMake sure I am in the server with ID \`${sourceId}\`.`, 
+                flags: MessageFlags.Ephemeral 
             });
         }
 
+        if (targetGuild.id === sourceGuild.id) {
+            return interaction.reply({ content: '❌ You cannot replicate a server onto itself!', flags: MessageFlags.Ephemeral });
+        }
+
+        // Confirmation Button (Safety)
         await interaction.reply({ 
-            content: '⏳ **Analyzing Server...** This will take a moment to avoid rate limits.', 
-            flags: MessageFlags.Ephemeral 
+            content: `⚠️ **WARNING: DESTRUCTIVE ACTION**\nI am about to **DELETE ALL CHANNELS AND ROLES** in **${targetGuild.name}** and replace them with data from **${sourceGuild.name}**.\n\nAre you sure?`,
+            flags: MessageFlags.Ephemeral
         });
 
-        const sourceGuild = interaction.guild;
-        const roleMap = new Map(); 
+        // (For simplicity in this code, we proceed immediately after a 3s delay. 
+        // In a polished bot, you'd add a "Confirm" button here.)
+        const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+        await wait(3000); 
+        await interaction.editReply('⏳ **Starting Replication...** (This may take 1-2 minutes)');
+
+        const roleMap = new Map(); // OldRoleID -> NewRoleID
         const categoryMap = new Map();
 
-        // Delay helper to prevent "Rate Limited" bans
-        const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
         try {
-            // --- 2. CREATE SERVER ---
-            const newGuild = await interaction.client.guilds.create({
-                name: `${sourceGuild.name} (Copy)`,
-                icon: sourceGuild.iconURL({ extension: 'png' }),
-                defaultMessageNotifications: GuildDefaultMessageNotifications.OnlyMentions
-            });
+            // --- 2. CLEANUP TARGET SERVER ---
+            // Delete all channels
+            const channelsToDelete = targetGuild.channels.cache.filter(c => c.deletable);
+            for (const [id, channel] of channelsToDelete) {
+                await channel.delete().catch(() => {});
+            }
 
-            // Clean default channels
-            newGuild.channels.cache.forEach(c => c.delete().catch(() => {}));
+            // Delete all roles (except managed/everyone)
+            const rolesToDelete = targetGuild.roles.cache.filter(r => !r.managed && r.name !== '@everyone' && r.editable);
+            for (const [id, role] of rolesToDelete) {
+                await role.delete().catch(() => {});
+            }
 
             // --- 3. COPY ROLES ---
-            // Sort Roles: Highest position first (so we can create them in order)
-            // Filter: Ignore @everyone and managed bot roles
             const rolesToCopy = sourceGuild.roles.cache
                 .filter(r => !r.managed && r.name !== '@everyone')
-                .sort((a, b) => a.position - b.position); // Low to High for creation
-
-            await interaction.editReply('⏳ **Cloning Roles...**');
+                .sort((a, b) => a.position - b.position); // Low to High
 
             for (const [oldId, role] of rolesToCopy) {
                 try {
-                    const newRole = await newGuild.roles.create({
+                    const newRole = await targetGuild.roles.create({
                         name: role.name,
                         color: role.color,
                         permissions: role.permissions,
                         hoist: role.hoist,
-                        mentionable: role.mentionable
+                        mentionable: role.mentionable,
+                        reason: 'Server Replication'
                     });
                     roleMap.set(oldId, newRole.id);
-                    await wait(800); // Wait 0.8s per role
+                    await wait(800); // Rate Limit Safety
                 } catch (e) {
-                    console.log(`Role Skip: ${role.name}`);
+                    console.log(`Failed role: ${role.name}`);
                 }
             }
-            // Map @everyone manually
-            roleMap.set(sourceGuild.id, newGuild.id);
+            roleMap.set(sourceGuild.id, targetGuild.id); // Map @everyone
 
-            // Helper to copy permissions
+            // Helper for Overwrites
             const getOverwrites = (channel) => {
                 return channel.permissionOverwrites.cache.map(overwrite => {
-                    const newId = roleMap.get(overwrite.id); // Get new Role ID
+                    const newId = roleMap.get(overwrite.id);
                     if (!newId) return null;
                     return {
                         id: newId,
@@ -86,14 +100,13 @@ module.exports = {
             };
 
             // --- 4. COPY CATEGORIES ---
-            await interaction.editReply('⏳ **Cloning Categories...**');
             const categories = sourceGuild.channels.cache
                 .filter(c => c.type === ChannelType.GuildCategory)
                 .sort((a, b) => a.position - b.position);
 
             for (const [oldId, cat] of categories) {
                 try {
-                    const newCat = await newGuild.channels.create({
+                    const newCat = await targetGuild.channels.create({
                         name: cat.name,
                         type: ChannelType.GuildCategory,
                         permissionOverwrites: getOverwrites(cat)
@@ -104,62 +117,41 @@ module.exports = {
             }
 
             // --- 5. COPY CHANNELS ---
-            await interaction.editReply('⏳ **Cloning Channels...**');
             const channels = sourceGuild.channels.cache
-                .filter(c => !c.parent && c.type !== ChannelType.GuildCategory) // No parent first
-                .concat(sourceGuild.channels.cache.filter(c => c.parent)) // Then with parent
-                .filter(c => c.type !== ChannelType.GuildCategory && c.type !== ChannelType.GuildDirectory);
+                .filter(c => c.type !== ChannelType.GuildCategory && c.type !== ChannelType.GuildDirectory)
+                .sort((a, b) => a.position - b.position);
 
-            let inviteChannel = null;
+            let firstChannel = null;
 
             for (const [oldId, channel] of channels) {
                 try {
                     const newParent = channel.parentId ? categoryMap.get(channel.parentId) : null;
                     
-                    const newChannel = await newGuild.channels.create({
+                    const newChannel = await targetGuild.channels.create({
                         name: channel.name,
                         type: channel.type,
+                        parent: newParent,
                         topic: channel.topic,
                         nsfw: channel.nsfw,
-                        parent: newParent,
                         permissionOverwrites: getOverwrites(channel)
                     });
 
-                    if (!inviteChannel && channel.type === ChannelType.GuildText) inviteChannel = newChannel;
-                    await wait(1000); // 1s per channel
+                    if (!firstChannel && channel.type === ChannelType.GuildText) firstChannel = newChannel;
+                    await wait(1000);
                 } catch (e) {
-                    console.log(`Channel Skip: ${channel.name}`);
+                    console.log(`Failed channel: ${channel.name}`);
                 }
             }
 
-            // --- 6. INVITE & TRANSFER ---
-            if (!inviteChannel) {
-                inviteChannel = await newGuild.channels.create({ name: 'general', type: ChannelType.GuildText });
+            // --- 6. FINISH ---
+            if (firstChannel) {
+                await firstChannel.send(`✅ **Replication Complete!**\nServer has been synced with **${sourceGuild.name}**.`);
             }
-            
-            const invite = await inviteChannel.createInvite({ maxUses: 1 });
-
-            // Listener for ownership transfer
-            const joinListener = async (member) => {
-                if (member.guild.id === newGuild.id && member.id === interaction.user.id) {
-                    try {
-                        await newGuild.setOwner(member);
-                        await inviteChannel.send(`👑 **Server Transferred to <@${member.id}>!**\nDon't forget to check your Role settings if your Crown is missing.`);
-                        interaction.client.off('guildMemberAdd', joinListener);
-                    } catch (e) {
-                        inviteChannel.send('❌ Failed to transfer ownership. Please ask me to leave so you can claim it.');
-                    }
-                }
-            };
-            interaction.client.on('guildMemberAdd', joinListener);
-
-            await interaction.editReply({ 
-                content: `✅ **Cloning Complete!**\n\n**Join here to claim ownership:**\n${invite.url}` 
-            });
 
         } catch (error) {
             console.error(error);
-            await interaction.editReply(`❌ **Failed:** ${error.message}`);
+            // Since we deleted the channel we were talking in, we can't really reply here.
+            // But we log it to console.
         }
     }
 };

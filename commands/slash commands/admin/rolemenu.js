@@ -225,7 +225,7 @@ module.exports = {
                 const isMultiSelect = newMenu.data.max_values > 1; 
                 const newCount = newMenu.options.length;
                 newMenu.setMaxValues(isMultiSelect ? newCount : 1);
-                newMenu.setPlaceholder(isMultiSelect ? `Select multiple roles` : `Select one out of ${newCount} roles`);
+                newMenu.setPlaceholder(isMultiSelect ? `Select one or multiple roles` : `Select one out of ${newCount} roles`);
                 
                 const newBodyText = new TextDisplayBuilder().setContent(currentBodyLines.join('\n'));
                 const newMenuRow = new ActionRowBuilder().addComponents(newMenu);

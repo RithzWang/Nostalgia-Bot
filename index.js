@@ -75,12 +75,42 @@ client.on('clientReady', async () => {
     console.log(`Logged in as ${client.user.tag}`);
 
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
+
+    // 1. Separate Commands into two lists
+    const globalDatas = [];
+    const guildDatas = [];
+
+    client.slashCommands.forEach(cmd => {
+        if (cmd.guildOnly) {
+            guildDatas.push(cmd.data.toJSON());
+        } else {
+            globalDatas.push(cmd.data.toJSON());
+        }
+    });
+
     try {
-        await rest.put(Routes.applicationCommands(client.user.id), 
-            { body: client.slashDatas }
-        );
-        console.log('✅ Slash Commands Deployed.');
+        console.log(`Started refreshing ${globalDatas.length} global and ${guildDatas.length} guild commands.`);
+
+        // 2. Deploy GUILD Commands (Instant update for specific server)
+        if (guildDatas.length > 0) {
+            await rest.put(
+                Routes.applicationGuildCommands(client.user.id, serverID),
+                { body: guildDatas }
+            );
+            console.log('✅ Guild-only commands registered.');
+        }
+
+        // 3. Deploy GLOBAL Commands (Takes ~1 hour to update cache)
+        if (globalDatas.length > 0) {
+            await rest.put(
+                Routes.applicationCommands(client.user.id),
+                { body: globalDatas }
+            );
+            console.log('✅ Global commands registered.');
+        }
+
     } catch (e) { console.error(e); }
+
 
     const guild = client.guilds.cache.get(serverID);
     if(guild) {

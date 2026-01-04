@@ -2,9 +2,10 @@ const { Events } = require('discord.js');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const ChatBot = require('../src/models/ChatBot');
 
-// Setup Gemini
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+import { GoogleGenAI } from "@google/genai";
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const model = ai.generativeModel("gemini-1.5-flash");
+
 
 
 module.exports = {

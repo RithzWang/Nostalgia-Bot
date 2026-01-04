@@ -255,27 +255,37 @@ module.exports = {
                     await logChannel.send({ embeds: [embed] });
                 }
 
-                // 4. Update Counter
+                // 4. Update Counter (FIXED: Re-defining text instead of cloning)
                 try {
                     const dashboardMsg = interaction.message; 
                     if (dashboardMsg) {
                         const oldContainer = dashboardMsg.components[0];
                         const role = interaction.guild.roles.cache.get(REGISTERED_ROLE_ID);
                         const newCount = role ? role.members.size : 'N/A';
-                        const newContainer = new ContainerBuilder().setAccentColor(oldContainer.accentColor || 0x57F287);
-                        oldContainer.components.forEach(c => {
-                            if(c.type === 7) newContainer.addTextDisplayComponents(TextDisplayBuilder.from(c));
-                            if(c.type === 9) newContainer.addSeparatorComponents(SeparatorBuilder.from(c));
-                        });
+                        
+                        const newContainer = new ContainerBuilder()
+                            .setAccentColor(oldContainer.accentColor || 0x808080); // Keep accent or default grey
+
+                        // --- HARDCODED TEXT (Matching registration.js exactly) ---
+                        newContainer.addTextDisplayComponents(
+                            new TextDisplayBuilder().setContent('### <:registration:1447143542643490848> Registration')
+                        );
+                        newContainer.addTextDisplayComponents(
+                            new TextDisplayBuilder().setContent(`To access chat and connect to voice channels, please register below.\n\n**Note:**\n\`Name\` : followed by your desired name.\n\`Country\` : followed by your country’s flag emoji.`)
+                        );
+                        newContainer.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
+                        // ---------------------------------------------------------
+
                         const registerBtn = new ButtonBuilder().setCustomId('reg_btn_open').setLabel('Register').setStyle(ButtonStyle.Success);
                         const countBtn = new ButtonBuilder().setCustomId('reg_btn_stats').setLabel(`Total Registered: ${newCount}`).setStyle(ButtonStyle.Secondary).setDisabled(true);
+                        
                         newContainer.addActionRowComponents(new ActionRowBuilder().addComponents(registerBtn, countBtn));
+                        
                         await dashboardMsg.edit({ components: [newContainer], flags: MessageFlags.IsComponentsV2 });
                     }
                 } catch (e) { console.error("Counter update failed", e); }
 
                 return interaction.editReply({ content: `<:yes:1297814648417943565> You’re now a member of the server.` });
-     // registered.${warning}
 
             } catch (error) {
                 console.error(error);

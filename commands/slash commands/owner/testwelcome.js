@@ -69,7 +69,7 @@ module.exports = {
                 .addActionRowComponents((row) => 
                     row.setComponents(
                         new ButtonBuilder()
-                            .setLabel('Don’t Forget To Register')
+                            .setLabel('Register Here')
                             .setEmoji('1447143542643490848')
                             .setStyle(ButtonStyle.Link)
                             .setURL('https://discord.com/channels/1456197054782111756/1456197056250122352')

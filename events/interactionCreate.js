@@ -210,10 +210,10 @@ module.exports = {
         if (interaction.isButton() && interaction.customId === 'reg_btn_open') {
             const REGISTERED_ROLE_ID = '1456197055117787136';
             if (interaction.member.roles.cache.has(REGISTERED_ROLE_ID)) {
-                return interaction.reply({ content: `<:no:1297814819105144862> You are already registered!`, flags: MessageFlags.Ephemeral });
+                return interaction.reply({ content: `<:no:1297814819105144862> You are already a member of the server!`, flags: MessageFlags.Ephemeral });
             }
             const modal = new ModalBuilder().setCustomId('reg_modal_submit').setTitle('Server Registration');
-            const nameInput = new TextInputBuilder().setCustomId('reg_name').setLabel("What is your name?").setStyle(TextInputStyle.Short).setMaxLength(15).setRequired(true);
+            const nameInput = new TextInputBuilder().setCustomId('reg_name').setLabel("Your Desired Name").setStyle(TextInputStyle.Short).setMaxLength(15).setRequired(true);
             const countryInput = new TextInputBuilder().setCustomId('reg_country').setLabel("Your Country Flag").setStyle(TextInputStyle.Short).setMaxLength(5).setRequired(true);
             modal.addComponents(new ActionRowBuilder().addComponents(nameInput), new ActionRowBuilder().addComponents(countryInput));
             await interaction.showModal(modal);
@@ -274,7 +274,8 @@ module.exports = {
                     }
                 } catch (e) { console.error("Counter update failed", e); }
 
-                return interaction.editReply({ content: `<:yes:1297814648417943565> **Welcome!** You are now registered.${warning}` });
+                return interaction.editReply({ content: `<:yes:1297814648417943565> You’re now a member of the server.` });
+     // registered.${warning}
 
             } catch (error) {
                 console.error(error);

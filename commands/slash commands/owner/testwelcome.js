@@ -85,7 +85,7 @@ module.exports = {
             // 4. Send Result
             await interaction.editReply({ 
                 content: `**[SIMULATION]** Welcome V2 Card for ${member.user.tag}`,
-                flags: [MessageFlags.IsComponentsV2], 
+                flags: MessageFlags.IsComponentsV2, 
                 files: [attachment], 
                 components: [mainContainer] 
             });

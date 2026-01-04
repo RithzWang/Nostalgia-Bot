@@ -174,7 +174,7 @@ async function createWelcomeImage(member) {
     let currentY = dim.height / 2 - 15;
 
     ctx.fillStyle = '#ffffff';
-    ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
+    ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
     ctx.shadowBlur = 10;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 4;
@@ -194,7 +194,7 @@ async function createWelcomeImage(member) {
     const cleanedUsername = user.username.replace(/<a?:\w+:\d+>/g, '').trim();
     let usernameText;
 
-    ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
+    ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
     ctx.shadowBlur = 10;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 4;

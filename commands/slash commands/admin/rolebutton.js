@@ -25,17 +25,14 @@ function packButtons(buttons) {
         }
     });
 
-    // Add the last row if it has any buttons
-    if (currentRow.components.length > 0) {
-        rows.push(currentRow);
-    }
+    if (currentRow.components.length > 0) rows.push(currentRow);
     return rows;
 }
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('rolebutton')
-        .setDescription('Manage role buttons')
+        .setName('rolebutton') // Renamed as requested
+        .setDescription('Manage role buttons (Components V2)')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
 
         // --- SETUP COMMAND ---
@@ -89,7 +86,7 @@ module.exports = {
         // --- REFRESH COMMAND ---
         .addSubcommand(sub => 
             sub.setName('refresh')
-                .setDescription('Update button labels if you renamed roles')
+                .setDescription('Update button labels and text list if you renamed roles')
                 .addStringOption(opt => opt.setName('message_id').setDescription('The Message ID').setRequired(true))
                 .addChannelOption(opt => opt.setName('channel').setDescription('Channel where the menu is'))
         ),
@@ -107,8 +104,12 @@ module.exports = {
             const desc = interaction.options.getString('description');
             const reuseMessageId = interaction.options.getString('message_id');
 
-            // Collect Roles
             const buttons = [];
+            const descriptionLines = []; // To hold our "> 🎮 Role" lines
+
+            // Add optional user description first
+            if (desc) descriptionLines.push(desc + '\n');
+
             for (let i = 1; i <= 10; i++) {
                 const role = interaction.options.getRole(`role${i}`);
                 const emoji = interaction.options.getString(`emoji${i}`);
@@ -117,27 +118,29 @@ module.exports = {
                     if (role.position >= interaction.guild.members.me.roles.highest.position) {
                         return interaction.editReply({ content: `<:no:1297814819105144862> Role **${role.name}** is higher than my top role!` });
                     }
+                    
                     const btn = new ButtonBuilder()
                         .setCustomId(`btn_role_${role.id}`)
                         .setLabel(role.name)
                         .setStyle(ButtonStyle.Secondary);
                     if (emoji) btn.setEmoji(emoji);
                     buttons.push(btn);
+
+                    // Add to text list
+                    descriptionLines.push(`> **${emoji ? emoji + ' ' : ''}${role.name}**`);
                 }
             }
 
             if (buttons.length === 0) return interaction.editReply({ content: 'No valid roles provided.' });
 
-            // Build Rows & Container
             const buttonRows = packButtons(buttons);
 
             const container = new ContainerBuilder()
                 .setAccentColor(0x808080)
-                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`### ${title}`));
-
-            if (desc) container.addTextDisplayComponents(new TextDisplayBuilder().setContent(desc));
+                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`### ${title}`))
+                .addTextDisplayComponents(new TextDisplayBuilder().setContent(descriptionLines.join('\n')))
+                .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
             
-            container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
             buttonRows.forEach(row => container.addActionRowComponents(row));
 
             const payload = { 
@@ -171,17 +174,20 @@ module.exports = {
                 const message = await targetChannel.messages.fetch(msgId);
                 const container = message.components[0];
                 
-                // 1. Extract ALL existing buttons from ALL rows
-                // V2 Containers store ActionRows in `components` array alongside TextDisplays.
-                // We need to filter for type 1 (ActionRow) and flat map their components.
+                // 1. Extract existing components
                 let allButtons = [];
                 container.components.forEach(comp => {
                     if (comp.type === 1) { // ActionRow
-                        comp.components.forEach(btnData => {
-                            allButtons.push(ButtonBuilder.from(btnData));
-                        });
+                        comp.components.forEach(btnData => allButtons.push(ButtonBuilder.from(btnData)));
                     }
                 });
+
+                // Get current Text Body lines
+                let bodyText = "";
+                // Find the TextDisplay that is the body (usually index 1, but check logic)
+                const bodyComp = container.components.find((c, idx) => c.type === 7 && idx > 0); // Skip Title (index 0)
+                if (bodyComp) bodyText = bodyComp.content;
+                let currentBodyLines = bodyText ? bodyText.split('\n') : [];
 
                 // --- ADD ---
                 if (sub === 'add') {
@@ -197,6 +203,9 @@ module.exports = {
                                 .setStyle(ButtonStyle.Secondary);
                             if (emoji) btn.setEmoji(emoji);
                             allButtons.push(btn);
+
+                            // Append to text lines
+                            currentBodyLines.push(`> **${emoji ? emoji + ' ' : ''}${role.name}**`);
                         }
                     }
                 }
@@ -206,7 +215,14 @@ module.exports = {
                     for (let i = 1; i <= 5; i++) {
                         const role = interaction.options.getRole(`role${i}`);
                         if (role) {
+                            // Find button to get old label (for text removal)
+                            const btnToRemove = allButtons.find(b => b.data.custom_id === `btn_role_${role.id}`);
+                            const nameToRemove = btnToRemove ? btnToRemove.data.label : role.name;
+
                             allButtons = allButtons.filter(b => b.data.custom_id !== `btn_role_${role.id}`);
+                            
+                            // Remove from text lines
+                            currentBodyLines = currentBodyLines.filter(l => !l.includes(nameToRemove));
                         }
                     }
                 }
@@ -214,38 +230,40 @@ module.exports = {
                 // --- REFRESH ---
                 else if (sub === 'refresh') {
                     const updatedButtons = [];
+                    const newDescriptionLines = [];
+                    
+                    // Keep original description header if it exists (lines that don't start with '>')
+                    const headerLines = currentBodyLines.filter(l => !l.startsWith('>'));
+                    newDescriptionLines.push(...headerLines);
+
                     for (const btn of allButtons) {
                         const roleId = btn.data.custom_id.replace('btn_role_', '');
                         const role = interaction.guild.roles.cache.get(roleId);
                         
                         if (role) {
-                            btn.setLabel(role.name); // Update Name
+                            btn.setLabel(role.name); 
                             updatedButtons.push(btn);
-                        } else {
-                            // If role is deleted, we can optionally remove the button or keep it
-                            // Here we remove it to keep the menu clean
+                            
+                            // Rebuild line
+                            const emoji = btn.data.emoji;
+                            const emojiStr = emoji ? (emoji.id ? `<:${emoji.name}:${emoji.id}>` : emoji.name) : null;
+                            newDescriptionLines.push(`> **${emojiStr ? emojiStr + ' ' : ''}${role.name}**`);
                         }
                     }
                     allButtons = updatedButtons;
+                    currentBodyLines = newDescriptionLines;
                 }
 
-                // 2. Re-pack into rows
+                // 2. Rebuild
                 const newRows = packButtons(allButtons);
-
-                // 3. Rebuild Container (Keep Title/Desc, Replace Rows)
-                const newContainer = new ContainerBuilder()
-                    .setAccentColor(container.accentColor || 0x808080);
+                const titleText = container.components[0].content; // Assuming Index 0 is Title
                 
-                // Copy non-ActionRow components (Title, Desc, Separator)
-                container.components.forEach(c => {
-                    if (c.type !== 1) {
-                        // We need to reconstruct them based on type
-                        if (c.type === 7) newContainer.addTextDisplayComponents(TextDisplayBuilder.from(c));
-                        if (c.type === 9) newContainer.addSeparatorComponents(SeparatorBuilder.from(c));
-                    }
-                });
+                const newContainer = new ContainerBuilder()
+                    .setAccentColor(container.accentColor || 0x808080)
+                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(titleText))
+                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(currentBodyLines.join('\n').trim()))
+                    .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
 
-                // Add new rows
                 newRows.forEach(row => newContainer.addActionRowComponents(row));
 
                 await message.edit({ 

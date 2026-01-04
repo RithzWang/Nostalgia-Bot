@@ -66,14 +66,8 @@ module.exports = {
         const pages = {
             home: {
                 title: 'A2-Q Server',
-                desc: 'A safe and well managed server made for fun — but taken seriously\n\n> We are a small community for **Minecraft** builders and **Brawl Stars** brawlers. Whether you want to grind trophies, build a base, or just hang out in VC, this is a safe place for friends to game together.',
-                fields: [
-                    { 
-                        name: 'Owner Information', 
-                        value: '<:discord:1446794842351865958> : [**Q1TN**](https://discord.com/users/837741275603009626)\n<:insta:1446793242040467486> : [**32r.6**](https://instagram.com/32r.6)\n<:spotify:1446793276073181277> : [**Q1TN**](https://open.spotify.com/user/31ljrymawsram5zmxn4sbutp7bxm)\n<:domain:1446793140395835583> : [**ridouan.xyz**](https://ridouan.xyz)' 
-                    },
-                    { name: 'Navigation', value: '-# Select a category below.' }
-                ]
+                desc: 'A safe and well managed server made for fun — but taken seriously\n\n> We are a small community for **Minecraft** builders and **Brawl Stars** brawlers. Whether you want to grind trophies, build a base, or just hang out in VC, this is a safe place for friends to game together.\n\n**Owner Information\n<:discord:1446794842351865958> : [**Q1TN**](https://discord.com/users/837741275603009626)\n<:insta:1446793242040467486> : [**32r.6**](https://instagram.com/32r.6)\n<:spotify:1446793276073181277> : [**Q1TN**](https://open.spotify.com/user/31ljrymawsram5zmxn4sbutp7bxm)\n<:domain:1446793140395835583> : [**ridouan.xyz**](https://ridouan.xyz)}
+                
             },
             owner: {
                 title: '<:owner:1447143417711951872> Bot Owner',

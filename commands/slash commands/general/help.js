@@ -15,7 +15,7 @@ const {
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('info')
-        .setDescription('Shows a dynamic help menu (Components V2)'),
+        .setDescription('Shows a dynamic help menu'),
 
     async execute(interaction) {
         // 1. Create the Select Menu (Shared across all views)

@@ -100,7 +100,7 @@ client.on('clientReady', async () => {
 
 const { createWelcomeImage } = require('./welcomeCanvas.js');
 
-// --- IMPORT THE IMAGE GENERATOR (Required) ---
+// --- 1. IMPORT THE IMAGE GENERATOR ---
 
 client.on('guildMemberAdd', async (member) => {
     if (member.user.bot || member.guild.id !== serverID) return;
@@ -122,67 +122,63 @@ client.on('guildMemberAdd', async (member) => {
         const inviterId = usedInvite?.inviter ? usedInvite.inviter.id : 'Unknown';
         const inviteCode = usedInvite ? usedInvite.code : 'Unknown';
 
-        // --- Generate Image & Time ---
+        // --- Generate Image ---
         const buffer = await createWelcomeImage(member);
         const attachment = new AttachmentBuilder(buffer, { name: 'welcome-image.png' });
         const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
 
         // ==========================================
-        //        COMPONENTS V2 CONSTRUCTION
+        //      CONTAINER BUILDER (CHAINED)
         // ==========================================
-
-        // 1. MAIN SECTION (Text + Avatar)
-        // Corrected: Uses callback syntax based on your guide
-        const mainSection = new SectionBuilder()
-            .addTextDisplayComponents(
-                (header) => header.setContent('### Welcome to A2-Q Server'),
-                (body) => body.setContent(
-                    `**User:** <@${member.user.id}> \`(${member.user.username})\`\n` +
-                    `<:calendar:1456242387243499613> **Account Created:** ${accountCreated}\n` +
-                    `<:users:1456242343303971009> **Member Count:** \`${member.guild.memberCount}\`\n` +
-                    `<:chain:1456242418717556776> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`
-                )
-            )
-            .setThumbnailAccessory(
-                (thumb) => thumb.setURL(member.user.displayAvatarURL())
-            );
-
-        // 2. BUTTONS
-        const buttonRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setLabel('Register')
-                .setEmoji('📝')
-                .setStyle(ButtonStyle.Link)
-                .setURL('https://discord.com/channels/1456197054782111756/1456197056250122352'), 
-            new ButtonBuilder()
-                .setLabel('Chat')
-                .setEmoji('🌍') // Corrected typo
-                .setStyle(ButtonStyle.Link)
-                .setURL('https://discord.com/channels/1456197054782111756/1456197056510165026') 
-        );
-
-        // 3. SEPARATOR
-        const divider = new SeparatorBuilder()
-            .setSpacing(SeparatorSpacingSize.Small);
-
-        // 4. IMAGE GALLERY
-        // Corrected: Uses .addItems() with callback syntax
-        const canvasGallery = new MediaGalleryBuilder()
-            .addItems((item) => 
-                item
-                    .setDescription("Welcome Image")
-                    .setURL("attachment://welcome-image.png")
-            );
-
-        // 5. CONTAINER
-        // Note: Containers typically still use .addComponents() with built objects
+        
         const mainContainer = new ContainerBuilder()
             .setAccentColor(0x888888)
-            .addComponents(
-                mainSection, 
-                buttonRow,    
-                divider,
-                canvasGallery 
+            
+            // 1. Main Section (Text + Avatar)
+            .addSectionComponents((section) => 
+                section
+                    .addTextDisplayComponents(
+                        (header) => header.setContent('### Welcome to A2-Q Server'),
+                        (body) => body.setContent(
+                            `**User:** <@${member.user.id}> \`(${member.user.username})\`\n` +
+                            `<:calendar:1456242387243499613> **Account Created:** ${accountCreated}\n` +
+                            `<:users:1456242343303971009> **Member Count:** \`${member.guild.memberCount}\`\n` +
+                            `<:chain:1456242418717556776> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`
+                        )
+                    )
+                    .setThumbnailAccessory((thumb) => 
+                        thumb.setURL(member.user.displayAvatarURL())
+                    )
+            )
+
+            // 2. Buttons (Inside an Action Row)
+            .addActionRowComponents((row) => 
+                row.setComponents(
+                    new ButtonBuilder()
+                        .setLabel('Register')
+                        .setEmoji('📝')
+                        .setStyle(ButtonStyle.Link)
+                        .setURL('https://discord.com/channels/1456197054782111756/1456197056250122352'),
+                    new ButtonBuilder()
+                        .setLabel('Chat')
+                        .setEmoji('🌍') // Corrected typo
+                        .setStyle(ButtonStyle.Link)
+                        .setURL('https://discord.com/channels/1456197054782111756/1456197056510165026')
+                )
+            )
+
+            // 3. Separator
+            .addSeparatorComponents((sep) => 
+                sep.setSpacing(SeparatorSpacingSize.Small)
+            )
+
+            // 4. Media Gallery (The Welcome Image)
+            .addMediaGalleryComponents((gallery) => 
+                gallery.addItems((item) => 
+                    item
+                        .setDescription("Welcome Image")
+                        .setURL("attachment://welcome-image.png")
+                )
             );
 
         // --- SEND MESSAGE ---
@@ -197,6 +193,7 @@ client.on('guildMemberAdd', async (member) => {
 
     } catch (e) { console.error("Welcome Error:", e); }
 });
+
 
 
 

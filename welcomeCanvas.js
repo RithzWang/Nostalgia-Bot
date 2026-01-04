@@ -209,7 +209,7 @@ async function createWelcomeImage(member) {
         usernameText = `@${cleanedUsername}`;
     }
 
-    ctx.font = '100px "gg sans Regular", sans-serif';
+    ctx.font = '100px "SF Pro Display Regular", sans-serif';
     ctx.fillStyle = '#b9bbbe';
     ctx.fillText(usernameText, textX, currentY);
 

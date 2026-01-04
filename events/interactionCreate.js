@@ -130,10 +130,12 @@ module.exports = {
                 }
             }
 
-            // E. BUTTON ROLE HANDLER (New Universal System)
-            if (interaction.customId.startsWith('btn_role_')) {
+                        // E. BUTTON ROLE HANDLER (Universal: Single & Multi)
+            if (interaction.customId.startsWith('btn_role_') || interaction.customId.startsWith('btn_single_')) {
+                const isSingleMode = interaction.customId.startsWith('btn_single_');
+                
                 // 1. Extract Role ID
-                const roleId = interaction.customId.replace('btn_role_', '');
+                const roleId = interaction.customId.replace('btn_role_', '').replace('btn_single_', '');
                 const role = interaction.guild.roles.cache.get(roleId);
 
                 // 2. Validation
@@ -151,29 +153,77 @@ module.exports = {
                     });
                 }
 
-                // 3. Toggle Logic
-                const hasRole = interaction.member.roles.cache.has(roleId);
-                
                 try {
-                    if (hasRole) {
-                        await interaction.member.roles.remove(role);
-                        return interaction.reply({ 
-                            content: `<:no:1297814819105144862> **Removed:** ${role.name}`, 
-                            flags: MessageFlags.Ephemeral 
-                        });
-                    } else {
+                    // 3. SINGLE MODE LOGIC (Radio Button Style)
+                    if (isSingleMode) {
+                        // If they already have it, remove it (Toggle Off)
+                        if (interaction.member.roles.cache.has(roleId)) {
+                             await interaction.member.roles.remove(role);
+                             return interaction.reply({ 
+                                content: `<:yes:1297814648417943565> **Removed:** ${role.name}`, 
+                                flags: MessageFlags.Ephemeral 
+                            });
+                        }
+
+                        // Otherwise: Remove ALL other roles from this menu, then Add this one.
+                        const rolesToRemove = [];
+                        
+                        // Scan message components to find sibling buttons
+                        const container = interaction.message.components[0]; // V2 Container
+                        if (container) {
+                            container.components.forEach(comp => {
+                                if (comp.type === 1) { // ActionRow
+                                    comp.components.forEach(btn => {
+                                        if (btn.customId.startsWith('btn_single_')) {
+                                            const otherId = btn.customId.replace('btn_single_', '');
+                                            // If user has this other role (and it's not the target), mark for removal
+                                            if (otherId !== roleId && interaction.member.roles.cache.has(otherId)) {
+                                                rolesToRemove.push(otherId);
+                                            }
+                                        }
+                                    });
+                                }
+                            });
+                        }
+
+                        // Perform Removal
+                        for (const rID of rolesToRemove) {
+                            await interaction.member.roles.remove(rID).catch(() => {});
+                        }
+
+                        // Add new role
                         await interaction.member.roles.add(role);
+                        
+                        const removedText = rolesToRemove.length > 0 ? ` (swapped)` : '';
                         return interaction.reply({ 
-                            content: `<:yes:1297814648417943565> **Added:** ${role.name}`, 
+                            content: `<:yes:1297814648417943565> **Selected:** ${role.name}${removedText}`, 
                             flags: MessageFlags.Ephemeral 
                         });
+                    } 
+                    
+                    // 4. MULTI MODE LOGIC (Standard Toggle)
+                    else {
+                        if (interaction.member.roles.cache.has(roleId)) {
+                            await interaction.member.roles.remove(role);
+                            return interaction.reply({ 
+                                content: `<:no:1297814819105144862> **Removed:** ${role.name}`, 
+                                flags: MessageFlags.Ephemeral 
+                            });
+                        } else {
+                            await interaction.member.roles.add(role);
+                            return interaction.reply({ 
+                                content: `<:yes:1297814648417943565> **Added:** ${role.name}`, 
+                                flags: MessageFlags.Ephemeral 
+                            });
+                        }
                     }
+
                 } catch (e) {
                     console.error(e);
-                    return interaction.reply({ content: "❌ Error changing roles.", flags: MessageFlags.Ephemeral });
+                    return interaction.reply({ content: "<:no:1297814819105144862> Error changing roles.", flags: MessageFlags.Ephemeral });
                 }
             }
-        }
+
 
         // ===============================================
         // 3. SELECT MENU HANDLERS (UPDATED TO PLAIN TEXT)

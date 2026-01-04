@@ -94,7 +94,7 @@ client.on('clientReady', async () => {
             activities: [{ name: 'customstatus', type: ActivityType.Custom, state: `⏳ ${thailandTime} (GMT+7)` }],
             status: 'dnd' 
         });
-    }, 30000);
+    }, 5000);
 });
 
 // --- YOUR ORIGINAL WELCOMER ---

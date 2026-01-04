@@ -239,7 +239,7 @@ module.exports = {
                 // 1. Roles
                 await member.roles.add(REGISTERED_ROLE_ID);
                 if (member.roles.cache.has(UNVERIFIED_ROLE_ID)) {
-                    await member.roles.remove(UNVERIFIED_ROLE_ID).catch(err => console.error("Could not remove Unverified role:", err));
+                    await member.roles.remove(UNVERIFIED_ROLE_ID).catch(err => console.error("Could not remove Visitor role:", err));
                 }
 
                 // 2. Nickname

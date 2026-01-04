@@ -77,6 +77,10 @@ async function createWelcomeImage(member) {
         ctx.fillRect(0, 0, dim.width, dim.height);
     }
 
+    // --- 3. Overlay ---
+    ctx.fillStyle = bannerURL ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(0, 0, dim.width, dim.height);
+
     // --- 4. Inner Frame (NITRO LOGIC ADDED HERE) ---
     ctx.save();
     ctx.lineWidth = 40;
@@ -130,7 +134,7 @@ async function createWelcomeImage(member) {
     ctx.beginPath();
     ctx.arc(avatarX + avatarRadius, avatarY + avatarRadius, avatarRadius, 0, Math.PI * 2, true);
     ctx.closePath();
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
     ctx.shadowBlur = 35;
     ctx.shadowOffsetX = 8;
     ctx.shadowOffsetY = 8;
@@ -174,10 +178,10 @@ async function createWelcomeImage(member) {
     let currentY = dim.height / 2 - 15;
 
     ctx.fillStyle = '#ffffff';
-    ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
-    ctx.shadowBlur = 10;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 4;
+    ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
+    ctx.shadowBlur = 15;
+    ctx.shadowOffsetX = 5;
+    ctx.shadowOffsetY = 5;
 
     const cleanedDisplayName = member.displayName.replace(/<a?:\w+:\d+>/g, '').trim();
     const displayName = cleanedDisplayName || user.username;
@@ -194,10 +198,10 @@ async function createWelcomeImage(member) {
     const cleanedUsername = user.username.replace(/<a?:\w+:\d+>/g, '').trim();
     let usernameText;
 
-    ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
-    ctx.shadowBlur = 10;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 4;
+    ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
+    ctx.shadowBlur = 15;
+    ctx.shadowOffsetX = 5;
+    ctx.shadowOffsetY = 5;
 
     if (user.discriminator && user.discriminator !== '0') {
         usernameText = `${cleanedUsername}#${user.discriminator}`;
@@ -206,7 +210,7 @@ async function createWelcomeImage(member) {
     }
 
     ctx.font = '100px "SF Pro Text Regular", sans-serif';
-    ctx.fillStyle = '#d9d9d9';
+    ctx.fillStyle = '#b9bbbe';
     ctx.fillText(usernameText, textX, currentY);
 
     ctx.restore();

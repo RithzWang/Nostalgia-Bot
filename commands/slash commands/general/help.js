@@ -76,9 +76,7 @@ module.exports = {
 <:discord:1446794842351865958> : [**Q1TN**](https://discord.com/users/837741275603009626)
 <:insta:1446793242040467486> : [**32r.6**](https://instagram.com/32r.6)
 <:spotify:1446793276073181277> : [**Q1TN**](https://open.spotify.com/user/31ljrymawsram5zmxn4sbutp7bxm)
-<:domain:1446793140395835583> : [**ridouan.xyz**](https://ridouan.xyz)
-
--# Select a category below.`,
+<:domain:1446793140395835583> : [**ridouan.xyz**](https://ridouan.xyz)`,
                 fields: [] // Empty fields because everything is in desc now
             },
             owner: {

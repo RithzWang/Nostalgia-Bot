@@ -33,7 +33,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('rolebutton')
         .setDescription('Manage role buttons (Components V2)')
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
 
         // --- SETUP COMMAND ---
         .addSubcommand(sub => {

@@ -17,7 +17,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('registration')
         .setDescription('Manage the registration system')
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
         
         // --- ENABLE COMMAND ---
         .addSubcommand(sub => 

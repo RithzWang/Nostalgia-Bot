@@ -149,7 +149,7 @@ client.on('guildMemberAdd', async (member) => {
                 .setURL('https://discord.com/channels/1456197054782111756/1456197056250122352'), 
             new ButtonBuilder()
                 .setLabel('Chat')
-                .setEmoui('🌍')
+                .setEmoji('🌍')
                 .setStyle(ButtonStyle.Link)
                 .setURL('https://discord.com/channels/1456197054782111756/1456197056510165026') 
         );

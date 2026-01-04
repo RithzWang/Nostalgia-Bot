@@ -5,7 +5,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('sticky')
         .setDescription('Manage sticky messages')
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
         .addSubcommand(subcommand =>
             subcommand
                 .setName('set')

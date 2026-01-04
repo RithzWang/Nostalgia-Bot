@@ -8,64 +8,76 @@ const {
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('replicate')
-        .setDescription('Wipes THIS server and copies everything from a Source Server ID.')
+        .setDescription('Wipes THIS server and copies data from a Source Server ID.')
         .addStringOption(option => 
             option.setName('source_id')
-                .setDescription('The ID of the server you want to copy FROM')
+                .setDescription('The ID of the server to copy FROM')
                 .setRequired(true)
         )
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
         const sourceId = interaction.options.getString('source_id');
-        const targetGuild = interaction.guild; // The server command is running IN (The new one)
-        const sourceGuild = interaction.client.guilds.cache.get(sourceId); // The server copying FROM
+        const targetGuild = interaction.guild;
+        const sourceGuild = interaction.client.guilds.cache.get(sourceId);
 
-        // --- 1. CHECKS ---
+        // --- CHECKS ---
         if (!sourceGuild) {
             return interaction.reply({ 
-                content: `❌ **I cannot find the source server.**\nMake sure I am in the server with ID \`${sourceId}\`.`, 
+                content: `❌ **Source not found.**\nI must be inside the server with ID \`${sourceId}\` to copy it.`, 
                 flags: MessageFlags.Ephemeral 
             });
         }
 
         if (targetGuild.id === sourceGuild.id) {
-            return interaction.reply({ content: '❌ You cannot replicate a server onto itself!', flags: MessageFlags.Ephemeral });
+            return interaction.reply({ content: '❌ Cannot replicate a server onto itself.', flags: MessageFlags.Ephemeral });
         }
 
-        // Confirmation Button (Safety)
+        // --- SAFETY CONFIRMATION ---
         await interaction.reply({ 
-            content: `⚠️ **WARNING: DESTRUCTIVE ACTION**\nI am about to **DELETE ALL CHANNELS AND ROLES** in **${targetGuild.name}** and replace them with data from **${sourceGuild.name}**.\n\nAre you sure?`,
+            content: `⚠️ **WARNING:** This will **DELETE ALL** channels and roles in **${targetGuild.name}**.\n\nCreating "cloning-logs" channel in 3 seconds...`,
             flags: MessageFlags.Ephemeral
         });
-
-        // (For simplicity in this code, we proceed immediately after a 3s delay. 
-        // In a polished bot, you'd add a "Confirm" button here.)
+        
         const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-        await wait(3000); 
-        await interaction.editReply('⏳ **Starting Replication...** (This may take 1-2 minutes)');
-
-        const roleMap = new Map(); // OldRoleID -> NewRoleID
-        const categoryMap = new Map();
+        await wait(3000);
 
         try {
-            // --- 2. CLEANUP TARGET SERVER ---
-            // Delete all channels
-            const channelsToDelete = targetGuild.channels.cache.filter(c => c.deletable);
+            // 1. Create a "Safe Room" channel
+            // We do this FIRST so we have a place to talk while everything else is deleted
+            const logChannel = await targetGuild.channels.create({
+                name: 'cloning-logs',
+                type: ChannelType.GuildText,
+                reason: 'Replication Log Channel'
+            });
+
+            // Notify user to move there
+            await interaction.followUp({ 
+                content: `✅ **Process Started.**\nPlease go to <#${logChannel.id}> to watch the progress.`, 
+                flags: MessageFlags.Ephemeral 
+            });
+
+            await logChannel.send('🔄 **Wiping Server...** (This keeps me alive)');
+
+            // 2. DELETE OLD DATA (Excluding the Log Channel)
+            const channelsToDelete = targetGuild.channels.cache.filter(c => c.id !== logChannel.id && c.deletable);
             for (const [id, channel] of channelsToDelete) {
                 await channel.delete().catch(() => {});
             }
 
-            // Delete all roles (except managed/everyone)
             const rolesToDelete = targetGuild.roles.cache.filter(r => !r.managed && r.name !== '@everyone' && r.editable);
             for (const [id, role] of rolesToDelete) {
                 await role.delete().catch(() => {});
             }
 
-            // --- 3. COPY ROLES ---
+            await logChannel.send('🔄 **Copying Roles...**');
+
+            // 3. COPY ROLES
+            const roleMap = new Map();
+            // Sort Low -> High position
             const rolesToCopy = sourceGuild.roles.cache
                 .filter(r => !r.managed && r.name !== '@everyone')
-                .sort((a, b) => a.position - b.position); // Low to High
+                .sort((a, b) => a.position - b.position);
 
             for (const [oldId, role] of rolesToCopy) {
                 try {
@@ -74,18 +86,17 @@ module.exports = {
                         color: role.color,
                         permissions: role.permissions,
                         hoist: role.hoist,
-                        mentionable: role.mentionable,
-                        reason: 'Server Replication'
+                        mentionable: role.mentionable
                     });
                     roleMap.set(oldId, newRole.id);
-                    await wait(800); // Rate Limit Safety
+                    await wait(800); // Prevent Rate Limits
                 } catch (e) {
-                    console.log(`Failed role: ${role.name}`);
+                    await logChannel.send(`⚠️ Skip Role: ${role.name}`);
                 }
             }
             roleMap.set(sourceGuild.id, targetGuild.id); // Map @everyone
 
-            // Helper for Overwrites
+            // Helper for Permissions
             const getOverwrites = (channel) => {
                 return channel.permissionOverwrites.cache.map(overwrite => {
                     const newId = roleMap.get(overwrite.id);
@@ -99,7 +110,9 @@ module.exports = {
                 }).filter(o => o !== null);
             };
 
-            // --- 4. COPY CATEGORIES ---
+            // 4. COPY CATEGORIES
+            await logChannel.send('🔄 **Copying Categories...**');
+            const categoryMap = new Map();
             const categories = sourceGuild.channels.cache
                 .filter(c => c.type === ChannelType.GuildCategory)
                 .sort((a, b) => a.position - b.position);
@@ -116,18 +129,16 @@ module.exports = {
                 } catch (e) {}
             }
 
-            // --- 5. COPY CHANNELS ---
+            // 5. COPY CHANNELS
+            await logChannel.send('🔄 **Copying Channels...**');
             const channels = sourceGuild.channels.cache
                 .filter(c => c.type !== ChannelType.GuildCategory && c.type !== ChannelType.GuildDirectory)
                 .sort((a, b) => a.position - b.position);
 
-            let firstChannel = null;
-
             for (const [oldId, channel] of channels) {
                 try {
                     const newParent = channel.parentId ? categoryMap.get(channel.parentId) : null;
-                    
-                    const newChannel = await targetGuild.channels.create({
+                    await targetGuild.channels.create({
                         name: channel.name,
                         type: channel.type,
                         parent: newParent,
@@ -135,23 +146,17 @@ module.exports = {
                         nsfw: channel.nsfw,
                         permissionOverwrites: getOverwrites(channel)
                     });
-
-                    if (!firstChannel && channel.type === ChannelType.GuildText) firstChannel = newChannel;
                     await wait(1000);
                 } catch (e) {
                     console.log(`Failed channel: ${channel.name}`);
                 }
             }
 
-            // --- 6. FINISH ---
-            if (firstChannel) {
-                await firstChannel.send(`✅ **Replication Complete!**\nServer has been synced with **${sourceGuild.name}**.`);
-            }
+            // 6. FINISH
+            await logChannel.send(`✅ **Replication Complete!**\nEverything has been copied from **${sourceGuild.name}**.\n\n*You can delete this channel now.*`);
 
         } catch (error) {
             console.error(error);
-            // Since we deleted the channel we were talking in, we can't really reply here.
-            // But we log it to console.
         }
     }
 };

@@ -130,7 +130,7 @@ module.exports = {
                 }
             }
 
-                        // E. BUTTON ROLE HANDLER (Universal: Single & Multi)
+            // E. BUTTON ROLE HANDLER (Universal: Single & Multi)
             if (interaction.customId.startsWith('btn_role_') || interaction.customId.startsWith('btn_single_')) {
                 const isSingleMode = interaction.customId.startsWith('btn_single_');
                 
@@ -160,13 +160,14 @@ module.exports = {
                         if (interaction.member.roles.cache.has(roleId)) {
                              await interaction.member.roles.remove(role);
                              return interaction.reply({ 
-                                content: `<:yes:1297814648417943565> **Removed:** ${role.name}`, 
+                                content: `<:no:1297814819105144862> **Removed:** ${role.name}`, 
                                 flags: MessageFlags.Ephemeral 
                             });
                         }
 
                         // Otherwise: Remove ALL other roles from this menu, then Add this one.
                         const rolesToRemove = [];
+                        const removedNames = [];
                         
                         // Scan message components to find sibling buttons
                         const container = interaction.message.components[0]; // V2 Container
@@ -179,6 +180,8 @@ module.exports = {
                                             // If user has this other role (and it's not the target), mark for removal
                                             if (otherId !== roleId && interaction.member.roles.cache.has(otherId)) {
                                                 rolesToRemove.push(otherId);
+                                                const r = interaction.guild.roles.cache.get(otherId);
+                                                if (r) removedNames.push(r.name);
                                             }
                                         }
                                     });
@@ -194,9 +197,14 @@ module.exports = {
                         // Add new role
                         await interaction.member.roles.add(role);
                         
-                        const removedText = rolesToRemove.length > 0 ? ` (swapped)` : '';
+                        // Construct Message
+                        let msg = `<:yes:1297814648417943565> **Added:** ${role.name}`;
+                        if (removedNames.length > 0) {
+                            msg += `\n<:no:1297814819105144862> **Removed:** ${removedNames.join(', ')}`;
+                        }
+
                         return interaction.reply({ 
-                            content: `<:yes:1297814648417943565> **Selected:** ${role.name}${removedText}`, 
+                            content: msg, 
                             flags: MessageFlags.Ephemeral 
                         });
                     } 
@@ -223,7 +231,7 @@ module.exports = {
                     return interaction.reply({ content: "<:no:1297814819105144862> Error changing roles.", flags: MessageFlags.Ephemeral });
                 }
             }
-          }
+        } 
 
         // ===============================================
         // 3. SELECT MENU HANDLERS (UPDATED TO PLAIN TEXT)

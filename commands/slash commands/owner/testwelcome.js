@@ -16,6 +16,7 @@ const {
 const { createWelcomeImage } = require('../../../welcomeCanvas.js'); 
 
 module.exports = {
+    guildOnly: true,
     data: new SlashCommandBuilder()
         .setName('test-welcome')
         .setDescription('Simulate the welcome message for a user')

@@ -271,7 +271,7 @@ module.exports = {
                             new TextDisplayBuilder().setContent('### <:registration:1447143542643490848> Registration')
                         );
                         newContainer.addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent(`To access chat and connect to voice channels, please register below.\n\n**Note:**\n\`Name\` : followed by your desired name.\n\`Country\` : followed by your country’s flag emoji.`)
+                            new TextDisplayBuilder().setContent(`To access chat and connect to voice channels, please register below.\n\n**Note:**\n\`Name\` : your desired name.\n\`Country\` : your country’s flag emoji.`)
                         );
                         newContainer.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
                         // ---------------------------------------------------------

@@ -97,6 +97,9 @@ client.on('clientReady', async () => {
     }, 5000);
 });
 
+
+const { createWelcomeImage } = require('./welcomeCanvas.js');
+
 // --- YOUR ORIGINAL WELCOMER ---
 client.on('guildMemberAdd', async (member) => {
     if (member.user.bot || member.guild.id !== serverID) return;

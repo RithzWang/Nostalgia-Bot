@@ -61,7 +61,7 @@ module.exports = {
         const registerBtn = new ButtonBuilder()
             .setCustomId('reg_btn_open')
             .setLabel('Register')
-            .setStyle(ButtonStyle.Success) // Green
+            .setStyle(ButtonStyle.Primary) // Blue
             .setDisabled(sub === 'disable'); // Disable if command is /disable
 
         const countBtn = new ButtonBuilder()

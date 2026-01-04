@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, MessageFlags, PermissionFlagsBits } = require('discord.js');
 
 module.exports = {
+    guildOnly: true,
     data: new SlashCommandBuilder()
         .setName('deletedm')
         .setDescription('Owner Only: Delete all bot messages in a specific User DM')

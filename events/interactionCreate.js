@@ -44,7 +44,7 @@ module.exports = {
         // ===============================================
         if (interaction.isButton()) {
 
-            // A. ROLE BUTTONS
+            // A. LEGACY ROLE BUTTONS (Old System)
             if (interaction.customId.startsWith('role_')) {
                 const parts = interaction.customId.split('_');
                 const roleId = parts[1];
@@ -127,6 +127,50 @@ module.exports = {
                     if (interaction.customId === 'thanks_prev') newPage--;
                     else newPage++;
                     await updateLeaderboardVisual(client, interaction.guild.id, newPage);
+                }
+            }
+
+            // E. BUTTON ROLE HANDLER (New Universal System)
+            if (interaction.customId.startsWith('btn_role_')) {
+                // 1. Extract Role ID
+                const roleId = interaction.customId.replace('btn_role_', '');
+                const role = interaction.guild.roles.cache.get(roleId);
+
+                // 2. Validation
+                if (!role) {
+                    return interaction.reply({ 
+                        content: '<:no:1297814819105144862> Role not found (it may have been deleted).', 
+                        flags: MessageFlags.Ephemeral 
+                    });
+                }
+
+                if (role.position >= interaction.guild.members.me.roles.highest.position) {
+                    return interaction.reply({
+                         content: '<:no:1297814819105144862> I cannot manage this role (it is higher than mine).', 
+                         flags: MessageFlags.Ephemeral 
+                    });
+                }
+
+                // 3. Toggle Logic
+                const hasRole = interaction.member.roles.cache.has(roleId);
+                
+                try {
+                    if (hasRole) {
+                        await interaction.member.roles.remove(role);
+                        return interaction.reply({ 
+                            content: `<:no:1297814819105144862> **Removed:** ${role.name}`, 
+                            flags: MessageFlags.Ephemeral 
+                        });
+                    } else {
+                        await interaction.member.roles.add(role);
+                        return interaction.reply({ 
+                            content: `<:yes:1297814648417943565> **Added:** ${role.name}`, 
+                            flags: MessageFlags.Ephemeral 
+                        });
+                    }
+                } catch (e) {
+                    console.error(e);
+                    return interaction.reply({ content: "❌ Error changing roles.", flags: MessageFlags.Ephemeral });
                 }
             }
         }

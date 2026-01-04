@@ -27,8 +27,8 @@ async function loadFonts() {
     if (fs.existsSync(gsBoldPath)) GlobalFonts.registerFromPath(gsBoldPath, 'gg sans Bold');
 
 
-    const sfRegularPath = path.join(FONT_DIR, 'SF-Pro-Display-Regular.otf');
-    if (fs.existsSync(sfRegularPath)) GlobalFonts.registerFromPath(sfRegularPath, 'SF Pro Display Regular');
+    const sfRegularPath = path.join(FONT_DIR, 'SF-Pro-Text-Regular.otf');
+    if (fs.existsSync(sfRegularPath)) GlobalFonts.registerFromPath(sfRegularPath, 'SF Pro Text Regular');
 
     
     // 3. SF Pro SemiBold (Username) << NEW

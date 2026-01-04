@@ -4,7 +4,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('embed')
         .setDescription('Create and edit embed messages')
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addSubcommand(subcommand =>
             subcommand.setName('create').setDescription('Create a message embed')
                 .addStringOption(option => option.setName('title').setDescription('The title of the embed'))

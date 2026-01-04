@@ -128,7 +128,7 @@ async function createWelcomeImage(member) {
     ctx.beginPath();
     ctx.arc(avatarX + avatarRadius, avatarY + avatarRadius, avatarRadius, 0, Math.PI * 2, true);
     ctx.closePath();
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
     ctx.shadowBlur = 35;
     ctx.shadowOffsetX = 8;
     ctx.shadowOffsetY = 8;

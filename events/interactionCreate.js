@@ -214,7 +214,7 @@ module.exports = {
             }
             const modal = new ModalBuilder().setCustomId('reg_modal_submit').setTitle('Server Registration');
             const nameInput = new TextInputBuilder().setCustomId('reg_name').setLabel("Name").setDescription("Your desired name").setStyle(TextInputStyle.Short).setPlaceholder("e.g. Naif, Rithz").setMaxLength(15).setRequired(true);
-            const countryInput = new TextInputBuilder().setCustomId('reg_country').setLabel("Country Flag").setDescription("Your country’s flag emoji).setStyle(TextInputStyle.Short).setPlaceholder("e.g. 🇵🇸").setMaxLength(5).setRequired(true);
+            const countryInput = new TextInputBuilder().setCustomId('reg_country').setLabel("Country Flag").setDescription("Your country’s flag emoji").setStyle(TextInputStyle.Short).setPlaceholder("e.g. 🇵🇸").setMaxLength(5).setRequired(true);
             modal.addComponents(new ActionRowBuilder().addComponents(nameInput), new ActionRowBuilder().addComponents(countryInput));
             await interaction.showModal(modal);
         }

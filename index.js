@@ -92,7 +92,7 @@ client.on('clientReady', async () => {
         const thailandTime = moment().tz('Asia/Bangkok').format('HH:mm');
         client.user.setPresence({
             activities: [{ name: 'customstatus', type: ActivityType.Custom, state: `⏳ ${thailandTime} (GMT+7)` }],
-            status: 'idle' 
+            status: 'dnd' 
         });
     }, 30000);
 });

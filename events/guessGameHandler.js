@@ -1,13 +1,4 @@
-const { 
-    Events, 
-    ContainerBuilder, 
-    TextDisplayBuilder, 
-    SectionBuilder, 
-    SeparatorBuilder, 
-    SeparatorSpacingSize,
-    MessageFlags 
-} = require('discord.js');
-
+const { Events, EmbedBuilder } = require('discord.js');
 const GuessGame = require('../src/models/GuessGame');
 const { words } = require('../guessword.json');
 
@@ -35,6 +26,7 @@ module.exports = {
         if (guess === game.currentWord) {
             
             let newWord = words[Math.floor(Math.random() * words.length)];
+            // Avoid repeat
             while (newWord === game.currentWord) {
                 newWord = words[Math.floor(Math.random() * words.length)];
             }
@@ -44,37 +36,28 @@ module.exports = {
             game.displayWord = newHidden;
             await game.save();
 
-            const container = new ContainerBuilder()
-                .setAccentColor(0x57F287) // Green
-                .addSectionComponents(section => 
-                    section.addTextDisplayComponents(text => 
-                        // 👇 Custom YES emoji here
-                        text.setContent(`### <:yes:1297814648417943565> Correct! \n**${message.author.username}** guessed the word!`)
-                    )
-                    .setThumbnailAccessory(thumb => thumb.setURL(message.author.displayAvatarURL()))
-                )
-                .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small))
-                .addSectionComponents(section => 
-                    section.addTextDisplayComponents(text => 
-                        text.setContent(`### Next Word:\n# \` ${newHidden} \``)
-                    )
-                );
+            const embed = new EmbedBuilder()
+                .setTitle('<:yes:1297814648417943565> Correct!')
+                .setDescription(`**${message.author.username}** guessed the word!\n\n### Next Word:\n# \` ${newHidden} \``)
+                .setThumbnail(message.author.displayAvatarURL())
+                .setColor(0x57F287); // Green
 
-            await message.reply({ 
-                components: [container], 
-                flags: MessageFlags.IsComponentsV2 
-            });
+            await message.reply({ embeds: [embed] });
 
         } else {
             // --- WRONG GUESS ---
             try {
-                // 👇 Custom NO emoji here
+                // Reply with error
                 const wrongMsg = await message.reply({ content: `<:no:1297814819105144862> Wrong guess!` });
+                
+                // Delete both the user's wrong guess AND the bot's reply after 3 seconds
                 setTimeout(async () => {
                     await message.delete().catch(() => {});
                     await wrongMsg.delete().catch(() => {});
                 }, 3000);
-            } catch (e) {}
+            } catch (e) {
+                // Ignore errors if message is already deleted
+            }
         }
     },
 };

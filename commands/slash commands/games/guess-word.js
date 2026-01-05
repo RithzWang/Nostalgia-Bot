@@ -11,10 +11,8 @@ const {
 } = require('discord.js');
 
 const GuessGame = require('../../../src/models/GuessGame'); 
-// 👇 IMPORT FROM JSON (Go up 3 folders to reach root)
 const { words } = require('../../../guessword.json'); 
 
-// Helper to hide letters
 function hideWord(word) {
     const chars = word.split('');
     const visibleCount = Math.floor(chars.length / 2); 
@@ -52,7 +50,6 @@ module.exports = {
         if (sub === 'enable') {
             const channel = interaction.options.getChannel('channel');
 
-            // 1. Pick a random word from JSON
             const newWord = words[Math.floor(Math.random() * words.length)];
             const hidden = hideWord(newWord);
 
@@ -87,7 +84,7 @@ module.exports = {
 
         if (sub === 'disable') {
             const game = await GuessGame.findOneAndDelete({ guildId: interaction.guild.id });
-            if (!game) return interaction.editReply({ content: "The game isn't running." });
+            if (!game) return interaction.editReply({ content: "<:no:1297814819105144862> The game isn't running." });
 
             const channel = interaction.guild.channels.cache.get(game.channelId);
             if (channel) {

@@ -1,13 +1,8 @@
 const { 
     SlashCommandBuilder, 
     PermissionFlagsBits, 
-    MessageFlags, 
-    ChannelType,
-    ContainerBuilder, 
-    TextDisplayBuilder,
-    SectionBuilder,
-    SeparatorBuilder,
-    SeparatorSpacingSize
+    ChannelType, 
+    EmbedBuilder 
 } = require('discord.js');
 
 const GuessGame = require('../../../src/models/GuessGame'); 
@@ -44,7 +39,7 @@ module.exports = {
         ),
 
     async execute(interaction) {
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        await interaction.deferReply({ ephemeral: true });
         const sub = interaction.options.getSubcommand();
 
         if (sub === 'enable') {
@@ -64,20 +59,12 @@ module.exports = {
                 { upsert: true, new: true }
             );
 
-            const container = new ContainerBuilder()
-                .setAccentColor(0x5865F2)
-                .addTextDisplayComponents(new TextDisplayBuilder().setContent('# 🎮 Guess the Word Started!'))
-                .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small))
-                .addSectionComponents(
-                    new SectionBuilder().addTextDisplayComponents(
-                        new TextDisplayBuilder().setContent(`### Guess this word:\n# \` ${hidden} \``)
-                    )
-                );
+            const embed = new EmbedBuilder()
+                .setTitle('🎮 Guess the Word Started!')
+                .setDescription(`### Guess this word:\n# \` ${hidden} \``)
+                .setColor(0x5865F2); // Blurple
 
-            await channel.send({ 
-                components: [container],
-                flags: MessageFlags.IsComponentsV2
-            });
+            await channel.send({ embeds: [embed] });
 
             return interaction.editReply({ content: `<:yes:1297814648417943565> Game started in ${channel}!` });
         }
@@ -88,14 +75,12 @@ module.exports = {
 
             const channel = interaction.guild.channels.cache.get(game.channelId);
             if (channel) {
-                const endContainer = new ContainerBuilder()
-                    .setAccentColor(0xED4245)
-                    .addTextDisplayComponents(new TextDisplayBuilder().setContent('### 🛑 Game Over\nThe guessing game has been disabled.'));
+                const embed = new EmbedBuilder()
+                    .setTitle('🛑 Game Over')
+                    .setDescription('The guessing game has been disabled.')
+                    .setColor(0xED4245); // Red
                 
-                await channel.send({ 
-                    components: [endContainer], 
-                    flags: MessageFlags.IsComponentsV2 
-                });
+                await channel.send({ embeds: [embed] });
             }
 
             return interaction.editReply({ content: "<:yes:1297814648417943565> Game disabled." });

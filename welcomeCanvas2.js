@@ -158,7 +158,7 @@ async function createWelcomeImage(member) {
 
     // --- 5c. NEW BADGE (A2-Q Image) ---
     // Using the new image file you provided
-    const badgeImage = await loadImage('./Untitled182_20260105235218.png').catch(() => null);
+    const badgeImage = await loadImage('./A2-Q-icon.png').catch(() => null);
 
     if (badgeImage) {
         // Resized to 200x100 to fit nicely over the avatar (Original 500x250 is too big)

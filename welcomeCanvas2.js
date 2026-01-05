@@ -162,12 +162,12 @@ async function createWelcomeImage(member) {
 
     // --- 5c. NEW BADGE (A2-Q Image) ---
     // Using the new image file
-    const badgeImage = await loadImage('./bismillah.png').catch(() => null);
+    const badgeImage = await loadImage('./new-icon.png').catch(() => null);
 
     if (badgeImage) {
         // Resized to 200x100
-        const badgeWidth = 205; 
-        const badgeHeight = 148; 
+        const badgeWidth = 200; 
+        const badgeHeight = 100; 
 
         // Center horizontally on Avatar
         const badgeX = (avatarX + (avatarSize / 2)) - (badgeWidth / 2);

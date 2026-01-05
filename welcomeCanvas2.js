@@ -76,7 +76,7 @@ async function createWelcomeImage(member) {
         ctx.fillRect(0, 0, dim.width, dim.height);
     }
 
-    // --- 3. Overlay (DISABLED AS REQUESTED) ---
+    // --- 3. Overlay (DISABLED) ---
     // ctx.fillStyle = bannerURL ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.5)';
     // ctx.fillRect(0, 0, dim.width, dim.height);
 
@@ -149,21 +149,20 @@ async function createWelcomeImage(member) {
         }
     }
 
-    // --- NEW BADGE (ADDED HERE) ---
-    // Load the local "NEW" image
+    // --- NEW BADGE (UPDATED POSITION) ---
     const badgeImage = await loadImage('./emoji-1.png').catch(() => null);
 
     if (badgeImage) {
-        // Dimensions for the badge (Adjust these numbers to resize)
+        // Dimensions for the badge
         const badgeWidth = 180; 
         const badgeHeight = 90; 
 
-        // Calculation to center it on the top edge of the avatar
-        // X: Avatar Center - Half Badge Width
+        // X: Keep it centered horizontally over the avatar
         const badgeX = (avatarX + (avatarSize / 2)) - (badgeWidth / 2);
         
-        // Y: Top of Avatar - Half Badge Height (so it sits half-in half-out)
-        const badgeY = avatarY - (badgeHeight / 2);
+        // Y: Top edge of canvas (0) minus half height. 
+        // This places the center of the badge exactly on the top frame line.
+        const badgeY = 0 - (badgeHeight / 2);
 
         ctx.drawImage(badgeImage, badgeX, badgeY, badgeWidth, badgeHeight);
     }
@@ -182,7 +181,6 @@ async function createWelcomeImage(member) {
     let currentY = dim.height / 2 - 15;
 
     ctx.fillStyle = '#ffffff';
-    // Increased opacity for better readability since background is brighter now
     ctx.shadowColor = "rgba(0, 0, 0, 0.9)"; 
     ctx.shadowBlur = 15;
     ctx.shadowOffsetX = 5;

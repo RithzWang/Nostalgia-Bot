@@ -83,10 +83,6 @@ async function createWelcomeImage(member) {
         ctx.fillRect(0, 0, dim.width, dim.height);
     }
 
-    // --- 3. Overlay (DISABLED) ---
-    // ctx.fillStyle = bannerURL ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.5)';
-    // ctx.fillRect(0, 0, dim.width, dim.height);
-
     // --- 4. Inner Frame ---
     ctx.save();
     ctx.lineWidth = 40;
@@ -147,7 +143,7 @@ async function createWelcomeImage(member) {
     ctx.drawImage(mainAvatar, avatarX, avatarY, avatarSize, avatarSize);
     ctx.restore();
 
-    // --- 5b. Avatar Decoration (RESTORED HERE) ---
+    // --- 5b. Avatar Decoration ---
     const decoURL = user.avatarDecorationURL({ extension: 'png', size: 512 });
     if (decoURL) {
         const decoImage = await loadImage(decoURL).catch(e => null);
@@ -160,12 +156,14 @@ async function createWelcomeImage(member) {
         }
     }
 
-    // --- 5c. NEW BADGE (Visible & Centered on Top Edge) ---
-    const badgeImage = await loadImage('./emoji-1.png').catch(() => null);
+    // --- 5c. NEW BADGE (A2-Q Image) ---
+    // Using the new image file you provided
+    const badgeImage = await loadImage('./Untitled182_20260105235218.png').catch(() => null);
 
     if (badgeImage) {
-        const badgeWidth = 180; 
-        const badgeHeight = 90; 
+        // Resized to 200x100 to fit nicely over the avatar (Original 500x250 is too big)
+        const badgeWidth = 200; 
+        const badgeHeight = 100; 
 
         // Center horizontally on Avatar
         const badgeX = (avatarX + (avatarSize / 2)) - (badgeWidth / 2);
@@ -191,7 +189,7 @@ async function createWelcomeImage(member) {
     let currentY = dim.height / 2 - 15;
 
     ctx.fillStyle = '#ffffff';
-    // Stronger shadow because we removed the dark overlay
+    // Stronger shadow
     ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
     ctx.shadowBlur = 15;
     ctx.shadowOffsetX = 5;
@@ -211,7 +209,7 @@ async function createWelcomeImage(member) {
     const cleanedUsername = user.username.replace(/<a?:\w+:\d+>/g, '').trim();
     let usernameText;
     
-    // Shadow for username too
+    // Shadow for username
     ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
     ctx.shadowBlur = 15;
     ctx.shadowOffsetX = 5;

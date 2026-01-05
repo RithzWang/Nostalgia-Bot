@@ -29,23 +29,22 @@ async function createWelcomeImage(member) {
         margin: 100
     };
 
-    // --- FIX 1: Make canvas taller to fit the badge ---
-    // We add 50px to the top so the badge (which sticks out) is visible
+    // --- FIX: Canvas Size & Offset ---
+    // We keep this to ensure the badge "hanging off the top" is visible
     const topOffset = 50; 
     const canvas = createCanvas(dim.width, dim.height + topOffset);
     const ctx = canvas.getContext('2d');
 
-    // --- FIX 2: Shift everything down ---
-    // This moves the "Card" down by 50px, leaving empty space at y=0 for the badge
+    // Move everything down by 50px so we have empty space at the top
     ctx.translate(0, topOffset);
 
-    // --- Rounded Rectangle Clip Path (THE CARD SHAPE) --- 
+    // --- Rounded Rectangle Clip Path --- 
     const cornerRadius = 80;
-    ctx.save(); 
+    ctx.save();
     ctx.beginPath();
     ctx.roundRect(0, 0, dim.width, dim.height, cornerRadius);
     ctx.closePath();
-    ctx.clip(); // Everything drawn after this is trapped INSIDE the card
+    ctx.clip(); // <--- Standard clipping for the card background
 
     // --- 2. Draw Background ---
     const bannerURL = user.bannerURL({ extension: 'png', size: 2048 });
@@ -83,6 +82,11 @@ async function createWelcomeImage(member) {
         ctx.fillRect(0, 0, dim.width, dim.height);
     }
 
+    // --- 3. Overlay (ACTIVE) ---
+    // This is exactly as provided in your snippet
+    ctx.fillStyle = bannerURL ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(0, 0, dim.width, dim.height);
+
     // --- 4. Inner Frame ---
     ctx.save();
     ctx.lineWidth = 40;
@@ -108,8 +112,8 @@ async function createWelcomeImage(member) {
     ctx.stroke();
     ctx.restore();
 
-    // --- FIX 3: RELEASE THE CLIP! ---
-    // We stop clipping here so we can draw the badge OUTSIDE the card
+    // --- STOP CLIPPING ---
+    // We restore here so the Badge can be drawn OUTSIDE the card limits
     ctx.restore(); 
 
     // --- 5. Main Avatar ---
@@ -121,7 +125,7 @@ async function createWelcomeImage(member) {
     const mainAvatarURL = member.displayAvatarURL({ extension: 'png', size: 512 });
     const mainAvatar = await loadImage(mainAvatarURL);
 
-    // Avatar Shadow
+    // Shadow
     ctx.save();
     ctx.beginPath();
     ctx.arc(avatarX + avatarRadius, avatarY + avatarRadius, avatarRadius, 0, Math.PI * 2, true);
@@ -134,7 +138,7 @@ async function createWelcomeImage(member) {
     ctx.fill();
     ctx.restore();
 
-    // Avatar Image
+    // Image
     ctx.save();
     ctx.beginPath();
     ctx.arc(avatarX + avatarRadius, avatarY + avatarRadius, avatarRadius, 0, Math.PI * 2, true);
@@ -143,7 +147,7 @@ async function createWelcomeImage(member) {
     ctx.drawImage(mainAvatar, avatarX, avatarY, avatarSize, avatarSize);
     ctx.restore();
 
-    // --- 5b. Avatar Decoration ---
+    // --- 5b. Decoration ---
     const decoURL = user.avatarDecorationURL({ extension: 'png', size: 512 });
     if (decoURL) {
         const decoImage = await loadImage(decoURL).catch(e => null);
@@ -157,18 +161,18 @@ async function createWelcomeImage(member) {
     }
 
     // --- 5c. NEW BADGE (A2-Q Image) ---
-    // Using the new image file you provided
+    // Using the new image file
     const badgeImage = await loadImage('./A2-Q-icon.png').catch(() => null);
 
     if (badgeImage) {
-        // Resized to 200x100 to fit nicely over the avatar (Original 500x250 is too big)
+        // Resized to 200x100
         const badgeWidth = 200; 
         const badgeHeight = 100; 
 
         // Center horizontally on Avatar
         const badgeX = (avatarX + (avatarSize / 2)) - (badgeWidth / 2);
         
-        // Y = 0 (The top edge of the card) - Half Badge Height
+        // Y = 0 (Top of Card) - Half Badge Height
         // This puts it half-in, half-out
         const badgeY = 0 - (badgeHeight / 2);
 
@@ -189,8 +193,8 @@ async function createWelcomeImage(member) {
     let currentY = dim.height / 2 - 15;
 
     ctx.fillStyle = '#ffffff';
-    // Stronger shadow
-    ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
+    // Matches your provided snippet (0.6)
+    ctx.shadowColor = "rgba(0, 0, 0, 0.3)";
     ctx.shadowBlur = 15;
     ctx.shadowOffsetX = 5;
     ctx.shadowOffsetY = 5;
@@ -208,9 +212,8 @@ async function createWelcomeImage(member) {
     currentY += 115;
     const cleanedUsername = user.username.replace(/<a?:\w+:\d+>/g, '').trim();
     let usernameText;
-    
-    // Shadow for username
-    ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
+
+    ctx.shadowColor = "rgba(0, 0, 0, 0.3)";
     ctx.shadowBlur = 15;
     ctx.shadowOffsetX = 5;
     ctx.shadowOffsetY = 5;

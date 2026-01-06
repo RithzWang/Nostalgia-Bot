@@ -157,14 +157,16 @@ async function createWelcomeImage(member) {
     }
 
     // C. THE BIGGER INVISIBLE SPOT
+    // --- UPDATED HERE ---
+    // Changed statusSize from 100 to 85
+    const statusSize = 85; 
+
     if (statusImage) {
-        const statusSize = 100;
         const offset = 141; // 45 degrees
         const holeX = (centerX + offset);
         const holeY = (centerY + offset);
         
-        // --- UPDATED HERE ---
-        // (100 / 2) + 15 = 65px radius
+        // (85 / 2) + 15 = 57.5px radius
         const invisibleRadius = (statusSize / 2) + 15; 
 
         cCtx.save();
@@ -177,7 +179,7 @@ async function createWelcomeImage(member) {
 
     // 3. Draw to Main Canvas (Floating Effect)
     
-    // Pass 1: The Shadow (Follows the new cutout shape)
+    // Pass 1: The Shadow
     ctx.save();
     ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
     ctx.shadowBlur = 25;
@@ -194,7 +196,6 @@ async function createWelcomeImage(member) {
     // ==========================================
 
     if (statusImage) {
-        const statusSize = 100;
         const offset = 141;
         const holeX = (centerX + offset);
         const holeY = (centerY + offset);

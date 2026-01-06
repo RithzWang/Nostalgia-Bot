@@ -164,7 +164,7 @@ async function createWelcomeImage(member) {
         const holeX = (centerX + offset);
         const holeY = (centerY + offset);
         
-        // UPDATED: Changed buffer to 20
+        // Buffer: 20
         const invisibleRadius = (statusSize / 2) + 20; 
 
         cCtx.save();
@@ -220,7 +220,8 @@ async function createWelcomeImage(member) {
     // 1. Measurements
     const idMetrics = ctx.measureText(idText);
     const idPaddingX = 40; 
-    const idBoxHeight = 85; 
+    // UPDATED: Reduced from 85 to 75 to reduce vertical space
+    const idBoxHeight = 75; 
     
     // 2. Coordinates
     const marginRight = 50;

@@ -236,32 +236,53 @@ async function createWelcomeImage(member) {
     ctx.fillText(idText, (dim.width - marginRight) - idPaddingX, boxCenterAxisY); 
     ctx.restore();
 
-    // --- Display Name (Main Big Text) ---
-    // Note: We don't shrink this one as it usually fits, but if you want to shrink this too, let me know.
+
+    // ==================================================================
+    //  SAFE TEXT ZONE LOGIC (SCALING FOR BOTH LINES)
+    // ==================================================================
+    
+    // 1. Define Safe Zone
+    // 100(margin) + 30(avatarX) + 400(avatarSize) + 70(Gap) = 600px
+    const textX = avatarX + avatarSize + 70;
+    
+    // 50px Margin from Right Edge of card
+    const maxAvailableWidth = dim.width - textX - 50; 
+
+    // --- A. DISPLAY NAME / GLOBAL NAME (Top Line) ---
     ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
     ctx.shadowBlur = 5;
     ctx.shadowOffsetX = 5; 
     ctx.shadowOffsetY = 5; 
 
-    const textX = avatarX + avatarSize + 70;
     let currentY = dim.height / 2 - 15;
+    
+    // Use Global Name if available, otherwise Username
+    const displayName = user.globalName || user.username;
+    
+    // 1. Font Stack
+    const fontStack = `"gg sans Bold", "Geeza Bold", "SFArabic", "Thonburi", "Apple Gothic", "Hiragino Sans", "Pingfang", "Apple Color Emoji", "Symbol", "Apple Symbols", "Noto Symbol", "Noto Symbol 2", "Noto Math", "Noto Hieroglyphs", "Noto Music", sans-serif`;
+    
+    // 2. Measure & Scale
+    const baseDisplaySize = 115;
+    ctx.font = `bold ${baseDisplaySize}px ${fontStack}`;
+    
+    const displayNameWidth = ctx.measureText(displayName).width;
+    const displayScale = Math.min(1, maxAvailableWidth / displayNameWidth);
+    
+    // 3. Draw Scaled Text
+    const fDisplaySize = baseDisplaySize * displayScale;
+    ctx.font = `bold ${fDisplaySize}px ${fontStack}`;
     
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
-    ctx.font = 'bold 115px "gg sans Bold", "Geeza Bold", "Thonburi", "Apple Gothic", "Hiragino Sans", "Pingfang", "Apple Color Emoji", "Symbol", "Apple Symbols", "Noto Symbol", "Noto Symbol 2", "Noto Math", "Noto Hieroglyphs", "Noto Music", sans-serif';
-    
-    const displayName = member.displayName.replace(/<a?:\w+:\d+>/g, '').trim() || user.username;
     ctx.fillText(displayName, textX, currentY);
 
-    // ==================================================================
-    // MODIFIED: AUTO-SCALING USERNAME • GUILD TAG BOX
-    // ==================================================================
 
+    // --- B. USERNAME & GUILD TAG (Bottom Line) ---
     currentY += 115;
     
-    // --- 1. SETUP & MEASUREMENTS ---
-    // Define Base Sizes (Default values before scaling)
+    // Define Base Sizes
     const baseUsernameSize = 95;
     const baseTagSize = 65;
     const baseBoxHeight = 95;
@@ -272,7 +293,6 @@ async function createWelcomeImage(member) {
     const baseContentGap = 15; 
     const baseRadius = 30;
 
-    // Prepare Text
     let tagText = (user.discriminator && user.discriminator !== '0') 
         ? `${user.username}#${user.discriminator}` 
         : `@${user.username}`;
@@ -280,25 +300,24 @@ async function createWelcomeImage(member) {
     const guildInfo = user.primaryGuild;
     const hasGuild = (guildInfo && guildInfo.tag);
 
-    // -- Measure Username --
+    // Measure Username
     ctx.font = `${baseUsernameSize}px "Prima Sans Regular", sans-serif`;
     const usernameWidth = ctx.measureText(tagText).width;
 
-    // -- Calculate Total Width Needed --
     let totalNeededWidth = usernameWidth;
     let guildTagWidth = 0;
     let badgeURL = null;
     let hasBadge = false;
 
     if (hasGuild) {
-        // Measure Separator Dot
+        // Measure Separator
         const dotWidth = ctx.measureText("•").width;
         
-        // Measure Guild Tag Text
-        ctx.font = `${baseTagSize}px "Prima Sans Regular", sans-serif`;
+        // Measure Tag
+        ctx.font = `${baseTagSize}px "Prima Sans Regular", ${fontStack}`;
         guildTagWidth = ctx.measureText(guildInfo.tag).width;
 
-        // Check for Badge
+        // Check Badge
         if (typeof user.guildTagBadgeURL === 'function') {
              badgeURL = user.guildTagBadgeURL({ extension: 'png', size: 128 });
         } else if (guildInfo.badge && guildInfo.identityGuildId) {
@@ -312,46 +331,38 @@ async function createWelcomeImage(member) {
              boxWidth += baseBadgeSize + baseContentGap;
         }
 
-        // Add to total
         totalNeededWidth += baseSepPadding + dotWidth + baseMarginSep + boxWidth;
     }
 
-    // -- Calculate Scale Factor --
-    const maxAvailableWidth = dim.width - textX - 50; // 50px right margin
-    // If totalNeededWidth > maxAvailableWidth, scale will be < 1.0
-    const scale = Math.min(1, maxAvailableWidth / totalNeededWidth);
+    // Calculate Scale for Bottom Line
+    const bottomScale = Math.min(1, maxAvailableWidth / totalNeededWidth);
 
-    // -- Apply Scale to Variables --
-    const fUsernameSize = baseUsernameSize * scale;
-    const fTagSize = baseTagSize * scale;
-    const fBoxHeight = baseBoxHeight * scale;
-    const fPadding = basePadding * scale;
-    const fSepPadding = baseSepPadding * scale;
-    const fMarginSep = baseMarginSep * scale;
-    const fContentGap = baseContentGap * scale;
-    const fBadgeSize = baseBadgeSize * scale;
-    const fRadius = baseRadius * scale;
+    // Apply Scale to Variables
+    const fUsernameSize = baseUsernameSize * bottomScale;
+    const fTagSize = baseTagSize * bottomScale;
+    const fBoxHeight = baseBoxHeight * bottomScale;
+    const fPadding = basePadding * bottomScale;
+    const fSepPadding = baseSepPadding * bottomScale;
+    const fMarginSep = baseMarginSep * bottomScale;
+    const fContentGap = baseContentGap * bottomScale;
+    const fBadgeSize = baseBadgeSize * bottomScale;
+    const fRadius = baseRadius * bottomScale;
 
-    // --- 2. DRAWING ---
-
-    // A. Draw Username
+    // Draw Username
     ctx.font = `${fUsernameSize}px "Prima Sans Regular", sans-serif`;
     ctx.fillStyle = '#dadada'; 
     ctx.fillText(tagText, textX, currentY);
 
     if (hasGuild) {
-        // Measurements with new scaled font (to be precise)
         const fUsernameWidth = ctx.measureText(tagText).width;
         
-        // B. Draw Separator
+        // Separator
         const separatorX = textX + fUsernameWidth + fSepPadding;
         ctx.fillStyle = '#dadada'; 
         ctx.fillText("•", separatorX, currentY);
         const fSeparatorWidth = ctx.measureText("•").width;
 
-        // C. Draw Guild Box
-        
-        // Recalculate Box Width with scaled values
+        // Recalculate Box Width Scaled with Explicit Fonts
         ctx.font = `${fTagSize}px "Prima Sans Regular", "SFArabic", "Thonburi", "Apple Gothic", "Hiragino Sans", "Pingfang", "Symbol", "Apple Symbols", "Noto Symbol", "Noto Symbol 2", "Noto Math", "Noto Hieroglyphs", "Noto Music", sans-serif`;
         const fTagWidth = ctx.measureText(guildInfo.tag).width;
         
@@ -360,11 +371,9 @@ async function createWelcomeImage(member) {
              fBoxWidth += fBadgeSize + fContentGap;
         }
 
-        // Calculate Positions
+        // Positions
         const boxX = separatorX + fSeparatorWidth + fMarginSep;
-        // Center vertically relative to username baseline
-        // We assume baseline is roughly 30% of font size from bottom, scaled
-        const verticalAdjustment = 30 * scale; 
+        const verticalAdjustment = 30 * bottomScale; 
         const verticalCenterY = currentY - verticalAdjustment; 
         const boxY = verticalCenterY - (fBoxHeight / 2);
 
@@ -396,7 +405,7 @@ async function createWelcomeImage(member) {
         ctx.textBaseline = 'middle'; 
         ctx.fillText(guildInfo.tag, currentContentX, contentCenterY);
 
-        ctx.textBaseline = 'alphabetic'; // Reset
+        ctx.textBaseline = 'alphabetic'; 
     }
 
     // --- Crown Badge (Logo) ---

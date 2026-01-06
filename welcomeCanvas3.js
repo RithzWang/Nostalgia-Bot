@@ -33,7 +33,7 @@ async function createWelcomeImage(member) {
     const canvas = createCanvas(dim.width, dim.height + topOffset);
     const ctx = canvas.getContext('2d');
     
-    // High quality scaling
+    // High quality scaling settings
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
@@ -108,7 +108,7 @@ async function createWelcomeImage(member) {
     ctx.stroke();
 
     // ==========================================
-    // LAYER 2: THE "PERFECT CUTOUT" ENGINE
+    // LAYER 2: AVATAR COMPOSITE (The Invisible Spot Engine)
     // ==========================================
     
     // 1. Prepare Data
@@ -136,15 +136,14 @@ async function createWelcomeImage(member) {
         user.avatarDecorationURL() ? loadImage(user.avatarDecorationURL({ extension: 'png', size: 512 })).catch(() => null) : null
     ]);
 
-    // 2. Create a "Composite Layer"
-    // We draw Shadow + Avatar + Decoration on this ONE layer first.
-    // Then we punch a hole through the entire layer.
+    // 2. Create a Temporary Composite Layer
+    // We draw everything solid here first.
     const compositeCanvas = createCanvas(dim.width, dim.height);
     const cCtx = compositeCanvas.getContext('2d');
     cCtx.imageSmoothingEnabled = true;
     cCtx.imageSmoothingQuality = 'high';
 
-    // A. Draw Shadow (Fused to this layer)
+    // A. Draw Shadow (Solid)
     cCtx.save();
     cCtx.shadowColor = 'rgba(0, 0, 0, 0.6)';
     cCtx.shadowBlur = 35;
@@ -156,7 +155,7 @@ async function createWelcomeImage(member) {
     cCtx.fill();
     cCtx.restore();
 
-    // B. Draw Avatar (Fused to this layer)
+    // B. Draw Avatar (Solid)
     cCtx.save();
     cCtx.beginPath();
     cCtx.arc(centerX, centerY, avatarRadius, 0, Math.PI * 2);
@@ -164,7 +163,7 @@ async function createWelcomeImage(member) {
     cCtx.drawImage(mainAvatar, avatarX, avatarY, avatarSize, avatarSize);
     cCtx.restore();
 
-    // C. Draw Decoration (Fused to this layer)
+    // C. Draw Decoration (Solid)
     if (decoImage) {
         const scaledDeco = avatarSize * 1.2;
         const decoX = avatarX - (scaledDeco - avatarSize) / 2;
@@ -172,30 +171,31 @@ async function createWelcomeImage(member) {
         cCtx.drawImage(decoImage, decoX, decoY, scaledDeco, scaledDeco);
     }
 
-    // D. PUNCH THE HOLE (The "Reference" Look)
-    // This removes shadow, avatar, and deco pixels all at once.
+    // D. MAKE IT INVISIBLE (The Eraser)
+    // This mode turns pixels transparent.
     if (statusImage) {
         const statusSize = 100;
         const offset = 141; // 45 degrees
         const holeX = (centerX + offset);
         const holeY = (centerY + offset);
         
-        // 8px gap around the 100px icon = 58px radius
-        const cutRadius = (statusSize / 2) + 8; 
+        // The radius of the invisible spot (Status size / 2 + gap)
+        const invisibleRadius = (statusSize / 2) + 8; 
 
         cCtx.save();
-        cCtx.globalCompositeOperation = 'destination-out'; // ERASER MODE
+        // This is the key line: "Destination Out" means "Erase to transparent"
+        cCtx.globalCompositeOperation = 'destination-out'; 
         cCtx.beginPath();
-        cCtx.arc(holeX, holeY, cutRadius, 0, Math.PI * 2);
-        cCtx.fill(); // Clean punch. No stroke.
+        cCtx.arc(holeX, holeY, invisibleRadius, 0, Math.PI * 2);
+        cCtx.fill(); 
         cCtx.restore();
     }
 
-    // 3. Draw the Composite Layer onto Main Canvas
+    // 3. Draw the finished composite layer onto Main Canvas
     ctx.drawImage(compositeCanvas, 0, 0);
 
     // ==========================================
-    // LAYER 3: STATUS ICON
+    // LAYER 3: STATUS ICON (Placed inside the invisible spot)
     // ==========================================
 
     if (statusImage) {

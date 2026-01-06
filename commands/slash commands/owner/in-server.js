@@ -19,7 +19,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('in-server')
         .setDescription('Manage bot servers')
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
         // 1. Security Check

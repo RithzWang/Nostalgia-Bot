@@ -244,7 +244,7 @@ async function createWelcomeImage(member) {
     ctx.shadowOffsetY = 0;
     
     // CHANGE 1: Black Transparent
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)'; 
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; 
     ctx.beginPath();
     // CHANGE 2: "A little rounded" (Radius 20)
     ctx.roundRect(idBoxX, idBoxY, idBoxWidth, idBoxHeight, 30);

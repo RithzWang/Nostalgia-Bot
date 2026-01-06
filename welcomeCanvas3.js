@@ -157,16 +157,15 @@ async function createWelcomeImage(member) {
     }
 
     // C. THE BIGGER INVISIBLE SPOT
-    // --- UPDATED HERE ---
-    // Changed statusSize from 100 to 85
-    const statusSize = 85; 
+    // --- UPDATED HERE: 90px ---
+    const statusSize = 90; 
 
     if (statusImage) {
         const offset = 141; // 45 degrees
         const holeX = (centerX + offset);
         const holeY = (centerY + offset);
         
-        // (85 / 2) + 15 = 57.5px radius
+        // (90 / 2) + 15 = 60px radius for the cut
         const invisibleRadius = (statusSize / 2) + 15; 
 
         cCtx.save();

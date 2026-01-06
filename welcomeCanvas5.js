@@ -352,7 +352,7 @@ async function createWelcomeImage(member) {
         // C. Draw Guild Box
         
         // Recalculate Box Width with scaled values
-        ctx.font = `${fTagSize}px "Prima Sans Regular", sans-serif`;
+        ctx.font = `${fTagSize}px "Prima Sans Regular", "SFArabic", "Thonburi", "Apple Gothic", "Hiragino Sans", "Pingfang", "Symbol", "Apple Symbols", "Noto Symbol", "Noto Symbol 2", "Noto Math", "Noto Hieroglyphs", "Noto Music", sans-serif`;
         const fTagWidth = ctx.measureText(guildInfo.tag).width;
         
         let fBoxWidth = (fPadding * 2) + fTagWidth;

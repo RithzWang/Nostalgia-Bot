@@ -164,8 +164,8 @@ async function createWelcomeImage(member) {
         const holeX = (centerX + offset);
         const holeY = (centerY + offset);
         
-        // (95 / 2) + 15 = 62.5px radius for the cut
-        const invisibleRadius = (statusSize / 2) + 15; 
+        // UPDATED: Changed buffer to 20
+        const invisibleRadius = (statusSize / 2) + 20; 
 
         cCtx.save();
         cCtx.globalCompositeOperation = 'destination-out'; 
@@ -223,12 +223,10 @@ async function createWelcomeImage(member) {
     const idBoxHeight = 85; 
     
     // 2. Coordinates
-    // UPDATED: Decreased from 70 to 50 to move right and down
     const marginRight = 50;
     const marginBottom = 50;
     
     // Define the visual centerline for the background box
-    // This Y point represents the exact horizontal center axis of the box
     const boxCenterAxisY = dim.height - marginBottom - (idBoxHeight / 2);
     
     const idBoxWidth = idMetrics.width + (idPaddingX * 2);
@@ -244,10 +242,8 @@ async function createWelcomeImage(member) {
     ctx.shadowOffsetX = 0; 
     ctx.shadowOffsetY = 0;
     
-    // CHANGE 1: Black Transparent
     ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; 
     ctx.beginPath();
-    // CHANGE 2: "A little rounded" (Radius 30)
     ctx.roundRect(idBoxX, idBoxY, idBoxWidth, idBoxHeight, 30);
     ctx.fill();
     ctx.restore();
@@ -261,10 +257,8 @@ async function createWelcomeImage(member) {
 
     ctx.fillStyle = '#DADADA'; 
     ctx.textAlign = 'right';
-    // CHANGE 3: Ensuring text matches box center
     ctx.textBaseline = 'middle'; 
     
-    // Draw text exactly at the Box Center Axis Y
     ctx.fillText(idText, (dim.width - marginRight) - idPaddingX, boxCenterAxisY); 
     ctx.restore();
 
@@ -300,13 +294,10 @@ async function createWelcomeImage(member) {
         const badgeWidth = 200; 
         const badgeHeight = 100; 
         
-        // Calculate the vertical center line X-coordinate of the avatar
         const avatarCenterX = dim.margin + 30 + avatarRadius;
-        
-        // Align RIGHT edge of badge to avatar center line
         const badgeX = avatarCenterX - badgeWidth;
-        
         const badgeY = topOffset - (badgeHeight / 2);
+        
         ctx.drawImage(badgeImage, badgeX, badgeY, badgeWidth, badgeHeight);
     }
 

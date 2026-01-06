@@ -215,7 +215,7 @@ async function createWelcomeImage(member) {
 
     // --- UPDATED: Standard Drop Shadow (Right & Bottom) ---
     ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
-    ctx.shadowBlur = 15;
+    ctx.shadowBlur = 5;
     ctx.shadowOffsetX = 5; // A little to the right
     ctx.shadowOffsetY = 5; // A little to the bottom
 

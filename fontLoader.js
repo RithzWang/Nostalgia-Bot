@@ -50,9 +50,9 @@ async function loadFonts() {
         }
 
 
-     const AlNileBoldPath = path.join(FONT_DIR, 'Al-Nile-Bold.ttf');
-    if (fs.existsSync(AlNileBoldPath)) {
-        GlobalFonts.registerFromPath(AlNileBoldPath, 'Al Nile Bold');
+     const AlBayanBoldPath = path.join(FONT_DIR, 'AlBayanBold.ttf');
+    if (fs.existsSync(AlBayanBoldPath)) {
+        GlobalFonts.registerFromPath(AlBayanBoldPath, 'Al Bayan Bold');
         }
 
 

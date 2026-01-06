@@ -149,7 +149,7 @@ client.on('guildMemberAdd', async (member) => {
         newInvites.each(inv => invitesCache.set(inv.code, inv.uses));
 
         const inviterName = usedInvite?.inviter ? usedInvite.inviter.username : 'Unknown';
-        const inviterId = usedInvite?.inviter ? usedInvite.inviter.id : 'Unknown';
+        const inviterId = usedInvite?.inviter ? usedInvite.inviter.id : null;
         const inviteCode = usedInvite ? usedInvite.code : 'Unknown';
 
         // --- Generate Image ---
@@ -168,12 +168,12 @@ client.on('guildMemberAdd', async (member) => {
             .addSectionComponents((section) => 
                 section
                     .addTextDisplayComponents(
-                        (header) => header.setContent('### Welcome to A2-Q Realm'),
+                        (header) => header.setContent('### Welcome to A2-Q House'),
                         (body) => body.setContent(
                             `-# <@${member.user.id}> \`(${member.user.username})\`\n` +
                             `-# <:calendar:1456242387243499613> Account Created: ${accountCreated}\n` +
                             `-# <:users:1456242343303971009> Member Count: \`${member.guild.memberCount}\`\n` +
-                            `-# <:chain:1456242418717556776> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`
+                            `-# <:chain:1456242418717556776> Invited by <@${inviterId || '0'}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`
                         )
                     )
                     .setThumbnailAccessory((thumb) => 
@@ -189,7 +189,6 @@ client.on('guildMemberAdd', async (member) => {
                         .setEmoji('1447143542643490848')
                         .setStyle(ButtonStyle.Link)
                         .setURL('https://discord.com/channels/1456197054782111756/1456197056250122352')
-                    // Chat Button Removed Here
                 )
             )
 
@@ -202,7 +201,6 @@ client.on('guildMemberAdd', async (member) => {
             .addMediaGalleryComponents((gallery) => 
                 gallery.addItems((item) => 
                     item
-                       // .setDescription("Welcome Image")
                         .setURL("attachment://welcome-image.png")
                 )
             );
@@ -213,12 +211,17 @@ client.on('guildMemberAdd', async (member) => {
             await channel.send({ 
                 flags: [MessageFlags.IsComponentsV2],
                 files: [attachment],
-                components: [mainContainer]
+                components: [mainContainer],
+                
+                // 👇 THIS IS THE FIX 👇
+                // This allows the NEW MEMBER to be pinged, but ignores the inviter.
+                allowedMentions: { users: [member.user.id] } 
             });
         }
 
     } catch (e) { console.error("Welcome Error:", e); }
 });
+
 
 
 

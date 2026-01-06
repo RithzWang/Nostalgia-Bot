@@ -21,7 +21,7 @@ function isColorLight(hex) {
 }
 
 async function createWelcomeImage(member) {
-    // Force fetch to get profile details like banner and clan
+    // Force fetch to ensure 'primaryGuild' data is loaded
     const user = await member.user.fetch(true);
 
     const dim = {
@@ -253,7 +253,10 @@ async function createWelcomeImage(member) {
     const displayName = member.displayName.replace(/<a?:\w+:\d+>/g, '').trim() || user.username;
     ctx.fillText(displayName, textX, currentY);
 
-    // --- Username & Guild Tag ---
+    // ==================================================================
+    // MODIFIED: USERNAME & GUILD TAG (Based on primaryGuild)
+    // ==================================================================
+
     currentY += 115;
     ctx.font = '95px "Prima Sans Regular", sans-serif';
     ctx.fillStyle = '#b9bbbe';
@@ -265,11 +268,11 @@ async function createWelcomeImage(member) {
     
     ctx.fillText(tagText, textX, currentY);
 
-    // 2. Draw Guild Tag (Corrected for v14.19)
-    // NOTE: In v14.19 properties are camelCase (identityGuildId)
-    const clanData = user.clan;
+    // 2. Draw Guild Tag (using 'primaryGuild' property)
+    // NOTE: We check 'user.primaryGuild' as shown in your file
+    const guildInfo = user.primaryGuild;
 
-    if (clanData && clanData.tag) {
+    if (guildInfo && guildInfo.tag) {
         const usernameWidth = ctx.measureText(tagText).width;
         const padding = 25;
         let currentX = textX + usernameWidth + padding;
@@ -279,11 +282,20 @@ async function createWelcomeImage(member) {
         ctx.fillText("•", currentX, currentY);
         currentX += ctx.measureText("•").width + padding;
 
-        // Draw Badge Image (If available)
-        // Corrected property: identityGuildId
-        if (clanData.badge && clanData.identityGuildId) {
-            const badgeURL = `https://cdn.discordapp.com/clan-badges/${clanData.identityGuildId}/${clanData.badge}.png?size=256`;
-            const badgeImg = await loadImage(badgeURL).catch(err => console.log('Badge load failed', err));
+        // Draw Badge Image
+        // We try to use the built-in function 'guildTagBadgeURL' if it exists in your version
+        // If not, we fall back to manual construction using the ID and Badge hash
+        let badgeURL = null;
+        
+        if (typeof user.guildTagBadgeURL === 'function') {
+            badgeURL = user.guildTagBadgeURL({ extension: 'png', size: 256 });
+        } else if (guildInfo.badge && guildInfo.identityGuildId) {
+             // Fallback: Manual URL construction if the method isn't loaded yet
+            badgeURL = `https://cdn.discordapp.com/guild-tag-badges/${guildInfo.identityGuildId}/${guildInfo.badge}.png?size=256`;
+        }
+
+        if (badgeURL) {
+            const badgeImg = await loadImage(badgeURL).catch(err => null);
 
             if (badgeImg) {
                 const badgeSize = 85; 
@@ -296,7 +308,7 @@ async function createWelcomeImage(member) {
 
         // Draw Tag Text
         ctx.fillStyle = '#b9bbbe';
-        ctx.fillText(clanData.tag, currentX, currentY);
+        ctx.fillText(guildInfo.tag, currentX, currentY);
     }
 
     // --- Crown Badge ---

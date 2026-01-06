@@ -107,7 +107,7 @@ async function createWelcomeImage(member) {
     ctx.stroke();
 
     // ==========================================
-    // LAYER 2: AVATAR COMPOSITE (Generating the Shape)
+    // LAYER 2: AVATAR COMPOSITE
     // ==========================================
     
     // 1. Prepare Data
@@ -134,8 +134,7 @@ async function createWelcomeImage(member) {
         user.avatarDecorationURL() ? loadImage(user.avatarDecorationURL({ extension: 'png', size: 512 })).catch(() => null) : null
     ]);
 
-    // 2. Create Temporary Canvas for the Shape
-    // NOTE: We do NOT draw the shadow here anymore. We only draw the visible parts.
+    // 2. Create Shape Canvas
     const compositeCanvas = createCanvas(dim.width, dim.height);
     const cCtx = compositeCanvas.getContext('2d');
     cCtx.imageSmoothingEnabled = true;
@@ -157,13 +156,16 @@ async function createWelcomeImage(member) {
         cCtx.drawImage(decoImage, decoX, decoY, scaledDeco, scaledDeco);
     }
 
-    // C. MAKE IT INVISIBLE (The Eraser)
+    // C. THE BIGGER INVISIBLE SPOT
     if (statusImage) {
         const statusSize = 100;
         const offset = 141; // 45 degrees
         const holeX = (centerX + offset);
         const holeY = (centerY + offset);
-        const invisibleRadius = (statusSize / 2) + 8; 
+        
+        // --- UPDATED HERE ---
+        // (100 / 2) + 15 = 65px radius
+        const invisibleRadius = (statusSize / 2) + 15; 
 
         cCtx.save();
         cCtx.globalCompositeOperation = 'destination-out'; 
@@ -172,22 +174,19 @@ async function createWelcomeImage(member) {
         cCtx.fill(); 
         cCtx.restore();
     }
-    // At this point, 'compositeCanvas' holds the exact shape of the avatar+deco minus the hole.
 
-    // 3. Draw to Main Canvas with Floating Effect
-    // We draw the composite layer twice. First for shadow, second for the body.
+    // 3. Draw to Main Canvas (Floating Effect)
     
-    // Pass 1: The Floating Shadow
+    // Pass 1: The Shadow (Follows the new cutout shape)
     ctx.save();
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.7)'; // Deeper shadow for floating effect
-    ctx.shadowBlur = 25; // softer blur
-    ctx.shadowOffsetX = 0; // Centered horizontally
-    ctx.shadowOffsetY = 12; // Pushed down vertically for "float"
-    // Drawing the composite canvas with shadow properties active generates a contour shadow
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+    ctx.shadowBlur = 25;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 12;
     ctx.drawImage(compositeCanvas, 0, 0);
     ctx.restore();
 
-    // Pass 2: The Actual Avatar Body (drawn on top of its shadow)
+    // Pass 2: The Avatar Body
     ctx.drawImage(compositeCanvas, 0, 0);
 
     // ==========================================
@@ -203,7 +202,6 @@ async function createWelcomeImage(member) {
         const iconX = holeX - (statusSize / 2);
         const iconY = holeY - (statusSize / 2);
         
-        // Optional: Give the status icon a little pop too
         ctx.save();
         ctx.shadowColor = 'rgba(0,0,0,0.3)';
         ctx.shadowBlur = 5;

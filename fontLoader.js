@@ -50,6 +50,12 @@ async function loadFonts() {
         }
 
 
+     const AlNileBoldPath = path.join(FONT_DIR, 'Al-Nile-Bold.ttf');
+    if (fs.existsSync(AlNileBoldPath)) {
+        GlobalFonts.registerFromPath(AlNileBoldPath, 'Al Nile Bold');
+        }
+
+
     // 4. Arabic (Scheherazade New)
     const arabicPath = path.join(FONT_DIR, 'SFArabic.ttf');
     if (fs.existsSync(arabicPath))  GlobalFonts.registerFromPath(arabicPath, 'SFArabic');

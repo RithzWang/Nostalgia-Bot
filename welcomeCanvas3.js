@@ -33,7 +33,7 @@ async function createWelcomeImage(member) {
     const canvas = createCanvas(dim.width, dim.height + topOffset);
     const ctx = canvas.getContext('2d');
     
-    // High quality scaling settings
+    // High quality scaling
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
@@ -108,7 +108,7 @@ async function createWelcomeImage(member) {
     ctx.stroke();
 
     // ==========================================
-    // LAYER 2: AVATAR COMPOUND LAYER
+    // LAYER 2: THE "PERFECT CUTOUT" ENGINE
     // ==========================================
     
     // 1. Prepare Data
@@ -116,10 +116,10 @@ async function createWelcomeImage(member) {
     const avatarX = dim.margin + 30;
     const avatarY = (dim.height - avatarSize) / 2;
     const avatarRadius = avatarSize / 2;
-    
     const centerX = avatarX + avatarRadius;
     const centerY = avatarY + avatarRadius;
 
+    // Status Logic
     const status = member.presence ? member.presence.status : 'offline';
     const statusMap = {
         online: './pics/discord status/online.png',
@@ -136,77 +136,66 @@ async function createWelcomeImage(member) {
         user.avatarDecorationURL() ? loadImage(user.avatarDecorationURL({ extension: 'png', size: 512 })).catch(() => null) : null
     ]);
 
-    // 2. Create Temporary Canvas
-    const layerCanvas = createCanvas(dim.width, dim.height);
-    const layerCtx = layerCanvas.getContext('2d');
-    // Ensure high quality smoothing on the temp layer too
-    layerCtx.imageSmoothingEnabled = true;
-    layerCtx.imageSmoothingQuality = 'high';
+    // 2. Create a "Composite Layer"
+    // We draw Shadow + Avatar + Decoration on this ONE layer first.
+    // Then we punch a hole through the entire layer.
+    const compositeCanvas = createCanvas(dim.width, dim.height);
+    const cCtx = compositeCanvas.getContext('2d');
+    cCtx.imageSmoothingEnabled = true;
+    cCtx.imageSmoothingQuality = 'high';
 
-    // --- A. Draw Shadow ---
-    layerCtx.save();
-    layerCtx.shadowColor = 'rgba(0, 0, 0, 0.6)';
-    layerCtx.shadowBlur = 35;
-    layerCtx.shadowOffsetX = 8;
-    layerCtx.shadowOffsetY = 8;
-    layerCtx.beginPath();
-    layerCtx.arc(centerX, centerY, avatarRadius, 0, Math.PI * 2);
-    layerCtx.fillStyle = '#000000';
-    layerCtx.fill();
-    layerCtx.restore();
+    // A. Draw Shadow (Fused to this layer)
+    cCtx.save();
+    cCtx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+    cCtx.shadowBlur = 35;
+    cCtx.shadowOffsetX = 8;
+    cCtx.shadowOffsetY = 8;
+    cCtx.beginPath();
+    cCtx.arc(centerX, centerY, avatarRadius, 0, Math.PI * 2);
+    cCtx.fillStyle = '#000000';
+    cCtx.fill();
+    cCtx.restore();
 
-    // --- B. Draw Avatar ---
-    layerCtx.save();
-    layerCtx.beginPath();
-    layerCtx.arc(centerX, centerY, avatarRadius, 0, Math.PI * 2);
-    layerCtx.clip();
-    layerCtx.drawImage(mainAvatar, avatarX, avatarY, avatarSize, avatarSize);
-    layerCtx.restore();
+    // B. Draw Avatar (Fused to this layer)
+    cCtx.save();
+    cCtx.beginPath();
+    cCtx.arc(centerX, centerY, avatarRadius, 0, Math.PI * 2);
+    cCtx.clip();
+    cCtx.drawImage(mainAvatar, avatarX, avatarY, avatarSize, avatarSize);
+    cCtx.restore();
 
-    // --- C. Draw Decoration ---
+    // C. Draw Decoration (Fused to this layer)
     if (decoImage) {
         const scaledDeco = avatarSize * 1.2;
         const decoX = avatarX - (scaledDeco - avatarSize) / 2;
         const decoY = avatarY - (scaledDeco - avatarSize) / 2;
-        layerCtx.drawImage(decoImage, decoX, decoY, scaledDeco, scaledDeco);
+        cCtx.drawImage(decoImage, decoX, decoY, scaledDeco, scaledDeco);
     }
 
-    // --- D. THE CUT (Smoothed Erase Technique) ---
+    // D. PUNCH THE HOLE (The "Reference" Look)
+    // This removes shadow, avatar, and deco pixels all at once.
     if (statusImage) {
         const statusSize = 100;
-        const offset = 141; // ≈ 200 * 0.707
+        const offset = 141; // 45 degrees
         const holeX = (centerX + offset);
         const holeY = (centerY + offset);
         
-        // Larger cut radius
-        const cutRadius = (statusSize / 2) + 10; 
+        // 8px gap around the 100px icon = 58px radius
+        const cutRadius = (statusSize / 2) + 8; 
 
-        layerCtx.save();
-        // Activate Eraser Mode
-        layerCtx.globalCompositeOperation = 'destination-out'; 
-        
-        layerCtx.beginPath();
-        layerCtx.arc(holeX, holeY, cutRadius, 0, Math.PI * 2);
-        
-        // 1. Cut the main hole
-        layerCtx.fill(); 
-        
-        // 2. The Smoothing Trick: Stroke the eraser edge
-        // This cleans up jagged sub-pixels at the boundary
-        layerCtx.lineWidth = 1.5; 
-        // Color is ignored in destination-out mode, it just means "erase pixels here"
-        layerCtx.strokeStyle = '#000000'; 
-        layerCtx.stroke();
-        
-        layerCtx.restore();
+        cCtx.save();
+        cCtx.globalCompositeOperation = 'destination-out'; // ERASER MODE
+        cCtx.beginPath();
+        cCtx.arc(holeX, holeY, cutRadius, 0, Math.PI * 2);
+        cCtx.fill(); // Clean punch. No stroke.
+        cCtx.restore();
     }
 
-    // 3. Draw the Clean Layer onto Main Canvas
-    ctx.drawImage(layerCanvas, 0, 0);
-
+    // 3. Draw the Composite Layer onto Main Canvas
+    ctx.drawImage(compositeCanvas, 0, 0);
 
     // ==========================================
-    // LAYER 3: STATUS & TEXT
+    // LAYER 3: STATUS ICON
     // ==========================================
 
     if (statusImage) {
@@ -220,6 +209,10 @@ async function createWelcomeImage(member) {
         
         ctx.drawImage(statusImage, iconX, iconY, statusSize, statusSize);
     }
+
+    // ==========================================
+    // LAYER 4: TEXT & BADGE
+    // ==========================================
 
     // --- Text ---
     ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
@@ -253,11 +246,8 @@ async function createWelcomeImage(member) {
     const tag = (user.discriminator && user.discriminator !== '0') ? `${user.username}#${user.discriminator}` : `@${user.username}`;
     ctx.fillText(tag, textX, currentY);
 
-    // ==========================================
-    // LAYER 4: THE BADGE
-    // ==========================================
+    // --- Badge ---
     ctx.restore(); 
-
     const badgeImage = await loadImage('./new-icon.png').catch(() => null);
 
     if (badgeImage) {

@@ -10,9 +10,7 @@ const {
 } = require('discord.js');
 
 // ⚠️ PATH CHECK: 
-// Since this file is in: commands/slash commands/admin/
-// We need to go up 3 folders (../../../) to reach the bot root where welcomeCanvas.js usually is.
-// If your file structure is different, adjust this path.
+// Verify this path points to your actual welcomeCanvas4.js file relative to this command file.
 const { createWelcomeImage } = require('../../../welcomeCanvas4.js'); 
 
 module.exports = {
@@ -27,7 +25,7 @@ module.exports = {
         ),
 
     async execute(interaction) {
-        // 1. Defer Reply (Image generation takes time)
+        // 1. Defer Reply
         await interaction.deferReply();
 
         try {
@@ -37,15 +35,15 @@ module.exports = {
             const buffer = await createWelcomeImage(member);
             const attachment = new AttachmentBuilder(buffer, { name: 'welcome-image.png' });
 
-            // 3. Mock Data (Fake data to simulate what the bot usually calculates)
+            // 3. Mock Data
             const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
             const memberCount = interaction.guild.memberCount;
-            // We fake the inviter data since there isn't a real invite used in a test command
+            // Fake inviter data (Simulates you as the inviter)
             const inviterName = interaction.user.username; 
             const inviterId = interaction.user.id;
             const inviteCode = 'TEST-CODE';
 
-            // 4. Build Container (EXACT COPY of your Main Event logic)
+            // 4. Build Container
             const mainContainer = new ContainerBuilder()
                 .setAccentColor(0x888888)
                 
@@ -89,11 +87,15 @@ module.exports = {
                     )
                 );
 
-            // 5. Send Message
+            // 5. Send Message with Fix
             await interaction.editReply({ 
                 flags: [MessageFlags.IsComponentsV2], 
                 files: [attachment], 
-                components: [mainContainer] 
+                components: [mainContainer],
+                
+                // 👇 THE FIX: Only allow the 'target' member to be pinged. 
+                // This blocks the 'Invited by' ping.
+                allowedMentions: { users: [member.user.id] } 
             });
 
         } catch (error) {

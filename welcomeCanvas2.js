@@ -176,7 +176,7 @@ async function createWelcomeImage(member) {
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic'; // Reset baseline
-    ctx.font = 'bold 120px "gg sans Bold", "Al Bayan Bold", "Thonburi", "Apple Gothic", "Hiragino Sans", "Pingfang", "Apple Color Emoji", "Symbol", "Apple Symbols", "Noto Symbol", "Noto Symbol 2", "Noto Math", "Noto Hieroglyphs", "Noto Music", sans-serif';
+    ctx.font = 'bold 120px "gg sans Bold", "Al Nile", "Thonburi", "Apple Gothic", "Hiragino Sans", "Pingfang", "Apple Color Emoji", "Symbol", "Apple Symbols", "Noto Symbol", "Noto Symbol 2", "Noto Math", "Noto Hieroglyphs", "Noto Music", sans-serif';
     
     const displayName = member.displayName.replace(/<a?:\w+:\d+>/g, '').trim() || user.username;
     ctx.fillText(displayName, textX, currentY);

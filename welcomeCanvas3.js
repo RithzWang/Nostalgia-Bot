@@ -33,7 +33,7 @@ async function createWelcomeImage(member) {
     const canvas = createCanvas(dim.width, dim.height + topOffset);
     const ctx = canvas.getContext('2d');
     
-    // High quality scaling
+    // High quality scaling settings
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
@@ -139,6 +139,7 @@ async function createWelcomeImage(member) {
     // 2. Create Temporary Canvas
     const layerCanvas = createCanvas(dim.width, dim.height);
     const layerCtx = layerCanvas.getContext('2d');
+    // Ensure high quality smoothing on the temp layer too
     layerCtx.imageSmoothingEnabled = true;
     layerCtx.imageSmoothingQuality = 'high';
 
@@ -170,23 +171,32 @@ async function createWelcomeImage(member) {
         layerCtx.drawImage(decoImage, decoX, decoY, scaledDeco, scaledDeco);
     }
 
-    // --- D. THE CUT (Pure Erase) ---
+    // --- D. THE CUT (Smoothed Erase Technique) ---
     if (statusImage) {
         const statusSize = 100;
         const offset = 141; // ≈ 200 * 0.707
         const holeX = (centerX + offset);
         const holeY = (centerY + offset);
         
-        // --- INCREASED SIZE HERE ---
-        // (100 / 2) + 10 = 60px radius
+        // Larger cut radius
         const cutRadius = (statusSize / 2) + 10; 
 
         layerCtx.save();
+        // Activate Eraser Mode
         layerCtx.globalCompositeOperation = 'destination-out'; 
         
         layerCtx.beginPath();
         layerCtx.arc(holeX, holeY, cutRadius, 0, Math.PI * 2);
+        
+        // 1. Cut the main hole
         layerCtx.fill(); 
+        
+        // 2. The Smoothing Trick: Stroke the eraser edge
+        // This cleans up jagged sub-pixels at the boundary
+        layerCtx.lineWidth = 1.5; 
+        // Color is ignored in destination-out mode, it just means "erase pixels here"
+        layerCtx.strokeStyle = '#000000'; 
+        layerCtx.stroke();
         
         layerCtx.restore();
     }

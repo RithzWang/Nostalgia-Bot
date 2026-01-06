@@ -240,7 +240,7 @@ async function createWelcomeImage(member) {
 
     // Username Tag
     currentY += 115;
-    ctx.font = '100px "SF Pro Text Regular", sans-serif';
+    ctx.font = '100px "Prima Sans Regular", sans-serif';
     ctx.fillStyle = '#b9bbbe';
     const tag = (user.discriminator && user.discriminator !== '0') ? `${user.username}#${user.discriminator}` : `@${user.username}`;
     ctx.fillText(tag, textX, currentY);

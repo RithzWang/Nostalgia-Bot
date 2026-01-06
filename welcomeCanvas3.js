@@ -233,14 +233,14 @@ async function createWelcomeImage(member) {
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
-    ctx.font = 'bold 120px "gg sans Bold", "Geeza Bold", "Thonburi", "Apple Gothic", "Hiragino Sans", "Pingfang", "Apple Color Emoji", "Symbol", "Apple Symbols", "Noto Symbol", "Noto Symbol 2", "Noto Math", "Noto Hieroglyphs", "Noto Music", sans-serif';
+    ctx.font = 'bold 115px "gg sans Bold", "Geeza Bold", "Thonburi", "Apple Gothic", "Hiragino Sans", "Pingfang", "Apple Color Emoji", "Symbol", "Apple Symbols", "Noto Symbol", "Noto Symbol 2", "Noto Math", "Noto Hieroglyphs", "Noto Music", sans-serif';
     
     const displayName = member.displayName.replace(/<a?:\w+:\d+>/g, '').trim() || user.username;
     ctx.fillText(displayName, textX, currentY);
 
     // Username Tag
     currentY += 115;
-    ctx.font = '100px "Prima Sans Regular", sans-serif';
+    ctx.font = '95px "Prima Sans Regular", sans-serif';
     ctx.fillStyle = '#b9bbbe';
     const tag = (user.discriminator && user.discriminator !== '0') ? `${user.username}#${user.discriminator}` : `@${user.username}`;
     ctx.fillText(tag, textX, currentY);

@@ -215,25 +215,26 @@ async function createWelcomeImage(member) {
 
     // --- ID Box & Text Settings ---
     const idText = `ID: ${member.id}`;
-    // 1. CHANGE: Font size decreased to 50px
     ctx.font = '50px "Prima Sans Regular", "ReemKufi Bold", sans-serif';
     
     // 1. Measurements
     const idMetrics = ctx.measureText(idText);
-    const idPaddingX = 40; // Horizontal padding inside box
-    const idBoxHeight = 85; // Adjusted height for 50px font
+    const idPaddingX = 40; 
+    const idBoxHeight = 85; 
     
     // 2. Coordinates
     const marginRight = 70;
     const marginBottom = 70;
     
-    // The visual center line for the ID box and text
-    const boxCenterY = dim.height - marginBottom - (idBoxHeight / 2); 
-    const boxRightEdge = dim.width - marginRight;
+    // Define the visual centerline for the background box
+    // This Y point represents the exact horizontal center axis of the box
+    const boxCenterAxisY = dim.height - marginBottom - (idBoxHeight / 2);
     
     const idBoxWidth = idMetrics.width + (idPaddingX * 2);
-    const idBoxX = boxRightEdge - idBoxWidth;
-    const idBoxY = boxCenterY - (idBoxHeight / 2);
+    const idBoxX = (dim.width - marginRight) - idBoxWidth;
+    
+    // Calculate top of box based on center axis and height
+    const idBoxY = boxCenterAxisY - (idBoxHeight / 2);
 
     // 3. Draw Background Box
     ctx.save();
@@ -242,9 +243,12 @@ async function createWelcomeImage(member) {
     ctx.shadowOffsetX = 0; 
     ctx.shadowOffsetY = 0;
     
-    ctx.fillStyle = 'rgba(64, 66, 73, 0.6)'; 
-    // 2. CHANGE: Used fillRect for sharp rectangle edges (radius 0)
-    ctx.fillRect(idBoxX, idBoxY, idBoxWidth, idBoxHeight);
+    // CHANGE 1: Black Transparent
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)'; 
+    ctx.beginPath();
+    // CHANGE 2: "A little rounded" (Radius 20)
+    ctx.roundRect(idBoxX, idBoxY, idBoxWidth, idBoxHeight, 20);
+    ctx.fill();
     ctx.restore();
 
     // 4. Draw Text
@@ -256,9 +260,11 @@ async function createWelcomeImage(member) {
 
     ctx.fillStyle = '#DADADA'; 
     ctx.textAlign = 'right';
+    // CHANGE 3: Ensuring text matches box center
     ctx.textBaseline = 'middle'; 
     
-    ctx.fillText(idText, boxRightEdge - idPaddingX, boxCenterY + 2); 
+    // Draw text exactly at the Box Center Axis Y
+    ctx.fillText(idText, (dim.width - marginRight) - idPaddingX, boxCenterAxisY); 
     ctx.restore();
 
     // --- Main Display Name ---

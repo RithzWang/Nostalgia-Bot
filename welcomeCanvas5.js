@@ -287,11 +287,11 @@ async function createWelcomeImage(member) {
     const baseTagSize = 65;
     const baseBoxHeight = 95;
     const baseBadgeSize = 65;
-    const basePadding = 30; 
+    const basePadding = 25; 
     const baseSepPadding = 25; 
     const baseMarginSep = 25; 
     const baseContentGap = 15; 
-    const baseRadius = 30;
+    const baseRadius = 25;
 
     let tagText = (user.discriminator && user.discriminator !== '0') 
         ? `${user.username}#${user.discriminator}` 

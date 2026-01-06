@@ -50,7 +50,7 @@ const psRegularPath = path.join(FONT_DIR, 'Prima Sans Regular.otf');
 
     const uthmanBoldPath = path.join(FONT_DIR, 'Uthman Taha Naskh Bold.ttf');
     if (fs.existsSync(uthmanBoldPath)) {
-        GlobalFonts.registerFromPath(uthmanBoldPath, 'Uthman Nask Bold');
+        GlobalFonts.registerFromPath(uthmanBoldPath, 'Uthman Naskh Bold');
         }
 
 

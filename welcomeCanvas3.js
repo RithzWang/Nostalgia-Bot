@@ -104,7 +104,7 @@ async function createWelcomeImage(member) {
     ctx.stroke();
 
     // ==========================================
-    // LAYER 2: AVATAR & DECO (USING MASKING)
+    // LAYER 2: AVATAR & DECO (WITH TRANSPARENT HOLE)
     // ==========================================
     
     // 1. Prepare Images & Data
@@ -112,6 +112,9 @@ async function createWelcomeImage(member) {
     const avatarX = dim.margin + 30;
     const avatarY = (dim.height - avatarSize) / 2;
     const avatarRadius = avatarSize / 2;
+
+    const centerX = avatarX + avatarRadius;
+    const centerY = avatarY + avatarRadius;
 
     const status = member.presence ? member.presence.status : 'offline';
     const statusMap = {
@@ -129,70 +132,78 @@ async function createWelcomeImage(member) {
         user.avatarDecorationURL() ? loadImage(user.avatarDecorationURL({ extension: 'png', size: 512 })).catch(() => null) : null
     ]);
 
-    // 2. Setup the "Mask" Canvas (Scratchpad)
-    // We create a canvas just big enough for the avatar + deco (e.g., 600x600)
-    const maskSize = 600;
-    const maskCanvas = createCanvas(maskSize, maskSize);
-    const maskCtx = maskCanvas.getContext('2d');
+    // Status Calculations
+    const statusSize = 100;
+    const offset = 141; // 200 * 0.707
+    // Coordinates relative to main canvas
+    const mainStatusX = (centerX + offset);
+    const mainStatusY = (centerY + offset);
+    const cutRadius = (statusSize / 2) + 8; // Size of hole
 
-    // We need to center our drawing on this mask canvas
-    const maskCenterX = maskSize / 2;
-    const maskCenterY = maskSize / 2;
-
-    // --- Draw Avatar on Mask ---
-    maskCtx.save();
-    maskCtx.beginPath();
-    maskCtx.arc(maskCenterX, maskCenterY, avatarRadius, 0, Math.PI * 2);
-    maskCtx.clip();
-    // Draw the avatar filling the circle
-    maskCtx.drawImage(mainAvatar, maskCenterX - avatarRadius, maskCenterY - avatarRadius, avatarSize, avatarSize);
-    maskCtx.restore();
-
-    // --- Draw Decoration on Mask ---
-    if (decoImage) {
-        const scaledDeco = avatarSize * 1.2;
-        maskCtx.drawImage(decoImage, maskCenterX - scaledDeco/2, maskCenterY - scaledDeco/2, scaledDeco, scaledDeco);
-    }
-
-    // --- PUNCH THE HOLE (The "Eraser") ---
-    if (statusImage) {
-        const statusSize = 100;
-        const cutRadius = (statusSize / 2) + 8; // Size of the transparent hole
-        const offset = 141; // ≈ 200 * 0.707 (45 degrees from center)
-
-        // Coordinates of status relative to the Mask Center
-        const sX = (maskCenterX + offset);
-        const sY = (maskCenterY + offset);
-
-        maskCtx.globalCompositeOperation = 'destination-out'; // <--- THIS ERASES
-        maskCtx.beginPath();
-        maskCtx.arc(sX, sY, cutRadius, 0, Math.PI * 2);
-        maskCtx.fill();
-        maskCtx.globalCompositeOperation = 'source-over'; // Reset
-    }
-
-    // 3. Draw the Shadow (Directly on Main Canvas)
-    // We do this separately so the shadow is behind the "holed" avatar
-    const centerX = avatarX + avatarRadius;
-    const centerY = avatarY + avatarRadius;
-
+    // ---------------------------------------------------
+    // A. Draw The Shadow (WITH THE HOLE CUT OUT)
+    // ---------------------------------------------------
     ctx.save();
     ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
     ctx.shadowBlur = 35;
     ctx.shadowOffsetX = 8;
     ctx.shadowOffsetY = 8;
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, avatarRadius, 0, Math.PI * 2);
     ctx.fillStyle = '#000000';
+
+    ctx.beginPath();
+    // 1. Outer Circle (Clockwise) -> The Avatar Shadow
+    ctx.arc(centerX, centerY, avatarRadius, 0, Math.PI * 2, false);
+    
+    // 2. Inner Circle (Counter-Clockwise) -> The Hole in the shadow
+    if (statusImage) {
+        ctx.arc(mainStatusX, mainStatusY, cutRadius, 0, Math.PI * 2, true);
+    }
+    ctx.closePath();
     ctx.fill(); 
     ctx.restore();
 
-    // 4. Paste the "Holed" Avatar onto Main Canvas
-    // We have to align the Mask Center to the Main Canvas Avatar Center
+    // ---------------------------------------------------
+    // B. Draw The Avatar & Deco (Using Mask Canvas)
+    // ---------------------------------------------------
+    
+    // Create temporary canvas
+    const maskSize = 600;
+    const maskCanvas = createCanvas(maskSize, maskSize);
+    const maskCtx = maskCanvas.getContext('2d');
+    const maskCenterX = maskSize / 2;
+    const maskCenterY = maskSize / 2;
+
+    // Draw Avatar on Mask
+    maskCtx.save();
+    maskCtx.beginPath();
+    maskCtx.arc(maskCenterX, maskCenterY, avatarRadius, 0, Math.PI * 2);
+    maskCtx.clip();
+    maskCtx.drawImage(mainAvatar, maskCenterX - avatarRadius, maskCenterY - avatarRadius, avatarSize, avatarSize);
+    maskCtx.restore();
+
+    // Draw Decoration on Mask
+    if (decoImage) {
+        const scaledDeco = avatarSize * 1.2;
+        maskCtx.drawImage(decoImage, maskCenterX - scaledDeco/2, maskCenterY - scaledDeco/2, scaledDeco, scaledDeco);
+    }
+
+    // Punch Hole in Mask (Eraser)
+    if (statusImage) {
+        // Status coordinates relative to Mask Center
+        const sX = (maskCenterX + offset);
+        const sY = (maskCenterY + offset);
+
+        maskCtx.globalCompositeOperation = 'destination-out';
+        maskCtx.beginPath();
+        maskCtx.arc(sX, sY, cutRadius, 0, Math.PI * 2);
+        maskCtx.fill();
+        maskCtx.globalCompositeOperation = 'source-over';
+    }
+
+    // Paste "Holed" Avatar onto Main Canvas
     const drawX = centerX - maskCenterX;
     const drawY = centerY - maskCenterY;
     ctx.drawImage(maskCanvas, drawX, drawY);
-
 
     // ==========================================
     // LAYER 3: STATUS & TEXT
@@ -200,12 +211,9 @@ async function createWelcomeImage(member) {
 
     // --- Draw Status Icon (Inside the hole) ---
     if (statusImage) {
-        const statusSize = 100;
-        const offset = 141;
-        const statusX = (centerX + offset) - (statusSize / 2);
-        const statusY = (centerY + offset) - (statusSize / 2);
-        
-        ctx.drawImage(statusImage, statusX, statusY, statusSize, statusSize);
+        const iconX = mainStatusX - (statusSize / 2);
+        const iconY = mainStatusY - (statusSize / 2);
+        ctx.drawImage(statusImage, iconX, iconY, statusSize, statusSize);
     }
 
     // --- Text ---

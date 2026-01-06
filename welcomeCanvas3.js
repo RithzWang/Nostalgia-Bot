@@ -157,14 +157,15 @@ async function createWelcomeImage(member) {
     }
 
     // C. THE BIGGER INVISIBLE SPOT
-    const statusSize = 90; 
+    // --- UPDATED HERE: 95px ---
+    const statusSize = 95; 
 
     if (statusImage) {
         const offset = 141; // 45 degrees
         const holeX = (centerX + offset);
         const holeY = (centerY + offset);
         
-        // (90 / 2) + 15 = 60px radius for the cut
+        // (95 / 2) + 15 = 62.5px radius for the cut
         const invisibleRadius = (statusSize / 2) + 15; 
 
         cCtx.save();
@@ -213,8 +214,7 @@ async function createWelcomeImage(member) {
     // LAYER 4: TEXT & BADGE
     // ==========================================
 
-    // --- UPDATED: Text Heavy Float Effect ---
-    // Increased Opacity, Reduced Blur, Increased Y-Offset
+    // --- Text Heavy Float Effect ---
     ctx.shadowColor = "rgba(0, 0, 0, 0.9)"; // Darker
     ctx.shadowBlur = 10;                    // Sharper
     ctx.shadowOffsetX = 0;                  // Centered

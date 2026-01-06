@@ -409,7 +409,7 @@ async function createWelcomeImage(member) {
         
         // === CHANGED LINE ===
         // Subtracting 4 pixels from Y to move text UP slightly
-        ctx.fillText(guildInfo.tag, currentContentX, contentCenterY - 7);
+        ctx.fillText(guildInfo.tag, currentContentX, contentCenterY - 5);
 
         ctx.textBaseline = 'alphabetic'; 
     }

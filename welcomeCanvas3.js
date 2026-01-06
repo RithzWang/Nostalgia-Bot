@@ -213,11 +213,12 @@ async function createWelcomeImage(member) {
     // LAYER 4: TEXT & BADGE
     // ==========================================
 
-    // --- UPDATED: Text Floating Effect ---
-    ctx.shadowColor = "rgba(0, 0, 0, 0.5)"; // Softer shadow
-    ctx.shadowBlur = 25;                    // Very soft blur
+    // --- UPDATED: Text Heavy Float Effect ---
+    // Increased Opacity, Reduced Blur, Increased Y-Offset
+    ctx.shadowColor = "rgba(0, 0, 0, 0.9)"; // Darker
+    ctx.shadowBlur = 10;                    // Sharper
     ctx.shadowOffsetX = 0;                  // Centered
-    ctx.shadowOffsetY = 12;                 // Pushed down for floating look
+    ctx.shadowOffsetY = 20;                 // Higher up
 
     // Server Name
     ctx.font = 'bold 60px "Noto Sans", "ReemKufi Bold", sans-serif';

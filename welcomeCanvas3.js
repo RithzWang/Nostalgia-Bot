@@ -34,7 +34,7 @@ async function createWelcomeImage(member) {
     const ctx = canvas.getContext('2d');
 
     // ==========================================
-    // LAYER 1: THE CARD
+    // LAYER 1: THE CARD BACKGROUND
     // ==========================================
     ctx.save(); 
     ctx.translate(0, topOffset);
@@ -46,7 +46,7 @@ async function createWelcomeImage(member) {
     ctx.closePath();
     ctx.clip(); 
 
-    // --- Background ---
+    // --- Background Logic ---
     const bannerURL = user.bannerURL({ extension: 'png', size: 2048 });
     let backgroundBuf = null;
 
@@ -104,27 +104,15 @@ async function createWelcomeImage(member) {
     ctx.stroke();
 
     // ==========================================
-    // LAYER 2: AVATAR, STATUS, & DECO
+    // LAYER 2: AVATAR & DECO (USING MASKING)
     // ==========================================
-
-    // 1. Math: Calculate Positions
+    
+    // 1. Prepare Images & Data
     const avatarSize = 400;
     const avatarX = dim.margin + 30;
     const avatarY = (dim.height - avatarSize) / 2;
     const avatarRadius = avatarSize / 2;
-    const centerX = avatarX + avatarRadius;
-    const centerY = avatarY + avatarRadius;
 
-    // Status Position Math
-    const statusSize = 100;
-    const offset = 141; // ≈ 200 * 0.707 (45 degrees)
-    const statusX = (centerX + offset) - (statusSize / 2);
-    const statusY = (centerY + offset) - (statusSize / 2);
-    
-    // The "Hole" Radius (Status Size / 2 + Border Thickness)
-    const cutRadius = (statusSize / 2) + 8; 
-
-    // 2. Prepare Images
     const status = member.presence ? member.presence.status : 'offline';
     const statusMap = {
         online: './pics/discord status/online.png',
@@ -134,70 +122,93 @@ async function createWelcomeImage(member) {
         invisible: './pics/discord status/invisible.png',
         offline: './pics/discord status/invisible.png'
     };
-    
+
     const [mainAvatar, statusImage, decoImage] = await Promise.all([
         loadImage(member.displayAvatarURL({ extension: 'png', size: 512 })),
         loadImage(statusMap[status] || statusMap.offline).catch(() => null),
         user.avatarDecorationURL() ? loadImage(user.avatarDecorationURL({ extension: 'png', size: 512 })).catch(() => null) : null
     ]);
 
-    // --- A. Draw Avatar Shadow (Clipped to Circle - Hole) ---
-    ctx.save();
-    ctx.beginPath();
-    // 1. Avatar Circle (Clockwise)
-    ctx.arc(centerX, centerY, avatarRadius, 0, Math.PI * 2, false);
-    // 2. Status Hole (Counter-Clockwise) -> This creates the hole
-    if (statusImage) {
-        ctx.arc(statusX + statusSize/2, statusY + statusSize/2, cutRadius, 0, Math.PI * 2, true);
+    // 2. Setup the "Mask" Canvas (Scratchpad)
+    // We create a canvas just big enough for the avatar + deco (e.g., 600x600)
+    const maskSize = 600;
+    const maskCanvas = createCanvas(maskSize, maskSize);
+    const maskCtx = maskCanvas.getContext('2d');
+
+    // We need to center our drawing on this mask canvas
+    const maskCenterX = maskSize / 2;
+    const maskCenterY = maskSize / 2;
+
+    // --- Draw Avatar on Mask ---
+    maskCtx.save();
+    maskCtx.beginPath();
+    maskCtx.arc(maskCenterX, maskCenterY, avatarRadius, 0, Math.PI * 2);
+    maskCtx.clip();
+    // Draw the avatar filling the circle
+    maskCtx.drawImage(mainAvatar, maskCenterX - avatarRadius, maskCenterY - avatarRadius, avatarSize, avatarSize);
+    maskCtx.restore();
+
+    // --- Draw Decoration on Mask ---
+    if (decoImage) {
+        const scaledDeco = avatarSize * 1.2;
+        maskCtx.drawImage(decoImage, maskCenterX - scaledDeco/2, maskCenterY - scaledDeco/2, scaledDeco, scaledDeco);
     }
-    ctx.closePath();
-    
+
+    // --- PUNCH THE HOLE (The "Eraser") ---
+    if (statusImage) {
+        const statusSize = 100;
+        const cutRadius = (statusSize / 2) + 8; // Size of the transparent hole
+        const offset = 141; // ≈ 200 * 0.707 (45 degrees from center)
+
+        // Coordinates of status relative to the Mask Center
+        const sX = (maskCenterX + offset);
+        const sY = (maskCenterY + offset);
+
+        maskCtx.globalCompositeOperation = 'destination-out'; // <--- THIS ERASES
+        maskCtx.beginPath();
+        maskCtx.arc(sX, sY, cutRadius, 0, Math.PI * 2);
+        maskCtx.fill();
+        maskCtx.globalCompositeOperation = 'source-over'; // Reset
+    }
+
+    // 3. Draw the Shadow (Directly on Main Canvas)
+    // We do this separately so the shadow is behind the "holed" avatar
+    const centerX = avatarX + avatarRadius;
+    const centerY = avatarY + avatarRadius;
+
+    ctx.save();
     ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
     ctx.shadowBlur = 35;
     ctx.shadowOffsetX = 8;
     ctx.shadowOffsetY = 8;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, avatarRadius, 0, Math.PI * 2);
     ctx.fillStyle = '#000000';
     ctx.fill(); 
     ctx.restore();
 
-    // --- B. Draw Main Avatar (Clipped to Circle - Hole) ---
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, avatarRadius, 0, Math.PI * 2, false);
+    // 4. Paste the "Holed" Avatar onto Main Canvas
+    // We have to align the Mask Center to the Main Canvas Avatar Center
+    const drawX = centerX - maskCenterX;
+    const drawY = centerY - maskCenterY;
+    ctx.drawImage(maskCanvas, drawX, drawY);
+
+
+    // ==========================================
+    // LAYER 3: STATUS & TEXT
+    // ==========================================
+
+    // --- Draw Status Icon (Inside the hole) ---
     if (statusImage) {
-        ctx.arc(statusX + statusSize/2, statusY + statusSize/2, cutRadius, 0, Math.PI * 2, true);
-    }
-    ctx.closePath();
-    ctx.clip();
-    ctx.drawImage(mainAvatar, avatarX, avatarY, avatarSize, avatarSize);
-    ctx.restore();
-
-    // --- C. Draw Decoration (Clipped to WHOLE SCREEN - Hole) ---
-    if (decoImage) {
-        ctx.save();
-        ctx.beginPath();
-        // 1. Define the entire canvas as the "drawing area"
-        ctx.rect(0, 0, dim.width, dim.height); 
-        // 2. Cut the Status Hole out of the entire canvas
-        if (statusImage) {
-            ctx.arc(statusX + statusSize/2, statusY + statusSize/2, cutRadius, 0, Math.PI * 2, true);
-        }
-        ctx.closePath();
-        ctx.clip(); // Now we can draw anywhere EXCEPT the hole
-
-        const scaledDeco = avatarSize * 1.2;
-        const decoX = avatarX - (scaledDeco - avatarSize) / 2;
-        const decoY = avatarY - (scaledDeco - avatarSize) / 2;
-        ctx.drawImage(decoImage, decoX, decoY, scaledDeco, scaledDeco);
-        ctx.restore();
-    }
-
-    // --- D. Draw Status Icon ---
-    if (statusImage) {
+        const statusSize = 100;
+        const offset = 141;
+        const statusX = (centerX + offset) - (statusSize / 2);
+        const statusY = (centerY + offset) - (statusSize / 2);
+        
         ctx.drawImage(statusImage, statusX, statusY, statusSize, statusSize);
     }
 
-    // --- Text Section ---
+    // --- Text ---
     ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
     ctx.shadowBlur = 15;
     ctx.shadowOffsetX = 5;
@@ -230,7 +241,7 @@ async function createWelcomeImage(member) {
     ctx.fillText(tag, textX, currentY);
 
     // ==========================================
-    // LAYER 3: THE BADGE
+    // LAYER 4: THE BADGE
     // ==========================================
     ctx.restore(); 
 

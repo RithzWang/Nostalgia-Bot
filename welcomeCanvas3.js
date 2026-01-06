@@ -157,7 +157,6 @@ async function createWelcomeImage(member) {
     }
 
     // C. THE BIGGER INVISIBLE SPOT
-    // --- UPDATED HERE: 90px ---
     const statusSize = 90; 
 
     if (statusImage) {
@@ -214,11 +213,11 @@ async function createWelcomeImage(member) {
     // LAYER 4: TEXT & BADGE
     // ==========================================
 
-    // --- Text ---
-    ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
-    ctx.shadowBlur = 15;
-    ctx.shadowOffsetX = 5;
-    ctx.shadowOffsetY = 5;
+    // --- UPDATED: Text Floating Effect ---
+    ctx.shadowColor = "rgba(0, 0, 0, 0.5)"; // Softer shadow
+    ctx.shadowBlur = 25;                    // Very soft blur
+    ctx.shadowOffsetX = 0;                  // Centered
+    ctx.shadowOffsetY = 12;                 // Pushed down for floating look
 
     // Server Name
     ctx.font = 'bold 60px "Noto Sans", "ReemKufi Bold", sans-serif';

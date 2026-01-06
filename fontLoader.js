@@ -44,7 +44,7 @@ async function loadFonts() {
         }
 
 
-     const GeezaBoldPath = path.join(FONT_DIR, 'Geeza Pro Bold.ttf');
+     const GeezaBoldPath = path.join(FONT_DIR, 'Geeza-Pro-Bold.ttf');
     if (fs.existsSync(GeezaBoldPath)) {
         GlobalFonts.registerFromPath(GeezaBoldPath, 'Geeza Bold');
         }

@@ -128,7 +128,7 @@ client.on('clientReady', async () => {
 });
 
 
-const { createWelcomeImage } = require('./welcomeCanvas3.js');
+const { createWelcomeImage } = require('./welcomeCanvas4.js');
 
 // --- 1. IMPORT THE IMAGE GENERATOR ---
 

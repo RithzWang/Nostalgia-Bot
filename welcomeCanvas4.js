@@ -223,8 +223,9 @@ async function createWelcomeImage(member) {
     const idBoxHeight = 85; 
     
     // 2. Coordinates
-    const marginRight = 70;
-    const marginBottom = 70;
+    // UPDATED: Decreased from 70 to 50 to move right and down
+    const marginRight = 50;
+    const marginBottom = 50;
     
     // Define the visual centerline for the background box
     // This Y point represents the exact horizontal center axis of the box
@@ -246,7 +247,7 @@ async function createWelcomeImage(member) {
     // CHANGE 1: Black Transparent
     ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; 
     ctx.beginPath();
-    // CHANGE 2: "A little rounded" (Radius 20)
+    // CHANGE 2: "A little rounded" (Radius 30)
     ctx.roundRect(idBoxX, idBoxY, idBoxWidth, idBoxHeight, 30);
     ctx.fill();
     ctx.restore();

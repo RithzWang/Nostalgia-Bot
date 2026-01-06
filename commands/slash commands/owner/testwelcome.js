@@ -11,7 +11,7 @@ const {
 
 // ⚠️ PATH CHECK: 
 // Verify this path points to your actual welcomeCanvas4.js file relative to this command file.
-const { createWelcomeImage } = require('../../../welcomeCanvas4.js'); 
+const { createWelcomeImage } = require('../../../welcomeCanvas5.js'); 
 
 module.exports = {
     guildOnly: true,

@@ -30,6 +30,10 @@ async function loadFonts() {
     const sfRegularPath = path.join(FONT_DIR, 'SF-Pro-Text-Regular.otf');
     if (fs.existsSync(sfRegularPath)) GlobalFonts.registerFromPath(sfRegularPath, 'SF Pro Text Regular');
 
+
+const psRegularPath = path.join(FONT_DIR, 'Prima Sans Regular.otf');
+    if (fs.existsSync(psRegularPath)) GlobalFonts.registerFromPath(psRegularPath, 'Prima Sans Regular');
+
     
     // 3. SF Pro SemiBold (Username) << NEW
     const sfProSemiPath = path.join(FONT_DIR, 'SF Pro - Semibold.otf');

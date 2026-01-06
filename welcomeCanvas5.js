@@ -221,7 +221,7 @@ async function createWelcomeImage(member) {
     ctx.save();
     ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; 
     ctx.beginPath();
-    ctx.roundRect(idBoxX, idBoxY, idBoxWidth, idBoxHeight, 30);
+    ctx.roundRect(idBoxX, idBoxY, idBoxWidth, idBoxHeight, 25);
     ctx.fill();
     ctx.restore();
 
@@ -237,6 +237,7 @@ async function createWelcomeImage(member) {
     ctx.restore();
 
     // --- Display Name (Main Big Text) ---
+    // Note: We don't shrink this one as it usually fits, but if you want to shrink this too, let me know.
     ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
     ctx.shadowBlur = 5;
     ctx.shadowOffsetX = 5; 
@@ -254,98 +255,148 @@ async function createWelcomeImage(member) {
     ctx.fillText(displayName, textX, currentY);
 
     // ==================================================================
-    // MODIFIED: USERNAME • GUILD TAG BOX
+    // MODIFIED: AUTO-SCALING USERNAME • GUILD TAG BOX
     // ==================================================================
 
     currentY += 115;
     
-    // 1. Draw Username
-    ctx.font = '95px "Prima Sans Regular", sans-serif';
-    ctx.fillStyle = '#dadada'; // Updated Color
-    
+    // --- 1. SETUP & MEASUREMENTS ---
+    // Define Base Sizes (Default values before scaling)
+    const baseUsernameSize = 95;
+    const baseTagSize = 65;
+    const baseBoxHeight = 95;
+    const baseBadgeSize = 65;
+    const basePadding = 30; 
+    const baseSepPadding = 25; 
+    const baseMarginSep = 25; 
+    const baseContentGap = 15; 
+    const baseRadius = 30;
+
+    // Prepare Text
     let tagText = (user.discriminator && user.discriminator !== '0') 
         ? `${user.username}#${user.discriminator}` 
         : `@${user.username}`;
     
-    ctx.fillText(tagText, textX, currentY);
-
-    // 2. Draw Guild Tag Box
     const guildInfo = user.primaryGuild;
+    const hasGuild = (guildInfo && guildInfo.tag);
 
-    if (guildInfo && guildInfo.tag) {
-        // Measure Username
-        const usernameWidth = ctx.measureText(tagText).width;
-        
-        // --- DRAW SEPARATOR ---
-        const separatorPadding = 25;
-        const separatorX = textX + usernameWidth + separatorPadding;
-        
-        ctx.fillStyle = '#dadada'; // Updated Color (was #686868)
-        ctx.fillText("•", separatorX, currentY);
-        
-        const separatorWidth = ctx.measureText("•").width;
+    // -- Measure Username --
+    ctx.font = `${baseUsernameSize}px "Prima Sans Regular", sans-serif`;
+    const usernameWidth = ctx.measureText(tagText).width;
 
-        // --- Box Configurations ---
-        const tagFontSize = 65; 
-        const badgeSize = 65;   
-        const boxHeight = 95;   
-        const boxPaddingX = 30; 
-        const contentGap = 15;  
-        const marginFromSeparator = 25; 
-        
-        // --- Calculate Box Width ---
-        ctx.font = `${tagFontSize}px "Prima Sans Regular", sans-serif`;
-        const tagWidth = ctx.measureText(guildInfo.tag).width;
+    // -- Calculate Total Width Needed --
+    let totalNeededWidth = usernameWidth;
+    let guildTagWidth = 0;
+    let badgeURL = null;
+    let hasBadge = false;
 
-        let badgeURL = null;
+    if (hasGuild) {
+        // Measure Separator Dot
+        const dotWidth = ctx.measureText("•").width;
+        
+        // Measure Guild Tag Text
+        ctx.font = `${baseTagSize}px "Prima Sans Regular", sans-serif`;
+        guildTagWidth = ctx.measureText(guildInfo.tag).width;
+
+        // Check for Badge
         if (typeof user.guildTagBadgeURL === 'function') {
              badgeURL = user.guildTagBadgeURL({ extension: 'png', size: 128 });
         } else if (guildInfo.badge && guildInfo.identityGuildId) {
              badgeURL = `https://cdn.discordapp.com/guild-tag-badges/${guildInfo.identityGuildId}/${guildInfo.badge}.png?size=128`;
         }
-        
-        const hasBadge = (badgeURL && guildInfo.badge);
+        hasBadge = !!(badgeURL && guildInfo.badge);
 
-        let boxWidth = boxPaddingX * 2 + tagWidth;
+        // Calculate Box Width
+        let boxWidth = (basePadding * 2) + guildTagWidth;
         if (hasBadge) {
-             boxWidth += badgeSize + contentGap;
+             boxWidth += baseBadgeSize + baseContentGap;
         }
 
-        // --- Calculate Box Position ---
-        const boxX = separatorX + separatorWidth + marginFromSeparator;
-        const verticalCenterY = currentY - 30; 
-        const boxY = verticalCenterY - (boxHeight / 2);
+        // Add to total
+        totalNeededWidth += baseSepPadding + dotWidth + baseMarginSep + boxWidth;
+    }
 
-        // --- Draw Box Background ---
+    // -- Calculate Scale Factor --
+    const maxAvailableWidth = dim.width - textX - 50; // 50px right margin
+    // If totalNeededWidth > maxAvailableWidth, scale will be < 1.0
+    const scale = Math.min(1, maxAvailableWidth / totalNeededWidth);
+
+    // -- Apply Scale to Variables --
+    const fUsernameSize = baseUsernameSize * scale;
+    const fTagSize = baseTagSize * scale;
+    const fBoxHeight = baseBoxHeight * scale;
+    const fPadding = basePadding * scale;
+    const fSepPadding = baseSepPadding * scale;
+    const fMarginSep = baseMarginSep * scale;
+    const fContentGap = baseContentGap * scale;
+    const fBadgeSize = baseBadgeSize * scale;
+    const fRadius = baseRadius * scale;
+
+    // --- 2. DRAWING ---
+
+    // A. Draw Username
+    ctx.font = `${fUsernameSize}px "Prima Sans Regular", sans-serif`;
+    ctx.fillStyle = '#dadada'; 
+    ctx.fillText(tagText, textX, currentY);
+
+    if (hasGuild) {
+        // Measurements with new scaled font (to be precise)
+        const fUsernameWidth = ctx.measureText(tagText).width;
+        
+        // B. Draw Separator
+        const separatorX = textX + fUsernameWidth + fSepPadding;
+        ctx.fillStyle = '#dadada'; 
+        ctx.fillText("•", separatorX, currentY);
+        const fSeparatorWidth = ctx.measureText("•").width;
+
+        // C. Draw Guild Box
+        
+        // Recalculate Box Width with scaled values
+        ctx.font = `${fTagSize}px "Prima Sans Regular", sans-serif`;
+        const fTagWidth = ctx.measureText(guildInfo.tag).width;
+        
+        let fBoxWidth = (fPadding * 2) + fTagWidth;
+        if (hasBadge) {
+             fBoxWidth += fBadgeSize + fContentGap;
+        }
+
+        // Calculate Positions
+        const boxX = separatorX + fSeparatorWidth + fMarginSep;
+        // Center vertically relative to username baseline
+        // We assume baseline is roughly 30% of font size from bottom, scaled
+        const verticalAdjustment = 30 * scale; 
+        const verticalCenterY = currentY - verticalAdjustment; 
+        const boxY = verticalCenterY - (fBoxHeight / 2);
+
+        // Draw Box Background
         ctx.save();
         ctx.shadowBlur = 0; 
         ctx.shadowOffsetX = 0;
         ctx.shadowOffsetY = 0;
         ctx.fillStyle = '#404249'; 
         ctx.beginPath();
-        ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 30);
+        ctx.roundRect(boxX, boxY, fBoxWidth, fBoxHeight, fRadius);
         ctx.fill();
         ctx.restore();
 
-        // --- Draw Content Inside Box ---
-        let currentContentX = boxX + boxPaddingX;
-        const contentCenterY = boxY + (boxHeight / 2); 
+        // Draw Content Inside Box
+        let currentContentX = boxX + fPadding;
+        const contentCenterY = boxY + (fBoxHeight / 2); 
 
         if (hasBadge) {
             const badgeImg = await loadImage(badgeURL).catch(err => null);
             if (badgeImg) {
-                const badgeY = contentCenterY - (badgeSize / 2);
-                ctx.drawImage(badgeImg, currentContentX, badgeY, badgeSize, badgeSize);
-                currentContentX += badgeSize + contentGap;
+                const badgeY = contentCenterY - (fBadgeSize / 2);
+                ctx.drawImage(badgeImg, currentContentX, badgeY, fBadgeSize, fBadgeSize);
+                currentContentX += fBadgeSize + fContentGap;
             }
         }
 
         ctx.fillStyle = '#ffffff'; 
-        ctx.font = `${tagFontSize}px "Prima Sans Regular", sans-serif`;
         ctx.textBaseline = 'middle'; 
         ctx.fillText(guildInfo.tag, currentContentX, contentCenterY);
 
-        ctx.textBaseline = 'alphabetic';
+        ctx.textBaseline = 'alphabetic'; // Reset
     }
 
     // --- Crown Badge (Logo) ---

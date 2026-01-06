@@ -120,12 +120,12 @@ async function createWelcomeImage(member) {
 
     const status = member.presence ? member.presence.status : 'offline';
     const statusMap = {
-        online: './pics/discord status/online.png',
-        idle: './pics/discord status/idle.png',
-        dnd: './pics/discord status/dnd.png',
-        streaming: './pics/discord status/streaming.png',
-        invisible: './pics/discord status/invisible.png',
-        offline: './pics/discord status/invisible.png'
+        online: './pics/discord status/statusonline.png',
+        idle: './pics/discord status/statusidle.png',
+        dnd: './pics/discord status/statusdnd.png',
+        streaming: './pics/discord status/statusstreaming.png',
+        invisible: './pics/discord status/statusinvisible.png',
+        offline: './pics/discord status/statusinvisible.png'
     };
 
     const [mainAvatar, statusImage, decoImage] = await Promise.all([

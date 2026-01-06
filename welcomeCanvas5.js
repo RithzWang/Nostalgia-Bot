@@ -21,7 +21,7 @@ function isColorLight(hex) {
 }
 
 async function createWelcomeImage(member) {
-    // Fetch user to ensure we have the latest profile/clan data
+    // Force fetch to get profile details like banner and clan
     const user = await member.user.fetch(true);
 
     const dim = {
@@ -43,7 +43,7 @@ async function createWelcomeImage(member) {
     ctx.save(); 
     ctx.translate(0, topOffset);
 
-    // Card Shape & Clip
+    // Card Shape
     const cornerRadius = 80;
     ctx.beginPath();
     ctx.roundRect(0, 0, dim.width, dim.height, cornerRadius);
@@ -111,7 +111,6 @@ async function createWelcomeImage(member) {
     // LAYER 2: AVATAR COMPOSITE
     // ==========================================
     
-    // 1. Prepare Data
     const avatarSize = 400;
     const avatarX = dim.margin + 30;
     const avatarY = (dim.height - avatarSize) / 2;
@@ -135,13 +134,12 @@ async function createWelcomeImage(member) {
         user.avatarDecorationURL() ? loadImage(user.avatarDecorationURL({ extension: 'png', size: 512 })).catch(() => null) : null
     ]);
 
-    // 2. Create Shape Canvas
     const compositeCanvas = createCanvas(dim.width, dim.height);
     const cCtx = compositeCanvas.getContext('2d');
     cCtx.imageSmoothingEnabled = true;
     cCtx.imageSmoothingQuality = 'high';
 
-    // A. Draw Avatar (Solid)
+    // A. Draw Avatar
     cCtx.save();
     cCtx.beginPath();
     cCtx.arc(centerX, centerY, avatarRadius, 0, Math.PI * 2);
@@ -149,7 +147,7 @@ async function createWelcomeImage(member) {
     cCtx.drawImage(mainAvatar, avatarX, avatarY, avatarSize, avatarSize);
     cCtx.restore();
 
-    // B. Draw Decoration (Solid)
+    // B. Draw Decoration
     if (decoImage) {
         const scaledDeco = avatarSize * 1.2;
         const decoX = avatarX - (scaledDeco - avatarSize) / 2;
@@ -157,15 +155,12 @@ async function createWelcomeImage(member) {
         cCtx.drawImage(decoImage, decoX, decoY, scaledDeco, scaledDeco);
     }
 
-    // C. THE BIGGER INVISIBLE SPOT
+    // C. Invisible Spot for Status
     const statusSize = 95; 
-
     if (statusImage) {
         const offset = 141; // 45 degrees
         const holeX = (centerX + offset);
         const holeY = (centerY + offset);
-        
-        // Buffer: 20
         const invisibleRadius = (statusSize / 2) + 20; 
 
         cCtx.save();
@@ -176,9 +171,7 @@ async function createWelcomeImage(member) {
         cCtx.restore();
     }
 
-    // 3. Draw to Main Canvas (Floating Effect)
-    
-    // Pass 1: The Shadow
+    // Draw Composite to Main Canvas
     ctx.save();
     ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
     ctx.shadowBlur = 25;
@@ -186,19 +179,15 @@ async function createWelcomeImage(member) {
     ctx.shadowOffsetY = 12;
     ctx.drawImage(compositeCanvas, 0, 0);
     ctx.restore();
-
-    // Pass 2: The Avatar Body
     ctx.drawImage(compositeCanvas, 0, 0);
 
     // ==========================================
     // LAYER 3: STATUS ICON
     // ==========================================
-
     if (statusImage) {
         const offset = 141;
         const holeX = (centerX + offset);
         const holeY = (centerY + offset);
-        
         const iconX = holeX - (statusSize / 2);
         const iconY = holeY - (statusSize / 2);
         
@@ -211,18 +200,16 @@ async function createWelcomeImage(member) {
     }
 
     // ==========================================
-    // LAYER 4: TEXT & BADGE
+    // LAYER 4: TEXT & INFO
     // ==========================================
 
     // --- ID Box ---
     const idText = `ID: ${member.id}`;
     ctx.font = '50px "Prima Sans Regular", "ReemKufi Bold", sans-serif';
     
-    // Measurements
     const idMetrics = ctx.measureText(idText);
     const idPaddingX = 30; 
     const idBoxHeight = 85; 
-    
     const marginRight = 50;
     const marginBottom = 50;
     
@@ -231,7 +218,6 @@ async function createWelcomeImage(member) {
     const idBoxX = (dim.width - marginRight) - idBoxWidth;
     const idBoxY = boxCenterAxisY - (idBoxHeight / 2);
 
-    // Draw Background Box
     ctx.save();
     ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; 
     ctx.beginPath();
@@ -239,20 +225,18 @@ async function createWelcomeImage(member) {
     ctx.fill();
     ctx.restore();
 
-    // Draw Text
     ctx.save();
     ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
     ctx.shadowBlur = 5;
     ctx.shadowOffsetX = 5; 
     ctx.shadowOffsetY = 5; 
-
     ctx.fillStyle = '#DADADA'; 
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle'; 
     ctx.fillText(idText, (dim.width - marginRight) - idPaddingX, boxCenterAxisY); 
     ctx.restore();
 
-    // --- Main Display Name ---
+    // --- Display Name ---
     ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
     ctx.shadowBlur = 5;
     ctx.shadowOffsetX = 5; 
@@ -269,58 +253,53 @@ async function createWelcomeImage(member) {
     const displayName = member.displayName.replace(/<a?:\w+:\d+>/g, '').trim() || user.username;
     ctx.fillText(displayName, textX, currentY);
 
-    // ==========================================
-    // MODIFIED: USERNAME & OFFICIAL GUILD CLAN TAG
-    // ==========================================
-
+    // --- Username & Guild Tag ---
     currentY += 115;
     ctx.font = '95px "Prima Sans Regular", sans-serif';
     ctx.fillStyle = '#b9bbbe';
     
-    // 1. Build Base Handle (@username)
+    // 1. Draw Username
     let tagText = (user.discriminator && user.discriminator !== '0') 
         ? `${user.username}#${user.discriminator}` 
         : `@${user.username}`;
     
-    // Draw the Base Handle
     ctx.fillText(tagText, textX, currentY);
 
-    // 2. CHECK FOR OFFICIAL GUILD/CLAN IDENTITY (Only)
-    // Note: 'user.clan' is the property in DJS v14.15+ 
+    // 2. Draw Guild Tag (Corrected for v14.19)
+    // NOTE: In v14.19 properties are camelCase (identityGuildId)
     const clanData = user.clan;
 
     if (clanData && clanData.tag) {
-        // Calculate where to start drawing the guild info
         const usernameWidth = ctx.measureText(tagText).width;
         const padding = 25;
         let currentX = textX + usernameWidth + padding;
 
-        // --- SEPARATOR ---
+        // Draw Separator
         ctx.fillStyle = '#686868'; 
         ctx.fillText("•", currentX, currentY);
         currentX += ctx.measureText("•").width + padding;
 
-        // --- CLAN BADGE (Image) ---
-        if (clanData.badge && clanData.identity_guild_id) {
-            // Badges are hosted at this specific discord CDN endpoint
-            const badgeURL = `https://cdn.discordapp.com/clan-badges/${clanData.identity_guild_id}/${clanData.badge}.png?size=256`;
-            const badgeImg = await loadImage(badgeURL).catch(() => null);
+        // Draw Badge Image (If available)
+        // Corrected property: identityGuildId
+        if (clanData.badge && clanData.identityGuildId) {
+            const badgeURL = `https://cdn.discordapp.com/clan-badges/${clanData.identityGuildId}/${clanData.badge}.png?size=256`;
+            const badgeImg = await loadImage(badgeURL).catch(err => console.log('Badge load failed', err));
 
             if (badgeImg) {
                 const badgeSize = 85; 
-                const badgeY = currentY - badgeSize + 12; // Visual adjustment
+                const badgeY = currentY - badgeSize + 12; 
                 
                 ctx.drawImage(badgeImg, currentX, badgeY, badgeSize, badgeSize);
-                currentX += badgeSize + 15; // Move cursor
+                currentX += badgeSize + 15; 
             }
         }
 
-        // --- CLAN TAG (Text) ---
+        // Draw Tag Text
         ctx.fillStyle = '#b9bbbe';
         ctx.fillText(clanData.tag, currentX, currentY);
     }
 
-    // --- A2-Q Server Crown Badge (Top Right of Avatar) ---
+    // --- Crown Badge ---
     ctx.restore(); 
     const badgeImage = await loadImage('./pics/logo/A2-Q-crown.png').catch(() => null);
 

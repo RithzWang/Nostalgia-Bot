@@ -21,6 +21,7 @@ function isColorLight(hex) {
 }
 
 async function createWelcomeImage(member) {
+    // Fetch user to ensure we have the latest profile/clan data
     const user = await member.user.fetch(true);
 
     const dim = {
@@ -213,42 +214,32 @@ async function createWelcomeImage(member) {
     // LAYER 4: TEXT & BADGE
     // ==========================================
 
-    // --- ID Box & Text Settings ---
+    // --- ID Box ---
     const idText = `ID: ${member.id}`;
     ctx.font = '50px "Prima Sans Regular", "ReemKufi Bold", sans-serif';
     
-    // 1. Measurements
+    // Measurements
     const idMetrics = ctx.measureText(idText);
     const idPaddingX = 30; 
     const idBoxHeight = 85; 
     
-    // 2. Coordinates
     const marginRight = 50;
     const marginBottom = 50;
     
-    // Define the visual centerline for the background box
     const boxCenterAxisY = dim.height - marginBottom - (idBoxHeight / 2);
-    
     const idBoxWidth = idMetrics.width + (idPaddingX * 2);
     const idBoxX = (dim.width - marginRight) - idBoxWidth;
-    
-    // Calculate top of box based on center axis and height
     const idBoxY = boxCenterAxisY - (idBoxHeight / 2);
 
-    // 3. Draw Background Box
+    // Draw Background Box
     ctx.save();
-    ctx.shadowColor = 'transparent'; 
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetX = 0; 
-    ctx.shadowOffsetY = 0;
-    
     ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; 
     ctx.beginPath();
     ctx.roundRect(idBoxX, idBoxY, idBoxWidth, idBoxHeight, 30);
     ctx.fill();
     ctx.restore();
 
-    // 4. Draw Text
+    // Draw Text
     ctx.save();
     ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
     ctx.shadowBlur = 5;
@@ -258,7 +249,6 @@ async function createWelcomeImage(member) {
     ctx.fillStyle = '#DADADA'; 
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle'; 
-    
     ctx.fillText(idText, (dim.width - marginRight) - idPaddingX, boxCenterAxisY); 
     ctx.restore();
 
@@ -279,26 +269,58 @@ async function createWelcomeImage(member) {
     const displayName = member.displayName.replace(/<a?:\w+:\d+>/g, '').trim() || user.username;
     ctx.fillText(displayName, textX, currentY);
 
-    // --- Username Tag & Guild Tag Logic ---
+    // ==========================================
+    // MODIFIED: USERNAME & OFFICIAL GUILD CLAN TAG
+    // ==========================================
+
     currentY += 115;
     ctx.font = '95px "Prima Sans Regular", sans-serif';
     ctx.fillStyle = '#b9bbbe';
     
-    // 1. Build Base Tag (@username)
-    let tagText = (user.discriminator && user.discriminator !== '0') ? `${user.username}#${user.discriminator}` : `@${user.username}`;
+    // 1. Build Base Handle (@username)
+    let tagText = (user.discriminator && user.discriminator !== '0') 
+        ? `${user.username}#${user.discriminator}` 
+        : `@${user.username}`;
     
-    // 2. Detect Guild Tag (matches anything inside [] or ())
-    // Example: "[A2Q] Ridouan" -> match is "[A2Q]"
-    const tagMatch = member.displayName.match(/[\[\(](.+?)[\]\)]/);
-
-    // 3. Append if found
-    if (tagMatch) {
-        tagText += ` • ${tagMatch[0]}`;
-    }
-
+    // Draw the Base Handle
     ctx.fillText(tagText, textX, currentY);
 
-    // --- Badge ---
+    // 2. CHECK FOR OFFICIAL GUILD/CLAN IDENTITY (Only)
+    // Note: 'user.clan' is the property in DJS v14.15+ 
+    const clanData = user.clan;
+
+    if (clanData && clanData.tag) {
+        // Calculate where to start drawing the guild info
+        const usernameWidth = ctx.measureText(tagText).width;
+        const padding = 25;
+        let currentX = textX + usernameWidth + padding;
+
+        // --- SEPARATOR ---
+        ctx.fillStyle = '#686868'; 
+        ctx.fillText("•", currentX, currentY);
+        currentX += ctx.measureText("•").width + padding;
+
+        // --- CLAN BADGE (Image) ---
+        if (clanData.badge && clanData.identity_guild_id) {
+            // Badges are hosted at this specific discord CDN endpoint
+            const badgeURL = `https://cdn.discordapp.com/clan-badges/${clanData.identity_guild_id}/${clanData.badge}.png?size=256`;
+            const badgeImg = await loadImage(badgeURL).catch(() => null);
+
+            if (badgeImg) {
+                const badgeSize = 85; 
+                const badgeY = currentY - badgeSize + 12; // Visual adjustment
+                
+                ctx.drawImage(badgeImg, currentX, badgeY, badgeSize, badgeSize);
+                currentX += badgeSize + 15; // Move cursor
+            }
+        }
+
+        // --- CLAN TAG (Text) ---
+        ctx.fillStyle = '#b9bbbe';
+        ctx.fillText(clanData.tag, currentX, currentY);
+    }
+
+    // --- A2-Q Server Crown Badge (Top Right of Avatar) ---
     ctx.restore(); 
     const badgeImage = await loadImage('./pics/logo/A2-Q-crown.png').catch(() => null);
 

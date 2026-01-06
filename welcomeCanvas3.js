@@ -33,6 +33,10 @@ async function createWelcomeImage(member) {
     const canvas = createCanvas(dim.width, dim.height + topOffset);
     const ctx = canvas.getContext('2d');
 
+    // **ENABLE HIGH QUALITY SMOOTHING**
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
     // ==========================================
     // LAYER 1: THE CARD BACKGROUND
     // ==========================================
@@ -104,7 +108,7 @@ async function createWelcomeImage(member) {
     ctx.stroke();
 
     // ==========================================
-    // LAYER 2: AVATAR COMPOUND LAYER
+    // LAYER 2: SMOOTH CUTOUT AVATAR LAYER
     // ==========================================
     
     // 1. Prepare Data
@@ -112,10 +116,6 @@ async function createWelcomeImage(member) {
     const avatarX = dim.margin + 30;
     const avatarY = (dim.height - avatarSize) / 2;
     const avatarRadius = avatarSize / 2;
-
-    // Use full canvas coordinates (considering topOffset)
-    // The "ctx" is translated by `topOffset`, but for our new layer we want absolute coords.
-    // Let's use coordinate math relative to the CARD (since we draw the layer onto the card).
     
     const centerX = avatarX + avatarRadius;
     const centerY = avatarY + avatarRadius;
@@ -136,10 +136,13 @@ async function createWelcomeImage(member) {
         user.avatarDecorationURL() ? loadImage(user.avatarDecorationURL({ extension: 'png', size: 512 })).catch(() => null) : null
     ]);
 
-    // 2. Create the "Avatar Layer" (Temporary Canvas)
-    // We make it the same size as the card so positioning is easy (0,0)
+    // 2. Create Temporary Layer
     const layerCanvas = createCanvas(dim.width, dim.height);
     const layerCtx = layerCanvas.getContext('2d');
+    
+    // Enable smoothing on the layer as well
+    layerCtx.imageSmoothingEnabled = true;
+    layerCtx.imageSmoothingQuality = 'high';
 
     // --- A. Draw Shadow on Layer ---
     layerCtx.save();
@@ -169,36 +172,43 @@ async function createWelcomeImage(member) {
         layerCtx.drawImage(decoImage, decoX, decoY, scaledDeco, scaledDeco);
     }
 
-    // --- D. THE ERASER (Punch the Hole) ---
-    // Now we punch through EVERYTHING (Shadow, Avatar, Deco) at once.
-    // This leaves clean transparent pixels.
+    // --- D. THE SMOOTH ERASER (เจาะรูให้เนียน) ---
     if (statusImage) {
         const statusSize = 100;
-        const cutRadius = (statusSize / 2) + 8; // Hole size
+        const cutRadius = (statusSize / 2) + 8; 
         const offset = 141; // ≈ 200 * 0.707
 
         const holeX = (centerX + offset);
         const holeY = (centerY + offset);
 
         layerCtx.save();
-        layerCtx.globalCompositeOperation = 'destination-out'; // Activate Eraser
+        // Set mode to ERASE
+        layerCtx.globalCompositeOperation = 'destination-out'; 
+        
         layerCtx.beginPath();
         layerCtx.arc(holeX, holeY, cutRadius, 0, Math.PI * 2);
+        
+        // 1. Fill the hole (standard cut)
+        layerCtx.fillStyle = '#000000'; // Color doesn't matter
         layerCtx.fill();
+
+        // 2. Stroke the hole (THIS IS THE TRICK FOR SMOOTHNESS)
+        // การวาดเส้นทับที่ขอบช่วยลบรอยหยัก (Anti-aliasing artifacts) ที่เกิดจากการ Fill อย่างเดียว
+        layerCtx.lineWidth = 1.5; 
+        layerCtx.strokeStyle = '#000000';
+        layerCtx.stroke();
+        
         layerCtx.restore();
     }
 
-    // 3. Draw the Layer onto the Main Canvas
-    // Since we sized layerCanvas to dim.width/height and we are inside `ctx.translate(0, topOffset)`,
-    // we draw at 0,0.
+    // 3. Paste Layer onto Main Canvas
     ctx.drawImage(layerCanvas, 0, 0);
-
 
     // ==========================================
     // LAYER 3: STATUS & TEXT
     // ==========================================
 
-    // --- Draw Status Icon (Inside the hole) ---
+    // --- Draw Status Icon ---
     if (statusImage) {
         const statusSize = 100;
         const offset = 141;

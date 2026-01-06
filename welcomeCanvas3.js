@@ -33,7 +33,7 @@ async function createWelcomeImage(member) {
     const canvas = createCanvas(dim.width, dim.height + topOffset);
     const ctx = canvas.getContext('2d');
     
-    // Enable high-quality smoothing for resizing huge images
+    // High quality scaling
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
@@ -136,27 +136,47 @@ async function createWelcomeImage(member) {
         user.avatarDecorationURL() ? loadImage(user.avatarDecorationURL({ extension: 'png', size: 512 })).catch(() => null) : null
     ]);
 
-    // 2. Create the "Avatar Layer" (Temporary Canvas)
+    // 2. Setup "Hole" Calculations
+    const statusSize = 100;
+    const offset = 141; // ≈ 200 * 0.707
+    const holeX = (centerX + offset);
+    const holeY = (centerY + offset);
+
+    // KEY FIX: Two different sizes for the hole
+    // Avatar Hole = Standard size
+    const avatarCutRadius = (statusSize / 2) + 8; 
+    // Shadow Hole = LARGER size (so black shadow doesn't touch the edge)
+    const shadowCutRadius = avatarCutRadius + 3; 
+
+
+    // 3. Create the "Avatar Layer" (Temporary Canvas)
     const layerCanvas = createCanvas(dim.width, dim.height);
     const layerCtx = layerCanvas.getContext('2d');
-    
-    // High quality settings for the layer too
     layerCtx.imageSmoothingEnabled = true;
     layerCtx.imageSmoothingQuality = 'high';
 
-    // --- A. Draw Shadow ---
+    // --- A. Draw Shadow (With LARGER Hole) ---
+    // We draw shadow directly onto the layer first
     layerCtx.save();
     layerCtx.shadowColor = 'rgba(0, 0, 0, 0.6)';
     layerCtx.shadowBlur = 35;
     layerCtx.shadowOffsetX = 8;
     layerCtx.shadowOffsetY = 8;
+    
     layerCtx.beginPath();
-    layerCtx.arc(centerX, centerY, avatarRadius, 0, Math.PI * 2);
+    // Outer Circle (Shadow Body)
+    layerCtx.arc(centerX, centerY, avatarRadius, 0, Math.PI * 2, false);
+    // Inner Circle (Hole) -> Counter-Clockwise to punch hole immediately
+    if (statusImage) {
+        layerCtx.arc(holeX, holeY, shadowCutRadius, 0, Math.PI * 2, true);
+    }
+    layerCtx.closePath();
     layerCtx.fillStyle = '#000000';
     layerCtx.fill();
     layerCtx.restore();
 
-    // --- B. Draw Avatar ---
+    // --- B. Draw Avatar & Deco on TOP of Shadow ---
+    // We use a clean draw for avatar, then we will punch the tighter hole later
     layerCtx.save();
     layerCtx.beginPath();
     layerCtx.arc(centerX, centerY, avatarRadius, 0, Math.PI * 2);
@@ -164,7 +184,6 @@ async function createWelcomeImage(member) {
     layerCtx.drawImage(mainAvatar, avatarX, avatarY, avatarSize, avatarSize);
     layerCtx.restore();
 
-    // --- C. Draw Decoration ---
     if (decoImage) {
         const scaledDeco = avatarSize * 1.2;
         const decoX = avatarX - (scaledDeco - avatarSize) / 2;
@@ -172,34 +191,17 @@ async function createWelcomeImage(member) {
         layerCtx.drawImage(decoImage, decoX, decoY, scaledDeco, scaledDeco);
     }
 
-    // --- D. THE SMOOTH ERASER ---
+    // --- C. THE CLEAN ERASER (Punch the TIGHTER Hole through Avatar/Deco) ---
     if (statusImage) {
-        const statusSize = 100;
-        const cutRadius = (statusSize / 2) + 8; 
-        const offset = 141; // ≈ 200 * 0.707
-
-        const holeX = (centerX + offset);
-        const holeY = (centerY + offset);
-
         layerCtx.save();
-        // Set mode to ERASE
-        layerCtx.globalCompositeOperation = 'destination-out'; 
-        
+        layerCtx.globalCompositeOperation = 'destination-out'; // Erase mode
         layerCtx.beginPath();
-        layerCtx.arc(holeX, holeY, cutRadius, 0, Math.PI * 2);
-        
-        // 1. Fill the hole (Standard Erase)
-        layerCtx.fill();
-        
-        // 2. Stroke the hole (Smoothes the jagged edges)
-        layerCtx.lineWidth = 2; // Small stroke to clean up pixels
-        layerCtx.strokeStyle = '#000000'; // Color doesn't matter in destination-out
-        layerCtx.stroke(); 
-
+        layerCtx.arc(holeX, holeY, avatarCutRadius, 0, Math.PI * 2);
+        layerCtx.fill(); 
         layerCtx.restore();
     }
 
-    // 3. Draw the Layer onto the Main Canvas
+    // 4. Draw the Layer onto the Main Canvas
     ctx.drawImage(layerCanvas, 0, 0);
 
 
@@ -208,11 +210,6 @@ async function createWelcomeImage(member) {
     // ==========================================
 
     if (statusImage) {
-        const statusSize = 100;
-        const offset = 141;
-        const holeX = (centerX + offset);
-        const holeY = (centerY + offset);
-        
         const iconX = holeX - (statusSize / 2);
         const iconY = holeY - (statusSize / 2);
         

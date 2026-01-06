@@ -6,7 +6,7 @@ module.exports = {
         .setName('deletedm')
         .setDescription('Owner Only: Delete all bot messages in a specific User DM')
         // 1. Added permission requirement here (hides command from regular members)
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addStringOption(option =>
             option.setName('userid')
                 .setDescription('The User ID to clear messages from')

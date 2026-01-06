@@ -291,7 +291,7 @@ async function createWelcomeImage(member) {
     const baseSepPadding = 25; 
     const baseMarginSep = 25; 
     const baseContentGap = 15; 
-    const baseRadius = 20; // <--- CHANGED TO 20
+    const baseRadius = 20; // 20px Corner Radius
 
     let tagText = (user.discriminator && user.discriminator !== '0') 
         ? `${user.username}#${user.discriminator}` 
@@ -362,7 +362,7 @@ async function createWelcomeImage(member) {
         ctx.fillText("•", separatorX, currentY);
         const fSeparatorWidth = ctx.measureText("•").width;
 
-        // Recalculate Box Width Scaled with Explicit Fonts
+        // Recalculate Box Width Scaled
         ctx.font = `${fTagSize}px "Prima Sans Regular", "SFArabic", "Thonburi", "Apple Gothic", "Hiragino Sans", "Pingfang", "Symbol", "Apple Symbols", "Noto Symbol", "Noto Symbol 2", "Noto Math", "Noto Hieroglyphs", "Noto Music", sans-serif`;
         const fTagWidth = ctx.measureText(guildInfo.tag).width;
         
@@ -379,7 +379,6 @@ async function createWelcomeImage(member) {
 
         // Draw Box Background
         ctx.save();
-        // --- ADDED SHADOW HERE ---
         ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
         ctx.shadowBlur = 10;
         ctx.shadowOffsetX = 0;
@@ -398,6 +397,7 @@ async function createWelcomeImage(member) {
         if (hasBadge) {
             const badgeImg = await loadImage(badgeURL).catch(err => null);
             if (badgeImg) {
+                // Badge Logic (UNCHANGED)
                 const badgeY = contentCenterY - (fBadgeSize / 2);
                 ctx.drawImage(badgeImg, currentContentX, badgeY, fBadgeSize, fBadgeSize);
                 currentContentX += fBadgeSize + fContentGap;
@@ -406,7 +406,10 @@ async function createWelcomeImage(member) {
 
         ctx.fillStyle = '#ffffff'; 
         ctx.textBaseline = 'middle'; 
-        ctx.fillText(guildInfo.tag, currentContentX, contentCenterY);
+        
+        // === CHANGED LINE ===
+        // Subtracting 4 pixels from Y to move text UP slightly
+        ctx.fillText(guildInfo.tag, currentContentX, contentCenterY - 4);
 
         ctx.textBaseline = 'alphabetic'; 
     }

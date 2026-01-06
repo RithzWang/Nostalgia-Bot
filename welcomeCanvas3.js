@@ -32,8 +32,8 @@ async function createWelcomeImage(member) {
     const topOffset = 50;
     const canvas = createCanvas(dim.width, dim.height + topOffset);
     const ctx = canvas.getContext('2d');
-
-    // **ENABLE HIGH QUALITY SMOOTHING**
+    
+    // Enable high-quality smoothing for resizing huge images
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
@@ -108,7 +108,7 @@ async function createWelcomeImage(member) {
     ctx.stroke();
 
     // ==========================================
-    // LAYER 2: SMOOTH CUTOUT AVATAR LAYER
+    // LAYER 2: AVATAR COMPOUND LAYER
     // ==========================================
     
     // 1. Prepare Data
@@ -136,15 +136,15 @@ async function createWelcomeImage(member) {
         user.avatarDecorationURL() ? loadImage(user.avatarDecorationURL({ extension: 'png', size: 512 })).catch(() => null) : null
     ]);
 
-    // 2. Create Temporary Layer
+    // 2. Create the "Avatar Layer" (Temporary Canvas)
     const layerCanvas = createCanvas(dim.width, dim.height);
     const layerCtx = layerCanvas.getContext('2d');
     
-    // Enable smoothing on the layer as well
+    // High quality settings for the layer too
     layerCtx.imageSmoothingEnabled = true;
     layerCtx.imageSmoothingQuality = 'high';
 
-    // --- A. Draw Shadow on Layer ---
+    // --- A. Draw Shadow ---
     layerCtx.save();
     layerCtx.shadowColor = 'rgba(0, 0, 0, 0.6)';
     layerCtx.shadowBlur = 35;
@@ -156,7 +156,7 @@ async function createWelcomeImage(member) {
     layerCtx.fill();
     layerCtx.restore();
 
-    // --- B. Draw Avatar on Layer ---
+    // --- B. Draw Avatar ---
     layerCtx.save();
     layerCtx.beginPath();
     layerCtx.arc(centerX, centerY, avatarRadius, 0, Math.PI * 2);
@@ -164,7 +164,7 @@ async function createWelcomeImage(member) {
     layerCtx.drawImage(mainAvatar, avatarX, avatarY, avatarSize, avatarSize);
     layerCtx.restore();
 
-    // --- C. Draw Deco on Layer ---
+    // --- C. Draw Decoration ---
     if (decoImage) {
         const scaledDeco = avatarSize * 1.2;
         const decoX = avatarX - (scaledDeco - avatarSize) / 2;
@@ -172,7 +172,7 @@ async function createWelcomeImage(member) {
         layerCtx.drawImage(decoImage, decoX, decoY, scaledDeco, scaledDeco);
     }
 
-    // --- D. THE SMOOTH ERASER (เจาะรูให้เนียน) ---
+    // --- D. THE SMOOTH ERASER ---
     if (statusImage) {
         const statusSize = 100;
         const cutRadius = (statusSize / 2) + 8; 
@@ -188,27 +188,25 @@ async function createWelcomeImage(member) {
         layerCtx.beginPath();
         layerCtx.arc(holeX, holeY, cutRadius, 0, Math.PI * 2);
         
-        // 1. Fill the hole (standard cut)
-        layerCtx.fillStyle = '#000000'; // Color doesn't matter
+        // 1. Fill the hole (Standard Erase)
         layerCtx.fill();
-
-        // 2. Stroke the hole (THIS IS THE TRICK FOR SMOOTHNESS)
-        // การวาดเส้นทับที่ขอบช่วยลบรอยหยัก (Anti-aliasing artifacts) ที่เกิดจากการ Fill อย่างเดียว
-        layerCtx.lineWidth = 1.5; 
-        layerCtx.strokeStyle = '#000000';
-        layerCtx.stroke();
         
+        // 2. Stroke the hole (Smoothes the jagged edges)
+        layerCtx.lineWidth = 2; // Small stroke to clean up pixels
+        layerCtx.strokeStyle = '#000000'; // Color doesn't matter in destination-out
+        layerCtx.stroke(); 
+
         layerCtx.restore();
     }
 
-    // 3. Paste Layer onto Main Canvas
+    // 3. Draw the Layer onto the Main Canvas
     ctx.drawImage(layerCanvas, 0, 0);
+
 
     // ==========================================
     // LAYER 3: STATUS & TEXT
     // ==========================================
 
-    // --- Draw Status Icon ---
     if (statusImage) {
         const statusSize = 100;
         const offset = 141;

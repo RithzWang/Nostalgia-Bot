@@ -219,9 +219,9 @@ async function createWelcomeImage(member) {
     
     // 1. Measurements
     const idMetrics = ctx.measureText(idText);
-    const idPaddingX = 40; 
+    const idPaddingX = 30; 
     // UPDATED: Reduced from 85 to 75 to reduce vertical space
-    const idBoxHeight = 75; 
+    const idBoxHeight = 85; 
     
     // 2. Coordinates
     const marginRight = 50;

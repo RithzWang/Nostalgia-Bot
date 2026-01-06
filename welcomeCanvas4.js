@@ -215,12 +215,13 @@ async function createWelcomeImage(member) {
 
     // --- ID Box & Text Settings ---
     const idText = `ID: ${member.id}`;
+    // 1. CHANGE: Font size decreased to 50px
     ctx.font = '50px "Prima Sans Regular", "ReemKufi Bold", sans-serif';
     
     // 1. Measurements
     const idMetrics = ctx.measureText(idText);
     const idPaddingX = 40; // Horizontal padding inside box
-    const idBoxHeight = 100; // Fixed height to ensure perfect centering
+    const idBoxHeight = 85; // Adjusted height for 50px font
     
     // 2. Coordinates
     const marginRight = 70;
@@ -236,37 +237,31 @@ async function createWelcomeImage(member) {
 
     // 3. Draw Background Box
     ctx.save();
-    // DISABLE SHADOW for the box so it stays clean and transparent
     ctx.shadowColor = 'transparent'; 
     ctx.shadowBlur = 0;
     ctx.shadowOffsetX = 0; 
     ctx.shadowOffsetY = 0;
     
-    ctx.fillStyle = 'rgba(64, 66, 73, 0.6)'; // Translucent background
-    ctx.beginPath();
-    ctx.roundRect(idBoxX, idBoxY, idBoxWidth, idBoxHeight, 50); // High radius for pill shape
-    ctx.fill();
+    ctx.fillStyle = 'rgba(64, 66, 73, 0.6)'; 
+    // 2. CHANGE: Used fillRect for sharp rectangle edges (radius 0)
+    ctx.fillRect(idBoxX, idBoxY, idBoxWidth, idBoxHeight);
     ctx.restore();
 
     // 4. Draw Text
     ctx.save();
-    // Enable shadow ONLY for text
     ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
     ctx.shadowBlur = 5;
     ctx.shadowOffsetX = 5; 
     ctx.shadowOffsetY = 5; 
 
-    // CHANGE: Member ID Color set to #DADADA
     ctx.fillStyle = '#DADADA'; 
     ctx.textAlign = 'right';
-    ctx.textBaseline = 'middle'; // Center text vertically
+    ctx.textBaseline = 'middle'; 
     
-    // Draw text at the calculated Center Y. 
     ctx.fillText(idText, boxRightEdge - idPaddingX, boxCenterY + 2); 
     ctx.restore();
 
     // --- Main Display Name ---
-    // Standard shadow for the rest of the text
     ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
     ctx.shadowBlur = 5;
     ctx.shadowOffsetX = 5; 

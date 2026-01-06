@@ -213,52 +213,65 @@ async function createWelcomeImage(member) {
     // LAYER 4: TEXT & BADGE
     // ==========================================
 
-    // --- Standard Drop Shadow (Right & Bottom) for Text ---
+    // --- ID Box & Text Settings ---
+    const idText = `ID: ${member.id}`;
+    ctx.font = '50px "Prima Sans Regular", "ReemKufi Bold", sans-serif';
+    
+    // 1. Measurements
+    const idMetrics = ctx.measureText(idText);
+    const idPaddingX = 40; // Horizontal padding inside box
+    const idBoxHeight = 100; // Fixed height to ensure perfect centering
+    
+    // 2. Coordinates
+    const marginRight = 70;
+    const marginBottom = 70;
+    
+    // The visual center line for the ID box and text
+    const boxCenterY = dim.height - marginBottom - (idBoxHeight / 2); 
+    const boxRightEdge = dim.width - marginRight;
+    
+    const idBoxWidth = idMetrics.width + (idPaddingX * 2);
+    const idBoxX = boxRightEdge - idBoxWidth;
+    const idBoxY = boxCenterY - (idBoxHeight / 2);
+
+    // 3. Draw Background Box
+    ctx.save();
+    // DISABLE SHADOW for the box so it stays clean and transparent
+    ctx.shadowColor = 'transparent'; 
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0; 
+    ctx.shadowOffsetY = 0;
+    
+    ctx.fillStyle = 'rgba(64, 66, 73, 0.6)'; // Translucent background
+    ctx.beginPath();
+    ctx.roundRect(idBoxX, idBoxY, idBoxWidth, idBoxHeight, 50); // High radius for pill shape
+    ctx.fill();
+    ctx.restore();
+
+    // 4. Draw Text
+    ctx.save();
+    // Enable shadow ONLY for text
     ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
     ctx.shadowBlur = 5;
     ctx.shadowOffsetX = 5; 
     ctx.shadowOffsetY = 5; 
 
-    // --- ID Background & Text ---
-    const idText = `ID: ${member.id}`;
-    ctx.font = 'bold 60px "Prima Sans Regular", "ReemKufi Bold", sans-serif';
+    // CHANGE: Member ID Color set to #DADADA
+    ctx.fillStyle = '#DADADA'; 
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle'; // Center text vertically
     
-    // Measure text to size the background box
-    const idMetrics = ctx.measureText(idText);
-    const idAnchorX = dim.width - 70;
-    const idAnchorY = dim.height - 70;
-    
-    // Box settings
-    const idPaddingX = 40;
-    const idPaddingY = 25;
-    // Approximate height of the text characters themselves for centering
-    const idTextApproxHeight = 50; 
-    const idBoxRadius = 45;
-
-    // Calculate box position based on bottom-right text anchor
-    const idBoxW = idMetrics.width + (idPaddingX * 2);
-    const idBoxH = idTextApproxHeight + (idPaddingY * 2);
-    const idBoxX = idAnchorX - idMetrics.width - idPaddingX;
-    // Adjust Y to sit slightly below baseline for visual centering
-    const idBoxY = idAnchorY - idTextApproxHeight - idPaddingY + 5;
-
-    // Draw rounded background box (#404249 transparent -> rgba(64, 66, 73, 0.7))
-    ctx.save();
-    ctx.fillStyle = 'rgba(64, 66, 73, 0.7)';
-    ctx.beginPath();
-    ctx.roundRect(idBoxX, idBoxY, idBoxW, idBoxH, idBoxRadius);
-    ctx.fill();
+    // Draw text at the calculated Center Y. 
+    ctx.fillText(idText, boxRightEdge - idPaddingX, boxCenterY + 2); 
     ctx.restore();
 
-    // Draw ID Text
-    // Increased opacity from 0.4 to 0.9 for better readability on the new background
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'; 
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'bottom';
-    ctx.fillText(idText, idAnchorX, idAnchorY);
-
-
     // --- Main Display Name ---
+    // Standard shadow for the rest of the text
+    ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
+    ctx.shadowBlur = 5;
+    ctx.shadowOffsetX = 5; 
+    ctx.shadowOffsetY = 5; 
+
     const textX = avatarX + avatarSize + 70;
     let currentY = dim.height / 2 - 15;
     

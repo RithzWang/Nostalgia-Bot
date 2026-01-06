@@ -170,22 +170,23 @@ async function createWelcomeImage(member) {
         layerCtx.drawImage(decoImage, decoX, decoY, scaledDeco, scaledDeco);
     }
 
-    // --- D. THE CUT (Pure Erase - No Stroke) ---
+    // --- D. THE CUT (Pure Erase) ---
     if (statusImage) {
         const statusSize = 100;
         const offset = 141; // ≈ 200 * 0.707
         const holeX = (centerX + offset);
         const holeY = (centerY + offset);
         
-        // Adjust this if you want the transparent gap to be wider/thinner
-        const cutRadius = (statusSize / 2) + 6; 
+        // --- INCREASED SIZE HERE ---
+        // (100 / 2) + 10 = 60px radius
+        const cutRadius = (statusSize / 2) + 10; 
 
         layerCtx.save();
-        layerCtx.globalCompositeOperation = 'destination-out'; // This activates "Eraser Mode"
+        layerCtx.globalCompositeOperation = 'destination-out'; 
         
         layerCtx.beginPath();
         layerCtx.arc(holeX, holeY, cutRadius, 0, Math.PI * 2);
-        layerCtx.fill(); // Just fill. No stroke. This prevents the black line.
+        layerCtx.fill(); 
         
         layerCtx.restore();
     }

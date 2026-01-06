@@ -203,7 +203,7 @@ async function createWelcomeImage(member) {
     // LAYER 4: TEXT & INFO
     // ==========================================
 
-    // --- ID Box ---
+    // --- ID Box (Top Right) ---
     const idText = `ID: ${member.id}`;
     ctx.font = '50px "Prima Sans Regular", "ReemKufi Bold", sans-serif';
     
@@ -236,7 +236,7 @@ async function createWelcomeImage(member) {
     ctx.fillText(idText, (dim.width - marginRight) - idPaddingX, boxCenterAxisY); 
     ctx.restore();
 
-    // --- Display Name ---
+    // --- Display Name (Main Big Text) ---
     ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
     ctx.shadowBlur = 5;
     ctx.shadowOffsetX = 5; 
@@ -254,14 +254,15 @@ async function createWelcomeImage(member) {
     ctx.fillText(displayName, textX, currentY);
 
     // ==================================================================
-    // MODIFIED: USERNAME & GUILD TAG (With solid background box)
+    // MODIFIED: USERNAME • GUILD TAG BOX
     // ==================================================================
 
     currentY += 115;
-    ctx.font = '95px "Prima Sans Regular", sans-serif';
-    ctx.fillStyle = '#b9bbbe';
     
     // 1. Draw Username
+    ctx.font = '95px "Prima Sans Regular", sans-serif';
+    ctx.fillStyle = '#dadada'; // Updated Color
+    
     let tagText = (user.discriminator && user.discriminator !== '0') 
         ? `${user.username}#${user.discriminator}` 
         : `@${user.username}`;
@@ -272,81 +273,82 @@ async function createWelcomeImage(member) {
     const guildInfo = user.primaryGuild;
 
     if (guildInfo && guildInfo.tag) {
+        // Measure Username
         const usernameWidth = ctx.measureText(tagText).width;
+        
+        // --- DRAW SEPARATOR ---
+        const separatorPadding = 25;
+        const separatorX = textX + usernameWidth + separatorPadding;
+        
+        ctx.fillStyle = '#dadada'; // Updated Color (was #686868)
+        ctx.fillText("•", separatorX, currentY);
+        
+        const separatorWidth = ctx.measureText("•").width;
 
-        // --- Configuration for reduced size and box ---
-        const tagFontSize = 65; // Reduced font size
-        const badgeSize = 65;   // Reduced badge size
-        const boxHeight = 95;   // Height of the container box
-        const boxPaddingX = 30; // Padding inside the box
-        const contentGap = 15;  // Gap between badge and text inside box
-        const marginFromUsername = 40; // Gap outside box next to username
-        const boxColor = '#404249'; // Requested solid color
-        const boxRadius = 30;   // Rounded corners
-
-        // Set font temporarily to measure tag width at new size
+        // --- Box Configurations ---
+        const tagFontSize = 65; 
+        const badgeSize = 65;   
+        const boxHeight = 95;   
+        const boxPaddingX = 30; 
+        const contentGap = 15;  
+        const marginFromSeparator = 25; 
+        
+        // --- Calculate Box Width ---
         ctx.font = `${tagFontSize}px "Prima Sans Regular", sans-serif`;
         const tagWidth = ctx.measureText(guildInfo.tag).width;
 
-        // Determine Badge URL
         let badgeURL = null;
         if (typeof user.guildTagBadgeURL === 'function') {
              badgeURL = user.guildTagBadgeURL({ extension: 'png', size: 128 });
         } else if (guildInfo.badge && guildInfo.identityGuildId) {
              badgeURL = `https://cdn.discordapp.com/guild-tag-badges/${guildInfo.identityGuildId}/${guildInfo.badge}.png?size=128`;
         }
+        
+        const hasBadge = (badgeURL && guildInfo.badge);
 
-        // Calculate total box width needed
         let boxWidth = boxPaddingX * 2 + tagWidth;
-        if (badgeURL && guildInfo.badge) {
+        if (hasBadge) {
              boxWidth += badgeSize + contentGap;
         }
 
-        // Calculate Box Positions
-        const boxX = textX + usernameWidth + marginFromUsername;
-        // Estimate vertical center of the main 95px font (roughly 30px up from baseline)
-        const verticalCenterY = currentY - 30;
+        // --- Calculate Box Position ---
+        const boxX = separatorX + separatorWidth + marginFromSeparator;
+        const verticalCenterY = currentY - 30; 
         const boxY = verticalCenterY - (boxHeight / 2);
 
-        // --- DRAW BOX BACKGROUND ---
+        // --- Draw Box Background ---
         ctx.save();
-        // Ensure no shadow on this box for a solid flat look
         ctx.shadowBlur = 0; 
         ctx.shadowOffsetX = 0;
         ctx.shadowOffsetY = 0;
-        ctx.fillStyle = boxColor;
+        ctx.fillStyle = '#404249'; 
         ctx.beginPath();
-        ctx.roundRect(boxX, boxY, boxWidth, boxHeight, boxRadius);
+        ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 30);
         ctx.fill();
         ctx.restore();
 
-        // --- DRAW CONTENT INSIDE BOX ---
+        // --- Draw Content Inside Box ---
         let currentContentX = boxX + boxPaddingX;
-        // Calculate Y center for content inside the box using middle baseline
-        const contentCenterY = boxY + (boxHeight / 2);
+        const contentCenterY = boxY + (boxHeight / 2); 
 
-        // Draw Badge Image
-        if (badgeURL && guildInfo.badge) {
+        if (hasBadge) {
             const badgeImg = await loadImage(badgeURL).catch(err => null);
             if (badgeImg) {
-                // Center badge vertically in box
                 const badgeY = contentCenterY - (badgeSize / 2);
                 ctx.drawImage(badgeImg, currentContentX, badgeY, badgeSize, badgeSize);
                 currentContentX += badgeSize + contentGap;
             }
         }
 
-        // Draw Tag Text
-        ctx.fillStyle = '#ffffff'; // White text for better contrast on #404249
+        ctx.fillStyle = '#ffffff'; 
         ctx.font = `${tagFontSize}px "Prima Sans Regular", sans-serif`;
-        ctx.textBaseline = 'middle'; // Switch baseline for easier centering in box
+        ctx.textBaseline = 'middle'; 
         ctx.fillText(guildInfo.tag, currentContentX, contentCenterY);
 
-        // Restore text baseline
         ctx.textBaseline = 'alphabetic';
     }
 
-    // --- Crown Badge ---
+    // --- Crown Badge (Logo) ---
     ctx.restore(); 
     const badgeImage = await loadImage('./pics/logo/A2-Q-crown.png').catch(() => null);
 

@@ -291,7 +291,7 @@ async function createWelcomeImage(member) {
     const baseSepPadding = 25; 
     const baseMarginSep = 25; 
     const baseContentGap = 15; 
-    const baseRadius = 25;
+    const baseRadius = 20; // <--- CHANGED TO 20
 
     let tagText = (user.discriminator && user.discriminator !== '0') 
         ? `${user.username}#${user.discriminator}` 
@@ -379,9 +379,12 @@ async function createWelcomeImage(member) {
 
         // Draw Box Background
         ctx.save();
-        ctx.shadowBlur = 0; 
+        // --- ADDED SHADOW HERE ---
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+        ctx.shadowBlur = 10;
         ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 0;
+        ctx.shadowOffsetY = 5;
+
         ctx.fillStyle = '#404249'; 
         ctx.beginPath();
         ctx.roundRect(boxX, boxY, fBoxWidth, fBoxHeight, fRadius);

@@ -29,7 +29,6 @@ async function createWelcomeImage(member) {
         margin: 100
     };
 
-    // 1. Setup Canvas
     const topOffset = 50;
     const canvas = createCanvas(dim.width, dim.height + topOffset);
     const ctx = canvas.getContext('2d');
@@ -105,10 +104,27 @@ async function createWelcomeImage(member) {
     ctx.stroke();
 
     // ==========================================
-    // AVATAR & STATUS LOGIC
+    // LAYER 2: AVATAR, STATUS, & DECO
     // ==========================================
 
-    // 1. Prepare Status Data
+    // 1. Math: Calculate Positions
+    const avatarSize = 400;
+    const avatarX = dim.margin + 30;
+    const avatarY = (dim.height - avatarSize) / 2;
+    const avatarRadius = avatarSize / 2;
+    const centerX = avatarX + avatarRadius;
+    const centerY = avatarY + avatarRadius;
+
+    // Status Position Math
+    const statusSize = 100;
+    const offset = 141; // ≈ 200 * 0.707 (45 degrees)
+    const statusX = (centerX + offset) - (statusSize / 2);
+    const statusY = (centerY + offset) - (statusSize / 2);
+    
+    // The "Hole" Radius (Status Size / 2 + Border Thickness)
+    const cutRadius = (statusSize / 2) + 8; 
+
+    // 2. Prepare Images
     const status = member.presence ? member.presence.status : 'offline';
     const statusMap = {
         online: './pics/discord status/online.png',
@@ -118,82 +134,70 @@ async function createWelcomeImage(member) {
         invisible: './pics/discord status/invisible.png',
         offline: './pics/discord status/invisible.png'
     };
-
-    const statusImage = await loadImage(statusMap[status] || statusMap.offline).catch(() => null);
-
-    // 2. Calculate Coordinates
-    const avatarSize = 400;
-    const avatarX = dim.margin + 30;
-    const avatarY = (dim.height - avatarSize) / 2;
-    const avatarRadius = avatarSize / 2;
     
-    const centerX = avatarX + avatarRadius;
-    const centerY = avatarY + avatarRadius;
+    const [mainAvatar, statusImage, decoImage] = await Promise.all([
+        loadImage(member.displayAvatarURL({ extension: 'png', size: 512 })),
+        loadImage(statusMap[status] || statusMap.offline).catch(() => null),
+        user.avatarDecorationURL() ? loadImage(user.avatarDecorationURL({ extension: 'png', size: 512 })).catch(() => null) : null
+    ]);
 
-    // Status Coordinates
-    const statusSize = 100;
-    // Offset for 45 degrees (bottom-right)
-    const offset = 141; // ≈ 200 * 0.707
-    const statusX = (centerX + offset) - (statusSize / 2);
-    const statusY = (centerY + offset) - (statusSize / 2);
-    
-    // The "Hole" Radius (Status Size / 2 + Border Thickness)
-    const cutRadius = (statusSize / 2) + 8; 
-
-    // 3. Define the "Avatar Shape" (Circle minus Status Hole)
-    // We use this function for both the Shadow and the Image clipping
-    const defineAvatarShape = () => {
-        ctx.beginPath();
-        // Outer Circle (Avatar) - Clockwise (false)
-        ctx.arc(centerX, centerY, avatarRadius, 0, Math.PI * 2, false);
-        
-        // Inner Circle (Status Cutout) - Counter-Clockwise (true)
-        // This creates a hole in the fill/clip
-        if (statusImage) {
-            ctx.arc(statusX + statusSize/2, statusY + statusSize/2, cutRadius, 0, Math.PI * 2, true);
-        }
-        ctx.closePath();
-    };
-
-    // --- Draw Avatar Shadow ---
+    // --- A. Draw Avatar Shadow (Clipped to Circle - Hole) ---
     ctx.save();
-    defineAvatarShape();
+    ctx.beginPath();
+    // 1. Avatar Circle (Clockwise)
+    ctx.arc(centerX, centerY, avatarRadius, 0, Math.PI * 2, false);
+    // 2. Status Hole (Counter-Clockwise) -> This creates the hole
+    if (statusImage) {
+        ctx.arc(statusX + statusSize/2, statusY + statusSize/2, cutRadius, 0, Math.PI * 2, true);
+    }
+    ctx.closePath();
+    
     ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
     ctx.shadowBlur = 35;
     ctx.shadowOffsetX = 8;
     ctx.shadowOffsetY = 8;
     ctx.fillStyle = '#000000';
-    ctx.fill(); // Fills the avatar shape, leaving the status hole empty
+    ctx.fill(); 
     ctx.restore();
 
-    // --- Draw Avatar Image ---
-    const mainAvatar = await loadImage(member.displayAvatarURL({ extension: 'png', size: 512 }));
-    
+    // --- B. Draw Main Avatar (Clipped to Circle - Hole) ---
     ctx.save();
-    defineAvatarShape();
-    ctx.clip(); // Clips drawing to the shape (Circle minus Hole)
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, avatarRadius, 0, Math.PI * 2, false);
+    if (statusImage) {
+        ctx.arc(statusX + statusSize/2, statusY + statusSize/2, cutRadius, 0, Math.PI * 2, true);
+    }
+    ctx.closePath();
+    ctx.clip();
     ctx.drawImage(mainAvatar, avatarX, avatarY, avatarSize, avatarSize);
     ctx.restore();
 
-    // --- Draw Status Icon ---
-    // Now we draw the status exactly in the hole we left
+    // --- C. Draw Decoration (Clipped to WHOLE SCREEN - Hole) ---
+    if (decoImage) {
+        ctx.save();
+        ctx.beginPath();
+        // 1. Define the entire canvas as the "drawing area"
+        ctx.rect(0, 0, dim.width, dim.height); 
+        // 2. Cut the Status Hole out of the entire canvas
+        if (statusImage) {
+            ctx.arc(statusX + statusSize/2, statusY + statusSize/2, cutRadius, 0, Math.PI * 2, true);
+        }
+        ctx.closePath();
+        ctx.clip(); // Now we can draw anywhere EXCEPT the hole
+
+        const scaledDeco = avatarSize * 1.2;
+        const decoX = avatarX - (scaledDeco - avatarSize) / 2;
+        const decoY = avatarY - (scaledDeco - avatarSize) / 2;
+        ctx.drawImage(decoImage, decoX, decoY, scaledDeco, scaledDeco);
+        ctx.restore();
+    }
+
+    // --- D. Draw Status Icon ---
     if (statusImage) {
         ctx.drawImage(statusImage, statusX, statusY, statusSize, statusSize);
     }
 
-    // --- Decoration (Optional: Drawn on top) ---
-    const decoURL = user.avatarDecorationURL({ extension: 'png', size: 512 });
-    if (decoURL) {
-        const decoImage = await loadImage(decoURL).catch(() => null);
-        if (decoImage) {
-            const scaledDeco = avatarSize * 1.2;
-            const decoX = avatarX - (scaledDeco - avatarSize) / 2;
-            const decoY = avatarY - (scaledDeco - avatarSize) / 2;
-            ctx.drawImage(decoImage, decoX, decoY, scaledDeco, scaledDeco);
-        }
-    }
-
-    // --- Text ---
+    // --- Text Section ---
     ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
     ctx.shadowBlur = 15;
     ctx.shadowOffsetX = 5;
@@ -226,7 +230,7 @@ async function createWelcomeImage(member) {
     ctx.fillText(tag, textX, currentY);
 
     // ==========================================
-    // LAYER 2: THE BADGE
+    // LAYER 3: THE BADGE
     // ==========================================
     ctx.restore(); 
 

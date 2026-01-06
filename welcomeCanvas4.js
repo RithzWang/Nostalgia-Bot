@@ -213,20 +213,52 @@ async function createWelcomeImage(member) {
     // LAYER 4: TEXT & BADGE
     // ==========================================
 
-    // --- UPDATED: Standard Drop Shadow (Right & Bottom) ---
+    // --- Standard Drop Shadow (Right & Bottom) for Text ---
     ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
     ctx.shadowBlur = 5;
-    ctx.shadowOffsetX = 5; // A little to the right
-    ctx.shadowOffsetY = 5; // A little to the bottom
+    ctx.shadowOffsetX = 5; 
+    ctx.shadowOffsetY = 5; 
 
-    // Server Name
-    ctx.font = 'bold 60px "Noto Sans", "ReemKufi Bold", sans-serif';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    // --- ID Background & Text ---
+    const idText = `ID: ${member.id}`;
+    ctx.font = 'bold 60px "Prima Sans Regular", "ReemKufi Bold", sans-serif';
+    
+    // Measure text to size the background box
+    const idMetrics = ctx.measureText(idText);
+    const idAnchorX = dim.width - 70;
+    const idAnchorY = dim.height - 70;
+    
+    // Box settings
+    const idPaddingX = 40;
+    const idPaddingY = 25;
+    // Approximate height of the text characters themselves for centering
+    const idTextApproxHeight = 50; 
+    const idBoxRadius = 45;
+
+    // Calculate box position based on bottom-right text anchor
+    const idBoxW = idMetrics.width + (idPaddingX * 2);
+    const idBoxH = idTextApproxHeight + (idPaddingY * 2);
+    const idBoxX = idAnchorX - idMetrics.width - idPaddingX;
+    // Adjust Y to sit slightly below baseline for visual centering
+    const idBoxY = idAnchorY - idTextApproxHeight - idPaddingY + 5;
+
+    // Draw rounded background box (#404249 transparent -> rgba(64, 66, 73, 0.7))
+    ctx.save();
+    ctx.fillStyle = 'rgba(64, 66, 73, 0.7)';
+    ctx.beginPath();
+    ctx.roundRect(idBoxX, idBoxY, idBoxW, idBoxH, idBoxRadius);
+    ctx.fill();
+    ctx.restore();
+
+    // Draw ID Text
+    // Increased opacity from 0.4 to 0.9 for better readability on the new background
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'; 
     ctx.textAlign = 'right';
     ctx.textBaseline = 'bottom';
-    ctx.fillText("A2-Q Realm", dim.width - 70, dim.height - 70);
+    ctx.fillText(idText, idAnchorX, idAnchorY);
 
-    // Display Name
+
+    // --- Main Display Name ---
     const textX = avatarX + avatarSize + 70;
     let currentY = dim.height / 2 - 15;
     
@@ -238,7 +270,7 @@ async function createWelcomeImage(member) {
     const displayName = member.displayName.replace(/<a?:\w+:\d+>/g, '').trim() || user.username;
     ctx.fillText(displayName, textX, currentY);
 
-    // Username Tag
+    // --- Username Tag ---
     currentY += 115;
     ctx.font = '95px "Prima Sans Regular", sans-serif';
     ctx.fillStyle = '#b9bbbe';
@@ -256,8 +288,7 @@ async function createWelcomeImage(member) {
         // Calculate the vertical center line X-coordinate of the avatar
         const avatarCenterX = dim.margin + 30 + avatarRadius;
         
-        // To align the RIGHT edge of the badge with the center line,
-        // the LEFT edge (badgeX) must be center line minus badge width.
+        // Align RIGHT edge of badge to avatar center line
         const badgeX = avatarCenterX - badgeWidth;
         
         const badgeY = topOffset - (badgeHeight / 2);

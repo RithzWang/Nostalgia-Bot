@@ -13,7 +13,7 @@ const {
 // Since this file is in: commands/slash commands/admin/
 // We need to go up 3 folders (../../../) to reach the bot root where welcomeCanvas.js usually is.
 // If your file structure is different, adjust this path.
-const { createWelcomeImage } = require('../../../welcomeCanvas2.js'); 
+const { createWelcomeImage } = require('../../../welcomeCanvas3.js'); 
 
 module.exports = {
     guildOnly: true,

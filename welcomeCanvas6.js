@@ -419,20 +419,19 @@ async function createWelcomeImage(member) {
     const badgeImage = await loadImage('./pics/logo/A2-Q.png').catch(() => null);
 
     if (badgeImage) {
-        // 1. Increased Dimensions
-        // Previous: 150x90. New: 175x105.
+        // 1. Dimensions (175x105)
         const badgeWidth = 175;
         const badgeHeight = 105;
 
-        // 2. Horizontal Position 
-        // Logic: Right edge of badge touches the middle of the avatar
+        // 2. Horizontal Position
+        // Right edge touches middle of avatar
         const avatarCenterX = dim.margin + 30 + avatarRadius;
         const badgeX = avatarCenterX - badgeWidth;
 
         // 3. Vertical Position
-        // Logic: The "Red Line" (horizontal center of badge) touches the "White Line" (top border).
-        // 'topOffset' is the white line. We subtract half the height to center the badge on it.
-        const badgeY = topOffset - (badgeHeight / 2);
+        // Started at center: topOffset - (badgeHeight / 2)
+        // Added +15 to move it "to bottom a little"
+        const badgeY = topOffset - (badgeHeight / 2) + 15;
 
         ctx.drawImage(badgeImage, badgeX, badgeY, badgeWidth, badgeHeight);
     }

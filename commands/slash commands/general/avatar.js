@@ -127,7 +127,7 @@ module.exports = {
             // 6. Collector
             const collector = response.createMessageComponentCollector({ 
                 componentType: ComponentType.Button, 
-                idle: 30_000 
+                idle: 60_000 
             });
 
             collector.on('collect', async (i) => {

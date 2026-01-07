@@ -16,6 +16,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('steal-emoji')
         .setDescription('Copy emojis from another server (Owner Only)')
+        .setDMPermission(false)
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {

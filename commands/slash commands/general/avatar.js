@@ -12,7 +12,7 @@ module.exports = {
     guildOnly: true,
     data: new SlashCommandBuilder()
         .setName('avatar')
-        .setDescription('Shows the user avatar with a toggle for server avatar.')
+        .setDescription('Shows the user avatar')
         .setDMPermission(false)
         .addUserOption(option => 
             option.setName('target')

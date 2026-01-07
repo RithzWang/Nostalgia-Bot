@@ -17,6 +17,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('replace')
         .setDescription('Reset a message and replace it with a Container')
+        .setDMPermission(false)
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addStringOption(option => 
             option.setName('message_id')

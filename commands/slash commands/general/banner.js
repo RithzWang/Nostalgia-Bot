@@ -138,7 +138,7 @@ module.exports = {
 
             collector.on('collect', async (i) => {
                 if (i.user.id !== interaction.user.id) {
-                    return i.reply({ content: `Only <@${interaction.user.id}> can use this button!`, flags: [MessageFlags.Ephemeral] });
+                    return i.reply({ content: `Only <@${interaction.user.id}> can use this button`, flags: [MessageFlags.Ephemeral] });
                 }
                 if (i.customId === 'toggle_banner') {
                     isGlobalMode = !isGlobalMode;

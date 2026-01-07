@@ -3,14 +3,15 @@ const {
     ContainerBuilder, 
     ButtonBuilder, 
     ButtonStyle, 
-    MessageFlags 
+    MessageFlags, // Make sure this is imported
+    ComponentType
 } = require('discord.js');
 
 module.exports = {
     guildOnly: true,
     data: new SlashCommandBuilder()
         .setName('avatar')
-        .setDescription('Shows the global and server-specific display avatar.')
+        .setDescription('Shows the user avatar with a toggle for server avatar.')
         .setDMPermission(false)
         .addUserOption(option => 
             option.setName('target')
@@ -18,72 +19,114 @@ module.exports = {
         ),
 
     async execute(interaction) {
-        await interaction.deferReply();
+        // ❌ No deferReply() here. 
+        // This allows us to decide later if the message should be Public or Ephemeral.
 
         try {
             const member = interaction.options.getMember('target') || interaction.member;
-            if (!member) return interaction.editReply({ content: "❌ User not found." });
+            
+            // 1. Error Check: User Not Found
+            if (!member) {
+                return interaction.reply({ 
+                    content: "❌ User not found.", 
+                    // 👇 Using the Flag you requested
+                    flags: [MessageFlags.Ephemeral] 
+                });
+            }
 
             const user = member.user;
 
-            // Get URLs (Force PNG)
+            // 2. Get URLs
             const globalAvatar = user.displayAvatarURL({ size: 1024, extension: 'png', forceStatic: false });
             const displayAvatar = member.displayAvatarURL({ size: 1024, extension: 'png', forceStatic: false });
-
-            const componentsToSend = [];
-
-            // --- CONTAINER 1: GLOBAL AVATAR ---
-            const globalContainer = new ContainerBuilder()
-                .addSectionComponents((section) => 
-                    section
-                        .addTextDisplayComponents((text) => 
-                            text.setContent(`### Avatar of <@${user.id}>`)
-                        )
-                        .setButtonAccessory((btn) => 
-                            btn.setLabel('Link to Global')
-                               // 👇 THE FIX: Pass emoji as an object { name: '...' }
-                               .setEmoji({ name: '🖼️' }) 
-                               .setStyle(ButtonStyle.Link)
-                               .setURL(globalAvatar)
-                        )
-                )
-                .addMediaGalleryComponents((gallery) => 
-                    gallery.addItems((item) => item.setURL(globalAvatar))
-                );
             
-            componentsToSend.push(globalContainer);
+            const hasServerAvatar = globalAvatar !== displayAvatar;
 
-            // --- CONTAINER 2: DISPLAY AVATAR ---
-            const displayContainer = new ContainerBuilder()
-                .addSectionComponents((section) => 
-                    section
-                        .addTextDisplayComponents((text) => 
-                            text.setContent(`### Display Avatar of <@${user.id}>`)
+            // 3. Helper Function to Build Container
+            const createAvatarContainer = (isShowingGlobal) => {
+                const currentImage = isShowingGlobal ? globalAvatar : displayAvatar;
+                const titleText = isShowingGlobal ? `### 🖼️ Avatar of <@${user.id}>` : `### 🖼️ Display Avatar of <@${user.id}>`;
+                
+                const toggleButton = new ButtonBuilder()
+                    .setCustomId('toggle_avatar')
+                    .setStyle(ButtonStyle.Primary);
+
+                if (isShowingGlobal) {
+                    toggleButton.setLabel('Show Display Avatar').setEmoji({ name: '🖼️' });
+                    if (!hasServerAvatar) {
+                        toggleButton.setDisabled(true).setLabel('No Display Avatar');
+                    }
+                } else {
+                    toggleButton.setLabel('Show Global Avatar').setEmoji({ name: '🖼️' });
+                }
+
+                return new ContainerBuilder()
+                    .addSectionComponents((section) => 
+                        section
+                            .addTextDisplayComponents((text) => text.setContent(titleText))
+                            .setButtonAccessory(() => toggleButton)
+                    )
+                    .addActionRowComponents((row) => 
+                        row.setComponents(
+                            new ButtonBuilder()
+                                .setLabel('Open in Browser')
+                                .setStyle(ButtonStyle.Link)
+                                .setURL(currentImage)
                         )
-                        .setButtonAccessory((btn) => 
-                            btn.setLabel('Link to Display')
-                               // 👇 THE FIX: Pass emoji as an object { name: '...' }
-                               .setEmoji({ name: '🖼️' })
-                               .setStyle(ButtonStyle.Link)
-                               .setURL(displayAvatar)
-                        )
-                )
-                .addMediaGalleryComponents((gallery) => 
-                    gallery.addItems((item) => item.setURL(displayAvatar))
-                );
+                    )
+                    .addMediaGalleryComponents((gallery) => 
+                        gallery.addItems((item) => item.setURL(currentImage))
+                    );
+            };
 
-            componentsToSend.push(displayContainer);
+            // 4. Send Initial Reply (PUBLIC SUCCESS)
+            // We combine flags here if needed, but for public messages, we usually just need IsComponentsV2
+            let isGlobalMode = true;
+            const initialContainer = createAvatarContainer(true);
 
-            // Send Response
-            await interaction.editReply({ 
-                components: componentsToSend, 
-                flags: [MessageFlags.IsComponentsV2],
-                allowedMentions: { parse: [] } 
+            const response = await interaction.reply({ 
+                components: [initialContainer], 
+                flags: [MessageFlags.IsComponentsV2], 
+                allowedMentions: { parse: [] },
+                fetchReply: true
+            });
+
+            // 5. Create Collector
+            const collector = response.createMessageComponentCollector({ 
+                componentType: ComponentType.Button, 
+                time: 60000 
+            });
+
+            collector.on('collect', async (i) => {
+                if (i.user.id !== interaction.user.id) {
+                    return i.reply({ 
+                        content: `Only <@${interaction.user.id}> can use this button!`, 
+                        flags: [MessageFlags.Ephemeral] 
+                    });
+                }
+
+                if (i.customId === 'toggle_avatar') {
+                    isGlobalMode = !isGlobalMode;
+                    const newContainer = createAvatarContainer(isGlobalMode);
+
+                    await i.update({
+                        components: [newContainer],
+                        flags: [MessageFlags.IsComponentsV2]
+                    });
+                }
             });
 
         } catch (error) {
             console.error("Avatar Command Error:", error);
-            await interaction.editReply({ content: `❌ **Error:** ${error.message}` });
+            
+            // 6. Error Handling (EPHEMERAL via FLAG)
+            if (!interaction.replied) {
+                await interaction.reply({ 
+                    content: `❌ **Error:** ${error.message}`, 
+                    // 👇 This makes the error invisible to others
+                    flags: [MessageFlags.Ephemeral] 
+                });
+            }
         }
     }
 };

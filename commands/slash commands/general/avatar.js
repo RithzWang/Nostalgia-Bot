@@ -40,7 +40,7 @@ module.exports = {
             const createAvatarContainer = (isShowingGlobal) => {
                 const currentImage = isShowingGlobal ? globalAvatar : displayAvatar;
                 const titleText = isShowingGlobal 
-                    ? `### 🖼️ Avatar of <@${user.id}>` 
+                    ? `### 🖼️ Global Avatar of <@${user.id}>` 
                     : `### 🖼️ Display Avatar of <@${user.id}>`;
                 
                 // --- A. Toggle Button (Bottom Left) ---

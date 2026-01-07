@@ -3,81 +3,91 @@ const {
     ContainerBuilder, 
     ButtonBuilder, 
     ButtonStyle, 
-    MessageFlags, 
-    SeparatorSpacingSize 
+    MessageFlags 
 } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('avatar')
         .setDescription('Shows the global and server-specific display avatar.')
+        .setDMPermission(false)
         .addUserOption(option => 
             option.setName('target')
             .setDescription('The user to fetch the avatar for')
         ),
 
     async execute(interaction) {
-        const member = interaction.options.getMember('target') || interaction.member;
-        const user = member.user;
-
-        // 1. Get URLs
-        // Global Avatar (User profile)
-        const globalAvatar = user.displayAvatarURL({ size: 4096, forceStatic: false });
-        // Server Display Avatar (Guild profile) - This falls back to global if no specific server avatar exists
-        const displayAvatar = member.displayAvatarURL({ size: 4096, forceStatic: false });
-
-        // 2. Build Container
-        const avatarContainer = new ContainerBuilder()
+        try {
+            const member = interaction.options.getMember('target') || interaction.member;
             
-            // --- SECTION 1: GLOBAL AVATAR ---
-            .addSectionComponents((section) => 
-                section.addTextDisplayComponents((text) => 
-                    text.setContent(`### Avatar of <@${user.id}>`)
-                )
-            )
-            .addActionRowComponents((row) => 
-                row.setComponents(
-                    new ButtonBuilder()
-                        .setEmoji('🖼️')
-                        .setLabel('Link to Global Avatar')
-                        .setStyle(ButtonStyle.Link)
-                        .setURL(globalAvatar)
-                )
-            )
-            .addMediaGalleryComponents((gallery) => 
-                gallery.addItems((item) => item.setURL(globalAvatar))
-            )
+            if (!member) {
+                return interaction.reply({ content: "❌ User not found.", ephemeral: true });
+            }
 
-            // --- SEPARATOR ---
-            .addSeparatorComponents((sep) => 
-                sep.setSpacing(SeparatorSpacingSize.Small)
-            )
+            const user = member.user;
 
-            // --- SECTION 2: DISPLAY AVATAR ---
-            .addSectionComponents((section) => 
-                section.addTextDisplayComponents((text) => 
-                    text.setContent(`### Display Avatar of <@${user.id}>`)
-                )
-            )
-            .addActionRowComponents((row) => 
-                row.setComponents(
-                    new ButtonBuilder()
-                        .setEmoji('🖼️')
-                        .setLabel('Link to Display Avatar')
-                        .setStyle(ButtonStyle.Link)
-                        .setURL(displayAvatar)
-                )
-            )
-            .addMediaGalleryComponents((gallery) => 
-                gallery.addItems((item) => item.setURL(displayAvatar))
-            );
+            // 1. Get URLs
+            // Using PNG ensures the image renders correctly in the gallery
+            const globalAvatar = user.displayAvatarURL({ size: 1024, extension: 'png', forceStatic: false });
+            const displayAvatar = member.displayAvatarURL({ size: 1024, extension: 'png', forceStatic: false });
 
-        // 3. Send Response
-        await interaction.reply({ 
-            components: [avatarContainer], 
-            flags: [MessageFlags.IsComponentsV2],
-            // ⚠️ This ensures the @Mention inside the text DOES NOT ping the user
-            allowedMentions: { parse: [] } 
-        });
+            // ---------------------------------------------
+            // CONTAINER 1: GLOBAL AVATAR
+            // ---------------------------------------------
+            const globalContainer = new ContainerBuilder()
+                .addSectionComponents((section) => 
+                    section
+                        .addTextDisplayComponents((text) => 
+                            text.setContent(`### Avatar of <@${user.id}>`)
+                        )
+                        // Using 'setButtonAccessory' puts the button nicely next to the text
+                        // matching the style in your provided snippet
+                        .setButtonAccessory((btn) => 
+                            btn.setLabel('Link')
+                               .setEmoji('🖼️')
+                               .setStyle(ButtonStyle.Link)
+                               .setURL(globalAvatar)
+                        )
+                )
+                .addMediaGalleryComponents((gallery) => 
+                    gallery.addItems((item) => item.setURL(globalAvatar))
+                );
+
+            // ---------------------------------------------
+            // CONTAINER 2: DISPLAY AVATAR (Server Profile)
+            // ---------------------------------------------
+            const displayContainer = new ContainerBuilder()
+                .addSectionComponents((section) => 
+                    section
+                        .addTextDisplayComponents((text) => 
+                            text.setContent(`### Display Avatar of <@${user.id}>`)
+                        )
+                        .setButtonAccessory((btn) => 
+                            btn.setLabel('Link')
+                               .setEmoji('🖼️')
+                               .setStyle(ButtonStyle.Link)
+                               .setURL(displayAvatar)
+                        )
+                )
+                .addMediaGalleryComponents((gallery) => 
+                    gallery.addItems((item) => item.setURL(displayAvatar))
+                );
+
+            // ---------------------------------------------
+            // SEND RESPONSE
+            // ---------------------------------------------
+            await interaction.reply({ 
+                // We send BOTH containers in the array
+                components: [globalContainer, displayContainer], 
+                flags: [MessageFlags.IsComponentsV2],
+                allowedMentions: { parse: [] } 
+            });
+
+        } catch (error) {
+            console.error(error);
+            if (!interaction.replied) {
+                await interaction.reply({ content: `❌ **Error:** ${error.message}`, ephemeral: true });
+            }
+        }
     }
 };

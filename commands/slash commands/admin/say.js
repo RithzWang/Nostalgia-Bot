@@ -4,6 +4,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('message')
         .setDescription('Manage bot messages')
+        .setDMPermission(false)
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
         // --- SEND SUBCOMMAND ---
         .addSubcommand(sub => sub.setName('send').setDescription('Create a message')

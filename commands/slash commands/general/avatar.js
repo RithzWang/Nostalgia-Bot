@@ -10,17 +10,16 @@ const {
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('avatar')
-        .setDescription('Shows the user avatar')
-        .setDMPermission(false)
+        .setName('banner')
+        .setDescription('Shows the user banner')
         .addUserOption(option => 
             option.setName('target')
-            .setDescription('The user to fetch the avatar for')
+            .setDescription('The user to fetch the banner for')
         ),
 
     async execute(interaction) {
         try {
-            // 1. Smart Fetch
+            // 1. Resolve User
             const targetUser = interaction.options.getUser('target') || interaction.user;
             const targetMember = interaction.options.getMember('target') || interaction.member;
 
@@ -31,55 +30,52 @@ module.exports = {
                 });
             }
 
-            // 2. Get URLs
-            const globalAvatar = targetUser.displayAvatarURL({ size: 1024, extension: 'png', forceStatic: false });
-            const displayAvatar = targetMember 
-                ? targetMember.displayAvatarURL({ size: 1024, extension: 'png', forceStatic: false }) 
-                : globalAvatar;
+            // 2. Fetch User (Required for Banners)
+            const fetchedUser = await interaction.client.users.fetch(targetUser.id, { force: true });
 
-            const hasServerAvatar = globalAvatar !== displayAvatar;
+            // 3. Get URLs
+            const globalBanner = fetchedUser.bannerURL({ size: 4096, forceStatic: false });
+            const displayBanner = targetMember 
+                ? targetMember.bannerURL({ size: 4096, forceStatic: false }) 
+                : null;
 
-            // 3. CAPTURE TIME ONCE (Prevent updating)
+            if (!globalBanner && !displayBanner) {
+                return interaction.reply({ 
+                    content: `❌ **${targetUser.username}** has no global or server banner set.`,
+                    flags: [MessageFlags.Ephemeral] 
+                });
+            }
+
+            // 4. Static Timestamp
             const now = new Date();
-            const timeOptions = { 
+            const staticTimeString = new Intl.DateTimeFormat('en-GB', { 
                 timeZone: 'Asia/Bangkok', 
                 day: '2-digit', month: '2-digit', year: 'numeric', 
                 hour: '2-digit', minute: '2-digit', hour12: false 
-            };
-            // This string is now "frozen" at the moment the command was run
-            const staticTimeString = new Intl.DateTimeFormat('en-GB', timeOptions).format(now);
+            }).format(now);
 
-            // 4. Helper Function
-            const createAvatarContainer = (isShowingGlobal, disableToggle = false) => {
-                const currentImage = isShowingGlobal ? globalAvatar : displayAvatar;
-                
-                const titleText = isShowingGlobal 
-                    ? `## Global Avatar` 
-                    : `## Display Avatar`;
-                
-                const bodyText = isShowingGlobal
-                    ? `-# Global Avatar of <@${targetUser.id}>`
-                    : `-# Display Avatar of <@${targetUser.id}>`;
+            // 5. Build Container Helper
+            const createBannerContainer = (isShowingGlobal, disableToggle = false) => {
+                const currentImage = isShowingGlobal ? globalBanner : displayBanner;
+                const titleText = isShowingGlobal ? `## Global Banner` : `## Display Banner`;
+                const displayName = targetMember ? targetMember.displayName : targetUser.username;
+                const bodyText = isShowingGlobal ? `-# Global Banner of ${displayName}` : `-# Display Banner of ${displayName}`;
 
-                // --- Buttons ---
+                // Buttons
                 const toggleButton = new ButtonBuilder()
-                    .setCustomId('toggle_avatar')
+                    .setCustomId('toggle_banner')
                     .setStyle(ButtonStyle.Secondary);
 
                 if (isShowingGlobal) {
-                    toggleButton.setLabel('Show Display Avatar');
-                    if (!hasServerAvatar) {
-                        toggleButton.setDisabled(true).setLabel('No Display Avatar');
-                    }
+                    toggleButton.setLabel('Show Display Banner');
+                    if (!displayBanner) toggleButton.setDisabled(true).setLabel('No Display Banner');
                 } else {
-                    toggleButton.setLabel('Show Global Avatar');
+                    toggleButton.setLabel('Show Global Banner');
+                    if (!globalBanner) toggleButton.setDisabled(true).setLabel('No Global Banner');
                 }
 
-                if (disableToggle) {
-                    toggleButton.setDisabled(true);
-                }
+                if (disableToggle) toggleButton.setDisabled(true);
 
-                // 👇 Using the STATIC string we calculated earlier
                 const timeButton = new ButtonBuilder()
                     .setCustomId('timestamp_btn')
                     .setLabel(`${staticTimeString} (GMT+7)`)
@@ -88,34 +84,34 @@ module.exports = {
 
                 const browserButton = new ButtonBuilder()
                     .setLabel('Open in Browser')
-                    .setStyle(ButtonStyle.Link)
-                    .setURL(currentImage);
+                    .setStyle(ButtonStyle.Link);
+                
+                if (currentImage) browserButton.setURL(currentImage);
+                else browserButton.setDisabled(true).setURL('https://discord.com');
 
-                // --- Build Container ---
-                return new ContainerBuilder()
-                    .setAccentColor(0x888888) 
-                    
+                // Construct Container
+                const container = new ContainerBuilder()
+                    .setAccentColor(0x888888)
                     .addSectionComponents((section) => 
                         section
-                            .addTextDisplayComponents((text) => 
-                                text.setContent(`${titleText}\n${bodyText}`)
-                            )
+                            .addTextDisplayComponents((text) => text.setContent(`${titleText}\n${bodyText}`))
                             .setButtonAccessory(() => browserButton)
-                    )
-                    .addMediaGalleryComponents((gallery) => 
-                        gallery.addItems((item) => item.setURL(currentImage))
-                    )
-                    .addSeparatorComponents((sep) => 
-                        sep.setSpacing(SeparatorSpacingSize.Small)
-                    )
-                    .addActionRowComponents((row) => 
-                        row.setComponents(toggleButton, timeButton)
                     );
+
+                if (currentImage) {
+                    container.addMediaGalleryComponents((gallery) => gallery.addItems((item) => item.setURL(currentImage)))
+                             .addSeparatorComponents((sep) => sep.setSpacing(SeparatorSpacingSize.Small));
+                } else {
+                    container.addSeparatorComponents((sep) => sep.setSpacing(SeparatorSpacingSize.Small));
+                }
+
+                container.addActionRowComponents((row) => row.setComponents(toggleButton, timeButton));
+                return container;
             };
 
-            // 5. Send Initial Reply
-            let isGlobalMode = true;
-            const initialContainer = createAvatarContainer(true, false);
+            // 6. Send Initial Reply
+            let isGlobalMode = !!globalBanner;
+            const initialContainer = createBannerContainer(isGlobalMode, false);
 
             const response = await interaction.reply({ 
                 components: [initialContainer], 
@@ -124,7 +120,15 @@ module.exports = {
                 fetchReply: true
             });
 
-            // 6. Collector
+            // ---------------------------------------------------------
+            // ⚡ OPTIMIZATION CHECK ⚡
+            // If we don't have BOTH banners, the button is already disabled forever.
+            // We can STOP here. No Collector needed.
+            // ---------------------------------------------------------
+            const canToggle = globalBanner && displayBanner;
+            if (!canToggle) return; 
+
+            // 7. Collector (Only runs if toggling is possible)
             const collector = response.createMessageComponentCollector({ 
                 componentType: ComponentType.Button, 
                 idle: 60_000 
@@ -132,46 +136,25 @@ module.exports = {
 
             collector.on('collect', async (i) => {
                 if (i.user.id !== interaction.user.id) {
-                    return i.reply({ 
-                        content: `Only <@${interaction.user.id}> can use this button!`, 
-                        flags: [MessageFlags.Ephemeral] 
-                    });
+                    return i.reply({ content: `Only <@${interaction.user.id}> can use this button!`, flags: [MessageFlags.Ephemeral] });
                 }
-
-                if (i.customId === 'toggle_avatar') {
+                if (i.customId === 'toggle_banner') {
                     isGlobalMode = !isGlobalMode;
-                    const newContainer = createAvatarContainer(isGlobalMode, false);
-
-                    await i.update({
-                        components: [newContainer],
-                        flags: [MessageFlags.IsComponentsV2],
-                        allowedMentions: { parse: [] } 
-                    });
+                    const newContainer = createBannerContainer(isGlobalMode, false);
+                    await i.update({ components: [newContainer], flags: [MessageFlags.IsComponentsV2], allowedMentions: { parse: [] } });
                 }
             });
 
             collector.on('end', async () => {
                 try {
-                    const disabledContainer = createAvatarContainer(isGlobalMode, true);
-                    
-                    await interaction.editReply({
-                        components: [disabledContainer],
-                        flags: [MessageFlags.IsComponentsV2],
-                        allowedMentions: { parse: [] } // Blocks yellow ping
-                    });
-                } catch (error) {
-                    // Ignore error
-                }
+                    const disabledContainer = createBannerContainer(isGlobalMode, true);
+                    await interaction.editReply({ components: [disabledContainer], flags: [MessageFlags.IsComponentsV2], allowedMentions: { parse: [] } });
+                } catch (e) { /* Ignore */ }
             });
 
         } catch (error) {
-            console.error("Avatar Command Error:", error);
-            if (!interaction.replied) {
-                await interaction.reply({ 
-                    content: `❌ **Error:** ${error.message}`, 
-                    flags: [MessageFlags.Ephemeral] 
-                });
-            }
+            console.error("Banner Command Error:", error);
+            if (!interaction.replied) await interaction.reply({ content: `❌ **Error:** ${error.message}`, flags: [MessageFlags.Ephemeral] });
         }
     }
 };

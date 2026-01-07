@@ -38,6 +38,7 @@ module.exports = {
             .addActionRowComponents((row) => 
                 row.setComponents(
                     new ButtonBuilder()
+                        .setEmoji('🖼️')
                         .setLabel('Link to Global Avatar')
                         .setStyle(ButtonStyle.Link)
                         .setURL(globalAvatar)
@@ -61,6 +62,7 @@ module.exports = {
             .addActionRowComponents((row) => 
                 row.setComponents(
                     new ButtonBuilder()
+                        .setEmoji('🖼️')
                         .setLabel('Link to Display Avatar')
                         .setStyle(ButtonStyle.Link)
                         .setURL(displayAvatar)

@@ -16,6 +16,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('rolemenu')
         .setDescription('Manage role selection menus')
+        .setDMPermission(false)
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         
         // --- SETUP COMMAND ---

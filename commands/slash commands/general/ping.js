@@ -3,7 +3,8 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('ping')
-        .setDescription('Check bot latency'),
+        .setDescription('Check bot latency')
+        .setDMPermission(false),
 
     async execute(interaction) {
         // 1. Send the initial message (without fetching yet)

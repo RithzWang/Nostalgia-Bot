@@ -32,15 +32,17 @@ module.exports = {
             }
 
             // 2. Get URLs
-            const globalAvatar = targetUser.displayAvatarURL({ size: 1024, extension: 'png', forceStatic: false });
+            // 👇 CHANGE: Removed "extension: 'png'" so GIFs work now!
+            const globalAvatar = targetUser.displayAvatarURL({ size: 1024, forceStatic: false });
+            
             const displayAvatar = targetMember 
-                ? targetMember.displayAvatarURL({ size: 1024, extension: 'png', forceStatic: false }) 
+                ? targetMember.displayAvatarURL({ size: 1024, forceStatic: false }) 
                 : globalAvatar;
 
             // Check if they are actually different
             const hasServerAvatar = globalAvatar !== displayAvatar;
 
-            // 3. CAPTURE TIME ONCE (Prevent updating)
+            // 3. CAPTURE TIME ONCE
             const now = new Date();
             const timeOptions = { 
                 timeZone: 'Asia/Bangkok', 
@@ -57,8 +59,6 @@ module.exports = {
                     ? `## Global Avatar` 
                     : `## Display Avatar`;
                 
-                // Use plain name to avoid ping appearance in text (optional, but cleaner)
-                // If you want the <@ID> format back, just swap this variable.
                 const bodyText = isShowingGlobal
                     ? `-# Global Avatar of <@${targetUser.id}>`
                     : `-# Display Avatar of <@${targetUser.id}>`;
@@ -125,17 +125,13 @@ module.exports = {
                 fetchReply: true
             });
 
-            // ---------------------------------------------------------
             // ⚡ OPTIMIZATION CHECK ⚡
-            // If they don't have a unique server avatar, the button is already 
-            // disabled. We STOP here. No collector needed.
-            // ---------------------------------------------------------
             if (!hasServerAvatar) return;
 
             // 6. Collector
             const collector = response.createMessageComponentCollector({ 
                 componentType: ComponentType.Button, 
-                idle: 60_000 
+                idle: 30_000 
             });
 
             collector.on('collect', async (i) => {
@@ -165,7 +161,7 @@ module.exports = {
                     await interaction.editReply({
                         components: [disabledContainer],
                         flags: [MessageFlags.IsComponentsV2],
-                        allowedMentions: { parse: [] } // Blocks yellow ping
+                        allowedMentions: { parse: [] } 
                     });
                 } catch (error) {
                     // Ignore error

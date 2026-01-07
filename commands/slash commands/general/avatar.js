@@ -21,7 +21,6 @@ module.exports = {
     async execute(interaction) {
         try {
             // 1. Smart Fetch: Try to get Member (Server), fallback to User (DM)
-            // 'getMember' returns null in DMs, so we use 'getUser' as a backup
             const targetUser = interaction.options.getUser('target') || interaction.user;
             const targetMember = interaction.options.getMember('target') || interaction.member;
 
@@ -33,23 +32,17 @@ module.exports = {
             }
 
             // 2. Get URLs
-            // A. Global Avatar (Always exists)
             const globalAvatar = targetUser.displayAvatarURL({ size: 1024, extension: 'png', forceStatic: false });
-            
-            // B. Display Avatar (Server specific)
-            // If we are in a DM, 'targetMember' is null, so we just use the global avatar again.
             const displayAvatar = targetMember 
                 ? targetMember.displayAvatarURL({ size: 1024, extension: 'png', forceStatic: false }) 
                 : globalAvatar;
 
-            // Check if they are different (to enable/disable the button)
             const hasServerAvatar = globalAvatar !== displayAvatar;
 
             // 3. Helper Function to Build Container
             const createAvatarContainer = (isShowingGlobal) => {
                 const currentImage = isShowingGlobal ? globalAvatar : displayAvatar;
                 
-                // --- Title & Body Text Logic ---
                 const titleText = isShowingGlobal 
                     ? `### Global Avatar` 
                     : `### Display Avatar`;
@@ -58,14 +51,13 @@ module.exports = {
                     ? `-# Global Avatar of <@${targetUser.id}>`
                     : `-# Display Avatar of <@${targetUser.id}>`;
 
-                // --- A. Toggle Button (Bottom Left) ---
+                // --- Buttons ---
                 const toggleButton = new ButtonBuilder()
                     .setCustomId('toggle_avatar')
                     .setStyle(ButtonStyle.Secondary);
 
                 if (isShowingGlobal) {
                     toggleButton.setLabel('Show Display Avatar');
-                    // If no special server avatar (or in DM), disable this button
                     if (!hasServerAvatar) {
                         toggleButton.setDisabled(true).setLabel('No Display Avatar');
                     }
@@ -73,16 +65,11 @@ module.exports = {
                     toggleButton.setLabel('Show Global Avatar');
                 }
 
-                // --- B. Timestamp Button (Bottom Right) ---
                 const now = new Date();
                 const options = { 
-                    timeZone: 'Asia/Bangkok', // GMT+7
-                    day: '2-digit', 
-                    month: '2-digit', 
-                    year: 'numeric', 
-                    hour: '2-digit', 
-                    minute: '2-digit',
-                    hour12: false 
+                    timeZone: 'Asia/Bangkok', 
+                    day: '2-digit', month: '2-digit', year: 'numeric', 
+                    hour: '2-digit', minute: '2-digit', hour12: false 
                 };
                 const timeString = new Intl.DateTimeFormat('en-GB', options).format(now);
 
@@ -92,7 +79,6 @@ module.exports = {
                     .setStyle(ButtonStyle.Secondary)
                     .setDisabled(true);
 
-                // --- C. Browser Link (Top Right) ---
                 const browserButton = new ButtonBuilder()
                     .setLabel('Link')
                     .setStyle(ButtonStyle.Link)
@@ -100,7 +86,9 @@ module.exports = {
 
                 // --- Build Container ---
                 return new ContainerBuilder()
-                    // Top: Header + Body + Link Button
+                    // 👇 Added Accent Color Here
+                    .setAccentColor(0x888888) 
+                    
                     .addSectionComponents((section) => 
                         section
                             .addTextDisplayComponents((text) => 
@@ -108,18 +96,12 @@ module.exports = {
                             )
                             .setButtonAccessory(() => browserButton)
                     )
-                    
-                    // Middle: Image
                     .addMediaGalleryComponents((gallery) => 
                         gallery.addItems((item) => item.setURL(currentImage))
                     )
-
-                    // Separator
                     .addSeparatorComponents((sep) => 
                         sep.setSpacing(SeparatorSpacingSize.Small)
                     )
-
-                    // Bottom: Toggle + Timestamp
                     .addActionRowComponents((row) => 
                         row.setComponents(toggleButton, timeButton)
                     );

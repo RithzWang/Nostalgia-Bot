@@ -39,7 +39,17 @@ module.exports = {
 
             const hasServerAvatar = globalAvatar !== displayAvatar;
 
-            // 3. Helper Function to Build Container
+            // 3. CAPTURE TIME ONCE (Prevent updating)
+            const now = new Date();
+            const timeOptions = { 
+                timeZone: 'Asia/Bangkok', 
+                day: '2-digit', month: '2-digit', year: 'numeric', 
+                hour: '2-digit', minute: '2-digit', hour12: false 
+            };
+            // This string is now "frozen" at the moment the command was run
+            const staticTimeString = new Intl.DateTimeFormat('en-GB', timeOptions).format(now);
+
+            // 4. Helper Function
             const createAvatarContainer = (isShowingGlobal, disableToggle = false) => {
                 const currentImage = isShowingGlobal ? globalAvatar : displayAvatar;
                 
@@ -47,7 +57,6 @@ module.exports = {
                     ? `## Global Avatar` 
                     : `## Display Avatar`;
                 
-                // 👇 We kept the <@ID> format as you requested
                 const bodyText = isShowingGlobal
                     ? `-# Global Avatar of <@${targetUser.id}>`
                     : `-# Display Avatar of <@${targetUser.id}>`;
@@ -66,22 +75,14 @@ module.exports = {
                     toggleButton.setLabel('Show Global Avatar');
                 }
 
-                // Force disable if timeout
                 if (disableToggle) {
                     toggleButton.setDisabled(true);
                 }
 
-                const now = new Date();
-                const options = { 
-                    timeZone: 'Asia/Bangkok', 
-                    day: '2-digit', month: '2-digit', year: 'numeric', 
-                    hour: '2-digit', minute: '2-digit', hour12: false 
-                };
-                const timeString = new Intl.DateTimeFormat('en-GB', options).format(now);
-
+                // 👇 Using the STATIC string we calculated earlier
                 const timeButton = new ButtonBuilder()
                     .setCustomId('timestamp_btn')
-                    .setLabel(`${timeString} (GMT+7)`)
+                    .setLabel(`${staticTimeString} (GMT+7)`)
                     .setStyle(ButtonStyle.Secondary)
                     .setDisabled(true);
 
@@ -112,18 +113,18 @@ module.exports = {
                     );
             };
 
-            // 4. Send Initial Reply
+            // 5. Send Initial Reply
             let isGlobalMode = true;
             const initialContainer = createAvatarContainer(true, false);
 
             const response = await interaction.reply({ 
                 components: [initialContainer], 
                 flags: [MessageFlags.IsComponentsV2], 
-                allowedMentions: { parse: [] }, // ✅ Blocks ping here
+                allowedMentions: { parse: [] }, 
                 fetchReply: true
             });
 
-            // 5. Collector
+            // 6. Collector
             const collector = response.createMessageComponentCollector({ 
                 componentType: ComponentType.Button, 
                 idle: 30_000 
@@ -144,12 +145,11 @@ module.exports = {
                     await i.update({
                         components: [newContainer],
                         flags: [MessageFlags.IsComponentsV2],
-                        allowedMentions: { parse: [] } // ✅ Blocks ping here
+                        allowedMentions: { parse: [] } 
                     });
                 }
             });
 
-            // 👇 This is where the yellow highlight issue was happening!
             collector.on('end', async () => {
                 try {
                     const disabledContainer = createAvatarContainer(isGlobalMode, true);
@@ -157,7 +157,7 @@ module.exports = {
                     await interaction.editReply({
                         components: [disabledContainer],
                         flags: [MessageFlags.IsComponentsV2],
-                        allowedMentions: { parse: [] } // ✅ CRITICAL: Blocks ping on timeout
+                        allowedMentions: { parse: [] } // Blocks yellow ping
                     });
                 } catch (error) {
                     // Ignore error

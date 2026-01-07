@@ -20,45 +20,60 @@ module.exports = {
 
     async execute(interaction) {
         try {
-            const member = interaction.options.getMember('target') || interaction.member;
-            
-            if (!member) {
+            // 1. Smart Fetch: Try to get Member (Server), fallback to User (DM)
+            // 'getMember' returns null in DMs, so we use 'getUser' as a backup
+            const targetUser = interaction.options.getUser('target') || interaction.user;
+            const targetMember = interaction.options.getMember('target') || interaction.member;
+
+            if (!targetUser) {
                 return interaction.reply({ 
                     content: "❌ User not found.", 
                     flags: [MessageFlags.Ephemeral] 
                 });
             }
 
-            const user = member.user;
+            // 2. Get URLs
+            // A. Global Avatar (Always exists)
+            const globalAvatar = targetUser.displayAvatarURL({ size: 1024, extension: 'png', forceStatic: false });
+            
+            // B. Display Avatar (Server specific)
+            // If we are in a DM, 'targetMember' is null, so we just use the global avatar again.
+            const displayAvatar = targetMember 
+                ? targetMember.displayAvatarURL({ size: 1024, extension: 'png', forceStatic: false }) 
+                : globalAvatar;
 
-            // 1. Get URLs
-            const globalAvatar = user.displayAvatarURL({ size: 1024, extension: 'png', forceStatic: false });
-            const displayAvatar = member.displayAvatarURL({ size: 1024, extension: 'png', forceStatic: false });
+            // Check if they are different (to enable/disable the button)
             const hasServerAvatar = globalAvatar !== displayAvatar;
 
-            // 2. Helper Function to Build Container
+            // 3. Helper Function to Build Container
             const createAvatarContainer = (isShowingGlobal) => {
                 const currentImage = isShowingGlobal ? globalAvatar : displayAvatar;
-                const titleText = isShowingGlobal 
-                    ? `### 🖼️ Global Avatar of <@${user.id}>` 
-                    : `### 🖼️ Display Avatar of <@${user.id}>`;
                 
+                // --- Title & Body Text Logic ---
+                const titleText = isShowingGlobal 
+                    ? `### Global Avatar` 
+                    : `### Display Avatar`;
+                
+                const bodyText = isShowingGlobal
+                    ? `-# Global Avatar of <@${targetUser.id}>`
+                    : `-# Display Avatar of <@${targetUser.id}>`;
+
                 // --- A. Toggle Button (Bottom Left) ---
                 const toggleButton = new ButtonBuilder()
                     .setCustomId('toggle_avatar')
                     .setStyle(ButtonStyle.Secondary);
 
                 if (isShowingGlobal) {
-                    toggleButton.setLabel('Show Display Avatar').setEmoji({ name: '🖼️' });
+                    toggleButton.setLabel('Show Display Avatar');
+                    // If no special server avatar (or in DM), disable this button
                     if (!hasServerAvatar) {
                         toggleButton.setDisabled(true).setLabel('No Display Avatar');
                     }
                 } else {
-                    toggleButton.setLabel('Show Global Avatar').setEmoji({ name: '🖼️' });
+                    toggleButton.setLabel('Show Global Avatar');
                 }
 
                 // --- B. Timestamp Button (Bottom Right) ---
-                // Calculate GMT+7 Time
                 const now = new Date();
                 const options = { 
                     timeZone: 'Asia/Bangkok', // GMT+7
@@ -69,14 +84,13 @@ module.exports = {
                     minute: '2-digit',
                     hour12: false 
                 };
-                // Format: "07/01/2026, 13:30"
                 const timeString = new Intl.DateTimeFormat('en-GB', options).format(now);
 
                 const timeButton = new ButtonBuilder()
                     .setCustomId('timestamp_btn')
                     .setLabel(`${timeString} (GMT+7)`)
                     .setStyle(ButtonStyle.Secondary)
-                    .setDisabled(true); // Disabled as requested
+                    .setDisabled(true);
 
                 // --- C. Browser Link (Top Right) ---
                 const browserButton = new ButtonBuilder()
@@ -86,10 +100,12 @@ module.exports = {
 
                 // --- Build Container ---
                 return new ContainerBuilder()
-                    // Top: Header + Link Button
+                    // Top: Header + Body + Link Button
                     .addSectionComponents((section) => 
                         section
-                            .addTextDisplayComponents((text) => text.setContent(titleText))
+                            .addTextDisplayComponents((text) => 
+                                text.setContent(`${titleText}\n${bodyText}`)
+                            )
                             .setButtonAccessory(() => browserButton)
                     )
                     
@@ -109,7 +125,7 @@ module.exports = {
                     );
             };
 
-            // 3. Send Initial Reply
+            // 4. Send Initial Reply
             let isGlobalMode = true;
             const initialContainer = createAvatarContainer(true);
 
@@ -120,7 +136,7 @@ module.exports = {
                 fetchReply: true
             });
 
-            // 4. Collector
+            // 5. Collector
             const collector = response.createMessageComponentCollector({ 
                 componentType: ComponentType.Button, 
                 time: 60000 

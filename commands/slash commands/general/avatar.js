@@ -12,7 +12,7 @@ module.exports = {
     guildOnly: true,
     data: new SlashCommandBuilder()
         .setName('avatar')
-        .setDescription('Shows the user avatar')
+        .setDescription('Shows the user avatar with a toggle for server avatar.')
         .setDMPermission(false)
         .addUserOption(option => 
             option.setName('target')
@@ -35,7 +35,6 @@ module.exports = {
             // 1. Get URLs
             const globalAvatar = user.displayAvatarURL({ size: 1024, extension: 'png', forceStatic: false });
             const displayAvatar = member.displayAvatarURL({ size: 1024, extension: 'png', forceStatic: false });
-            
             const hasServerAvatar = globalAvatar !== displayAvatar;
 
             // 2. Helper Function to Build Container
@@ -45,12 +44,10 @@ module.exports = {
                     ? `### 🖼️ Avatar of <@${user.id}>` 
                     : `### 🛡️ Display Avatar of <@${user.id}>`;
                 
-                // --- Button Definitions ---
-                
-                // Button 1: Toggle (Grey, Goes to Bottom)
+                // --- A. Toggle Button (Bottom Left) ---
                 const toggleButton = new ButtonBuilder()
                     .setCustomId('toggle_avatar')
-                    .setStyle(ButtonStyle.Secondary); // Grey Style
+                    .setStyle(ButtonStyle.Secondary);
 
                 if (isShowingGlobal) {
                     toggleButton.setLabel('Show Display Avatar').setEmoji({ name: '🛡️' });
@@ -61,36 +58,55 @@ module.exports = {
                     toggleButton.setLabel('Show Global Avatar').setEmoji({ name: '🖼️' });
                 }
 
-                // Button 2: Browser Link (Goes to Top Right)
+                // --- B. Timestamp Button (Bottom Right) ---
+                // Calculate GMT+7 Time
+                const now = new Date();
+                const options = { 
+                    timeZone: 'Asia/Bangkok', // GMT+7
+                    day: '2-digit', 
+                    month: '2-digit', 
+                    year: 'numeric', 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    hour12: false 
+                };
+                // Format: "07/01/2026, 13:30"
+                const timeString = new Intl.DateTimeFormat('en-GB', options).format(now);
+
+                const timeButton = new ButtonBuilder()
+                    .setCustomId('timestamp_btn')
+                    .setLabel(`${timeString} (GMT+7)`)
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(true); // Disabled as requested
+
+                // --- C. Browser Link (Top Right) ---
                 const browserButton = new ButtonBuilder()
                     .setLabel('Open in Browser')
                     .setStyle(ButtonStyle.Link)
                     .setURL(currentImage);
 
-                // --- Container Construction ---
+                // --- Build Container ---
                 return new ContainerBuilder()
-                    // A. Top Section (Header + Open in Browser Button)
+                    // Top: Header + Link Button
                     .addSectionComponents((section) => 
                         section
                             .addTextDisplayComponents((text) => text.setContent(titleText))
-                            // 👇 "Open in Browser" moved here
                             .setButtonAccessory(() => browserButton)
                     )
                     
-                    // B. The Image (Middle)
+                    // Middle: Image
                     .addMediaGalleryComponents((gallery) => 
                         gallery.addItems((item) => item.setURL(currentImage))
                     )
 
-                    // C. Separator
+                    // Separator
                     .addSeparatorComponents((sep) => 
                         sep.setSpacing(SeparatorSpacingSize.Small)
                     )
 
-                    // D. Bottom Row (Toggle Button)
+                    // Bottom: Toggle + Timestamp
                     .addActionRowComponents((row) => 
-                        // 👇 Toggle Button moved here
-                        row.setComponents(toggleButton)
+                        row.setComponents(toggleButton, timeButton)
                     );
             };
 

@@ -41,7 +41,7 @@ module.exports = {
                 const currentImage = isShowingGlobal ? globalAvatar : displayAvatar;
                 const titleText = isShowingGlobal 
                     ? `### 🖼️ Avatar of <@${user.id}>` 
-                    : `### 🛡️ Display Avatar of <@${user.id}>`;
+                    : `### 🖼️ Display Avatar of <@${user.id}>`;
                 
                 // --- A. Toggle Button (Bottom Left) ---
                 const toggleButton = new ButtonBuilder()
@@ -49,7 +49,7 @@ module.exports = {
                     .setStyle(ButtonStyle.Secondary);
 
                 if (isShowingGlobal) {
-                    toggleButton.setLabel('Show Display Avatar').setEmoji({ name: '🛡️' });
+                    toggleButton.setLabel('Show Display Avatar').setEmoji({ name: '🖼️' });
                     if (!hasServerAvatar) {
                         toggleButton.setDisabled(true).setLabel('No Display Avatar');
                     }
@@ -80,7 +80,7 @@ module.exports = {
 
                 // --- C. Browser Link (Top Right) ---
                 const browserButton = new ButtonBuilder()
-                    .setLabel('Open in Browser')
+                    .setLabel('Link')
                     .setStyle(ButtonStyle.Link)
                     .setURL(currentImage);
 

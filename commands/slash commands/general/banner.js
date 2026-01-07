@@ -83,7 +83,7 @@ module.exports = {
                     .setDisabled(true);
 
                 const browserButton = new ButtonBuilder()
-                    .setLabel('Link')
+                    .setLabel('Open in Browser')
                     .setStyle(ButtonStyle.Link);
                 
                 if (currentImage) browserButton.setURL(currentImage);

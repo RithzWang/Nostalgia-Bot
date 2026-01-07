@@ -44,8 +44,8 @@ module.exports = {
                 const currentImage = isShowingGlobal ? globalAvatar : displayAvatar;
                 
                 const titleText = isShowingGlobal 
-                    ? `### Global Avatar` 
-                    : `### Display Avatar`;
+                    ? `## Global Avatar` 
+                    : `## Display Avatar`;
                 
                 const bodyText = isShowingGlobal
                     ? `-# Global Avatar of <@${targetUser.id}>`

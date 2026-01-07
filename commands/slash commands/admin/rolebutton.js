@@ -33,6 +33,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('rolebutton')
         .setDescription('Manage role buttons')
+        .setDMPermission(false)
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
 
         // --- SETUP COMMAND ---

@@ -419,21 +419,20 @@ async function createWelcomeImage(member) {
     const badgeImage = await loadImage('./pics/logo/A2-Q.png').catch(() => null);
 
     if (badgeImage) {
-        // 1. Balanced Size (Smaller than the "too big" version)
-        const badgeWidth = 150;
-        const badgeHeight = 90;
+        // 1. Increased Dimensions
+        // Previous: 150x90. New: 175x105.
+        const badgeWidth = 175;
+        const badgeHeight = 105;
 
-        // 2. Horizontal Position (Right edge touches middle of avatar)
-        // Keeps the alignment you asked for previously
+        // 2. Horizontal Position 
+        // Logic: Right edge of badge touches the middle of the avatar
         const avatarCenterX = dim.margin + 30 + avatarRadius;
         const badgeX = avatarCenterX - badgeWidth;
 
-        // 3. Vertical Position (Matching Pic 2)
-        // instead of dividing height by 2 (which is 50/50),
-        // we only subtract a small amount (e.g. 25px).
-        // This means 25px sticks OUT, and the rest (65px) sits INSIDE.
-        const overlapAmount = 25; 
-        const badgeY = topOffset - overlapAmount;
+        // 3. Vertical Position
+        // Logic: The "Red Line" (horizontal center of badge) touches the "White Line" (top border).
+        // 'topOffset' is the white line. We subtract half the height to center the badge on it.
+        const badgeY = topOffset - (badgeHeight / 2);
 
         ctx.drawImage(badgeImage, badgeX, badgeY, badgeWidth, badgeHeight);
     }

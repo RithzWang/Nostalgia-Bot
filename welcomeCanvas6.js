@@ -414,26 +414,26 @@ async function createWelcomeImage(member) {
         ctx.textBaseline = 'alphabetic'; 
     }
 
-        // --- Crown Badge (Logo) ---
-    ctx.restore(); // This removes the translation, so we are back to absolute coordinates (0,0 is top-left)
+    // --- Crown Badge (Logo) ---
+    ctx.restore();
     const badgeImage = await loadImage('./pics/logo/A2-Q.png').catch(() => null);
 
     if (badgeImage) {
-        // 1. Increase Size (Approx 1.5x larger)
-        const badgeWidth = 195;
-        const badgeHeight = 120;
+        // 1. Size Adjustment
+        // Reduced from 195x120 (too big) to 150x92 (balanced)
+        const badgeWidth = 150;
+        const badgeHeight = 92;
 
-        // 2. Horizontal Position: "Right edge of badge... same as middle of avatar"
-        // We find the center of the avatar, then subtract the badge width.
-        // This places the badge's right side exactly on the avatar's center axis.
+        // 2. Horizontal X Position
+        // Logic: The RIGHT edge of the badge aligns with the CENTER of the avatar.
         const avatarCenterX = dim.margin + 30 + avatarRadius;
         const badgeX = avatarCenterX - badgeWidth;
 
-        // 3. Vertical Position: "Sit on the inner frame / not out 50% and in 50%"
-        // 'topOffset' is where the card border starts (y=50).
-        // We subtract a small amount (20px) so it overlaps the border slightly "on top",
-        // but the body of the badge sits inside the card.
-        const badgeY = topOffset - 20;
+        // 3. Vertical Y Position
+        // Logic: "Middle horizontal sit on the middle of horizontal inner frame line"
+        // 'topOffset' is the exact Y position of the inner frame line.
+        // Subtracting half the height moves the badge up so its own middle sits on that line.
+        const badgeY = topOffset - (badgeHeight / 2);
 
         ctx.drawImage(badgeImage, badgeX, badgeY, badgeWidth, badgeHeight);
     }

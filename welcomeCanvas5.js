@@ -208,7 +208,7 @@ async function createWelcomeImage(member) {
     ctx.font = '50px "Prima Sans Regular", "ReemKufi Bold", sans-serif';
     
     const idMetrics = ctx.measureText(idText);
-    const idPaddingX = 20; 
+    const idPaddingX = 25; 
     const idBoxHeight = 85; 
     const marginRight = 50;
     const marginBottom = 50;

@@ -55,7 +55,7 @@ module.exports = {
                 // --- Buttons ---
                 const toggleButton = new ButtonBuilder()
                     .setCustomId('toggle_avatar')
-                    .setStyle(ButtonStyle.Secondary);
+                    .setStyle(ButtonStyle.Primary);
 
                 if (isShowingGlobal) {
                     toggleButton.setLabel('Show Display Avatar');

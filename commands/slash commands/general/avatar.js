@@ -45,11 +45,12 @@ module.exports = {
                     ? `### 🖼️ Avatar of <@${user.id}>` 
                     : `### 🛡️ Display Avatar of <@${user.id}>`;
                 
-                // --- Button Logic ---
+                // --- Button Definitions ---
+                
+                // Button 1: Toggle (Grey, Goes to Bottom)
                 const toggleButton = new ButtonBuilder()
                     .setCustomId('toggle_avatar')
-                    // 👇 Changed from Primary to Secondary (Grey)
-                    .setStyle(ButtonStyle.Secondary); 
+                    .setStyle(ButtonStyle.Secondary); // Grey Style
 
                 if (isShowingGlobal) {
                     toggleButton.setLabel('Show Display Avatar').setEmoji({ name: '🛡️' });
@@ -60,16 +61,20 @@ module.exports = {
                     toggleButton.setLabel('Show Global Avatar').setEmoji({ name: '🖼️' });
                 }
 
+                // Button 2: Browser Link (Goes to Top Right)
                 const browserButton = new ButtonBuilder()
                     .setLabel('Open in Browser')
-                    .setStyle(ButtonStyle.Link) // Link style is already grey
+                    .setStyle(ButtonStyle.Link)
                     .setURL(currentImage);
 
-                // --- Container Layout ---
+                // --- Container Construction ---
                 return new ContainerBuilder()
-                    // A. Top Section (Header)
+                    // A. Top Section (Header + Open in Browser Button)
                     .addSectionComponents((section) => 
-                        section.addTextDisplayComponents((text) => text.setContent(titleText))
+                        section
+                            .addTextDisplayComponents((text) => text.setContent(titleText))
+                            // 👇 "Open in Browser" moved here
+                            .setButtonAccessory(() => browserButton)
                     )
                     
                     // B. The Image (Middle)
@@ -82,9 +87,10 @@ module.exports = {
                         sep.setSpacing(SeparatorSpacingSize.Small)
                     )
 
-                    // D. Bottom Buttons (Action Row)
+                    // D. Bottom Row (Toggle Button)
                     .addActionRowComponents((row) => 
-                        row.setComponents(toggleButton, browserButton)
+                        // 👇 Toggle Button moved here
+                        row.setComponents(toggleButton)
                     );
             };
 

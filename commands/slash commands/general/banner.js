@@ -18,7 +18,7 @@ module.exports = {
         ),
 
     async execute(interaction) {
-        // 1. Defer Reply (Fetching banners takes time)
+        // 1. Defer Reply (Crucial for fetching data)
         await interaction.deferReply();
 
         try {
@@ -33,6 +33,7 @@ module.exports = {
             const user = await interaction.client.users.fetch(member.id, { force: true });
 
             // 3. Get URLs
+            // Force PNG for better compatibility with galleries
             const globalBanner = user.bannerURL({ size: 4096, extension: 'png', forceStatic: false });
             const displayBanner = member.bannerURL({ size: 4096, extension: 'png', forceStatic: false });
 
@@ -50,18 +51,19 @@ module.exports = {
                         )
                     );
 
-                    // Only add the button if there is a banner
+                    // Only add button if banner exists
                     if (globalBanner) {
                         section.setButtonAccessory((btn) => 
                             btn.setLabel('Link')
-                               .setEmoji('🖼️')
+                               // 👇 THE FIX: Pass emoji as an object
+                               .setEmoji({ name: '🖼️' })
                                .setStyle(ButtonStyle.Link)
                                .setURL(globalBanner)
                         );
                     }
                 });
 
-            // Only add the image gallery if there is a banner
+            // Only add image if banner exists
             if (globalBanner) {
                 globalContainer.addMediaGalleryComponents((gallery) => 
                     gallery.addItems((item) => item.setURL(globalBanner))
@@ -85,7 +87,8 @@ module.exports = {
                     if (displayBanner) {
                         section.setButtonAccessory((btn) => 
                             btn.setLabel('Link')
-                               .setEmoji('🖼️')
+                               // 👇 THE FIX: Pass emoji as an object
+                               .setEmoji({ name: '🖼️' })
                                .setStyle(ButtonStyle.Link)
                                .setURL(displayBanner)
                         );
@@ -100,9 +103,7 @@ module.exports = {
 
             componentsToSend.push(displayContainer);
 
-            // ---------------------------------------------
-            // SEND RESPONSE
-            // ---------------------------------------------
+            // 4. Send Response
             await interaction.editReply({ 
                 components: componentsToSend, 
                 flags: [MessageFlags.IsComponentsV2],
@@ -111,9 +112,7 @@ module.exports = {
 
         } catch (error) {
             console.error("Banner Command Error:", error);
-            const msg = `❌ **Error:** ${error.message}`;
-            // Since we deferred, we must use editReply
-            await interaction.editReply({ content: msg });
+            await interaction.editReply({ content: `❌ **Error:** ${error.message}` });
         }
     }
 };

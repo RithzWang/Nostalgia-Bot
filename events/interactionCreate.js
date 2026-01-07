@@ -174,7 +174,7 @@ module.exports = {
                 const restrictionId = interaction.customId.replace('role_select_', '');
                 if (restrictionId !== 'public' && restrictionId !== 'menu') {
                     if (!interaction.member.roles.cache.has(restrictionId)) {
-                        return interaction.reply({ content: `<:no:1297814819105144862> You need the <@&${restrictionId}> role to use this menu!`, flags: MessageFlags.Ephemeral });
+                        return interaction.reply({ content: `<:no:1297814819105144862> You need the <@&${restrictionId}> role to use this menu`, flags: MessageFlags.Ephemeral });
                     }
                 }
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral });

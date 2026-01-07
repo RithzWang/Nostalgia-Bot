@@ -12,6 +12,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('banner')
         .setDescription('Shows the user banner')
+        .setDMPermission(false)
         .addUserOption(option => 
             option.setName('target')
             .setDescription('The user to fetch the banner for')

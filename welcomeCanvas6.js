@@ -431,7 +431,7 @@ async function createWelcomeImage(member) {
         // 3. Vertical Position
         // Started at center: topOffset - (badgeHeight / 2)
         // Added +15 to move it "to bottom a little"
-        const badgeY = topOffset - (badgeHeight / 2) + 15;
+        const badgeY = topOffset - (badgeHeight / 2) + 10;
 
         ctx.drawImage(badgeImage, badgeX, badgeY, badgeWidth, badgeHeight);
     }

@@ -7,6 +7,7 @@ const {
 } = require('discord.js');
 
 module.exports = {
+    guildOnly: true,
     data: new SlashCommandBuilder()
         .setName('avatar')
         .setDescription('Shows the global and server-specific display avatar.')
@@ -17,34 +18,31 @@ module.exports = {
         ),
 
     async execute(interaction) {
+        await interaction.deferReply();
+
         try {
             const member = interaction.options.getMember('target') || interaction.member;
-            
-            if (!member) {
-                return interaction.reply({ content: "❌ User not found.", ephemeral: true });
-            }
+            if (!member) return interaction.editReply({ content: "❌ User not found." });
 
             const user = member.user;
 
-            // 1. Get URLs
-            // Using PNG ensures the image renders correctly in the gallery
+            // Get URLs (Force PNG)
             const globalAvatar = user.displayAvatarURL({ size: 1024, extension: 'png', forceStatic: false });
             const displayAvatar = member.displayAvatarURL({ size: 1024, extension: 'png', forceStatic: false });
 
-            // ---------------------------------------------
-            // CONTAINER 1: GLOBAL AVATAR
-            // ---------------------------------------------
+            const componentsToSend = [];
+
+            // --- CONTAINER 1: GLOBAL AVATAR ---
             const globalContainer = new ContainerBuilder()
                 .addSectionComponents((section) => 
                     section
                         .addTextDisplayComponents((text) => 
                             text.setContent(`### Avatar of <@${user.id}>`)
                         )
-                        // Using 'setButtonAccessory' puts the button nicely next to the text
-                        // matching the style in your provided snippet
                         .setButtonAccessory((btn) => 
-                            btn.setLabel('Link')
-                               .setEmoji('🖼️')
+                            btn.setLabel('Link to Global')
+                               // 👇 THE FIX: Pass emoji as an object { name: '...' }
+                               .setEmoji({ name: '🖼️' }) 
                                .setStyle(ButtonStyle.Link)
                                .setURL(globalAvatar)
                         )
@@ -52,10 +50,10 @@ module.exports = {
                 .addMediaGalleryComponents((gallery) => 
                     gallery.addItems((item) => item.setURL(globalAvatar))
                 );
+            
+            componentsToSend.push(globalContainer);
 
-            // ---------------------------------------------
-            // CONTAINER 2: DISPLAY AVATAR (Server Profile)
-            // ---------------------------------------------
+            // --- CONTAINER 2: DISPLAY AVATAR ---
             const displayContainer = new ContainerBuilder()
                 .addSectionComponents((section) => 
                     section
@@ -63,8 +61,9 @@ module.exports = {
                             text.setContent(`### Display Avatar of <@${user.id}>`)
                         )
                         .setButtonAccessory((btn) => 
-                            btn.setLabel('Link')
-                               .setEmoji('🖼️')
+                            btn.setLabel('Link to Display')
+                               // 👇 THE FIX: Pass emoji as an object { name: '...' }
+                               .setEmoji({ name: '🖼️' })
                                .setStyle(ButtonStyle.Link)
                                .setURL(displayAvatar)
                         )
@@ -73,21 +72,18 @@ module.exports = {
                     gallery.addItems((item) => item.setURL(displayAvatar))
                 );
 
-            // ---------------------------------------------
-            // SEND RESPONSE
-            // ---------------------------------------------
-            await interaction.reply({ 
-                // We send BOTH containers in the array
-                components: [globalContainer, displayContainer], 
+            componentsToSend.push(displayContainer);
+
+            // Send Response
+            await interaction.editReply({ 
+                components: componentsToSend, 
                 flags: [MessageFlags.IsComponentsV2],
                 allowedMentions: { parse: [] } 
             });
 
         } catch (error) {
-            console.error(error);
-            if (!interaction.replied) {
-                await interaction.reply({ content: `❌ **Error:** ${error.message}`, ephemeral: true });
-            }
+            console.error("Avatar Command Error:", error);
+            await interaction.editReply({ content: `❌ **Error:** ${error.message}` });
         }
     }
 };

@@ -3,8 +3,9 @@ const {
     ContainerBuilder, 
     ButtonBuilder, 
     ButtonStyle, 
-    MessageFlags, // Make sure this is imported
-    ComponentType
+    MessageFlags, 
+    ComponentType,
+    SeparatorSpacingSize 
 } = require('discord.js');
 
 module.exports = {
@@ -19,40 +20,39 @@ module.exports = {
         ),
 
     async execute(interaction) {
-        // ❌ No deferReply() here. 
-        // This allows us to decide later if the message should be Public or Ephemeral.
-
         try {
             const member = interaction.options.getMember('target') || interaction.member;
             
-            // 1. Error Check: User Not Found
             if (!member) {
                 return interaction.reply({ 
                     content: "❌ User not found.", 
-                    // 👇 Using the Flag you requested
                     flags: [MessageFlags.Ephemeral] 
                 });
             }
 
             const user = member.user;
 
-            // 2. Get URLs
+            // 1. Get URLs
             const globalAvatar = user.displayAvatarURL({ size: 1024, extension: 'png', forceStatic: false });
             const displayAvatar = member.displayAvatarURL({ size: 1024, extension: 'png', forceStatic: false });
             
             const hasServerAvatar = globalAvatar !== displayAvatar;
 
-            // 3. Helper Function to Build Container
+            // 2. Helper Function to Build Container
             const createAvatarContainer = (isShowingGlobal) => {
                 const currentImage = isShowingGlobal ? globalAvatar : displayAvatar;
-                const titleText = isShowingGlobal ? `### 🖼️ Avatar of <@${user.id}>` : `### 🖼️ Display Avatar of <@${user.id}>`;
+                const titleText = isShowingGlobal 
+                    ? `### 🖼️ Avatar of <@${user.id}>` 
+                    : `### 🛡️ Display Avatar of <@${user.id}>`;
                 
+                // --- Button Logic ---
                 const toggleButton = new ButtonBuilder()
                     .setCustomId('toggle_avatar')
-                    .setStyle(ButtonStyle.Primary);
+                    // 👇 Changed from Primary to Secondary (Grey)
+                    .setStyle(ButtonStyle.Secondary); 
 
                 if (isShowingGlobal) {
-                    toggleButton.setLabel('Show Display Avatar').setEmoji({ name: '🖼️' });
+                    toggleButton.setLabel('Show Display Avatar').setEmoji({ name: '🛡️' });
                     if (!hasServerAvatar) {
                         toggleButton.setDisabled(true).setLabel('No Display Avatar');
                     }
@@ -60,27 +60,35 @@ module.exports = {
                     toggleButton.setLabel('Show Global Avatar').setEmoji({ name: '🖼️' });
                 }
 
+                const browserButton = new ButtonBuilder()
+                    .setLabel('Open in Browser')
+                    .setStyle(ButtonStyle.Link) // Link style is already grey
+                    .setURL(currentImage);
+
+                // --- Container Layout ---
                 return new ContainerBuilder()
+                    // A. Top Section (Header)
                     .addSectionComponents((section) => 
-                        section
-                            .addTextDisplayComponents((text) => text.setContent(titleText))
-                            .setButtonAccessory(() => toggleButton)
+                        section.addTextDisplayComponents((text) => text.setContent(titleText))
                     )
-                    .addActionRowComponents((row) => 
-                        row.setComponents(
-                            new ButtonBuilder()
-                                .setLabel('Open in Browser')
-                                .setStyle(ButtonStyle.Link)
-                                .setURL(currentImage)
-                        )
-                    )
+                    
+                    // B. The Image (Middle)
                     .addMediaGalleryComponents((gallery) => 
                         gallery.addItems((item) => item.setURL(currentImage))
+                    )
+
+                    // C. Separator
+                    .addSeparatorComponents((sep) => 
+                        sep.setSpacing(SeparatorSpacingSize.Small)
+                    )
+
+                    // D. Bottom Buttons (Action Row)
+                    .addActionRowComponents((row) => 
+                        row.setComponents(toggleButton, browserButton)
                     );
             };
 
-            // 4. Send Initial Reply (PUBLIC SUCCESS)
-            // We combine flags here if needed, but for public messages, we usually just need IsComponentsV2
+            // 3. Send Initial Reply
             let isGlobalMode = true;
             const initialContainer = createAvatarContainer(true);
 
@@ -91,7 +99,7 @@ module.exports = {
                 fetchReply: true
             });
 
-            // 5. Create Collector
+            // 4. Collector
             const collector = response.createMessageComponentCollector({ 
                 componentType: ComponentType.Button, 
                 time: 60000 
@@ -118,12 +126,9 @@ module.exports = {
 
         } catch (error) {
             console.error("Avatar Command Error:", error);
-            
-            // 6. Error Handling (EPHEMERAL via FLAG)
             if (!interaction.replied) {
                 await interaction.reply({ 
                     content: `❌ **Error:** ${error.message}`, 
-                    // 👇 This makes the error invisible to others
                     flags: [MessageFlags.Ephemeral] 
                 });
             }

@@ -12,7 +12,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('avatar')
         .setDescription('Shows the user avatar')
-        .setDMPermission(false)
+        .setDMPermission(false) // Note: This actually blocks DMs. Remove if you want DMs.
         .addUserOption(option => 
             option.setName('target')
             .setDescription('The user to fetch the avatar for')
@@ -40,7 +40,8 @@ module.exports = {
             const hasServerAvatar = globalAvatar !== displayAvatar;
 
             // 3. Helper Function to Build Container
-            const createAvatarContainer = (isShowingGlobal) => {
+            // 👇 Added 'disableToggle' parameter here
+            const createAvatarContainer = (isShowingGlobal, disableToggle = false) => {
                 const currentImage = isShowingGlobal ? globalAvatar : displayAvatar;
                 
                 const titleText = isShowingGlobal 
@@ -65,6 +66,11 @@ module.exports = {
                     toggleButton.setLabel('Show Global Avatar');
                 }
 
+                // 👇 Check if we need to force disable (due to timeout)
+                if (disableToggle) {
+                    toggleButton.setDisabled(true);
+                }
+
                 const now = new Date();
                 const options = { 
                     timeZone: 'Asia/Bangkok', 
@@ -86,7 +92,6 @@ module.exports = {
 
                 // --- Build Container ---
                 return new ContainerBuilder()
-                    // 👇 Added Accent Color Here
                     .setAccentColor(0x888888) 
                     
                     .addSectionComponents((section) => 
@@ -109,7 +114,8 @@ module.exports = {
 
             // 4. Send Initial Reply
             let isGlobalMode = true;
-            const initialContainer = createAvatarContainer(true);
+            // Pass 'false' because we just started, so it's not disabled yet
+            const initialContainer = createAvatarContainer(true, false);
 
             const response = await interaction.reply({ 
                 components: [initialContainer], 
@@ -121,7 +127,7 @@ module.exports = {
             // 5. Collector
             const collector = response.createMessageComponentCollector({ 
                 componentType: ComponentType.Button, 
-                time: 60000 
+                idle: 30_000 // 👇 30 Seconds of IDLE time (resets if clicked)
             });
 
             collector.on('collect', async (i) => {
@@ -134,12 +140,29 @@ module.exports = {
 
                 if (i.customId === 'toggle_avatar') {
                     isGlobalMode = !isGlobalMode;
-                    const newContainer = createAvatarContainer(isGlobalMode);
+                    // Pass 'false' because the collector is still active
+                    const newContainer = createAvatarContainer(isGlobalMode, false);
 
                     await i.update({
                         components: [newContainer],
                         flags: [MessageFlags.IsComponentsV2]
                     });
+                }
+            });
+
+            // 👇 Handle Timeout (Disable Button)
+            collector.on('end', async () => {
+                try {
+                    // Rebuild the container one last time with disableToggle = true
+                    const disabledContainer = createAvatarContainer(isGlobalMode, true);
+                    
+                    await interaction.editReply({
+                        components: [disabledContainer],
+                        flags: [MessageFlags.IsComponentsV2]
+                    });
+                } catch (error) {
+                    // Ignore error if message was deleted/unknown
+                    // console.error("Could not disable buttons:", error);
                 }
             });
 

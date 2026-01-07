@@ -440,3 +440,5 @@ async function createWelcomeImage(member) {
 
     return canvas.toBuffer('image/png');
 }
+
+module.exports = { createWelcomeImage };

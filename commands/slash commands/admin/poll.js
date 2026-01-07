@@ -4,6 +4,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('poll')
         .setDescription('Create a poll')
+        .setDMPermission(false)
         .setDefaultMemberPermissions(PermissionFlagsBits.SendPolls)
 
         // --- 1. REQUIRED OPTIONS ---

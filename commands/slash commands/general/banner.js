@@ -59,8 +59,11 @@ module.exports = {
             const createBannerContainer = (isShowingGlobal, disableToggle = false) => {
                 const currentImage = isShowingGlobal ? globalBanner : displayBanner;
                 const titleText = isShowingGlobal ? `## Global Banner` : `## Display Banner`;
-                const displayName = targetMember ? targetMember.displayName : targetUser.username;
-                const bodyText = isShowingGlobal ? `-# Global Banner of ${displayName}` : `-# Display Banner of ${displayName}`;
+                
+                // 👇 UPDATED: Uses <@ID> format now
+                const bodyText = isShowingGlobal 
+                    ? `-# Global Banner of <@${targetUser.id}>` 
+                    : `-# Display Banner of <@${targetUser.id}>`;
 
                 // Buttons
                 const toggleButton = new ButtonBuilder()
@@ -117,22 +120,20 @@ module.exports = {
             const response = await interaction.reply({ 
                 components: [initialContainer], 
                 flags: [MessageFlags.IsComponentsV2], 
-                allowedMentions: { parse: [] }, 
+                allowedMentions: { parse: [] }, // ✅ Blocks Ping
                 fetchReply: true
             });
 
             // ---------------------------------------------------------
             // ⚡ OPTIMIZATION CHECK ⚡
-            // If we don't have BOTH banners, the button is already disabled forever.
-            // We can STOP here. No Collector needed.
             // ---------------------------------------------------------
             const canToggle = globalBanner && displayBanner;
             if (!canToggle) return; 
 
-            // 7. Collector (Only runs if toggling is possible)
+            // 7. Collector
             const collector = response.createMessageComponentCollector({ 
                 componentType: ComponentType.Button, 
-                idle: 60_000 
+                idle: 60_000 // 30 seconds idle
             });
 
             collector.on('collect', async (i) => {
@@ -142,14 +143,22 @@ module.exports = {
                 if (i.customId === 'toggle_banner') {
                     isGlobalMode = !isGlobalMode;
                     const newContainer = createBannerContainer(isGlobalMode, false);
-                    await i.update({ components: [newContainer], flags: [MessageFlags.IsComponentsV2], allowedMentions: { parse: [] } });
+                    await i.update({ 
+                        components: [newContainer], 
+                        flags: [MessageFlags.IsComponentsV2], 
+                        allowedMentions: { parse: [] } // ✅ Blocks Ping
+                    });
                 }
             });
 
             collector.on('end', async () => {
                 try {
                     const disabledContainer = createBannerContainer(isGlobalMode, true);
-                    await interaction.editReply({ components: [disabledContainer], flags: [MessageFlags.IsComponentsV2], allowedMentions: { parse: [] } });
+                    await interaction.editReply({ 
+                        components: [disabledContainer], 
+                        flags: [MessageFlags.IsComponentsV2], 
+                        allowedMentions: { parse: [] } // ✅ Blocks Ping (Critical for timeout edits)
+                    });
                 } catch (e) { /* Ignore */ }
             });
 

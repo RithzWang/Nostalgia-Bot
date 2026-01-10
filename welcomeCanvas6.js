@@ -39,7 +39,7 @@ async function createWelcomeImage(member) {
     };
 
     // Increased to 80 to prevent badge clipping
-    const topOffset = 55; 
+    const topOffset = 50; 
 
     const canvas = createCanvas(dim.width, dim.height + topOffset);
     const ctx = canvas.getContext('2d');
@@ -400,9 +400,9 @@ async function createWelcomeImage(member) {
     const badgeImage = await loadImage('./pics/logo/A2-Q.png').catch(() => null);
 
     if (badgeImage) {
-        // Badge Configuration
-        const badgeWidth = 175;
-        const badgeHeight = 105;
+        // Badge Configuration - SIZE REDUCED HERE
+        const badgeWidth = 130; // Was 175
+        const badgeHeight = 80;  // Was 105
 
         // Position: X (Right edge touches middle of avatar)
         const avatarCenterX = dim.margin + 30 + avatarRadius;

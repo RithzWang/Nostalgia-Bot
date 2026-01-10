@@ -401,8 +401,8 @@ async function createWelcomeImage(member) {
 
     if (badgeImage) {
         // Badge Configuration - SIZE REDUCED HERE
-        const badgeWidth = 130; // Was 175
-        const badgeHeight = 80;  // Was 105
+        const badgeWidth = 160; // Was 175
+        const badgeHeight = 96;  // Was 105
 
         // Position: X (Right edge touches middle of avatar)
         const avatarCenterX = dim.margin + 30 + avatarRadius;

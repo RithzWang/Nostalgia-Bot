@@ -99,17 +99,7 @@ module.exports = {
                 return interaction.reply({ content: responseContent, flags: MessageFlags.Ephemeral });
             }
 
-            // C. THANKS LEADERBOARD
-            if (['thanks_prev', 'thanks_next'].includes(interaction.customId)) {
-                await interaction.deferUpdate();
-                const data = await ThanksLB.findOne({ guildId: interaction.guild.id });
-                if (data) {
-                    let newPage = data.currentPage;
-                    if (interaction.customId === 'thanks_prev') newPage--;
-                    else newPage++;
-                    await updateLeaderboardVisual(client, interaction.guild.id, newPage);
-                }
-            }
+            
 
             // D. BUTTON ROLE HANDLER (Single & Multi)
             if (interaction.customId.startsWith('btn_role_') || interaction.customId.startsWith('btn_single_')) {

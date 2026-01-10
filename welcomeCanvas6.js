@@ -39,7 +39,7 @@ async function createWelcomeImage(member) {
     };
 
     // Increased to 80 to prevent badge clipping
-    const topOffset = 40; 
+    const topOffset = 45; 
 
     const canvas = createCanvas(dim.width, dim.height + topOffset);
     const ctx = canvas.getContext('2d');

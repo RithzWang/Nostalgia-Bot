@@ -140,7 +140,7 @@ module.exports = {
             const menuRow = new ActionRowBuilder().addComponents(menu);
 
             const container = new ContainerBuilder()
-                .setAccentColor(0x808080)
+                .setAccentColor(0x888888)
                 .addTextDisplayComponents(titleText) 
                 .addTextDisplayComponents(bodyText)
                 .addSeparatorComponents(separator)
@@ -174,7 +174,7 @@ module.exports = {
                 } else {
                     await targetChannel.send(payload);
                 }
-                return interaction.editReply({ content: `<:yes:1297814648417943565> V2 Menu ready in ${targetChannel}!` });
+                return interaction.editReply({ content: `<:yes:1297814648417943565> Menu ready in ${targetChannel}!` });
             } catch (e) {
                 console.error(e);
                 return interaction.editReply({ content: '<:no:1297814819105144862> Failed to create menu. Check permissions or Message ID.' });
@@ -231,7 +231,7 @@ module.exports = {
                 const newBodyText = new TextDisplayBuilder().setContent(currentBodyLines.join('\n'));
                 const newMenuRow = new ActionRowBuilder().addComponents(newMenu);
                 const newContainer = new ContainerBuilder()
-                    .setAccentColor(oldContainer.accentColor || 0x808080)
+                    .setAccentColor(oldContainer.accentColor || 0x888888)
                     .addTextDisplayComponents(titleText)
                     .addTextDisplayComponents(newBodyText)
                     .addSeparatorComponents(separator)
@@ -272,7 +272,7 @@ module.exports = {
                         if (restrictedRole) {
                             // CHANGED HERE: Custom Emoji
                             newBodyLines.push(`<:lock:1457147730542465312> **Restricted to:** ${restrictedRole.toString()}`);
-                            newBodyLines.push('');
+                            // newBodyLines.push('');
                         }
                     }
                 }
@@ -299,7 +299,7 @@ module.exports = {
                 const newMenuRow = new ActionRowBuilder().addComponents(menu);
 
                 const newContainer = new ContainerBuilder()
-                    .setAccentColor(oldContainer.accentColor || 0x808080)
+                    .setAccentColor(oldContainer.accentColor || 0x888888)
                     .addTextDisplayComponents(titleText)
                     .addTextDisplayComponents(newBodyText)
                     .addSeparatorComponents(separator)

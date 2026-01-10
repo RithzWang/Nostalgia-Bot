@@ -285,7 +285,7 @@ module.exports = {
                     }
                 } catch (e) { console.error("Counter update failed", e); }
 
-                return interaction.editReply({ content: `<:yes:1297814648417943565> You’re now a member of the server.` });
+                return interaction.editReply({ content: `<:yes:1297814648417943565> Welcome!! You’re now a member of the server.` });
 
             } catch (error) {
                 console.error(error);

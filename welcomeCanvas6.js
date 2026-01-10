@@ -308,7 +308,11 @@ async function createWelcomeImage(member) {
     let hasBadge = false;
 
     if (hasGuild) {
+        // Estimate dot width based on larger size
+        const dotScaleFactor = 1.25; // UPDATED: Balanced size
+        ctx.font = `${baseUsernameSize * dotScaleFactor}px "Prima Sans Regular", sans-serif`;
         const dotWidth = ctx.measureText("•").width;
+
         ctx.font = `${baseTagSize}px "Prima Sans Regular", ${fontStack}`;
         guildTagWidth = ctx.measureText(guildInfo.tag).width;
 
@@ -334,12 +338,17 @@ async function createWelcomeImage(member) {
     if (hasGuild) {
         const fUsernameWidth = ctx.measureText(tagText).width;
         
-        // Separator
+        // Separator (UPDATED: 1.25x Size)
         const fSepPadding = baseSepPadding * bottomScale;
         const separatorX = textX + fUsernameWidth + fSepPadding;
+        
+        ctx.save();
+        const sepScale = 1.25; // Just larger than before (1.0), smaller than huge (1.6)
+        ctx.font = `${baseUsernameSize * bottomScale * sepScale}px "Prima Sans Regular", sans-serif`;
         ctx.fillStyle = '#dadada'; 
         ctx.fillText("•", separatorX, currentY);
         const fSeparatorWidth = ctx.measureText("•").width;
+        ctx.restore();
 
         // Draw Guild Box
         const fTagSize = baseTagSize * bottomScale;
@@ -400,9 +409,9 @@ async function createWelcomeImage(member) {
     const badgeImage = await loadImage('./pics/logo/A2-Q.png').catch(() => null);
 
     if (badgeImage) {
-        // Badge Configuration - SIZE REDUCED HERE
-        const badgeWidth = 160; // Was 175
-        const badgeHeight = 96;  // Was 105
+        // Badge Configuration
+        const badgeWidth = 160; 
+        const badgeHeight = 96;
 
         // Position: X (Right edge touches middle of avatar)
         const avatarCenterX = dim.margin + 30 + avatarRadius;

@@ -328,21 +328,21 @@ async function createWelcomeImage(member) {
         totalNeededWidth += baseSepPadding + dotWidth + baseMarginSep + boxWidth;
     }
 
-    // --- NEW LOGIC: Reduce if combined chars > 10, regardless of width ---
+    // --- NEW LOGIC: Reduce exactly 10px if > 10 chars, or fit width ---
     const totalChars = tagText.length + (hasGuild ? guildInfo.tag.length : 0);
-    const charLimit = 10;
-    
-    // Calculate scale based on physical width limits
     const widthScale = maxAvailableWidth / totalNeededWidth;
     
-    // Calculate scale based on character count limit
-    let charScale = 1;
-    if (totalChars > charLimit) {
-        charScale = charLimit / totalChars;
+    let sizeAdjustmentScale = 1;
+
+    if (totalChars > 10) {
+        // If chars > 10, reduce font size by exactly 10px
+        // Original size: 95px. New size: 85px.
+        // Scale factor: 85 / 95
+        sizeAdjustmentScale = (baseUsernameSize - 10) / baseUsernameSize;
     }
 
-    // Apply whichever is smaller (stricter)
-    const bottomScale = Math.min(1, widthScale, charScale);
+    // Use the 10px reduction, unless the text is SO long that it hits the width limit.
+    const bottomScale = Math.min(sizeAdjustmentScale, widthScale);
 
     // Draw Scaled Username
     ctx.font = `${baseUsernameSize * bottomScale}px "Prima Sans Regular", sans-serif`;

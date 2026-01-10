@@ -334,11 +334,11 @@ async function createWelcomeImage(member) {
     
     let sizeAdjustmentScale = 1;
 
-    if (totalChars > 10) {
+    if (totalChars > 5) {
         // If chars > 10, reduce font size by exactly 10px
         // Original size: 95px. New size: 85px.
         // Scale factor: 85 / 95
-        sizeAdjustmentScale = (baseUsernameSize - 10) / baseUsernameSize;
+        sizeAdjustmentScale = (baseUsernameSize - 5) / baseUsernameSize;
     }
 
     // Use the 10px reduction, unless the text is SO long that it hits the width limit.

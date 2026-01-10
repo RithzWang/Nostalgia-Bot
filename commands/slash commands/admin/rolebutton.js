@@ -139,7 +139,7 @@ module.exports = {
             const buttonRows = packButtons(buttons);
 
             const container = new ContainerBuilder()
-                .setAccentColor(0x808080)
+                .setAccentColor(0x888888)
                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(`### ${title}`))
                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(descriptionLines.join('\n')))
                 .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
@@ -258,7 +258,7 @@ module.exports = {
                 const titleText = container.components[0].content;
                 
                 const newContainer = new ContainerBuilder()
-                    .setAccentColor(container.accentColor || 0x808080)
+                    .setAccentColor(container.accentColor || 0x888888)
                     .addTextDisplayComponents(new TextDisplayBuilder().setContent(titleText))
                     .addTextDisplayComponents(new TextDisplayBuilder().setContent(currentBodyLines.join('\n').trim()))
                     .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));

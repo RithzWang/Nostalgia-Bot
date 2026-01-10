@@ -309,7 +309,7 @@ async function createWelcomeImage(member) {
 
     if (hasGuild) {
         // Estimate dot width based on larger size
-        const dotScaleFactor = 1.25; // UPDATED: Balanced size
+        const dotScaleFactor = 1.25; 
         ctx.font = `${baseUsernameSize * dotScaleFactor}px "Prima Sans Regular", sans-serif`;
         const dotWidth = ctx.measureText("•").width;
 
@@ -328,7 +328,21 @@ async function createWelcomeImage(member) {
         totalNeededWidth += baseSepPadding + dotWidth + baseMarginSep + boxWidth;
     }
 
-    const bottomScale = Math.min(1, maxAvailableWidth / totalNeededWidth);
+    // --- NEW LOGIC: Reduce if combined chars > 10, regardless of width ---
+    const totalChars = tagText.length + (hasGuild ? guildInfo.tag.length : 0);
+    const charLimit = 10;
+    
+    // Calculate scale based on physical width limits
+    const widthScale = maxAvailableWidth / totalNeededWidth;
+    
+    // Calculate scale based on character count limit
+    let charScale = 1;
+    if (totalChars > charLimit) {
+        charScale = charLimit / totalChars;
+    }
+
+    // Apply whichever is smaller (stricter)
+    const bottomScale = Math.min(1, widthScale, charScale);
 
     // Draw Scaled Username
     ctx.font = `${baseUsernameSize * bottomScale}px "Prima Sans Regular", sans-serif`;
@@ -338,12 +352,12 @@ async function createWelcomeImage(member) {
     if (hasGuild) {
         const fUsernameWidth = ctx.measureText(tagText).width;
         
-        // Separator (UPDATED: 1.25x Size)
+        // Separator (1.25x Size)
         const fSepPadding = baseSepPadding * bottomScale;
         const separatorX = textX + fUsernameWidth + fSepPadding;
         
         ctx.save();
-        const sepScale = 1.25; // Just larger than before (1.0), smaller than huge (1.6)
+        const sepScale = 1.25; 
         ctx.font = `${baseUsernameSize * bottomScale * sepScale}px "Prima Sans Regular", sans-serif`;
         ctx.fillStyle = '#dadada'; 
         ctx.fillText("•", separatorX, currentY);

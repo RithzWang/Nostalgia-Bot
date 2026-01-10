@@ -110,7 +110,7 @@ module.exports = {
             if (requiredRole) {
                 // CHANGED HERE: Custom Emoji
                 descriptionLines.push(`<:lock:1457147730542465312> **Restricted to:** ${requiredRole.toString()}`);
-                descriptionLines.push(''); 
+                // descriptionLines.push(''); 
             }
 
             for (let i = 1; i <= 10; i++) {

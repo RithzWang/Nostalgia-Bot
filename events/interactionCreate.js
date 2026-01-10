@@ -17,7 +17,6 @@ const {
 
 // --- IMPORTS ---
 const Giveaway = require('../src/models/Giveaway');
-const ThanksLB = require('../src/models/ThanksLB'); 
 const { updateLeaderboardVisual } = require('../commands/slash commands/leaderboard/thanksLeaderboard');
 
 module.exports = {

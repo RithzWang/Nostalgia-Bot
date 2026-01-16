@@ -226,46 +226,6 @@ client.on('guildMemberAdd', async (member) => {
 
 
 
-// --- YOUR ORIGINAL ROLE LOGGING ---
-client.on('guildMemberUpdate', (oldMember, newMember) => {
-    if (newMember.user.bot) return;
-    const specifiedRolesSet = new Set(roleforLog);
-    const addedRoles = newMember.roles.cache.filter(role => specifiedRolesSet.has(role.id) && !oldMember.roles.cache.has(role.id));
-    const removedRoles = oldMember.roles.cache.filter(role => specifiedRolesSet.has(role.id) && !newMember.roles.cache.has(role.id));
-
-    const logChannel = newMember.guild.channels.cache.get(roleupdateLog);
-    if (!logChannel) return;
-
-    const silentOptions = { allowedMentions: { parse: [] } };
-
-    const formatRoles = (roles) => {
-        const names = roles.map(role => `**${role.name}**`);
-        if (names.length === 1) return names[0];
-        if (names.length === 2) return `${names[0]} and ${names[1]}`;
-        return `${names.slice(0, -1).join(', ')}, and ${names.slice(-1)}`;
-    };
-
-    const plural = (roles) => roles.size === 1 ? 'role' : 'roles';
-    let content = '';
-
-    if (addedRoles.size > 0 && removedRoles.size > 0) {
-        content = `<:yes:1297814648417943565> ${newMember.user} has been added ${formatRoles(addedRoles)} ${plural(addedRoles)} and removed ${formatRoles(removedRoles)} ${plural(removedRoles)}!`;
-    } else if (addedRoles.size > 0) {
-        content = `<:yes:1297814648417943565> ${newMember.user} has been added ${formatRoles(addedRoles)} ${plural(addedRoles)}!`;
-    } else if (removedRoles.size > 0) {
-        content = `<:yes:1297814648417943565> ${newMember.user} has been removed ${formatRoles(removedRoles)} ${plural(removedRoles)}!`;
-    }
-
-    if (!content) return;
-
-    if (roleupdateMessageID) {
-        logChannel.messages.fetch(roleupdateMessageID).then(m => m.edit({ content, ...silentOptions })).catch(() => {
-            logChannel.send({ content, ...silentOptions }).then(m => roleupdateMessageID = m.id);
-        });
-    } else {
-        logChannel.send({ content, ...silentOptions }).then(m => roleupdateMessageID = m.id);
-    }
-});
 
 
 // --- DB & LOGIN ---

@@ -75,7 +75,7 @@ module.exports = {
         // --- REFRESH COMMAND ---
         .addSubcommand(sub => 
             sub.setName('refresh')
-                .setDescription('Update role names AND member counts in the menu')
+                .setDescription('Update role names in the menu')
                 .addStringOption(opt => opt.setName('message_id').setDescription('The Message ID').setRequired(true))
                 .addChannelOption(opt => opt.setName('channel').setDescription('Channel where the menu is'))
         ),
@@ -117,10 +117,10 @@ module.exports = {
                         return interaction.editReply({ content: `<:no:1297814819105144862> Role **${role.name}** is higher than my top role!` });
                     }
                     
+                    // --- REMOVED DESCRIPTION ---
                     const option = new StringSelectMenuOptionBuilder()
                         .setLabel(role.name)
-                        .setValue(role.id)
-                        .setDescription(`total members with this role: ${role.members.size}`); 
+                        .setValue(role.id);
 
                     if (emoji) option.setEmoji(emoji);
                     descriptionLines.push(`> **${emoji ? emoji + ' ' : ''}${role.name}**`);
@@ -139,7 +139,6 @@ module.exports = {
             const bodyText = new TextDisplayBuilder().setContent(descriptionLines.join('\n'));
             const menuRow = new ActionRowBuilder().addComponents(menu);
 
-            // COLOR SET HERE: 0x888888
             const container = new ContainerBuilder()
                 .setAccentColor(0x888888) 
                 .addTextDisplayComponents(titleText) 
@@ -159,7 +158,7 @@ module.exports = {
                     const oldMsg = await targetChannel.messages.fetch(reuseMessageId);
                     
                     const loadingContainer = new ContainerBuilder()
-                        .setAccentColor(0xFEE75C) // Yellow for loading state (temporary)
+                        .setAccentColor(0xFEE75C) 
                         .addTextDisplayComponents(
                             new TextDisplayBuilder().setContent('### 🔄 Updating Menu...\nPlease wait.')
                         );
@@ -210,10 +209,10 @@ module.exports = {
                         if (role) {
                             if (newMenu.options.some(o => o.data.value === role.id)) continue;
                             
+                            // --- REMOVED DESCRIPTION ---
                             const newOption = new StringSelectMenuOptionBuilder()
                                 .setLabel(role.name)
-                                .setValue(role.id)
-                                .setDescription(`total members with this role: ${role.members.size}`);
+                                .setValue(role.id);
 
                             if (emoji) newOption.setEmoji(emoji);
                             newMenu.addOptions(newOption);
@@ -241,7 +240,6 @@ module.exports = {
                 const newBodyText = new TextDisplayBuilder().setContent(currentBodyLines.join('\n'));
                 const newMenuRow = new ActionRowBuilder().addComponents(newMenu);
                 
-                // COLOR SET HERE: 0x888888 (Fallback if old accent is missing)
                 const newContainer = new ContainerBuilder()
                     .setAccentColor(oldContainer.accentColor || 0x888888)
                     .addTextDisplayComponents(titleText)
@@ -315,15 +313,16 @@ module.exports = {
                     }
                 }
 
-                // Update Options (Name AND Count)
+                // Update Options (Name Only)
                 const updatedOptions = [];
                 for (const option of menu.options) {
                     const role = interaction.guild.roles.cache.get(option.data.value);
                     const builder = new StringSelectMenuOptionBuilder(option.data);
                     
                     if (role) {
-                        builder.setLabel(role.name); 
-                        builder.setDescription(`total members with this role: ${role.members.size}`);
+                        builder.setLabel(role.name);
+                        // Ensure description is cleared if it existed
+                        builder.setDescription(null); 
 
                         const emoji = option.data.emoji;
                         const emojiStr = emoji 
@@ -345,7 +344,6 @@ module.exports = {
                     const newBodyText = new TextDisplayBuilder().setContent(newBodyLines.join('\n'));
                     const newMenuRow = new ActionRowBuilder().addComponents(menu);
 
-                    // COLOR SET HERE: 0x888888 (Fallback)
                     const newContainer = new ContainerBuilder()
                         .setAccentColor(oldContainer.accentColor || 0x888888)
                         .addTextDisplayComponents(titleText)

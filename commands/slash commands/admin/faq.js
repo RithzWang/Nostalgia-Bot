@@ -11,8 +11,7 @@ const {
     ActionRowBuilder,
     ButtonBuilder,
     ButtonStyle,
-    MediaGalleryBuilder,
-    ThumbnailBuilder
+    MediaGalleryBuilder
 } = require('discord.js');
 
 const moment = require('moment-timezone');
@@ -73,11 +72,12 @@ module.exports = {
 
         // --- HELPER 1: RENDER LOADING STATE ---
         const renderLoading = () => {
+            // Create instances explicitly
+            const text = new TextDisplayBuilder().setContent('### 🔄 Updating FAQ...\nPlease wait.');
+            
             const loadingContainer = new ContainerBuilder()
                 .setAccentColor(0x888888) 
-                .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent('### 🔄 Updating FAQ...\nPlease wait.')
-                );
+                .addTextDisplayComponents(text); // Pass instance
             
             return {
                 content: '',
@@ -92,48 +92,66 @@ module.exports = {
 
             // 1. Build Container
             const container = new ContainerBuilder()
-                .setAccentColor(0x888888) 
-                .addTextDisplayComponents(t => t.setContent('## ❓ Questions — Answers'));
+                .setAccentColor(0x888888);
+
+            // Add Header
+            const headerText = new TextDisplayBuilder().setContent('## ❓ Questions — Answers');
+            container.addTextDisplayComponents(headerText);
 
             // 2. Loop through Questions
             if (faqData.questions.length > 0) {
                 faqData.questions.forEach((q, index) => {
-                    container.addSectionComponents(section => {
-                        section.addTextDisplayComponents(text => 
-                            text.setContent(`> ### ${q.question}\n${q.answer}`)
-                        );
-                        return section; // <--- FIX: Added explicit return
-                    });
+                    // Create Section Instance
+                    const section = new SectionBuilder();
+                    
+                    // Create Text Instance
+                    const qaText = new TextDisplayBuilder().setContent(`> ### ${q.question}\n${q.answer}`);
+                    
+                    // Add Text to Section
+                    section.addTextDisplayComponents(qaText);
+                    
+                    // Add Section to Container
+                    container.addSectionComponents(section);
 
+                    // Add Separator (except after the last one)
                     if (index < faqData.questions.length - 1) {
-                        container.addSeparatorComponents(sep => sep.setSpacing(SeparatorSpacingSize.Small));
+                        const sep = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small);
+                        container.addSeparatorComponents(sep);
                     }
                 });
 
-                // 3. Handle Images
+                // 3. Handle Images (Media Gallery)
                 const images = faqData.questions.filter(q => q.image).map(q => q.image);
                 if (images.length > 0) {
-                    container.addMediaGalleryComponents(gallery => {
-                        images.forEach(imgUrl => {
-                            gallery.addItems(item => item.setURL(imgUrl));
-                        });
-                        return gallery; // <--- FIX: Added explicit return
-                    });
+                    const gallery = new MediaGalleryBuilder();
+                    
+                    // Add items loop
+                    // Note: Depending on lib version, addItems might take objects with { url: ... }
+                    // or a builder. We try the standard object structure for galleries.
+                    for (const imgUrl of images) {
+                         // Some implementations use .addItems({ src: url }) or similar.
+                         // Attempting the most standard V2 builder pattern:
+                         gallery.addItems({ url: imgUrl }); 
+                    }
+                    
+                    container.addMediaGalleryComponents(gallery);
                 }
             } else {
-                container.addSectionComponents(s => s.addTextDisplayComponents(t => t.setContent('*No questions added yet.*')));
+                const emptyText = new TextDisplayBuilder().setContent('*No questions added yet.*');
+                const emptySection = new SectionBuilder().addTextDisplayComponents(emptyText);
+                container.addSectionComponents(emptySection);
             }
 
             // 4. Last Updated Button
-            const footerRow = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId('faq_timestamp')
-                    .setLabel(`Last updated ${now} (GMT+7)`)
-                    .setStyle(ButtonStyle.Secondary)
-                    .setDisabled(true)
-            );
+            const btn = new ButtonBuilder()
+                .setCustomId('faq_timestamp')
+                .setLabel(`Last updated ${now} (GMT+7)`)
+                .setStyle(ButtonStyle.Secondary)
+                .setDisabled(true);
 
-            container.addActionRowComponents(footerRow);
+            const row = new ActionRowBuilder().addComponents(btn);
+
+            container.addActionRowComponents(row);
 
             return { 
                 content: '', 
@@ -178,7 +196,6 @@ module.exports = {
                     try {
                         message = await targetChannel.messages.fetch(targetMsgId);
                         
-                        // Show Loading immediately for reuse
                         await message.edit(renderLoading());
                         await new Promise(r => setTimeout(r, 3000));
 
@@ -186,7 +203,6 @@ module.exports = {
                         return interaction.editReply(`<:no:1297814819105144862> Could not find message ID \`${targetMsgId}\` in ${targetChannel}.`);
                     }
                 } else {
-                    // Send new message
                     message = await targetChannel.send({ content: 'Creating FAQ...' });
                 }
 

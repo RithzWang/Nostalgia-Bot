@@ -10,11 +10,11 @@ const {
     ActionRowBuilder,
     ButtonBuilder,
     ButtonStyle,
-    MediaGalleryBuilder // Import this!
+    MediaGalleryBuilder // <--- Imported
 } = require('discord.js');
 
 const moment = require('moment-timezone');
-const FAQ = require('../../../src/models/FaqSchema'); // Adjust path if needed
+const FAQ = require('../../../src/models/FaqSchema'); // Adjust path to your model
 
 module.exports = {
     guildOnly: true,
@@ -89,7 +89,7 @@ module.exports = {
                 faqData.questions.forEach((q, index) => {
                     // Create TEXT Instance 
                     const qaText = new TextDisplayBuilder()
-                        .setContent(`### ${q.question}\n> ${q.answer}`);
+                        .setContent(`### ${q.question}\n-# ${q.answer}`);
                     
                     // Add DIRECTLY to Container
                     container.addTextDisplayComponents(qaText);
@@ -103,16 +103,16 @@ module.exports = {
                 });
 
                 // --- 4. IMAGE GALLERY LOGIC ---
-                // Filter questions that have images
+                // Collect all images from questions
                 const images = faqData.questions.filter(q => q.image).map(q => q.image);
                 
                 if (images.length > 0) {
-                    // Create Gallery Instance manually
                     const gallery = new MediaGalleryBuilder();
                     
-                    // Add items one by one
+                    // Add items using the callback pattern from your example
+                    // We map the URLs to item callbacks: item => item.setURL(url)
                     images.forEach(url => {
-                        gallery.addItems({ url: url });
+                        gallery.addItems(item => item.setURL(url));
                     });
 
                     // Add Gallery to Container
@@ -209,7 +209,7 @@ module.exports = {
                 faqEntry.questions.push({
                     question: question,
                     answer: answer,
-                    image: attachment ? attachment.url : null // Save URL
+                    image: attachment ? attachment.url : null
                 });
                 await faqEntry.save();
 

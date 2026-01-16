@@ -16,7 +16,7 @@ const {
 } = require('discord.js');
 
 const moment = require('moment-timezone');
-const FAQ = require('../../models/FaqSchema'); 
+const FAQ = require('../../../src/models/FaqSchema'); 
 
 module.exports = {
     guildOnly: true,

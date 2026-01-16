@@ -87,7 +87,7 @@ module.exports = {
                     // Create TEXT Instance 
                     // CHANGED FORMAT HERE:
                     const qaText = new TextDisplayBuilder()
-                        .setContent(`### ${q.question}\n-# ${q.answer}`);
+                        .setContent(`### ${q.question}\n ${q.answer}`);
                     
                     // Add DIRECTLY to Container
                     container.addTextDisplayComponents(qaText);
@@ -109,7 +109,7 @@ module.exports = {
             // 4. Create Footer Button
             const btn = new ButtonBuilder()
                 .setCustomId('faq_timestamp')
-                .setLabel(`Last updated ${now}`)
+                .setLabel(`Last Updated ${now}`)
                 .setStyle(ButtonStyle.Secondary)
                 .setDisabled(true);
 

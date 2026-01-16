@@ -15,8 +15,6 @@ const {
     SeparatorSpacingSize
 } = require('discord.js');
 
-// --- IMPORTS ---
-const Giveaway = require('../src/models/Giveaway');
 
 module.exports = {
     name: 'interactionCreate',

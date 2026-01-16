@@ -6,9 +6,8 @@ const faqSchema = new mongoose.Schema({
     messageId: { type: String, required: true },
     questions: [
         {
-            question: String,
-            answer: String,
-            image: String // URL of the image
+            question: { type: String, required: true },
+            answer: { type: String, required: true }
         }
     ]
 });

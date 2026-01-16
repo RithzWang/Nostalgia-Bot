@@ -69,10 +69,14 @@ module.exports = {
 
         // --- HELPER 1: RENDER LOADING STATE ---
         const renderLoading = () => {
-            const text = new TextDisplayBuilder().setContent('### 🔄 Updating FAQ...\nPlease wait.');
+            // We create the INSTANCE first, then add it.
+            // This prevents "undefined" errors.
+            const loadingText = new TextDisplayBuilder()
+                .setContent('### 🔄 Updating FAQ...\nPlease wait.');
+            
             const loadingContainer = new ContainerBuilder()
                 .setAccentColor(0x888888) 
-                .addTextDisplayComponents(text);
+                .addTextDisplayComponents(loadingText);
             
             return {
                 content: '',
@@ -85,35 +89,48 @@ module.exports = {
         const renderFAQ = (faqData) => {
             const now = moment().tz('Asia/Bangkok').format('DD/MM/YYYY hh:mm A');
 
-            // 1. Build Container
-            const container = new ContainerBuilder().setAccentColor(0x888888);
+            // 1. Create Container Instance
+            const container = new ContainerBuilder()
+                .setAccentColor(0x888888);
 
+            // 2. Create Header Instance
+            const headerText = new TextDisplayBuilder()
+                .setContent('## ❓ Questions — Answers');
+            
             // Add Header
-            const headerText = new TextDisplayBuilder().setContent('## ❓ Questions — Answers');
             container.addTextDisplayComponents(headerText);
 
-            // 2. Loop through Questions
+            // 3. Loop through Questions
             if (faqData.questions.length > 0) {
                 faqData.questions.forEach((q, index) => {
+                    // A. Create the SECTION Instance
                     const section = new SectionBuilder();
-                    const qaText = new TextDisplayBuilder().setContent(`> ### ${q.question}\n${q.answer}`);
                     
+                    // B. Create the TEXT Instance
+                    const qaText = new TextDisplayBuilder()
+                        .setContent(`> ### ${q.question}\n${q.answer}`);
+                    
+                    // C. Add Text to Section
                     section.addTextDisplayComponents(qaText);
+                    
+                    // D. Add Section to Container
                     container.addSectionComponents(section);
 
-                    // Add Separator (except after the last one)
+                    // E. Add Separator (except after the last one)
                     if (index < faqData.questions.length - 1) {
-                        const sep = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small);
+                        const sep = new SeparatorBuilder()
+                            .setSpacing(SeparatorSpacingSize.Small);
                         container.addSeparatorComponents(sep);
                     }
                 });
             } else {
-                const emptyText = new TextDisplayBuilder().setContent('*No questions added yet.*');
-                const emptySection = new SectionBuilder().addTextDisplayComponents(emptyText);
-                container.addSectionComponents(emptySection);
+                // Empty State
+                const emptyText = new TextDisplayBuilder()
+                    .setContent('*No questions added yet.*');
+                container.addTextDisplayComponents(emptyText);
             }
 
-            // 3. Last Updated Button
+            // 4. Create Footer Button
             const btn = new ButtonBuilder()
                 .setCustomId('faq_timestamp')
                 .setLabel(`Last updated ${now} (GMT+7)`)
@@ -121,6 +138,8 @@ module.exports = {
                 .setDisabled(true);
 
             const row = new ActionRowBuilder().addComponents(btn);
+            
+            // Add Row to Container
             container.addActionRowComponents(row);
 
             return { 
@@ -140,8 +159,13 @@ module.exports = {
             const message = await channel.messages.fetch(messageId);
             if (!message) return false;
 
+            // 1. Show Loading (Yellow)
             await message.edit(renderLoading());
+
+            // 2. Wait 3 Seconds
             await new Promise(resolve => setTimeout(resolve, 3000));
+
+            // 3. Show Result (Grey)
             await message.edit(renderFAQ(faqData));
             return true;
         };
@@ -160,9 +184,11 @@ module.exports = {
                 if (targetMsgId) {
                     try {
                         message = await targetChannel.messages.fetch(targetMsgId);
-                        // Show loading animation for re-used message
+                        
+                        // Trigger loading animation on reuse
                         await message.edit(renderLoading());
                         await new Promise(r => setTimeout(r, 3000));
+
                     } catch (e) {
                         return interaction.editReply(`<:no:1297814819105144862> Could not find message ID \`${targetMsgId}\` in ${targetChannel}.`);
                     }
@@ -194,8 +220,7 @@ module.exports = {
 
                 faqEntry.questions.push({
                     question: question,
-                    answer: answer,
-                    image: null // Explicitly null since we removed image support
+                    answer: answer
                 });
                 await faqEntry.save();
 
@@ -214,7 +239,7 @@ module.exports = {
                 const newA = interaction.options.getString('new_answer');
 
                 const index = faqEntry.questions.findIndex(q => q.question === targetQ);
-                if (index === -1) return interaction.editReply(`<:no:1297814819105144862> Question not found.`);
+                if (index === -1) return interaction.editReply(`<:no:1297814819105144862> Question not found: \`${targetQ}\``);
 
                 if (newQ) faqEntry.questions[index].question = newQ;
                 if (newA) faqEntry.questions[index].answer = newA;
@@ -236,7 +261,7 @@ module.exports = {
                 faqEntry.questions = faqEntry.questions.filter(q => q.question !== targetQ);
 
                 if (faqEntry.questions.length === initialLength) {
-                    return interaction.editReply(`<:no:1297814819105144862> Question not found.`);
+                    return interaction.editReply(`<:no:1297814819105144862> Question not found: \`${targetQ}\``);
                 }
 
                 await faqEntry.save();

@@ -68,7 +68,6 @@ module.exports = {
 
         // --- HELPER: RENDER FINAL FAQ ---
         const renderFAQ = (faqData) => {
-            // CHANGED HERE: Format is now DD/MM/YYYY only
             const now = moment().tz('Asia/Bangkok').format('DD/MM/YYYY');
 
             // 1. Create Container Instance
@@ -85,9 +84,10 @@ module.exports = {
             // 3. Loop through Questions
             if (faqData.questions.length > 0) {
                 faqData.questions.forEach((q, index) => {
-                    // Create TEXT Instance (Question & Answer)
+                    // Create TEXT Instance 
+                    // CHANGED FORMAT HERE:
                     const qaText = new TextDisplayBuilder()
-                        .setContent(`> ### ${q.question}\n${q.answer}`);
+                        .setContent(`### ${q.question}\n-# ${q.answer}`);
                     
                     // Add DIRECTLY to Container
                     container.addTextDisplayComponents(qaText);
@@ -109,7 +109,7 @@ module.exports = {
             // 4. Create Footer Button
             const btn = new ButtonBuilder()
                 .setCustomId('faq_timestamp')
-                .setLabel(`Last updated ${now}`) // Removed (GMT+7) text to keep it short, add back if needed
+                .setLabel(`Last updated ${now}`)
                 .setStyle(ButtonStyle.Secondary)
                 .setDisabled(true);
 
@@ -124,11 +124,12 @@ module.exports = {
                 embeds: [], 
                 files: [],   
                 components: [container],
-                flags: MessageFlags.IsComponentsV2 
+                flags: MessageFlags.IsComponentsV2,
+                allowedMentions: { parse: [] } 
             };
         };
 
-        // --- HELPER: INSTANT UPDATE (No Animation) ---
+        // --- HELPER: INSTANT UPDATE ---
         const refreshFAQMessage = async (channelId, messageId, faqData) => {
             const channel = await interaction.guild.channels.fetch(channelId);
             if (!channel) return false;

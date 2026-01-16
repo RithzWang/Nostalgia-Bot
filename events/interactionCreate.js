@@ -7,8 +7,8 @@ const {
     ModalBuilder, 
     TextInputBuilder, 
     TextInputStyle,
-    StringSelectMenuBuilder,       // Added
-    StringSelectMenuOptionBuilder, // Added
+    StringSelectMenuBuilder,       
+    StringSelectMenuOptionBuilder, 
     ContainerBuilder,
     TextDisplayBuilder,
     SeparatorBuilder,
@@ -30,7 +30,7 @@ module.exports = {
                 await command.execute(interaction);
             } catch (error) {
                 console.error(error);
-                const errorPayload = { content: 'There was an error executing this command!', flags: MessageFlags.Ephemeral };
+                const errorPayload = { content: '<:no:1297814819105144862> There was an error executing this command!', flags: MessageFlags.Ephemeral };
                 if (interaction.replied || interaction.deferred) await interaction.followUp(errorPayload);
                 else await interaction.reply(errorPayload);
             }
@@ -40,7 +40,6 @@ module.exports = {
         // 2. GENERAL BUTTON HANDLERS
         // ===============================================
         if (interaction.isButton()) {
-            // A. LEGACY ROLE BUTTONS
             if (interaction.customId.startsWith('role_')) {
                 const parts = interaction.customId.split('_');
                 const roleId = parts[1];
@@ -65,18 +64,18 @@ module.exports = {
                         }
                     }
                 } catch (e) {
-                    return interaction.reply({ content: "❌ I cannot manage this role.", flags: MessageFlags.Ephemeral });
+                    return interaction.reply({ content: "⚠️ I cannot manage this role (Hierarchy Error).", flags: MessageFlags.Ephemeral });
                 }
             }
 
-            // B. BUTTON ROLE HANDLER (Single & Multi)
             if (interaction.customId.startsWith('btn_role_') || interaction.customId.startsWith('btn_single_')) {
                 const isSingleMode = interaction.customId.startsWith('btn_single_');
                 const roleId = interaction.customId.replace('btn_role_', '').replace('btn_single_', '');
                 const role = interaction.guild.roles.cache.get(roleId);
 
                 if (!role) return interaction.reply({ content: '<:no:1297814819105144862> Role not found.', flags: MessageFlags.Ephemeral });
-                if (role.position >= interaction.guild.members.me.roles.highest.position) return interaction.reply({ content: '<:no:1297814819105144862> Role too high.', flags: MessageFlags.Ephemeral });
+                
+                if (role.position >= interaction.guild.members.me.roles.highest.position) return interaction.reply({ content: '⚠️ **Role too high.** I cannot manage this role.', flags: MessageFlags.Ephemeral });
 
                 try {
                     if (isSingleMode) {
@@ -85,13 +84,12 @@ module.exports = {
                              return interaction.reply({ content: `<:yes:1297814648417943565> **Removed:** ${role.name}`, flags: MessageFlags.Ephemeral });
                         }
                         
-                        // Remove others in group
                         const rolesToRemove = [];
                         const container = interaction.message.components[0]; 
                         if (container) {
                             const scanComponents = (comps) => {
                                 comps.forEach(c => {
-                                    if (c.components) scanComponents(c.components); // recursive
+                                    if (c.components) scanComponents(c.components); 
                                     if (c.customId && c.customId.startsWith('btn_single_')) {
                                         const otherId = c.customId.replace('btn_single_', '');
                                         if (otherId !== roleId && interaction.member.roles.cache.has(otherId)) {
@@ -121,7 +119,7 @@ module.exports = {
                     }
                 } catch (e) {
                     console.error(e);
-                    return interaction.reply({ content: "<:no:1297814819105144862> Error changing roles.", flags: MessageFlags.Ephemeral });
+                    return interaction.reply({ content: "⚠️ Error changing roles.", flags: MessageFlags.Ephemeral });
                 }
             }
         }
@@ -131,7 +129,6 @@ module.exports = {
         // ===============================================
         if (interaction.isStringSelectMenu()) {
             if (interaction.customId.startsWith('role_select_')) {
-                // A. Check Restrictions
                 const restrictionId = interaction.customId.replace('role_select_', '');
                 if (restrictionId !== 'public' && restrictionId !== 'menu') {
                     if (!interaction.member.roles.cache.has(restrictionId)) {
@@ -155,7 +152,6 @@ module.exports = {
                     const role = interaction.guild.roles.cache.get(roleId);
                     if (!role) continue;
 
-                    // Hierarchy Safety
                     if (role.position >= interaction.guild.members.me.roles.highest.position) {
                         failed.push(role.name);
                         continue;
@@ -181,14 +177,12 @@ module.exports = {
                 // C. AUTO-UPDATE COUNTS LOGIC
                 try {
                     const oldContainer = interaction.message.components[0];
-                    // Find the Row Index that contains the Select Menu (Type 3)
                     const rowIndex = oldContainer.components.findIndex(row => row.components[0]?.type === 3);
 
                     if (rowIndex !== -1) {
                         const oldRow = oldContainer.components[rowIndex];
                         const oldMenu = oldRow.components[0];
 
-                        // Rebuild Options with NEW Counts
                         const updatedOptions = oldMenu.options.map(opt => {
                             const role = interaction.guild.roles.cache.get(opt.value);
                             const newOpt = new StringSelectMenuOptionBuilder(opt);
@@ -201,48 +195,7 @@ module.exports = {
                         const updatedMenu = StringSelectMenuBuilder.from(oldMenu).setOptions(updatedOptions);
                         const updatedRow = new ActionRowBuilder().addComponents(updatedMenu);
 
-                        // Clone Container and Replace Row
-                        const newContainer = ContainerBuilder.from(oldContainer);
-                        
-                        // We have to manually update the component list in the builder
-                        // This uses the raw API structure because builders can be tricky to splice
-                        const rawComponents = newContainer.toJSON().components;
-                        rawComponents[rowIndex] = updatedRow.toJSON(); 
-                        
-                        // Re-initialize builder with updated structure
-                        const finalContainer = new ContainerBuilder(newContainer.toJSON());
-                        finalContainer.setComponents(rawComponents.map(c => {
-                            // Map back to builders based on type if needed, or just let Discord handle JSON
-                            // The safest way with Builders:
-                            if (c.type === 1) return new ActionRowBuilder(c);
-                            return c; 
-                        }));
-                        
-                        // Actually, just creating a new container and adding parts is safer:
-                        const safeContainer = new ContainerBuilder().setAccentColor(oldContainer.accentColor);
-                        oldContainer.components.forEach((row, i) => {
-                            if (i === rowIndex) safeContainer.addActionRowComponents(updatedRow);
-                            else {
-                                // Re-add other components (Text, Separator, etc)
-                                // We can use the generic add component method if we know the type, 
-                                // but for Components V2, specific methods are better.
-                                // NOTE: This part assumes standard structure (Text, Text, Sep, Row)
-                                // If your structure varies, using the raw update is risky but necessary.
-                                
-                                // Let's use the simplest update:
-                                if (row.type === 1) safeContainer.addActionRowComponents(new ActionRowBuilder(row));
-                                // Text/Sep are harder to grab back into builders from raw data generic loops.
-                            }
-                        });
-
-                        // ⚠️ SIMPLIFIED AUTO-UPDATE (Highest Stability)
-                        // Because parsing old V2 components back into builders is complex,
-                        // We will just edit the `options` of the menu in place using the API payload style
-                        // which Discord.js handles well.
-                        
                         const payloadContainer = ContainerBuilder.from(oldContainer);
-                        // We simply want to swap the components[rowIndex] with our new updatedRow
-                        // Accessing the private/internal array is bad practice, but effective here:
                         const comps = payloadContainer.data.components || [];
                         comps[rowIndex] = updatedRow.toJSON();
                         payloadContainer.data.components = comps;
@@ -260,7 +213,9 @@ module.exports = {
                 let feedbackText = [];
                 if (added.length > 0) feedbackText.push(`<:yes:1297814648417943565> **Added:** ${added.join(', ')}`);
                 if (removed.length > 0) feedbackText.push(`<:no:1297814819105144862> **Removed:** ${removed.join(', ')}`);
-                if (failed.length > 0) feedbackText.push(`⚠️ **Failed:** ${failed.join(', ')}`);
+                
+                if (failed.length > 0) feedbackText.push(`⚠️ **Failed (Hierarchy):** ${failed.join(', ')}`);
+                
                 if (feedbackText.length === 0) feedbackText.push('No changes made.');
 
                 return interaction.editReply({ content: feedbackText.join('\n') });
@@ -312,7 +267,6 @@ module.exports = {
                     await logChannel.send({ embeds: [embed] });
                 }
 
-                // Update Counter Logic (Same concept as role menu, but strictly defined here)
                 try {
                     const dashboardMsg = interaction.message; 
                     if (dashboardMsg) {
@@ -320,10 +274,11 @@ module.exports = {
                         const role = interaction.guild.roles.cache.get(REGISTERED_ROLE_ID);
                         const newCount = role ? role.members.size : 'N/A';
                         
+                        // COLOR SET HERE: 0x888888 (Fallback)
                         const newContainer = new ContainerBuilder()
-                            .setAccentColor(oldContainer.accentColor || 0x808080);
+                            .setAccentColor(oldContainer.accentColor || 0x888888);
 
-                        newContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent('### <:registration:1447143542643490848> Server Registration'));
+                        newContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent('### <:registration:1447143542643490848> A2-Q Registration'));
                         newContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`To access chat and connect to voice channels, please register below.\n\n**Note:**\n\`Name\` : your desired name.\n\`Country\` : your country’s flag emoji.`));
                         newContainer.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
 
@@ -336,11 +291,11 @@ module.exports = {
                     }
                 } catch (e) { console.error("Counter update failed", e); }
 
-                return interaction.editReply({ content: `<:yes:1297814648417943565> Welcome!! You’re now a member of the server.` });
+                return interaction.editReply({ content: `<:yes:1297814648417943565> Welcome! You’re now a member of the server.` });
 
             } catch (error) {
                 console.error(error);
-                return interaction.editReply({ content: `<:no:1297814819105144862> Something went wrong.` });
+                return interaction.editReply({ content: `⚠️ Something went wrong.` });
             }
         }
     }

@@ -23,9 +23,12 @@ module.exports = {
         .addSubcommand(sub => {
             sub.setName('setup')
                 .setDescription('Create a NEW menu')
+                // 1. REQUIRED FIRST
                 .addStringOption(opt => opt.setName('title').setDescription('Menu Title').setRequired(true))
                 .addBooleanOption(opt => opt.setName('multi_select').setDescription('Allow multiple roles?').setRequired(true))
                 .addRoleOption(opt => opt.setName('role1').setDescription('Role 1 (Required)').setRequired(true))
+                
+                // 2. OPTIONAL AFTER
                 .addRoleOption(opt => opt.setName('required_role').setDescription('Only users with this role can use the menu (Optional)'))
                 .addStringOption(opt => opt.setName('emoji1').setDescription('Emoji for Role 1'))
                 .addChannelOption(opt => 
@@ -35,6 +38,7 @@ module.exports = {
                 )
                 .addStringOption(opt => opt.setName('message_id').setDescription('Reuse a bot message ID'));
             
+            // Loop for Setup Roles 2-9
             for (let i = 2; i <= 9; i++) {
                 sub.addRoleOption(opt => opt.setName(`role${i}`).setDescription(`Role ${i}`))
                    .addStringOption(opt => opt.setName(`emoji${i}`).setDescription(`Emoji ${i}`));
@@ -75,7 +79,7 @@ module.exports = {
         // --- REFRESH COMMAND ---
         .addSubcommand(sub => 
             sub.setName('refresh')
-                .setDescription('Update role names in the menu')
+                .setDescription('Update role names in the menu if you changed them in Server Settings')
                 .addStringOption(opt => opt.setName('message_id').setDescription('The Message ID').setRequired(true))
                 .addChannelOption(opt => opt.setName('channel').setDescription('Channel where the menu is'))
         ),
@@ -104,6 +108,7 @@ module.exports = {
             let descriptionLines = [];
 
             if (requiredRole) {
+                // CHANGED HERE: Custom Emoji
                 descriptionLines.push(`<:lock:1457147730542465312> **Restricted to:** ${requiredRole.toString()}`);
                  descriptionLines.push(''); 
             }
@@ -116,12 +121,7 @@ module.exports = {
                     if (role.position >= interaction.guild.members.me.roles.highest.position) {
                         return interaction.editReply({ content: `<:no:1297814819105144862> Role **${role.name}** is higher than my top role!` });
                     }
-                    
-                    // --- REMOVED DESCRIPTION ---
-                    const option = new StringSelectMenuOptionBuilder()
-                        .setLabel(role.name)
-                        .setValue(role.id);
-
+                    const option = new StringSelectMenuOptionBuilder().setLabel(role.name).setValue(role.id);
                     if (emoji) option.setEmoji(emoji);
                     descriptionLines.push(`> **${emoji ? emoji + ' ' : ''}${role.name}**`);
                     menu.addOptions(option);
@@ -140,7 +140,7 @@ module.exports = {
             const menuRow = new ActionRowBuilder().addComponents(menu);
 
             const container = new ContainerBuilder()
-                .setAccentColor(0x888888) 
+                .setAccentColor(0x888888)
                 .addTextDisplayComponents(titleText) 
                 .addTextDisplayComponents(bodyText)
                 .addSeparatorComponents(separator)
@@ -158,7 +158,7 @@ module.exports = {
                     const oldMsg = await targetChannel.messages.fetch(reuseMessageId);
                     
                     const loadingContainer = new ContainerBuilder()
-                        .setAccentColor(0xFEE75C) 
+                        .setAccentColor(0xFEE75C)
                         .addTextDisplayComponents(
                             new TextDisplayBuilder().setContent('### 🔄 Updating Menu...\nPlease wait.')
                         );
@@ -190,11 +190,7 @@ module.exports = {
             try {
                 const message = await targetChannel.messages.fetch(msgId);
                 const oldContainer = message.components[0]; 
-                
-                const oldMenuRow = oldContainer.components.find(c => c.components[0]?.type === 3);
-                
-                if (!oldMenuRow) return interaction.editReply({ content: "<:no:1297814819105144862> Could not find a select menu in that message." });
-
+                const oldMenuRow = oldContainer.components[3]; 
                 const newMenu = StringSelectMenuBuilder.from(oldMenuRow.components[0]);
 
                 const titleText = new TextDisplayBuilder().setContent(oldContainer.components[0].content);
@@ -208,12 +204,7 @@ module.exports = {
                         const emoji = interaction.options.getString(`emoji${i}`);
                         if (role) {
                             if (newMenu.options.some(o => o.data.value === role.id)) continue;
-                            
-                            // --- REMOVED DESCRIPTION ---
-                            const newOption = new StringSelectMenuOptionBuilder()
-                                .setLabel(role.name)
-                                .setValue(role.id);
-
+                            const newOption = new StringSelectMenuOptionBuilder().setLabel(role.name).setValue(role.id);
                             if (emoji) newOption.setEmoji(emoji);
                             newMenu.addOptions(newOption);
                             currentBodyLines.push(`> **${emoji ? emoji + ' ' : ''}${role.name}**`);
@@ -239,7 +230,6 @@ module.exports = {
                 
                 const newBodyText = new TextDisplayBuilder().setContent(currentBodyLines.join('\n'));
                 const newMenuRow = new ActionRowBuilder().addComponents(newMenu);
-                
                 const newContainer = new ContainerBuilder()
                     .setAccentColor(oldContainer.accentColor || 0x888888)
                     .addTextDisplayComponents(titleText)
@@ -255,7 +245,7 @@ module.exports = {
                 return interaction.editReply({ content: `<:yes:1297814648417943565> Menu updated successfully!` });
             } catch (err) {
                 console.error(err);
-                return interaction.editReply({ content: '<:no:1297814819105144862> Could not edit menu. Check Message ID.' });
+                return interaction.editReply({ content: '<:no:1297814819105144862> Could not edit menu.' });
             }
         }
 
@@ -265,107 +255,66 @@ module.exports = {
         else if (sub === 'refresh') {
             const msgId = interaction.options.getString('message_id');
 
-            // 1. Try to fetch the message
-            let message;
             try {
-                message = await targetChannel.messages.fetch(msgId);
-            } catch (err) {
-                return interaction.editReply({ 
-                    content: `<:no:1297814819105144862> **Message not found!**\n\n1. Are you in the correct channel? The command is trying to check ${targetChannel}.\n2. Did you copy the correct Message ID?\n\n**Tip:** If the menu is in another channel, use the \`channel\` option.` 
-                });
-            }
+                const message = await targetChannel.messages.fetch(msgId);
+                const oldContainer = message.components[0];
+                const oldMenuRow = oldContainer.components[3];
+                const menu = StringSelectMenuBuilder.from(oldMenuRow.components[0]);
 
-            try {
-                // 2. Locate the Menu Component safely
-                let oldMenu = null;
-                let oldContainer = null;
-                let isV2 = false;
-
-                if (message.components[0] && message.components[0].components) {
-                    oldContainer = message.components[0];
-                    const menuRow = oldContainer.components.find(c => c.components && c.components[0]?.type === 3);
-                    if (menuRow) {
-                        oldMenu = menuRow.components[0];
-                        isV2 = true;
-                    }
-                } else {
-                    const menuRow = message.components.find(c => c.components && c.components[0]?.type === 3);
-                    if (menuRow) oldMenu = menuRow.components[0];
-                }
-
-                if (!oldMenu) {
-                    return interaction.editReply({ content: '<:no:1297814819105144862> **No Menu Found:** I found the message, but it doesn\'t seem to contain a Role Selection Menu.' });
-                }
-
-                // 3. Rebuild the menu
-                const menu = StringSelectMenuBuilder.from(oldMenu);
                 let newBodyLines = [];
                 
+                // Check restriction
                 const menuCustomId = menu.data.custom_id;
                 if (menuCustomId.startsWith('role_select_')) {
                     const restrictionId = menuCustomId.replace('role_select_', '');
                     if (restrictionId !== 'public' && restrictionId !== 'menu') {
                         const restrictedRole = interaction.guild.roles.cache.get(restrictionId);
                         if (restrictedRole) {
+                            // CHANGED HERE: Custom Emoji
                             newBodyLines.push(`<:lock:1457147730542465312> **Restricted to:** ${restrictedRole.toString()}`);
                              newBodyLines.push('');
                         }
                     }
                 }
 
-                // Update Options (Name Only)
+                // Update Options
                 const updatedOptions = [];
                 for (const option of menu.options) {
                     const role = interaction.guild.roles.cache.get(option.data.value);
                     const builder = new StringSelectMenuOptionBuilder(option.data);
                     
                     if (role) {
-                        builder.setLabel(role.name);
-                        // Ensure description is cleared if it existed
-                        builder.setDescription(null); 
-
+                        builder.setLabel(role.name); 
                         const emoji = option.data.emoji;
-                        const emojiStr = emoji 
-                            ? (emoji.id 
-                                ? `<${emoji.animated ? 'a' : ''}:${emoji.name}:${emoji.id}>` 
-                                : emoji.name) 
-                            : null;
-                            
+                        const emojiStr = emoji ? (emoji.id ? `<:${emoji.name}:${emoji.id}>` : emoji.name) : null;
                         newBodyLines.push(`> **${emojiStr ? emojiStr + ' ' : ''}${role.name}**`);
                         updatedOptions.push(builder);
                     }
                 }
                 menu.setOptions(updatedOptions);
 
-                // 4. Update the message
-                if (isV2) {
-                    const titleText = new TextDisplayBuilder().setContent(oldContainer.components[0].content || "### Role Menu");
-                    const separator = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small);
-                    const newBodyText = new TextDisplayBuilder().setContent(newBodyLines.join('\n'));
-                    const newMenuRow = new ActionRowBuilder().addComponents(menu);
+                const titleText = new TextDisplayBuilder().setContent(oldContainer.components[0].content);
+                const separator = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small);
+                const newBodyText = new TextDisplayBuilder().setContent(newBodyLines.join('\n'));
+                const newMenuRow = new ActionRowBuilder().addComponents(menu);
 
-                    const newContainer = new ContainerBuilder()
-                        .setAccentColor(oldContainer.accentColor || 0x888888)
-                        .addTextDisplayComponents(titleText)
-                        .addTextDisplayComponents(newBodyText)
-                        .addSeparatorComponents(separator)
-                        .addActionRowComponents(newMenuRow);
+                const newContainer = new ContainerBuilder()
+                    .setAccentColor(oldContainer.accentColor || 0x888888)
+                    .addTextDisplayComponents(titleText)
+                    .addTextDisplayComponents(newBodyText)
+                    .addSeparatorComponents(separator)
+                    .addActionRowComponents(newMenuRow);
 
-                    await message.edit({ 
-                        components: [newContainer], 
-                        flags: MessageFlags.IsComponentsV2,
-                        allowedMentions: { parse: [] } 
-                    });
-                } else {
-                    const newRow = new ActionRowBuilder().addComponents(menu);
-                    await message.edit({ components: [newRow] });
-                }
-
-                return interaction.editReply({ content: `<:yes:1297814648417943565> Menu refreshed! **${targetChannel}**` });
+                await message.edit({ 
+                    components: [newContainer], 
+                    flags: MessageFlags.IsComponentsV2,
+                    allowedMentions: { parse: [] } 
+                });
+                return interaction.editReply({ content: `<:yes:1297814648417943565> Menu refreshed with latest role names!` });
 
             } catch (err) {
                 console.error(err);
-                return interaction.editReply({ content: '<:no:1297814819105144862> **Error:** Something went wrong while editing the message component.' });
+                return interaction.editReply({ content: '<:no:1297814819105144862> Failed to refresh menu. Check ID.' });
             }
         }
     }

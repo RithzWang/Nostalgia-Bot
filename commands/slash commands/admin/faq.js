@@ -10,8 +10,7 @@ const {
     SeparatorSpacingSize,
     ActionRowBuilder,
     ButtonBuilder,
-    ButtonStyle,
-    MediaGalleryBuilder
+    ButtonStyle
 } = require('discord.js');
 
 const moment = require('moment-timezone');
@@ -44,7 +43,6 @@ module.exports = {
                 .setDescription('Add a new Q&A pair')
                 .addStringOption(opt => opt.setName('question').setDescription('The question text').setRequired(true))
                 .addStringOption(opt => opt.setName('answer').setDescription('The answer text').setRequired(true))
-                .addAttachmentOption(opt => opt.setName('image').setDescription('Optional image to attach'))
         )
 
         // --- 3. EDIT QUESTION ---
@@ -54,7 +52,6 @@ module.exports = {
                 .addStringOption(opt => opt.setName('target_question').setDescription('The EXACT existing question you want to edit').setRequired(true))
                 .addStringOption(opt => opt.setName('new_question').setDescription('New question text (Optional)'))
                 .addStringOption(opt => opt.setName('new_answer').setDescription('New answer text (Optional)'))
-                .addAttachmentOption(opt => opt.setName('new_image').setDescription('New image (Optional)'))
         )
 
         // --- 4. REMOVE QUESTION ---
@@ -72,12 +69,10 @@ module.exports = {
 
         // --- HELPER 1: RENDER LOADING STATE ---
         const renderLoading = () => {
-            // Create instances explicitly
             const text = new TextDisplayBuilder().setContent('### 🔄 Updating FAQ...\nPlease wait.');
-            
             const loadingContainer = new ContainerBuilder()
                 .setAccentColor(0x888888) 
-                .addTextDisplayComponents(text); // Pass instance
+                .addTextDisplayComponents(text);
             
             return {
                 content: '',
@@ -91,8 +86,7 @@ module.exports = {
             const now = moment().tz('Asia/Bangkok').format('DD/MM/YYYY hh:mm A');
 
             // 1. Build Container
-            const container = new ContainerBuilder()
-                .setAccentColor(0x888888);
+            const container = new ContainerBuilder().setAccentColor(0x888888);
 
             // Add Header
             const headerText = new TextDisplayBuilder().setContent('## ❓ Questions — Answers');
@@ -101,16 +95,10 @@ module.exports = {
             // 2. Loop through Questions
             if (faqData.questions.length > 0) {
                 faqData.questions.forEach((q, index) => {
-                    // Create Section Instance
                     const section = new SectionBuilder();
-                    
-                    // Create Text Instance
                     const qaText = new TextDisplayBuilder().setContent(`> ### ${q.question}\n${q.answer}`);
                     
-                    // Add Text to Section
                     section.addTextDisplayComponents(qaText);
-                    
-                    // Add Section to Container
                     container.addSectionComponents(section);
 
                     // Add Separator (except after the last one)
@@ -119,30 +107,13 @@ module.exports = {
                         container.addSeparatorComponents(sep);
                     }
                 });
-
-                // 3. Handle Images (Media Gallery)
-                const images = faqData.questions.filter(q => q.image).map(q => q.image);
-                if (images.length > 0) {
-                    const gallery = new MediaGalleryBuilder();
-                    
-                    // Add items loop
-                    // Note: Depending on lib version, addItems might take objects with { url: ... }
-                    // or a builder. We try the standard object structure for galleries.
-                    for (const imgUrl of images) {
-                         // Some implementations use .addItems({ src: url }) or similar.
-                         // Attempting the most standard V2 builder pattern:
-                         gallery.addItems({ url: imgUrl }); 
-                    }
-                    
-                    container.addMediaGalleryComponents(gallery);
-                }
             } else {
                 const emptyText = new TextDisplayBuilder().setContent('*No questions added yet.*');
                 const emptySection = new SectionBuilder().addTextDisplayComponents(emptyText);
                 container.addSectionComponents(emptySection);
             }
 
-            // 4. Last Updated Button
+            // 3. Last Updated Button
             const btn = new ButtonBuilder()
                 .setCustomId('faq_timestamp')
                 .setLabel(`Last updated ${now} (GMT+7)`)
@@ -150,7 +121,6 @@ module.exports = {
                 .setDisabled(true);
 
             const row = new ActionRowBuilder().addComponents(btn);
-
             container.addActionRowComponents(row);
 
             return { 
@@ -170,13 +140,8 @@ module.exports = {
             const message = await channel.messages.fetch(messageId);
             if (!message) return false;
 
-            // 1. Show Loading Animation
             await message.edit(renderLoading());
-
-            // 2. Wait 3 seconds
             await new Promise(resolve => setTimeout(resolve, 3000));
-
-            // 3. Show Final Content
             await message.edit(renderFAQ(faqData));
             return true;
         };
@@ -195,10 +160,9 @@ module.exports = {
                 if (targetMsgId) {
                     try {
                         message = await targetChannel.messages.fetch(targetMsgId);
-                        
+                        // Show loading animation for re-used message
                         await message.edit(renderLoading());
                         await new Promise(r => setTimeout(r, 3000));
-
                     } catch (e) {
                         return interaction.editReply(`<:no:1297814819105144862> Could not find message ID \`${targetMsgId}\` in ${targetChannel}.`);
                     }
@@ -227,12 +191,11 @@ module.exports = {
             if (sub === 'add') {
                 const question = interaction.options.getString('question');
                 const answer = interaction.options.getString('answer');
-                const attachment = interaction.options.getAttachment('image');
 
                 faqEntry.questions.push({
                     question: question,
                     answer: answer,
-                    image: attachment ? attachment.url : null
+                    image: null // Explicitly null since we removed image support
                 });
                 await faqEntry.save();
 
@@ -249,15 +212,13 @@ module.exports = {
                 const targetQ = interaction.options.getString('target_question');
                 const newQ = interaction.options.getString('new_question');
                 const newA = interaction.options.getString('new_answer');
-                const newImg = interaction.options.getAttachment('new_image');
 
                 const index = faqEntry.questions.findIndex(q => q.question === targetQ);
                 if (index === -1) return interaction.editReply(`<:no:1297814819105144862> Question not found.`);
 
                 if (newQ) faqEntry.questions[index].question = newQ;
                 if (newA) faqEntry.questions[index].answer = newA;
-                if (newImg) faqEntry.questions[index].image = newImg.url;
-
+                
                 await faqEntry.save();
 
                 const success = await updateMessageWithAnimation(faqEntry.channelId, faqEntry.messageId, faqEntry);

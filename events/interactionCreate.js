@@ -73,30 +73,6 @@ module.exports = {
                 }
             }
 
-            // B. GIVEAWAY JOIN/LEAVE
-            if (interaction.customId === 'giveaway_join') {
-                const giveaway = await Giveaway.findOne({ messageId: interaction.message.id });
-                if (!giveaway || giveaway.ended) return interaction.reply({ content: '<:no:1297814819105144862> This giveaway has ended.', flags: MessageFlags.Ephemeral });
-
-                let responseContent = '';
-                if (giveaway.participants.includes(interaction.user.id)) {
-                    giveaway.participants = giveaway.participants.filter(id => id !== interaction.user.id);
-                    responseContent = '<:no:1297814819105144862> You have **left** the giveaway.';
-                } else {
-                    giveaway.participants.push(interaction.user.id);
-                    responseContent = '<:yes:1297814648417943565> You have successfully **joined** the giveaway!';
-                }
-                await giveaway.save();
-
-                const row = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setCustomId('giveaway_join').setLabel('Join Giveaway').setStyle(ButtonStyle.Secondary).setEmoji('🎉'),
-                    new ButtonBuilder().setCustomId('giveaway_count').setLabel(`${giveaway.participants.length} Entries`).setStyle(ButtonStyle.Secondary).setDisabled(true)
-                );
-
-                await interaction.message.edit({ components: [row] });
-                return interaction.reply({ content: responseContent, flags: MessageFlags.Ephemeral });
-            }
-
             
 
             // D. BUTTON ROLE HANDLER (Single & Multi)

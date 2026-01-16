@@ -23,12 +23,9 @@ module.exports = {
         .addSubcommand(sub => {
             sub.setName('setup')
                 .setDescription('Create a NEW menu')
-                // 1. REQUIRED FIRST
                 .addStringOption(opt => opt.setName('title').setDescription('Menu Title').setRequired(true))
                 .addBooleanOption(opt => opt.setName('multi_select').setDescription('Allow multiple roles?').setRequired(true))
                 .addRoleOption(opt => opt.setName('role1').setDescription('Role 1 (Required)').setRequired(true))
-                
-                // 2. OPTIONAL AFTER
                 .addRoleOption(opt => opt.setName('required_role').setDescription('Only users with this role can use the menu (Optional)'))
                 .addStringOption(opt => opt.setName('emoji1').setDescription('Emoji for Role 1'))
                 .addChannelOption(opt => 
@@ -38,7 +35,6 @@ module.exports = {
                 )
                 .addStringOption(opt => opt.setName('message_id').setDescription('Reuse a bot message ID'));
             
-            // Loop for Setup Roles 2-9
             for (let i = 2; i <= 9; i++) {
                 sub.addRoleOption(opt => opt.setName(`role${i}`).setDescription(`Role ${i}`))
                    .addStringOption(opt => opt.setName(`emoji${i}`).setDescription(`Emoji ${i}`));
@@ -79,7 +75,7 @@ module.exports = {
         // --- REFRESH COMMAND ---
         .addSubcommand(sub => 
             sub.setName('refresh')
-                .setDescription('Update role names in the menu if you changed them in Server Settings')
+                .setDescription('Update role names AND member counts in the menu')
                 .addStringOption(opt => opt.setName('message_id').setDescription('The Message ID').setRequired(true))
                 .addChannelOption(opt => opt.setName('channel').setDescription('Channel where the menu is'))
         ),
@@ -108,7 +104,6 @@ module.exports = {
             let descriptionLines = [];
 
             if (requiredRole) {
-                // CHANGED HERE: Custom Emoji
                 descriptionLines.push(`<:lock:1457147730542465312> **Restricted to:** ${requiredRole.toString()}`);
                  descriptionLines.push(''); 
             }
@@ -121,7 +116,13 @@ module.exports = {
                     if (role.position >= interaction.guild.members.me.roles.highest.position) {
                         return interaction.editReply({ content: `<:no:1297814819105144862> Role **${role.name}** is higher than my top role!` });
                     }
-                    const option = new StringSelectMenuOptionBuilder().setLabel(role.name).setValue(role.id);
+                    
+                    // --- CHANGED HERE: Add Description with Count ---
+                    const option = new StringSelectMenuOptionBuilder()
+                        .setLabel(role.name)
+                        .setValue(role.id)
+                        .setDescription(`Total members used: ${role.members.size}`); 
+
                     if (emoji) option.setEmoji(emoji);
                     descriptionLines.push(`> **${emoji ? emoji + ' ' : ''}${role.name}**`);
                     menu.addOptions(option);
@@ -190,7 +191,11 @@ module.exports = {
             try {
                 const message = await targetChannel.messages.fetch(msgId);
                 const oldContainer = message.components[0]; 
-                const oldMenuRow = oldContainer.components[3]; 
+                // Safely find the ActionRow containing the Select Menu
+                const oldMenuRow = oldContainer.components.find(c => c.components[0]?.type === 3);
+                
+                if (!oldMenuRow) return interaction.editReply({ content: "Could not find a select menu in that message." });
+
                 const newMenu = StringSelectMenuBuilder.from(oldMenuRow.components[0]);
 
                 const titleText = new TextDisplayBuilder().setContent(oldContainer.components[0].content);
@@ -204,7 +209,13 @@ module.exports = {
                         const emoji = interaction.options.getString(`emoji${i}`);
                         if (role) {
                             if (newMenu.options.some(o => o.data.value === role.id)) continue;
-                            const newOption = new StringSelectMenuOptionBuilder().setLabel(role.name).setValue(role.id);
+                            
+                            // --- CHANGED HERE: Add Description with Count ---
+                            const newOption = new StringSelectMenuOptionBuilder()
+                                .setLabel(role.name)
+                                .setValue(role.id)
+                                .setDescription(`Total members used: ${role.members.size}`);
+
                             if (emoji) newOption.setEmoji(emoji);
                             newMenu.addOptions(newOption);
                             currentBodyLines.push(`> **${emoji ? emoji + ' ' : ''}${role.name}**`);
@@ -250,7 +261,7 @@ module.exports = {
         }
 
         // ===============================================
-        // 3. REFRESH LOGIC
+        // 3. REFRESH LOGIC (Critical for updating counts)
         // ===============================================
         else if (sub === 'refresh') {
             const msgId = interaction.options.getString('message_id');
@@ -258,26 +269,28 @@ module.exports = {
             try {
                 const message = await targetChannel.messages.fetch(msgId);
                 const oldContainer = message.components[0];
-                const oldMenuRow = oldContainer.components[3];
+                const oldMenuRow = oldContainer.components.find(c => c.components[0]?.type === 3);
+
+                if (!oldMenuRow) return interaction.editReply({ content: "Could not find a select menu in that message." });
+
                 const menu = StringSelectMenuBuilder.from(oldMenuRow.components[0]);
 
                 let newBodyLines = [];
                 
-                // Check restriction
+                // Check restriction (Restore header if exists)
                 const menuCustomId = menu.data.custom_id;
                 if (menuCustomId.startsWith('role_select_')) {
                     const restrictionId = menuCustomId.replace('role_select_', '');
                     if (restrictionId !== 'public' && restrictionId !== 'menu') {
                         const restrictedRole = interaction.guild.roles.cache.get(restrictionId);
                         if (restrictedRole) {
-                            // CHANGED HERE: Custom Emoji
                             newBodyLines.push(`<:lock:1457147730542465312> **Restricted to:** ${restrictedRole.toString()}`);
                              newBodyLines.push('');
                         }
                     }
                 }
 
-                // Update Options
+                // Update Options (Name AND Count)
                 const updatedOptions = [];
                 for (const option of menu.options) {
                     const role = interaction.guild.roles.cache.get(option.data.value);
@@ -285,8 +298,16 @@ module.exports = {
                     
                     if (role) {
                         builder.setLabel(role.name); 
+                        // --- CHANGED HERE: Update Description with NEW Count ---
+                        builder.setDescription(`Total members used: ${role.members.size}`);
+
                         const emoji = option.data.emoji;
-                        const emojiStr = emoji ? (emoji.id ? `<:${emoji.name}:${emoji.id}>` : emoji.name) : null;
+                        const emojiStr = emoji 
+                            ? (emoji.id 
+                                ? `<${emoji.animated ? 'a' : ''}:${emoji.name}:${emoji.id}>` 
+                                : emoji.name) 
+                            : null;
+                            
                         newBodyLines.push(`> **${emojiStr ? emojiStr + ' ' : ''}${role.name}**`);
                         updatedOptions.push(builder);
                     }
@@ -310,7 +331,7 @@ module.exports = {
                     flags: MessageFlags.IsComponentsV2,
                     allowedMentions: { parse: [] } 
                 });
-                return interaction.editReply({ content: `<:yes:1297814648417943565> Menu refreshed with latest role names!` });
+                return interaction.editReply({ content: `<:yes:1297814648417943565> Menu refreshed with latest member counts!` });
 
             } catch (err) {
                 console.error(err);

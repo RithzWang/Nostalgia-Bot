@@ -16,7 +16,7 @@ const {
 } = require('discord.js');
 
 const moment = require('moment-timezone');
-const FAQ = require('../../../src/models/FaqSchema'); // Ensure this path matches your folder structure
+const FAQ = require('../../../src/models/FaqSchema'); 
 
 module.exports = {
     guildOnly: true,
@@ -42,13 +42,23 @@ module.exports = {
         // --- 2. ADD QUESTION ---
         .addSubcommand(sub => 
             sub.setName('add')
-                .setDescription('Add a Q&A pair to the FAQ')
+                .setDescription('Add a new Q&A pair')
                 .addStringOption(opt => opt.setName('question').setDescription('The question text').setRequired(true))
                 .addStringOption(opt => opt.setName('answer').setDescription('The answer text').setRequired(true))
                 .addAttachmentOption(opt => opt.setName('image').setDescription('Optional image to attach'))
         )
 
-        // --- 3. REMOVE QUESTION ---
+        // --- 3. EDIT QUESTION ---
+        .addSubcommand(sub => 
+            sub.setName('edit')
+                .setDescription('Edit an existing Q&A pair')
+                .addStringOption(opt => opt.setName('target_question').setDescription('The EXACT existing question you want to edit').setRequired(true))
+                .addStringOption(opt => opt.setName('new_question').setDescription('New question text (Optional)'))
+                .addStringOption(opt => opt.setName('new_answer').setDescription('New answer text (Optional)'))
+                .addAttachmentOption(opt => opt.setName('new_image').setDescription('New image (Optional)'))
+        )
+
+        // --- 4. REMOVE QUESTION ---
         .addSubcommand(sub => 
             sub.setName('remove')
                 .setDescription('Remove a Q&A pair')
@@ -65,9 +75,9 @@ module.exports = {
         const renderFAQ = (faqData) => {
             const now = moment().tz('Asia/Bangkok').format('DD/MM/YYYY hh:mm A');
 
-            // 1. Build Container with correct Accent Color
+            // 1. Build Container
             const container = new ContainerBuilder()
-                .setAccentColor(0x888888) // Updated to #888888
+                .setAccentColor(0x888888) 
                 .addTextDisplayComponents(t => t.setContent('## ❓ Questions — Answers'));
 
             // 2. Loop through Questions
@@ -118,15 +128,15 @@ module.exports = {
         };
 
         try {
+            const faqEntry = await FAQ.findOne({ guildId: guildId });
+
             // ===========================================
             //                 SETUP
             // ===========================================
             if (sub === 'setup') {
                 const targetChannel = interaction.options.getChannel('channel');
                 const targetMsgId = interaction.options.getString('message_id');
-
                 let message;
-                let newFaqData;
 
                 if (targetMsgId) {
                     try {
@@ -140,7 +150,7 @@ module.exports = {
 
                 await FAQ.deleteMany({ guildId: guildId });
 
-                newFaqData = await FAQ.create({
+                const newFaqData = await FAQ.create({
                     guildId: guildId,
                     channelId: targetChannel.id,
                     messageId: message.id,
@@ -151,13 +161,12 @@ module.exports = {
                 return interaction.editReply(`<:yes:1297814648417943565> FAQ Panel setup successfully in ${targetChannel}.`);
             }
 
+            if (!faqEntry) return interaction.editReply(`<:no:1297814819105144862> No FAQ panel found. Run \`/faq setup\` first.`);
+
             // ===========================================
             //                  ADD
             // ===========================================
             if (sub === 'add') {
-                const faqEntry = await FAQ.findOne({ guildId: guildId });
-                if (!faqEntry) return interaction.editReply(`<:no:1297814819105144862> No FAQ panel found. Run \`/faq setup\` first.`);
-
                 const question = interaction.options.getString('question');
                 const answer = interaction.options.getString('answer');
                 const attachment = interaction.options.getAttachment('image');
@@ -178,12 +187,41 @@ module.exports = {
             }
 
             // ===========================================
+            //                 EDIT
+            // ===========================================
+            if (sub === 'edit') {
+                const targetQ = interaction.options.getString('target_question');
+                
+                // Get optional new values
+                const newQ = interaction.options.getString('new_question');
+                const newA = interaction.options.getString('new_answer');
+                const newImg = interaction.options.getAttachment('new_image');
+
+                const index = faqEntry.questions.findIndex(q => q.question === targetQ);
+
+                if (index === -1) {
+                    return interaction.editReply(`<:no:1297814819105144862> Question not found: \`${targetQ}\`. Please copy the question exactly.`);
+                }
+
+                // Update fields ONLY if they were provided
+                if (newQ) faqEntry.questions[index].question = newQ;
+                if (newA) faqEntry.questions[index].answer = newA;
+                if (newImg) faqEntry.questions[index].image = newImg.url;
+
+                await faqEntry.save();
+
+                const channel = await interaction.guild.channels.fetch(faqEntry.channelId);
+                if (channel) {
+                    const message = await channel.messages.fetch(faqEntry.messageId);
+                    if (message) await message.edit(renderFAQ(faqEntry));
+                }
+                return interaction.editReply(`<:yes:1297814648417943565> FAQ updated successfully!`);
+            }
+
+            // ===========================================
             //                 REMOVE
             // ===========================================
             if (sub === 'remove') {
-                const faqEntry = await FAQ.findOne({ guildId: guildId });
-                if (!faqEntry) return interaction.editReply(`<:no:1297814819105144862> No FAQ panel found.`);
-
                 const targetQ = interaction.options.getString('question');
                 const initialLength = faqEntry.questions.length;
                 

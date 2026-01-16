@@ -5,7 +5,6 @@ const {
     ChannelType,
     ContainerBuilder,
     TextDisplayBuilder,
-    SectionBuilder,
     SeparatorBuilder,
     SeparatorSpacingSize,
     ActionRowBuilder,
@@ -67,26 +66,10 @@ module.exports = {
         const sub = interaction.options.getSubcommand();
         const guildId = interaction.guild.id;
 
-        // --- HELPER 1: RENDER LOADING STATE ---
-        const renderLoading = () => {
-            // 1. Create Instances (Role Menu Style)
-            const loadingText = new TextDisplayBuilder()
-                .setContent('### 🔄 Updating FAQ...\nPlease wait.');
-            
-            const loadingContainer = new ContainerBuilder()
-                .setAccentColor(0xFEE75C) 
-                .addTextDisplayComponents(loadingText); // Pass the instance directly
-            
-            return {
-                content: '',
-                components: [loadingContainer],
-                flags: MessageFlags.IsComponentsV2
-            };
-        };
-
-        // --- HELPER 2: RENDER FINAL FAQ ---
+        // --- HELPER: RENDER FINAL FAQ ---
         const renderFAQ = (faqData) => {
-            const now = moment().tz('Asia/Bangkok').format('DD/MM/YYYY hh:mm A');
+            // CHANGED HERE: Format is now DD/MM/YYYY only
+            const now = moment().tz('Asia/Bangkok').format('DD/MM/YYYY');
 
             // 1. Create Container Instance
             const container = new ContainerBuilder()
@@ -102,20 +85,14 @@ module.exports = {
             // 3. Loop through Questions
             if (faqData.questions.length > 0) {
                 faqData.questions.forEach((q, index) => {
-                    // A. Create SECTION Instance
-                    const section = new SectionBuilder();
-                    
-                    // B. Create TEXT Instance (Question & Answer)
+                    // Create TEXT Instance (Question & Answer)
                     const qaText = new TextDisplayBuilder()
                         .setContent(`> ### ${q.question}\n${q.answer}`);
                     
-                    // C. Add Text to Section
-                    section.addTextDisplayComponents(qaText);
-                    
-                    // D. Add Section to Container
-                    container.addSectionComponents(section);
+                    // Add DIRECTLY to Container
+                    container.addTextDisplayComponents(qaText);
 
-                    // E. Add Separator (except after the last one)
+                    // Add Separator (except after the last one)
                     if (index < faqData.questions.length - 1) {
                         const sep = new SeparatorBuilder()
                             .setSpacing(SeparatorSpacingSize.Small);
@@ -132,7 +109,7 @@ module.exports = {
             // 4. Create Footer Button
             const btn = new ButtonBuilder()
                 .setCustomId('faq_timestamp')
-                .setLabel(`Last updated ${now} (GMT+7)`)
+                .setLabel(`Last updated ${now}`) // Removed (GMT+7) text to keep it short, add back if needed
                 .setStyle(ButtonStyle.Secondary)
                 .setDisabled(true);
 
@@ -141,6 +118,7 @@ module.exports = {
             // Add Row to Container
             container.addActionRowComponents(row);
 
+            // Return Payload
             return { 
                 content: '', 
                 embeds: [], 
@@ -150,21 +128,15 @@ module.exports = {
             };
         };
 
-        // --- HELPER 3: UPDATE MESSAGE WITH ANIMATION ---
-        const updateMessageWithAnimation = async (channelId, messageId, faqData) => {
+        // --- HELPER: INSTANT UPDATE (No Animation) ---
+        const refreshFAQMessage = async (channelId, messageId, faqData) => {
             const channel = await interaction.guild.channels.fetch(channelId);
             if (!channel) return false;
 
             const message = await channel.messages.fetch(messageId);
             if (!message) return false;
 
-            // 1. Show Loading (Yellow)
-            await message.edit(renderLoading());
-
-            // 2. Wait 3 Seconds
-            await new Promise(resolve => setTimeout(resolve, 3000));
-
-            // 3. Show Result (Grey)
+            // Direct Edit
             await message.edit(renderFAQ(faqData));
             return true;
         };
@@ -183,11 +155,6 @@ module.exports = {
                 if (targetMsgId) {
                     try {
                         message = await targetChannel.messages.fetch(targetMsgId);
-                        
-                        // Trigger loading animation on reuse
-                        await message.edit(renderLoading());
-                        await new Promise(r => setTimeout(r, 3000));
-
                     } catch (e) {
                         return interaction.editReply(`<:no:1297814819105144862> Could not find message ID \`${targetMsgId}\` in ${targetChannel}.`);
                     }
@@ -223,7 +190,7 @@ module.exports = {
                 });
                 await faqEntry.save();
 
-                const success = await updateMessageWithAnimation(faqEntry.channelId, faqEntry.messageId, faqEntry);
+                const success = await refreshFAQMessage(faqEntry.channelId, faqEntry.messageId, faqEntry);
                 
                 if (success) return interaction.editReply(`<:yes:1297814648417943565> Question added!`);
                 return interaction.editReply(`<:no:1297814819105144862> Could not find the original FAQ message.`);
@@ -245,7 +212,7 @@ module.exports = {
                 
                 await faqEntry.save();
 
-                const success = await updateMessageWithAnimation(faqEntry.channelId, faqEntry.messageId, faqEntry);
+                const success = await refreshFAQMessage(faqEntry.channelId, faqEntry.messageId, faqEntry);
                 if (success) return interaction.editReply(`<:yes:1297814648417943565> FAQ updated!`);
                 return interaction.editReply(`<:no:1297814819105144862> Could not find message.`);
             }
@@ -265,7 +232,7 @@ module.exports = {
 
                 await faqEntry.save();
 
-                const success = await updateMessageWithAnimation(faqEntry.channelId, faqEntry.messageId, faqEntry);
+                const success = await refreshFAQMessage(faqEntry.channelId, faqEntry.messageId, faqEntry);
                 if (success) return interaction.editReply(`<:yes:1297814648417943565> Question removed!`);
                 return interaction.editReply(`<:no:1297814819105144862> Could not find message.`);
             }

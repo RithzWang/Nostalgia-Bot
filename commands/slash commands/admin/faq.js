@@ -74,7 +74,7 @@ module.exports = {
         // --- HELPER 1: RENDER LOADING STATE ---
         const renderLoading = () => {
             const loadingContainer = new ContainerBuilder()
-                .setAccentColor(0x888888) // Yellow "Working" Color
+                .setAccentColor(0x888888) 
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent('### 🔄 Updating FAQ...\nPlease wait.')
                 );
@@ -102,6 +102,7 @@ module.exports = {
                         section.addTextDisplayComponents(text => 
                             text.setContent(`> ### ${q.question}\n${q.answer}`)
                         );
+                        return section; // <--- FIX: Added explicit return
                     });
 
                     if (index < faqData.questions.length - 1) {
@@ -116,6 +117,7 @@ module.exports = {
                         images.forEach(imgUrl => {
                             gallery.addItems(item => item.setURL(imgUrl));
                         });
+                        return gallery; // <--- FIX: Added explicit return
                     });
                 }
             } else {

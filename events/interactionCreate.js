@@ -59,7 +59,7 @@ module.exports = {
                     } else {
                         if (hasRole) {
                             await interaction.member.roles.remove(role);
-                            return interaction.reply({ content: `<:yes:1297814648417943565> **Removed** ${role.name}.`, flags: MessageFlags.Ephemeral });
+                            return interaction.reply({ content: `<:no:1297814819105144862> **Removed** ${role.name}.`, flags: MessageFlags.Ephemeral });
                         } else {
                             await interaction.member.roles.add(role);
                             return interaction.reply({ content: `<:yes:1297814648417943565> **Added** ${role.name}.`, flags: MessageFlags.Ephemeral });
@@ -84,7 +84,7 @@ module.exports = {
                         // Toggle off if already have it
                         if (interaction.member.roles.cache.has(roleId)) {
                              await interaction.member.roles.remove(role);
-                             return interaction.reply({ content: `<:yes:1297814648417943565> **Removed:** ${role.name}`, flags: MessageFlags.Ephemeral });
+                             return interaction.reply({ content: `<:no:1297814819105144862> **Removed:** ${role.name}`, flags: MessageFlags.Ephemeral });
                         }
                         
                         // Remove other roles in the same group

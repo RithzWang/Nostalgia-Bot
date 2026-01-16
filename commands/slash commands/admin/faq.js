@@ -9,11 +9,12 @@ const {
     SeparatorSpacingSize,
     ActionRowBuilder,
     ButtonBuilder,
-    ButtonStyle
+    ButtonStyle,
+    MediaGalleryBuilder // Import this!
 } = require('discord.js');
 
 const moment = require('moment-timezone');
-const FAQ = require('../../../src/models/FaqSchema'); 
+const FAQ = require('../../../src/models/FaqSchema'); // Adjust path if needed
 
 module.exports = {
     guildOnly: true,
@@ -36,21 +37,23 @@ module.exports = {
                         .setRequired(false))
         )
 
-        // --- 2. ADD QUESTION ---
+        // --- 2. ADD QUESTION (With Image) ---
         .addSubcommand(sub => 
             sub.setName('add')
                 .setDescription('Add a new Q&A pair')
                 .addStringOption(opt => opt.setName('question').setDescription('The question text').setRequired(true))
                 .addStringOption(opt => opt.setName('answer').setDescription('The answer text').setRequired(true))
+                .addAttachmentOption(opt => opt.setName('image').setDescription('Optional image attachment'))
         )
 
-        // --- 3. EDIT QUESTION ---
+        // --- 3. EDIT QUESTION (With Image) ---
         .addSubcommand(sub => 
             sub.setName('edit')
                 .setDescription('Edit an existing Q&A pair')
                 .addStringOption(opt => opt.setName('target_question').setDescription('The EXACT existing question you want to edit').setRequired(true))
                 .addStringOption(opt => opt.setName('new_question').setDescription('New question text (Optional)'))
                 .addStringOption(opt => opt.setName('new_answer').setDescription('New answer text (Optional)'))
+                .addAttachmentOption(opt => opt.setName('new_image').setDescription('New image attachment (Optional)'))
         )
 
         // --- 4. REMOVE QUESTION ---
@@ -85,7 +88,6 @@ module.exports = {
             if (faqData.questions.length > 0) {
                 faqData.questions.forEach((q, index) => {
                     // Create TEXT Instance 
-                    // CHANGED FORMAT HERE:
                     const qaText = new TextDisplayBuilder()
                         .setContent(`### ${q.question}\n> ${q.answer}`);
                     
@@ -99,6 +101,24 @@ module.exports = {
                         container.addSeparatorComponents(sep);
                     }
                 });
+
+                // --- 4. IMAGE GALLERY LOGIC ---
+                // Filter questions that have images
+                const images = faqData.questions.filter(q => q.image).map(q => q.image);
+                
+                if (images.length > 0) {
+                    // Create Gallery Instance manually
+                    const gallery = new MediaGalleryBuilder();
+                    
+                    // Add items one by one
+                    images.forEach(url => {
+                        gallery.addItems({ url: url });
+                    });
+
+                    // Add Gallery to Container
+                    container.addMediaGalleryComponents(gallery);
+                }
+
             } else {
                 // Empty State
                 const emptyText = new TextDisplayBuilder()
@@ -106,7 +126,7 @@ module.exports = {
                 container.addTextDisplayComponents(emptyText);
             }
 
-            // 4. Create Footer Button
+            // 5. Create Footer Button
             const btn = new ButtonBuilder()
                 .setCustomId('faq_timestamp')
                 .setLabel(`Last Updated ${now}`)
@@ -184,10 +204,12 @@ module.exports = {
             if (sub === 'add') {
                 const question = interaction.options.getString('question');
                 const answer = interaction.options.getString('answer');
+                const attachment = interaction.options.getAttachment('image');
 
                 faqEntry.questions.push({
                     question: question,
-                    answer: answer
+                    answer: answer,
+                    image: attachment ? attachment.url : null // Save URL
                 });
                 await faqEntry.save();
 
@@ -204,12 +226,14 @@ module.exports = {
                 const targetQ = interaction.options.getString('target_question');
                 const newQ = interaction.options.getString('new_question');
                 const newA = interaction.options.getString('new_answer');
+                const newImg = interaction.options.getAttachment('new_image');
 
                 const index = faqEntry.questions.findIndex(q => q.question === targetQ);
                 if (index === -1) return interaction.editReply(`<:no:1297814819105144862> Question not found: \`${targetQ}\``);
 
                 if (newQ) faqEntry.questions[index].question = newQ;
                 if (newA) faqEntry.questions[index].answer = newA;
+                if (newImg) faqEntry.questions[index].image = newImg.url; // Update Image URL
                 
                 await faqEntry.save();
 

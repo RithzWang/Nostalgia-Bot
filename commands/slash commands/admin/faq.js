@@ -76,7 +76,7 @@ module.exports = {
 
             // 2. Create Header Instance
             const headerText = new TextDisplayBuilder()
-                .setContent('## ❓ Questions — Answers');
+                .setContent('## ❓ Question and Answer');
             
             // Add Header
             container.addTextDisplayComponents(headerText);

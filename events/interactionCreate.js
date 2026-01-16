@@ -7,14 +7,13 @@ const {
     ModalBuilder, 
     TextInputBuilder, 
     TextInputStyle,
-    Colors,
-    // Discord Components v2 Builders
+    StringSelectMenuBuilder,       // Added
+    StringSelectMenuOptionBuilder, // Added
     ContainerBuilder,
     TextDisplayBuilder,
     SeparatorBuilder,
     SeparatorSpacingSize
 } = require('discord.js');
-
 
 module.exports = {
     name: 'interactionCreate',
@@ -41,7 +40,6 @@ module.exports = {
         // 2. GENERAL BUTTON HANDLERS
         // ===============================================
         if (interaction.isButton()) {
-
             // A. LEGACY ROLE BUTTONS
             if (interaction.customId.startsWith('role_')) {
                 const parts = interaction.customId.split('_');
@@ -71,9 +69,7 @@ module.exports = {
                 }
             }
 
-            
-
-            // D. BUTTON ROLE HANDLER (Single & Multi)
+            // B. BUTTON ROLE HANDLER (Single & Multi)
             if (interaction.customId.startsWith('btn_role_') || interaction.customId.startsWith('btn_single_')) {
                 const isSingleMode = interaction.customId.startsWith('btn_single_');
                 const roleId = interaction.customId.replace('btn_role_', '').replace('btn_single_', '');
@@ -88,30 +84,32 @@ module.exports = {
                              await interaction.member.roles.remove(role);
                              return interaction.reply({ content: `<:yes:1297814648417943565> **Removed:** ${role.name}`, flags: MessageFlags.Ephemeral });
                         }
+                        
+                        // Remove others in group
                         const rolesToRemove = [];
-                        const removedNames = [];
                         const container = interaction.message.components[0]; 
                         if (container) {
-                            container.components.forEach(comp => {
-                                if (comp.type === 1) { 
-                                    comp.components.forEach(btn => {
-                                        if (btn.customId.startsWith('btn_single_')) {
-                                            const otherId = btn.customId.replace('btn_single_', '');
-                                            if (otherId !== roleId && interaction.member.roles.cache.has(otherId)) {
-                                                rolesToRemove.push(otherId);
-                                                const r = interaction.guild.roles.cache.get(otherId);
-                                                if (r) removedNames.push(r.name);
-                                            }
+                            const scanComponents = (comps) => {
+                                comps.forEach(c => {
+                                    if (c.components) scanComponents(c.components); // recursive
+                                    if (c.customId && c.customId.startsWith('btn_single_')) {
+                                        const otherId = c.customId.replace('btn_single_', '');
+                                        if (otherId !== roleId && interaction.member.roles.cache.has(otherId)) {
+                                            rolesToRemove.push(otherId);
                                         }
-                                    });
-                                }
-                            });
+                                    }
+                                });
+                            };
+                            if (container.components) scanComponents(container.components);
                         }
+
                         for (const rID of rolesToRemove) await interaction.member.roles.remove(rID).catch(() => {});
                         await interaction.member.roles.add(role);
+                        
                         let msg = `<:yes:1297814648417943565> **Added:** ${role.name}`;
-                        if (removedNames.length > 0) msg += `\n<:no:1297814819105144862> **Removed:** ${removedNames.join(', ')}`;
+                        if (rolesToRemove.length > 0) msg += ` (Switched from others)`;
                         return interaction.reply({ content: msg, flags: MessageFlags.Ephemeral });
+
                     } else {
                         if (interaction.member.roles.cache.has(roleId)) {
                             await interaction.member.roles.remove(role);
@@ -129,46 +127,149 @@ module.exports = {
         }
 
         // ===============================================
-        // 3. SELECT MENU HANDLERS
+        // 3. SELECT MENU HANDLERS (AUTO-UPDATE VERSION)
         // ===============================================
         if (interaction.isStringSelectMenu()) {
             if (interaction.customId.startsWith('role_select_')) {
+                // A. Check Restrictions
                 const restrictionId = interaction.customId.replace('role_select_', '');
                 if (restrictionId !== 'public' && restrictionId !== 'menu') {
                     if (!interaction.member.roles.cache.has(restrictionId)) {
-                        return interaction.reply({ content: `<:no:1297814819105144862> You need the <@&${restrictionId}> role to use this menu`, flags: MessageFlags.Ephemeral });
+                        return interaction.reply({ 
+                            content: `<:no:1297814819105144862> You need the <@&${restrictionId}> role to use this menu`, 
+                            flags: MessageFlags.Ephemeral 
+                        });
                     }
                 }
+
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
                 const selectedRoleIds = interaction.values;
                 const allRoleIds = interaction.component.options.map(opt => opt.value);
-                const added = [], removed = [];
+                const added = [];
+                const removed = [];
+                const failed = [];
+
+                // B. Manage Roles
                 for (const roleId of allRoleIds) {
                     const role = interaction.guild.roles.cache.get(roleId);
                     if (!role) continue;
+
+                    // Hierarchy Safety
+                    if (role.position >= interaction.guild.members.me.roles.highest.position) {
+                        failed.push(role.name);
+                        continue;
+                    }
+
                     const hasRole = interaction.member.roles.cache.has(roleId);
+                    const isSelected = selectedRoleIds.includes(roleId);
+
                     try {
-                        if (selectedRoleIds.includes(roleId)) {
-                            if (!hasRole) { await interaction.member.roles.add(role); added.push(role.name); }
-                        } else {
-                            if (hasRole) { await interaction.member.roles.remove(role); removed.push(role.name); }
+                        if (isSelected && !hasRole) {
+                            await interaction.member.roles.add(role);
+                            added.push(role.name);
+                        } else if (!isSelected && hasRole) {
+                            await interaction.member.roles.remove(role);
+                            removed.push(role.name);
                         }
-                    } catch (e) { console.error(`Error toggling role ${roleId}:`, e); }
+                    } catch (e) {
+                        console.error(`Error toggling role ${role.name}:`, e);
+                        failed.push(role.name);
+                    }
                 }
-                let feedbackText = '';
-                if (added.length || removed.length) {
-                    if (added.length) feedbackText += `<:yes:1297814648417943565> **Added:** ${added.join(', ')}\n`;
-                    if (removed.length) feedbackText += `<:no:1297814819105144862> **Removed:** ${removed.join(', ')}`;
-                } else { feedbackText = 'No changes 🤔'; }
-                return interaction.editReply({ content: feedbackText, components: [] });
+
+                // C. AUTO-UPDATE COUNTS LOGIC
+                try {
+                    const oldContainer = interaction.message.components[0];
+                    // Find the Row Index that contains the Select Menu (Type 3)
+                    const rowIndex = oldContainer.components.findIndex(row => row.components[0]?.type === 3);
+
+                    if (rowIndex !== -1) {
+                        const oldRow = oldContainer.components[rowIndex];
+                        const oldMenu = oldRow.components[0];
+
+                        // Rebuild Options with NEW Counts
+                        const updatedOptions = oldMenu.options.map(opt => {
+                            const role = interaction.guild.roles.cache.get(opt.value);
+                            const newOpt = new StringSelectMenuOptionBuilder(opt);
+                            if (role) {
+                                newOpt.setDescription(`Total members used: ${role.members.size}`);
+                            }
+                            return newOpt;
+                        });
+
+                        const updatedMenu = StringSelectMenuBuilder.from(oldMenu).setOptions(updatedOptions);
+                        const updatedRow = new ActionRowBuilder().addComponents(updatedMenu);
+
+                        // Clone Container and Replace Row
+                        const newContainer = ContainerBuilder.from(oldContainer);
+                        
+                        // We have to manually update the component list in the builder
+                        // This uses the raw API structure because builders can be tricky to splice
+                        const rawComponents = newContainer.toJSON().components;
+                        rawComponents[rowIndex] = updatedRow.toJSON(); 
+                        
+                        // Re-initialize builder with updated structure
+                        const finalContainer = new ContainerBuilder(newContainer.toJSON());
+                        finalContainer.setComponents(rawComponents.map(c => {
+                            // Map back to builders based on type if needed, or just let Discord handle JSON
+                            // The safest way with Builders:
+                            if (c.type === 1) return new ActionRowBuilder(c);
+                            return c; 
+                        }));
+                        
+                        // Actually, just creating a new container and adding parts is safer:
+                        const safeContainer = new ContainerBuilder().setAccentColor(oldContainer.accentColor);
+                        oldContainer.components.forEach((row, i) => {
+                            if (i === rowIndex) safeContainer.addActionRowComponents(updatedRow);
+                            else {
+                                // Re-add other components (Text, Separator, etc)
+                                // We can use the generic add component method if we know the type, 
+                                // but for Components V2, specific methods are better.
+                                // NOTE: This part assumes standard structure (Text, Text, Sep, Row)
+                                // If your structure varies, using the raw update is risky but necessary.
+                                
+                                // Let's use the simplest update:
+                                if (row.type === 1) safeContainer.addActionRowComponents(new ActionRowBuilder(row));
+                                // Text/Sep are harder to grab back into builders from raw data generic loops.
+                            }
+                        });
+
+                        // ⚠️ SIMPLIFIED AUTO-UPDATE (Highest Stability)
+                        // Because parsing old V2 components back into builders is complex,
+                        // We will just edit the `options` of the menu in place using the API payload style
+                        // which Discord.js handles well.
+                        
+                        const payloadContainer = ContainerBuilder.from(oldContainer);
+                        // We simply want to swap the components[rowIndex] with our new updatedRow
+                        // Accessing the private/internal array is bad practice, but effective here:
+                        const comps = payloadContainer.data.components || [];
+                        comps[rowIndex] = updatedRow.toJSON();
+                        payloadContainer.data.components = comps;
+
+                        await interaction.message.edit({ 
+                            components: [payloadContainer],
+                            flags: MessageFlags.IsComponentsV2
+                        });
+                    }
+                } catch (err) {
+                    console.error("Auto-update count failed:", err);
+                }
+
+                // D. Feedback
+                let feedbackText = [];
+                if (added.length > 0) feedbackText.push(`<:yes:1297814648417943565> **Added:** ${added.join(', ')}`);
+                if (removed.length > 0) feedbackText.push(`<:no:1297814819105144862> **Removed:** ${removed.join(', ')}`);
+                if (failed.length > 0) feedbackText.push(`⚠️ **Failed:** ${failed.join(', ')}`);
+                if (feedbackText.length === 0) feedbackText.push('No changes made.');
+
+                return interaction.editReply({ content: feedbackText.join('\n') });
             }
         }
 
         // ===============================================
-        // 4. REGISTRATION SYSTEM (Grouped)
+        // 4. REGISTRATION SYSTEM
         // ===============================================
-        
-        // --- STEP 1: OPEN REGISTRATION FORM (Button) ---
         if (interaction.isButton() && interaction.customId === 'reg_btn_open') {
             const REGISTERED_ROLE_ID = '1456197055117787136';
             if (interaction.member.roles.cache.has(REGISTERED_ROLE_ID)) {
@@ -181,11 +282,9 @@ module.exports = {
             await interaction.showModal(modal);
         }
 
-        // --- STEP 2: PROCESS REGISTRATION (Modal Submit) ---
         if (interaction.isModalSubmit() && interaction.customId === 'reg_modal_submit') {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-            // CONFIG
             const REGISTERED_ROLE_ID = '1456197055117787136';
             const UNVERIFIED_ROLE_ID = '1456238105345527932'; 
             const LOG_CHANNEL_ID = '1456197056988319871';
@@ -198,26 +297,22 @@ module.exports = {
             if (newNickname.length > 32) return interaction.editReply({ content: `<:no:1297814819105144862> Nickname too long.` });
 
             try {
-                // 1. Roles
                 await member.roles.add(REGISTERED_ROLE_ID);
                 if (member.roles.cache.has(UNVERIFIED_ROLE_ID)) {
                     await member.roles.remove(UNVERIFIED_ROLE_ID).catch(err => console.error("Could not remove Visitor role:", err));
                 }
 
-                // 2. Nickname
-                let warning = "";
                 if (member.id !== interaction.guild.ownerId && member.roles.highest.position < interaction.guild.members.me.roles.highest.position) {
                     await member.setNickname(newNickname);
-                } else { warning = "\n*(Couldn't change nickname due to hierarchy)*"; }
+                }
 
-                // 3. Log
                 const logChannel = interaction.guild.channels.cache.get(LOG_CHANNEL_ID);
                 if (logChannel) {
                     const embed = new EmbedBuilder().setTitle('New Registration').setDescription(`User: ${member}\nName: **${name}**\nFrom: ${country}`).setColor(0x57F287).setThumbnail(member.user.displayAvatarURL());
                     await logChannel.send({ embeds: [embed] });
                 }
 
-                // 4. Update Counter (FIXED: Re-defining text instead of cloning)
+                // Update Counter Logic (Same concept as role menu, but strictly defined here)
                 try {
                     const dashboardMsg = interaction.message; 
                     if (dashboardMsg) {
@@ -226,17 +321,11 @@ module.exports = {
                         const newCount = role ? role.members.size : 'N/A';
                         
                         const newContainer = new ContainerBuilder()
-                            .setAccentColor(oldContainer.accentColor || 0x808080); // Keep accent or default grey
+                            .setAccentColor(oldContainer.accentColor || 0x808080);
 
-                        // --- HARDCODED TEXT (Matching registration.js exactly) ---
-                        newContainer.addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent('### <:registration:1447143542643490848> Server Registration')
-                        );
-                        newContainer.addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent(`To access chat and connect to voice channels, please register below.\n\n**Note:**\n\`Name\` : your desired name.\n\`Country\` : your country’s flag emoji.`)
-                        );
+                        newContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent('### <:registration:1447143542643490848> Server Registration'));
+                        newContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`To access chat and connect to voice channels, please register below.\n\n**Note:**\n\`Name\` : your desired name.\n\`Country\` : your country’s flag emoji.`));
                         newContainer.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
-                        // ---------------------------------------------------------
 
                         const registerBtn = new ButtonBuilder().setCustomId('reg_btn_open').setLabel('Register').setStyle(ButtonStyle.Primary);
                         const countBtn = new ButtonBuilder().setCustomId('reg_btn_stats').setLabel(`Total Registered: ${newCount}`).setStyle(ButtonStyle.Secondary).setDisabled(true);

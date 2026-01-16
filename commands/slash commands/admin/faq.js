@@ -69,14 +69,13 @@ module.exports = {
 
         // --- HELPER 1: RENDER LOADING STATE ---
         const renderLoading = () => {
-            // We create the INSTANCE first, then add it.
-            // This prevents "undefined" errors.
+            // 1. Create Instances (Role Menu Style)
             const loadingText = new TextDisplayBuilder()
                 .setContent('### 🔄 Updating FAQ...\nPlease wait.');
             
             const loadingContainer = new ContainerBuilder()
-                .setAccentColor(0x888888) 
-                .addTextDisplayComponents(loadingText);
+                .setAccentColor(0xFEE75C) 
+                .addTextDisplayComponents(loadingText); // Pass the instance directly
             
             return {
                 content: '',
@@ -103,10 +102,10 @@ module.exports = {
             // 3. Loop through Questions
             if (faqData.questions.length > 0) {
                 faqData.questions.forEach((q, index) => {
-                    // A. Create the SECTION Instance
+                    // A. Create SECTION Instance
                     const section = new SectionBuilder();
                     
-                    // B. Create the TEXT Instance
+                    // B. Create TEXT Instance (Question & Answer)
                     const qaText = new TextDisplayBuilder()
                         .setContent(`> ### ${q.question}\n${q.answer}`);
                     

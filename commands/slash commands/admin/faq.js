@@ -25,18 +25,18 @@ module.exports = {
         .setDescription('Manage the Server FAQ System')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         
-        // --- 1. SETUP ---
+        // --- 1. SETUP (Updated) ---
         .addSubcommand(sub => 
             sub.setName('setup')
                 .setDescription('Initialize or Link an FAQ Panel')
-                .addChannelOption(opt => 
-                    opt.setName('channel')
-                        .setDescription('Where to send the FAQ')
-                        .addChannelTypes(ChannelType.GuildText)
-                        .setRequired(true))
                 .addStringOption(opt => 
                     opt.setName('message_id')
                         .setDescription('Existing message ID to turn into FAQ (Optional)'))
+                .addChannelOption(opt => 
+                    opt.setName('channel')
+                        .setDescription('Where the message is (Optional, defaults to current channel)')
+                        .addChannelTypes(ChannelType.GuildText)
+                        .setRequired(false)) // Changed to Optional
         )
 
         // --- 2. ADD QUESTION ---
@@ -121,7 +121,9 @@ module.exports = {
             container.addActionRowComponents(footerRow);
 
             return { 
-                content: '', 
+                content: '', // Clear text
+                embeds: [],  // Clear embeds
+                files: [],   // Clear attachments
                 components: [container],
                 flags: MessageFlags.IsComponentsV2 
             };
@@ -134,7 +136,8 @@ module.exports = {
             //                 SETUP
             // ===========================================
             if (sub === 'setup') {
-                const targetChannel = interaction.options.getChannel('channel');
+                // If channel is not provided, use the current channel
+                const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
                 const targetMsgId = interaction.options.getString('message_id');
                 let message;
 
@@ -148,6 +151,7 @@ module.exports = {
                     message = await targetChannel.send({ content: 'Creating FAQ...' });
                 }
 
+                // Delete old config
                 await FAQ.deleteMany({ guildId: guildId });
 
                 const newFaqData = await FAQ.create({
@@ -157,6 +161,7 @@ module.exports = {
                     questions: []
                 });
 
+                // This edit cleans all previous content/embeds
                 await message.edit(renderFAQ(newFaqData));
                 return interaction.editReply(`<:yes:1297814648417943565> FAQ Panel setup successfully in ${targetChannel}.`);
             }
@@ -191,8 +196,6 @@ module.exports = {
             // ===========================================
             if (sub === 'edit') {
                 const targetQ = interaction.options.getString('target_question');
-                
-                // Get optional new values
                 const newQ = interaction.options.getString('new_question');
                 const newA = interaction.options.getString('new_answer');
                 const newImg = interaction.options.getAttachment('new_image');
@@ -203,7 +206,6 @@ module.exports = {
                     return interaction.editReply(`<:no:1297814819105144862> Question not found: \`${targetQ}\`. Please copy the question exactly.`);
                 }
 
-                // Update fields ONLY if they were provided
                 if (newQ) faqEntry.questions[index].question = newQ;
                 if (newA) faqEntry.questions[index].answer = newA;
                 if (newImg) faqEntry.questions[index].image = newImg.url;

@@ -125,7 +125,7 @@ module.exports = {
         }
 
         // ===============================================
-        // 3. SELECT MENU HANDLERS (AUTO-UPDATE VERSION)
+        // 3. SELECT MENU HANDLERS (SIMPLIFIED - NO AUTO-UPDATE)
         // ===============================================
         if (interaction.isStringSelectMenu()) {
             if (interaction.customId.startsWith('role_select_')) {
@@ -172,41 +172,6 @@ module.exports = {
                         console.error(`Error toggling role ${role.name}:`, e);
                         failed.push(role.name);
                     }
-                }
-
-                // C. AUTO-UPDATE COUNTS LOGIC
-                try {
-                    const oldContainer = interaction.message.components[0];
-                    const rowIndex = oldContainer.components.findIndex(row => row.components[0]?.type === 3);
-
-                    if (rowIndex !== -1) {
-                        const oldRow = oldContainer.components[rowIndex];
-                        const oldMenu = oldRow.components[0];
-
-                        const updatedOptions = oldMenu.options.map(opt => {
-                            const role = interaction.guild.roles.cache.get(opt.value);
-                            const newOpt = new StringSelectMenuOptionBuilder(opt);
-                            if (role) {
-                                newOpt.setDescription(`total members with this role: ${role.members.size}`);
-                            }
-                            return newOpt;
-                        });
-
-                        const updatedMenu = StringSelectMenuBuilder.from(oldMenu).setOptions(updatedOptions);
-                        const updatedRow = new ActionRowBuilder().addComponents(updatedMenu);
-
-                        const payloadContainer = ContainerBuilder.from(oldContainer);
-                        const comps = payloadContainer.data.components || [];
-                        comps[rowIndex] = updatedRow.toJSON();
-                        payloadContainer.data.components = comps;
-
-                        await interaction.message.edit({ 
-                            components: [payloadContainer],
-                            flags: MessageFlags.IsComponentsV2
-                        });
-                    }
-                } catch (err) {
-                    console.error("Auto-update count failed:", err);
                 }
 
                 // D. Feedback
@@ -274,9 +239,8 @@ module.exports = {
                         const role = interaction.guild.roles.cache.get(REGISTERED_ROLE_ID);
                         const newCount = role ? role.members.size : 'N/A';
                         
-                        // COLOR SET HERE: 0x888888 (Fallback)
                         const newContainer = new ContainerBuilder()
-                            .setAccentColor(oldContainer.accentColor || 0x888888);
+                            .setAccentColor(oldContainer.accentColor || 0x808080);
 
                         newContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent('### <:registration:1447143542643490848> A2-Q Registration'));
                         newContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`To access chat and connect to voice channels, please register below.\n\n**Note:**\n\`Name\` : your desired name.\n\`Country\` : your country’s flag emoji.`));
@@ -291,7 +255,7 @@ module.exports = {
                     }
                 } catch (e) { console.error("Counter update failed", e); }
 
-                return interaction.editReply({ content: `<:yes:1297814648417943565> Welcome! You’re now a member of the server.` });
+                return interaction.editReply({ content: `<:yes:1297814648417943565> Welcome!! You’re now a member of the server.` });
 
             } catch (error) {
                 console.error(error);

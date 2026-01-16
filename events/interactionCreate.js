@@ -193,7 +193,7 @@ module.exports = {
                             const role = interaction.guild.roles.cache.get(opt.value);
                             const newOpt = new StringSelectMenuOptionBuilder(opt);
                             if (role) {
-                                newOpt.setDescription(`Total members used: ${role.members.size}`);
+                                newOpt.setDescription(`total members with this role: ${role.members.size}`);
                             }
                             return newOpt;
                         });

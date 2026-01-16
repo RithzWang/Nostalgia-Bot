@@ -16,7 +16,7 @@ const {
 } = require('discord.js');
 
 const moment = require('moment-timezone');
-const FAQ = require('../../../src/models/FaqSchema'); 
+const FAQ = require('../../models/FaqSchema'); 
 
 module.exports = {
     guildOnly: true,
@@ -25,7 +25,7 @@ module.exports = {
         .setDescription('Manage the Server FAQ System')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         
-        // --- 1. SETUP (Updated) ---
+        // --- 1. SETUP ---
         .addSubcommand(sub => 
             sub.setName('setup')
                 .setDescription('Initialize or Link an FAQ Panel')
@@ -36,7 +36,7 @@ module.exports = {
                     opt.setName('channel')
                         .setDescription('Where the message is (Optional, defaults to current channel)')
                         .addChannelTypes(ChannelType.GuildText)
-                        .setRequired(false)) // Changed to Optional
+                        .setRequired(false))
         )
 
         // --- 2. ADD QUESTION ---
@@ -71,7 +71,22 @@ module.exports = {
         const sub = interaction.options.getSubcommand();
         const guildId = interaction.guild.id;
 
-        // --- HELPER: RENDER THE FAQ MESSAGE ---
+        // --- HELPER 1: RENDER LOADING STATE ---
+        const renderLoading = () => {
+            const loadingContainer = new ContainerBuilder()
+                .setAccentColor(0x888888) // Yellow "Working" Color
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent('### 🔄 Updating FAQ...\nPlease wait.')
+                );
+            
+            return {
+                content: '',
+                components: [loadingContainer],
+                flags: MessageFlags.IsComponentsV2
+            };
+        };
+
+        // --- HELPER 2: RENDER FINAL FAQ ---
         const renderFAQ = (faqData) => {
             const now = moment().tz('Asia/Bangkok').format('DD/MM/YYYY hh:mm A');
 
@@ -89,15 +104,13 @@ module.exports = {
                         );
                     });
 
-                    // Add Separator (except after the last one)
                     if (index < faqData.questions.length - 1) {
                         container.addSeparatorComponents(sep => sep.setSpacing(SeparatorSpacingSize.Small));
                     }
                 });
 
-                // 3. Handle Images (Media Gallery)
+                // 3. Handle Images
                 const images = faqData.questions.filter(q => q.image).map(q => q.image);
-                
                 if (images.length > 0) {
                     container.addMediaGalleryComponents(gallery => {
                         images.forEach(imgUrl => {
@@ -121,12 +134,31 @@ module.exports = {
             container.addActionRowComponents(footerRow);
 
             return { 
-                content: '', // Clear text
-                embeds: [],  // Clear embeds
-                files: [],   // Clear attachments
+                content: '', 
+                embeds: [], 
+                files: [],   
                 components: [container],
                 flags: MessageFlags.IsComponentsV2 
             };
+        };
+
+        // --- HELPER 3: UPDATE MESSAGE WITH ANIMATION ---
+        const updateMessageWithAnimation = async (channelId, messageId, faqData) => {
+            const channel = await interaction.guild.channels.fetch(channelId);
+            if (!channel) return false;
+
+            const message = await channel.messages.fetch(messageId);
+            if (!message) return false;
+
+            // 1. Show Loading Animation
+            await message.edit(renderLoading());
+
+            // 2. Wait 3 seconds
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
+            // 3. Show Final Content
+            await message.edit(renderFAQ(faqData));
+            return true;
         };
 
         try {
@@ -136,7 +168,6 @@ module.exports = {
             //                 SETUP
             // ===========================================
             if (sub === 'setup') {
-                // If channel is not provided, use the current channel
                 const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
                 const targetMsgId = interaction.options.getString('message_id');
                 let message;
@@ -144,14 +175,19 @@ module.exports = {
                 if (targetMsgId) {
                     try {
                         message = await targetChannel.messages.fetch(targetMsgId);
+                        
+                        // Show Loading immediately for reuse
+                        await message.edit(renderLoading());
+                        await new Promise(r => setTimeout(r, 3000));
+
                     } catch (e) {
                         return interaction.editReply(`<:no:1297814819105144862> Could not find message ID \`${targetMsgId}\` in ${targetChannel}.`);
                     }
                 } else {
+                    // Send new message
                     message = await targetChannel.send({ content: 'Creating FAQ...' });
                 }
 
-                // Delete old config
                 await FAQ.deleteMany({ guildId: guildId });
 
                 const newFaqData = await FAQ.create({
@@ -161,7 +197,6 @@ module.exports = {
                     questions: []
                 });
 
-                // This edit cleans all previous content/embeds
                 await message.edit(renderFAQ(newFaqData));
                 return interaction.editReply(`<:yes:1297814648417943565> FAQ Panel setup successfully in ${targetChannel}.`);
             }
@@ -183,12 +218,10 @@ module.exports = {
                 });
                 await faqEntry.save();
 
-                const channel = await interaction.guild.channels.fetch(faqEntry.channelId);
-                if (channel) {
-                    const message = await channel.messages.fetch(faqEntry.messageId);
-                    if (message) await message.edit(renderFAQ(faqEntry));
-                }
-                return interaction.editReply(`<:yes:1297814648417943565> Question added!`);
+                const success = await updateMessageWithAnimation(faqEntry.channelId, faqEntry.messageId, faqEntry);
+                
+                if (success) return interaction.editReply(`<:yes:1297814648417943565> Question added!`);
+                return interaction.editReply(`<:no:1297814819105144862> Could not find the original FAQ message.`);
             }
 
             // ===========================================
@@ -201,10 +234,7 @@ module.exports = {
                 const newImg = interaction.options.getAttachment('new_image');
 
                 const index = faqEntry.questions.findIndex(q => q.question === targetQ);
-
-                if (index === -1) {
-                    return interaction.editReply(`<:no:1297814819105144862> Question not found: \`${targetQ}\`. Please copy the question exactly.`);
-                }
+                if (index === -1) return interaction.editReply(`<:no:1297814819105144862> Question not found.`);
 
                 if (newQ) faqEntry.questions[index].question = newQ;
                 if (newA) faqEntry.questions[index].answer = newA;
@@ -212,12 +242,9 @@ module.exports = {
 
                 await faqEntry.save();
 
-                const channel = await interaction.guild.channels.fetch(faqEntry.channelId);
-                if (channel) {
-                    const message = await channel.messages.fetch(faqEntry.messageId);
-                    if (message) await message.edit(renderFAQ(faqEntry));
-                }
-                return interaction.editReply(`<:yes:1297814648417943565> FAQ updated successfully!`);
+                const success = await updateMessageWithAnimation(faqEntry.channelId, faqEntry.messageId, faqEntry);
+                if (success) return interaction.editReply(`<:yes:1297814648417943565> FAQ updated!`);
+                return interaction.editReply(`<:no:1297814819105144862> Could not find message.`);
             }
 
             // ===========================================
@@ -230,17 +257,14 @@ module.exports = {
                 faqEntry.questions = faqEntry.questions.filter(q => q.question !== targetQ);
 
                 if (faqEntry.questions.length === initialLength) {
-                    return interaction.editReply(`<:no:1297814819105144862> Question not found: \`${targetQ}\`. Make sure it matches exactly.`);
+                    return interaction.editReply(`<:no:1297814819105144862> Question not found.`);
                 }
 
                 await faqEntry.save();
 
-                const channel = await interaction.guild.channels.fetch(faqEntry.channelId);
-                if (channel) {
-                    const message = await channel.messages.fetch(faqEntry.messageId);
-                    if (message) await message.edit(renderFAQ(faqEntry));
-                }
-                return interaction.editReply(`<:yes:1297814648417943565> Question removed!`);
+                const success = await updateMessageWithAnimation(faqEntry.channelId, faqEntry.messageId, faqEntry);
+                if (success) return interaction.editReply(`<:yes:1297814648417943565> Question removed!`);
+                return interaction.editReply(`<:no:1297814819105144862> Could not find message.`);
             }
 
         } catch (error) {

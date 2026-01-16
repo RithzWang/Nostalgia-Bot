@@ -30,7 +30,6 @@ const { loadFonts } = require('./fontLoader');
 
 // --- CONFIGURATION ---
 const config = require("./config.json");
-const Giveaway = require('./src/models/Giveaway');
 
 const { prefix, serverID, welcomeLog, roleupdateLog, roleforLog, colourEmbed } = config;
 let roleupdateMessageID = config.roleupdateMessageID || null;
@@ -268,42 +267,6 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
     }
 });
 
-// --- RESTORED GIVEAWAY END LOOP ---
-setInterval(async () => {
-    const endedGiveaways = await Giveaway.find({ ended: false, endTimestamp: { $lte: Date.now() } });
-    for (const g of endedGiveaways) {
-        try {
-            const channel = client.channels.cache.get(g.channelId);
-            if (!channel) continue;
-            const message = await channel.messages.fetch(g.messageId).catch(() => null);
-            if (!message) continue;
-
-            let winnersText = "No valid entries.";
-            if (g.participants.length > 0) {
-                const winners = g.participants.sort(() => 0.5 - Math.random()).slice(0, g.winnersCount);
-                winnersText = winners.map(id => `<@${id}>`).join(', ');
-                await channel.send(`🎉 **CONGRATULATIONS!**\n${winnersText}, You won **${g.prize}**!`);
-            }
-
-            const endRelative = `<t:${Math.floor(g.endTimestamp / 1000)}:R>`;
-            const hostInfo = `**Winner(s):** ${winnersText}\n**Host:** <@${g.hostId}>\n**Ended:** ${endRelative}`;
-            
-            const endedEmbed = EmbedBuilder.from(message.embeds[0])
-                .setTitle(`🎉 ${g.prize}`) 
-                .setColor(0x808080) 
-                .setDescription(g.description ? `-# ${g.description}\n${hostInfo}` : hostInfo)
-                .setFooter(null);
-
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('ended').setLabel('Giveaway Ended').setStyle(ButtonStyle.Secondary).setDisabled(true),
-                new ButtonBuilder().setCustomId('count').setLabel(`${g.participants.length} Entries`).setStyle(ButtonStyle.Secondary).setDisabled(true)
-            );
-
-            await message.edit({ embeds: [endedEmbed], components: [row] });
-            g.ended = true; await g.save();
-        } catch (e) { console.error(e); }
-    }
-}, 15000);
 
 // --- DB & LOGIN ---
 (async () => {

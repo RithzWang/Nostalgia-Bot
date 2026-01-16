@@ -158,7 +158,7 @@ module.exports = {
                     const oldMsg = await targetChannel.messages.fetch(reuseMessageId);
                     
                     const loadingContainer = new ContainerBuilder()
-                        .setAccentColor(0xFEE75C)
+                        .setAccentColor(0x888888)
                         .addTextDisplayComponents(
                             new TextDisplayBuilder().setContent('### 🔄 Updating Menu...\nPlease wait.')
                         );

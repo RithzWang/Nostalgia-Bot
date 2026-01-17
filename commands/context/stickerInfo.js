@@ -63,7 +63,7 @@ module.exports = {
                 )
                 .addTextDisplayComponents((text) => 
                     text.setContent(
-                        `**Name:** **${sticker.name}**\n` +
+                        `**Name:** ${sticker.name}\n` +
                         `**ID:** \`${sticker.id}\`\n` +
                         `**Format:** ${formatName}`
                     )

@@ -141,7 +141,7 @@ client.on('clientReady', async () => {
         status: 'dnd'
     });
 
-}, 2000); // Updates every 1 minute
+}, 10000); // Updates every 1 minute
 });
 
 

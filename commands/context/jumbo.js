@@ -34,7 +34,7 @@ module.exports = {
                 
                 // Send a NEW hidden message
                 return interaction.followUp({ 
-                    content: '❌ That message does not contain a sticker.', 
+                    content: '<:No:1297814819105144862> That message does not contain a sticker.', 
                     flags: MessageFlags.Ephemeral 
                 });
             }
@@ -107,7 +107,7 @@ module.exports = {
             // E. Link Button
             const btnRow = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
-                    .setLabel('Open Original')
+                    .setLabel('Open in Browser')
                     .setStyle(ButtonStyle.Link)
                     .setURL(sticker.url)
             );
@@ -126,7 +126,7 @@ module.exports = {
             // On crash: delete public message, send hidden error
             await interaction.deleteReply().catch(() => {});
             await interaction.followUp({ 
-                content: '❌ An error occurred while fetching the sticker.',
+                content: '<:No:1297814819105144862> An error occurred while fetching the sticker.',
                 flags: MessageFlags.Ephemeral
             });
         }

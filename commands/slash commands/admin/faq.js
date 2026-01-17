@@ -85,20 +85,26 @@ module.exports = {
             if (faqData.questions.length > 0) {
                 faqData.questions.forEach((q, index) => {
                     // Create TEXT Instance 
-                    // CHANGED FORMAT HERE:
                     const qaText = new TextDisplayBuilder()
                         .setContent(`### ${q.question}\n> ${q.answer}`);
                     
                     // Add DIRECTLY to Container
                     container.addTextDisplayComponents(qaText);
 
-                    // Add Separator (except after the last one)
+                    // Add Separator BETWEEN questions (except after the last one)
                     if (index < faqData.questions.length - 1) {
                         const sep = new SeparatorBuilder()
                             .setSpacing(SeparatorSpacingSize.Small);
                         container.addSeparatorComponents(sep);
                     }
                 });
+
+                // --- ADDED: Final Separator after the list ends ---
+                // This separates the last question from the footer button
+                const finalSep = new SeparatorBuilder()
+                    .setSpacing(SeparatorSpacingSize.Small);
+                container.addSeparatorComponents(finalSep);
+
             } else {
                 // Empty State
                 const emptyText = new TextDisplayBuilder()
@@ -109,7 +115,7 @@ module.exports = {
             // 4. Create Footer Button
             const btn = new ButtonBuilder()
                 .setCustomId('faq_timestamp')
-                .setLabel(`Last Updated ${now}`)
+                .setLabel(`Last Updated: ${now}`)
                 .setStyle(ButtonStyle.Secondary)
                 .setDisabled(true);
 

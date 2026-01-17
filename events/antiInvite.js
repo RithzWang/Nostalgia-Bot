@@ -1,36 +1,76 @@
-const { PermissionsBitField } = require('discord.js');
+const { 
+    PermissionsBitField, 
+    MessageFlags,
+    ContainerBuilder,
+    TextDisplayBuilder,
+    SectionBuilder,
+    SeparatorBuilder,
+    SeparatorSpacingSize
+} = require('discord.js');
+
+// 👇 PASTE YOUR ALERT/LOG CHANNEL ID HERE
+const ALERT_CHANNEL_ID = '1456197056988319869';
 
 module.exports = {
     name: 'messageCreate',
     async execute(message, client) {
-        // 1. Ignore bots and Direct Messages
         if (message.author.bot || !message.guild) return;
 
-        // 2. Check for Discord Invite Links
-        // This Regex catches "discord.gg/" and "discord.com/invite/"
         const inviteRegex = /(discord\.gg\/|discord\.com\/invite\/)/i;
 
         if (inviteRegex.test(message.content)) {
 
-            // 3. IGNORE ADMINISTRATORS
-            // If the user has the 'Administrator' permission, we stop here.
+            // Ignore Admins
             if (message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
                 return; 
             }
 
-            // 4. Action: Delete and Warn
             try {
+                const content = message.content;
+                const author = message.author;
+
+                // 1. Delete Message
                 if (message.deletable) {
                     await message.delete();
 
-                    // Send a temporary warning message
+                    // Send Temp Warning
                     const warning = await message.channel.send(
-                        `⛔ ${message.author}, Server invites are not allowed!`
+                        `⛔ ${author}, **Server invites are not allowed!**`
                     );
-
-                    // Delete the bot's warning after 5 seconds to keep chat clean
                     setTimeout(() => warning.delete().catch(() => {}), 5000);
                 }
+
+                // 2. Send Container Alert to Staff Channel
+                const alertChannel = message.guild.channels.cache.get(ALERT_CHANNEL_ID);
+                if (alertChannel) {
+                    
+                    const container = new ContainerBuilder()
+                        .setAccentColor(0xFEE75C); // 🟠 Orange/Yellow for Warning
+
+                    // Header Section with Avatar
+                    const section = new SectionBuilder()
+                        .addTextDisplayComponents((text) =>
+                            text.setContent('### ⚠️ Anti-Invite Triggered')
+                        )
+                        .addTextDisplayComponents((text) =>
+                            text.setContent(
+                                `**User:** ${author} (\`${author.id}\`)\n` +
+                                `**Channel:** ${message.channel}\n` +
+                                `**Message:** \`${content}\``
+                            )
+                        )
+                        .setThumbnailAccessory((thumb) =>
+                            thumb.setURL(author.displayAvatarURL())
+                        );
+
+                    container.addSectionComponents(section);
+
+                    await alertChannel.send({ 
+                        components: [container], 
+                        flags: MessageFlags.IsComponentsV2 
+                    });
+                }
+
             } catch (error) {
                 console.error("Anti-Invite Error:", error);
             }

@@ -53,7 +53,7 @@ module.exports = {
         // --- BUILD COMPONENTS ---
         // 1. Text Content
         const headerText = new TextDisplayBuilder()
-            .setContent('### <:registration:1447143542643490848> A2-Q Registration');
+            .setContent('## <:registration:1447143542643490848> A2-Q Registration');
         
         const descText = new TextDisplayBuilder()
             .setContent(`To access chat and connect to voice channels, please register below.\n\n**Note:**\n\`Name\` : your desired name.\n\`Country\` : your country’s flag emoji.`);
@@ -75,7 +75,7 @@ module.exports = {
 
         // 3. Assemble V2 Container
         const container = new ContainerBuilder()
-            .setAccentColor(sub === 'disable' ? 0x808080 : 0x808080) // Red if disabled, Green if enabled
+            .setAccentColor(sub === 'disable' ? 0x888888 : 0x888888) // Red if disabled, Green if enabled
             .addTextDisplayComponents(headerText)
             .addTextDisplayComponents(descText)
             .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small))

@@ -5,16 +5,17 @@ const {
     ChannelType,
     ContainerBuilder,
     TextDisplayBuilder,
+    SectionBuilder,
     SeparatorBuilder,
     SeparatorSpacingSize,
     ActionRowBuilder,
     ButtonBuilder,
     ButtonStyle,
-    MediaGalleryBuilder // <--- Imported
+    ThumbnailBuilder // <--- Changed from MediaGalleryBuilder
 } = require('discord.js');
 
 const moment = require('moment-timezone');
-const FAQ = require('../../../src/models/FaqSchema'); // Adjust path to your model
+const FAQ = require('../../../src/models/FaqSchema'); 
 
 module.exports = {
     guildOnly: true,
@@ -37,23 +38,23 @@ module.exports = {
                         .setRequired(false))
         )
 
-        // --- 2. ADD QUESTION (With Image) ---
+        // --- 2. ADD QUESTION ---
         .addSubcommand(sub => 
             sub.setName('add')
                 .setDescription('Add a new Q&A pair')
                 .addStringOption(opt => opt.setName('question').setDescription('The question text').setRequired(true))
                 .addStringOption(opt => opt.setName('answer').setDescription('The answer text').setRequired(true))
-                .addAttachmentOption(opt => opt.setName('image').setDescription('Optional image attachment'))
+                .addAttachmentOption(opt => opt.setName('image').setDescription('Optional image (will appear as thumbnail)'))
         )
 
-        // --- 3. EDIT QUESTION (With Image) ---
+        // --- 3. EDIT QUESTION ---
         .addSubcommand(sub => 
             sub.setName('edit')
                 .setDescription('Edit an existing Q&A pair')
                 .addStringOption(opt => opt.setName('target_question').setDescription('The EXACT existing question you want to edit').setRequired(true))
                 .addStringOption(opt => opt.setName('new_question').setDescription('New question text (Optional)'))
                 .addStringOption(opt => opt.setName('new_answer').setDescription('New answer text (Optional)'))
-                .addAttachmentOption(opt => opt.setName('new_image').setDescription('New image attachment (Optional)'))
+                .addAttachmentOption(opt => opt.setName('new_image').setDescription('New image (Optional)'))
         )
 
         // --- 4. REMOVE QUESTION ---
@@ -87,38 +88,32 @@ module.exports = {
             // 3. Loop through Questions
             if (faqData.questions.length > 0) {
                 faqData.questions.forEach((q, index) => {
-                    // Create TEXT Instance 
+                    // A. Create SECTION Instance (Required for Thumbnails)
+                    const section = new SectionBuilder();
+
+                    // B. Create TEXT Instance
                     const qaText = new TextDisplayBuilder()
                         .setContent(`### ${q.question}\n-# ${q.answer}`);
                     
-                    // Add DIRECTLY to Container
-                    container.addTextDisplayComponents(qaText);
+                    section.addTextDisplayComponents(qaText);
 
-                    // Add Separator (except after the last one)
+                    // C. Add Image (Thumbnail) if it exists
+                    if (q.image) {
+                        const thumb = new ThumbnailBuilder()
+                            .setURL(q.image);
+                        section.setThumbnailAccessory(thumb);
+                    }
+
+                    // D. Add Section to Container
+                    container.addSectionComponents(section);
+
+                    // E. Add Separator (except after the last one)
                     if (index < faqData.questions.length - 1) {
                         const sep = new SeparatorBuilder()
                             .setSpacing(SeparatorSpacingSize.Small);
                         container.addSeparatorComponents(sep);
                     }
                 });
-
-                // --- 4. IMAGE GALLERY LOGIC ---
-                // Collect all images from questions
-                const images = faqData.questions.filter(q => q.image).map(q => q.image);
-                
-                if (images.length > 0) {
-                    const gallery = new MediaGalleryBuilder();
-                    
-                    // Add items using the callback pattern from your example
-                    // We map the URLs to item callbacks: item => item.setURL(url)
-                    images.forEach(url => {
-                        gallery.addItems(item => item.setURL(url));
-                    });
-
-                    // Add Gallery to Container
-                    container.addMediaGalleryComponents(gallery);
-                }
-
             } else {
                 // Empty State
                 const emptyText = new TextDisplayBuilder()
@@ -126,7 +121,7 @@ module.exports = {
                 container.addTextDisplayComponents(emptyText);
             }
 
-            // 5. Create Footer Button
+            // 4. Create Footer Button
             const btn = new ButtonBuilder()
                 .setCustomId('faq_timestamp')
                 .setLabel(`Last Updated ${now}`)
@@ -233,7 +228,7 @@ module.exports = {
 
                 if (newQ) faqEntry.questions[index].question = newQ;
                 if (newA) faqEntry.questions[index].answer = newA;
-                if (newImg) faqEntry.questions[index].image = newImg.url; // Update Image URL
+                if (newImg) faqEntry.questions[index].image = newImg.url;
                 
                 await faqEntry.save();
 

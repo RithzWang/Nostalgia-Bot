@@ -274,7 +274,7 @@ module.exports = {
                         const newCount = role ? role.members.size : 'N/A';
                         
                         const newContainer = new ContainerBuilder()
-                            .setAccentColor(oldContainer.accentColor || 0x888888);
+                           // .setAccentColor(oldContainer.accentColor || 0x888888);
 
                         newContainer.addTextDisplayComponents(
                             new TextDisplayBuilder().setContent('## <:registration:1447143542643490848> A2-Q Registration')

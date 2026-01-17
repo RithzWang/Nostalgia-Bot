@@ -142,7 +142,7 @@ client.on('clientReady', async () => {
     });
 
 }, 2000); // Updates every 1 minute
-
+});
 
 
 const { createWelcomeImage } = require('./welcomeCanvas6.js');

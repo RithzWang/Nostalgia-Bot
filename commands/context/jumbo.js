@@ -8,7 +8,9 @@ const {
     MediaGalleryBuilder,
     ActionRowBuilder,
     ButtonBuilder,
-    ButtonStyle
+    ButtonStyle,
+    SeparatorBuilder,
+    SeparatorSpacingSize
 } = require('discord.js');
 
 module.exports = {
@@ -17,7 +19,7 @@ module.exports = {
         .setType(ApplicationCommandType.Message),
 
     async execute(interaction) {
-        // 1. Defer (Ephemeral so only you see it, change to false if you want everyone to see)
+        // Change 'ephemeral: true' to 'false' if you want others to see the result
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         try {
@@ -29,32 +31,63 @@ module.exports = {
                 return interaction.editReply('❌ That message does not contain a sticker.');
             }
 
-            // Lottie (JSON) check
+            // ============================================
+            // 1. LOTTIE (JSON) STICKER HANDLING
+            // ============================================
             if (sticker.format === 3) {
+                const lottieContainer = new ContainerBuilder()
+                    .setAccentColor(0x888888); // Matching Gray
+
+                // Title & Explanation
+                lottieContainer.addTextDisplayComponents(
+                    new TextDisplayBuilder()
+                        .setContent(`### ⚠️ Lottie Sticker: ${sticker.name}`),
+                    new TextDisplayBuilder()
+                        .setContent(`This sticker uses the **Lottie (JSON)** format.\nDiscord does not provide a static image or GIF for these types of animations, but you can download the source file below.`)
+                );
+
+                // Separator
+                lottieContainer.addSeparatorComponents(
+                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+                );
+
+                // Download Button
+                const btnRow = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder()
+                        .setLabel('Download .JSON Source')
+                        .setStyle(ButtonStyle.Link)
+                        .setURL(sticker.url)
+                );
+                lottieContainer.addActionRowComponents(btnRow);
+
                 return interaction.editReply({ 
-                    content: `⚠️ **${sticker.name}** is a Lottie (animated JSON) sticker.\nI cannot convert it to an image, but here is the source file.`,
-                    files: [sticker.url]
+                    content: '',
+                    components: [lottieContainer],
+                    // We can still attach the file for convenience
+                    files: [sticker.url], 
+                    flags: MessageFlags.IsComponentsV2
                 });
             }
 
-            // --- BUILD CONTAINER ---
+            // ============================================
+            // 2. STANDARD IMAGE/GIF HANDLING
+            // ============================================
             const container = new ContainerBuilder()
-                .setAccentColor(0x888888); // Requested Colour
+                .setAccentColor(0x888888); 
 
-            // 1. Title
+            // Title
             const title = new TextDisplayBuilder()
                 .setContent(`### 🖼️ Sticker: ${sticker.name}`);
             
             container.addTextDisplayComponents(title);
 
-            // 2. The Big Image (Using Gallery)
+            // The Big Image
             const gallery = new MediaGalleryBuilder();
-            // We use the callback pattern to set the URL
             gallery.addItems(item => item.setURL(sticker.url));
 
             container.addMediaGalleryComponents(gallery);
 
-            // 3. Link Button
+            // Link Button
             const btnRow = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
                     .setLabel('Open Original')
@@ -64,7 +97,7 @@ module.exports = {
 
             container.addActionRowComponents(btnRow);
 
-            // --- SEND ---
+            // Send
             await interaction.editReply({ 
                 content: '',
                 components: [container],

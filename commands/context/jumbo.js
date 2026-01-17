@@ -85,7 +85,7 @@ module.exports = {
 
             // A. Title
             container.addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(`### 🖼️ Sticker: ${sticker.name}`)
+                new TextDisplayBuilder().setContent(`### 💖 Sticker: ${sticker.name}`)
             );
 
             // B. Separator (Top)

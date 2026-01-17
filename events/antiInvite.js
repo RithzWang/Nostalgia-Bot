@@ -35,7 +35,7 @@ module.exports = {
 
                     // Send Temp Warning
                     const warning = await message.channel.send(
-                        `⛔ ${author}, **Server invites are not allowed!**`
+                        `⛔ ${author}, Server invites are not allowed!`
                     );
                     setTimeout(() => warning.delete().catch(() => {}), 5000);
                 }

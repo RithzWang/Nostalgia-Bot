@@ -38,7 +38,7 @@ module.exports = {
             const isLottie = sticker.format === 3;
             const formatName = getStickerFormat(sticker.format);
             const extension = getStickerExtension(sticker.format);
-            const fileName = `sticker.${extension}`;
+            const fileName = `${sticker.d}-A2-Q.${extension}`;
 
             // ============================================
             // 1. PREPARE THE FILE

@@ -275,7 +275,7 @@ module.exports = {
                             new TextDisplayBuilder().setContent('## <:registration:1447143542643490848> A2-Q Registration')
                         );
                         newContainer.addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent(`To access chat and connect to voice channels, please register below.\n\n**Note:**\n\`Name\` : your desired name.\n\`Country\` : your country’s flag emoji.\n\n[**❓ Why Do I Require Registration?**](https://discord.com/channels/1456197054782111756/1456197056250122353)`)
+                            new TextDisplayBuilder().setContent(`To access chat and connect to voice channels, please register below.\n\n**Note:**\n\`Name\` : your desired name.\n\`Country\` : your country’s flag emoji.\n\n❓ [**Why Do I Require Registration?**](https://discord.com/channels/1456197054782111756/1456197056250122353)`)
                         );
                         newContainer.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
 

@@ -46,7 +46,7 @@ module.exports = {
             // 1. BUILD THE INFO CONTAINER
             // ============================================
             const container = new ContainerBuilder()
-                .setAccentColor(isLottie ? 0xFEE75C : 0x888888); 
+                .setAccentColor(0x888888); 
 
             const metaSection = new SectionBuilder()
                 .addTextDisplayComponents((text) => 

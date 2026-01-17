@@ -1,59 +1,74 @@
 const { 
     ContextMenuCommandBuilder, 
     ApplicationCommandType, 
-    EmbedBuilder, 
-    ButtonBuilder, 
-    ButtonStyle, 
-    ActionRowBuilder 
+    MessageFlags,
+    // V2 Imports
+    ContainerBuilder,
+    TextDisplayBuilder,
+    MediaGalleryBuilder,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle
 } = require('discord.js');
 
 module.exports = {
     data: new ContextMenuCommandBuilder()
         .setName('Jumbo')
-        .setType(ApplicationCommandType.Message), // Right Click > Apps > Jumbo
+        .setType(ApplicationCommandType.Message),
 
     async execute(interaction) {
-        // 1. DEFER IMMEDIATELY
-        // This buys you 15 minutes and stops the "Application didn't respond" error
-        await interaction.deferReply({ ephemeral: true });
+        // 1. Defer (Ephemeral so only you see it, change to false if you want everyone to see)
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         try {
-            // 2. Get the message
             const targetMessage = interaction.targetMessage;
-            
-            // 3. Get Sticker
             const sticker = targetMessage.stickers.first();
 
+            // --- VALIDATION ---
             if (!sticker) {
                 return interaction.editReply('❌ That message does not contain a sticker.');
             }
 
-            // 4. Handle Lottie (JSON) Stickers
-            // Discord does not give a PNG URL for Lottie stickers, only the JSON file.
-            if (sticker.format === 3) { // 3 = Lottie
+            // Lottie (JSON) check
+            if (sticker.format === 3) {
                 return interaction.editReply({ 
-                    content: `⚠️ **${sticker.name}** is a Lottie (animated JSON) sticker.\nI cannot display it as an image, but here is the source file.`,
+                    content: `⚠️ **${sticker.name}** is a Lottie (animated JSON) sticker.\nI cannot convert it to an image, but here is the source file.`,
                     files: [sticker.url]
                 });
             }
 
-            // 5. Build Output
-            const embed = new EmbedBuilder()
-                .setTitle(`Sticker: ${sticker.name}`)
-                .setImage(sticker.url)
-                .setColor(0x0099FF);
+            // --- BUILD CONTAINER ---
+            const container = new ContainerBuilder()
+                .setAccentColor(0x888888); // Requested Colour
 
-            const row = new ActionRowBuilder().addComponents(
+            // 1. Title
+            const title = new TextDisplayBuilder()
+                .setContent(`### 🖼️ Sticker: ${sticker.name}`);
+            
+            container.addTextDisplayComponents(title);
+
+            // 2. The Big Image (Using Gallery)
+            const gallery = new MediaGalleryBuilder();
+            // We use the callback pattern to set the URL
+            gallery.addItems(item => item.setURL(sticker.url));
+
+            container.addMediaGalleryComponents(gallery);
+
+            // 3. Link Button
+            const btnRow = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
                     .setLabel('Open Original')
                     .setStyle(ButtonStyle.Link)
                     .setURL(sticker.url)
             );
 
-            // 6. Send Result
+            container.addActionRowComponents(btnRow);
+
+            // --- SEND ---
             await interaction.editReply({ 
-                embeds: [embed], 
-                components: [row] 
+                content: '',
+                components: [container],
+                flags: MessageFlags.IsComponentsV2
             });
 
         } catch (error) {

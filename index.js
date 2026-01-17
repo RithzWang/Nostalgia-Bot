@@ -124,9 +124,9 @@ client.on('clientReady', async () => {
 
     let timeEmoji = '🌛'; // Default: Night (18:00 - 05:59)
 
-    if (currentHour >= 6 && currentHour < 12) {
+    if (currentHour >= 6 && currentHour < 9) {
         timeEmoji = '🌄'; // Morning (06:00 - 11:59)
-    } else if (currentHour >= 12 && currentHour < 16) {
+    } else if (currentHour >= 9 && currentHour < 16) {
         timeEmoji = '🌞'; // Lunch/Day (12:00 - 15:59) <-- Extended to fill the gap
     } else if (currentHour >= 16 && currentHour < 18) {
         timeEmoji = '🌇'; // Afternoon (16:00 - 17:59) <-- Your requested time

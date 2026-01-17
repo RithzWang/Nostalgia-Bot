@@ -2,7 +2,6 @@ const {
     ContextMenuCommandBuilder, 
     ApplicationCommandType, 
     MessageFlags,
-    // V2 Imports
     ContainerBuilder,
     TextDisplayBuilder,
     MediaGalleryBuilder,
@@ -15,43 +14,52 @@ const {
 
 module.exports = {
     data: new ContextMenuCommandBuilder()
-        .setName('Jumbo')
+        .setName('Sticker Enlarge')
         .setType(ApplicationCommandType.Message),
 
     async execute(interaction) {
-        // Change 'ephemeral: true' to 'false' if you want others to see the result
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        // 1. Start PUBLIC (So success messages are visible to everyone)
+        await interaction.deferReply({ flags: 0 });
 
         try {
             const targetMessage = interaction.targetMessage;
             const sticker = targetMessage.stickers.first();
 
-            // --- VALIDATION ---
+            // ============================================
+            // ERROR: NO STICKER (Switch to Hidden)
+            // ============================================
             if (!sticker) {
-                return interaction.editReply('❌ That message does not contain a sticker.');
+                // Delete the public "Thinking..." message
+                await interaction.deleteReply();
+                
+                // Send a NEW hidden message
+                return interaction.followUp({ 
+                    content: '❌ That message does not contain a sticker.', 
+                    flags: MessageFlags.Ephemeral 
+                });
             }
 
             // ============================================
-            // 1. LOTTIE (JSON) STICKER HANDLING
+            // WARNING: LOTTIE JSON (Switch to Hidden)
             // ============================================
             if (sticker.format === 3) {
-                const lottieContainer = new ContainerBuilder()
-                    .setAccentColor(0x888888); // Matching Gray
+                // Delete the public "Thinking..." message
+                await interaction.deleteReply();
 
-                // Title & Explanation
+                const lottieContainer = new ContainerBuilder()
+                    .setAccentColor(0xFEE75C); // Yellow for Warning
+
                 lottieContainer.addTextDisplayComponents(
                     new TextDisplayBuilder()
                         .setContent(`### ⚠️ Lottie Sticker: ${sticker.name}`),
                     new TextDisplayBuilder()
-                        .setContent(`This sticker uses the **Lottie (JSON)** format.\nDiscord does not provide a static image or GIF for these types of animations, but you can download the source file below.`)
+                        .setContent(`This sticker uses the **Lottie (JSON)** format.\nI cannot display animations for these, but you can download the source file.`)
                 );
 
-                // Separator
                 lottieContainer.addSeparatorComponents(
                     new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
                 );
 
-                // Download Button
                 const btnRow = new ActionRowBuilder().addComponents(
                     new ButtonBuilder()
                         .setLabel('Download .JSON Source')
@@ -60,34 +68,43 @@ module.exports = {
                 );
                 lottieContainer.addActionRowComponents(btnRow);
 
-                return interaction.editReply({ 
+                // Send NEW hidden message
+                return interaction.followUp({ 
                     content: '',
                     components: [lottieContainer],
-                    // We can still attach the file for convenience
                     files: [sticker.url], 
-                    flags: MessageFlags.IsComponentsV2
+                    flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
                 });
             }
 
             // ============================================
-            // 2. STANDARD IMAGE/GIF HANDLING
+            // SUCCESS: STANDARD IMAGE (Keep Public)
             // ============================================
             const container = new ContainerBuilder()
                 .setAccentColor(0x888888); 
 
-            // Title
-            const title = new TextDisplayBuilder()
-                .setContent(`### 🖼️ Sticker: ${sticker.name}`);
-            
-            container.addTextDisplayComponents(title);
+            // A. Title
+            container.addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(`### 🖼️ Sticker: ${sticker.name}`)
+            );
 
-            // The Big Image
+            // B. Separator (Top)
+            container.addSeparatorComponents(
+                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+            );
+
+            // C. The Big Image
             const gallery = new MediaGalleryBuilder();
             gallery.addItems(item => item.setURL(sticker.url));
 
             container.addMediaGalleryComponents(gallery);
 
-            // Link Button
+            // D. Separator (Bottom)
+            container.addSeparatorComponents(
+                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+            );
+
+            // E. Link Button
             const btnRow = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
                     .setLabel('Open Original')
@@ -97,7 +114,7 @@ module.exports = {
 
             container.addActionRowComponents(btnRow);
 
-            // Send
+            // Edit the existing PUBLIC message
             await interaction.editReply({ 
                 content: '',
                 components: [container],
@@ -106,7 +123,12 @@ module.exports = {
 
         } catch (error) {
             console.error(error);
-            await interaction.editReply('❌ An error occurred while fetching the sticker.');
+            // On crash: delete public message, send hidden error
+            await interaction.deleteReply().catch(() => {});
+            await interaction.followUp({ 
+                content: '❌ An error occurred while fetching the sticker.',
+                flags: MessageFlags.Ephemeral
+            });
         }
     },
 };

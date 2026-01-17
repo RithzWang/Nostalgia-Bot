@@ -5,11 +5,12 @@ const {
     ContainerBuilder,
     TextDisplayBuilder,
     MediaGalleryBuilder,
-    ActionRowBuilder,
+    ActionRowBuilder, // Not needed for the main button anymore, but kept for Lottie/Error if needed
     ButtonBuilder,
     ButtonStyle,
     SeparatorBuilder,
-    SeparatorSpacingSize
+    SeparatorSpacingSize,
+    SectionBuilder // <--- Added this import
 } = require('discord.js');
 
 module.exports = {
@@ -18,7 +19,7 @@ module.exports = {
         .setType(ApplicationCommandType.Message),
 
     async execute(interaction) {
-        // 1. Start PUBLIC (So success messages are visible to everyone)
+        // 1. Start PUBLIC
         await interaction.deferReply({ flags: 0 });
 
         try {
@@ -29,10 +30,7 @@ module.exports = {
             // ERROR: NO STICKER (Switch to Hidden)
             // ============================================
             if (!sticker) {
-                // Delete the public "Thinking..." message
                 await interaction.deleteReply();
-                
-                // Send a NEW hidden message
                 return interaction.followUp({ 
                     content: '<:No:1297814819105144862> That message does not contain a sticker.', 
                     flags: MessageFlags.Ephemeral 
@@ -43,11 +41,10 @@ module.exports = {
             // WARNING: LOTTIE JSON (Switch to Hidden)
             // ============================================
             if (sticker.format === 3) {
-                // Delete the public "Thinking..." message
                 await interaction.deleteReply();
 
                 const lottieContainer = new ContainerBuilder()
-                    .setAccentColor(0xFEE75C); // Yellow for Warning
+                    .setAccentColor(0xFEE75C); 
 
                 lottieContainer.addTextDisplayComponents(
                     new TextDisplayBuilder()
@@ -68,7 +65,6 @@ module.exports = {
                 );
                 lottieContainer.addActionRowComponents(btnRow);
 
-                // Send NEW hidden message
                 return interaction.followUp({ 
                     content: '',
                     components: [lottieContainer],
@@ -78,17 +74,27 @@ module.exports = {
             }
 
             // ============================================
-            // SUCCESS: STANDARD IMAGE (Keep Public)
+            // SUCCESS: STANDARD IMAGE (Public)
             // ============================================
             const container = new ContainerBuilder()
                 .setAccentColor(0x888888); 
 
-            // A. Title
-            container.addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(`### 💖 Sticker: ${sticker.name}`)
-            );
+            // A. Header Section (Title + Button Side-by-Side)
+            const headerSection = new SectionBuilder()
+                // 1. The Text
+                .addTextDisplayComponents((text) => 
+                    text.setContent(`### 💖 Sticker: ${sticker.name}`)
+                )
+                // 2. The Button (Accessory)
+                .setButtonAccessory((btn) => 
+                    btn.setLabel('Open in Browser')
+                       .setStyle(ButtonStyle.Link)
+                       .setURL(sticker.url)
+                );
 
-            // B. Separator (Top)
+            container.addSectionComponents(headerSection);
+
+            // B. Separator
             container.addSeparatorComponents(
                 new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
             );
@@ -99,21 +105,6 @@ module.exports = {
 
             container.addMediaGalleryComponents(gallery);
 
-            // D. Separator (Bottom)
-            container.addSeparatorComponents(
-                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
-            );
-
-            // E. Link Button
-            const btnRow = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setLabel('Open in Browser')
-                    .setStyle(ButtonStyle.Link)
-                    .setURL(sticker.url)
-            );
-
-            container.addActionRowComponents(btnRow);
-
             // Edit the existing PUBLIC message
             await interaction.editReply({ 
                 content: '',
@@ -123,7 +114,6 @@ module.exports = {
 
         } catch (error) {
             console.error(error);
-            // On crash: delete public message, send hidden error
             await interaction.deleteReply().catch(() => {});
             await interaction.followUp({ 
                 content: '<:No:1297814819105144862> An error occurred while fetching the sticker.',

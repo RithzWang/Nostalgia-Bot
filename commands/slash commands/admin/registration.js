@@ -75,7 +75,7 @@ module.exports = {
 
         // 3. Assemble V2 Container
         const container = new ContainerBuilder()
-            .setAccentColor(sub === 'disable' ? 0x888888 : 0x888888) // Red if disabled, Green if enabled
+           // .setAccentColor(sub === 'disable' ? 0x888888 : 0x888888) // Red if disabled, Green if enabled
             .addTextDisplayComponents(headerText)
             .addTextDisplayComponents(descText)
             .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small))

@@ -15,8 +15,8 @@ module.exports = {
         // 1. Ignore bots and Direct Messages
         if (message.author.bot || !message.guild) return;
 
-        // 2. Allow Staff/Admins to bypass checks
-        // (Change 'ManageMessages' to 'Administrator' if you want stricter rules)
+        // 2. Global Bypass for Staff (Manage Messages)
+        // This allows mods to bypass BOTH invite and mention checks
         if (message.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
             return; 
         }
@@ -28,53 +28,34 @@ module.exports = {
         // ====================================================
         // PRIORITY 1: ANTI-INVITE (The Strict Check)
         // ====================================================
-        // Regex matches discord.gg, discord.com/invite, etc.
         const inviteRegex = /(discord\.gg|discord\.com\/invite|discordapp\.com\/invite)/i;
 
         if (inviteRegex.test(content)) {
             try {
                 // A. DELETE immediately
-                if (message.deletable) {
-                    await message.delete();
-                }
+                if (message.deletable) await message.delete();
 
-                // B. Send a temporary warning (deletes after 5s)
+                // B. Send Warning
                 const warning = await message.channel.send(
                     `⛔ ${author}, **Invites are not allowed here!**`
                 );
                 setTimeout(() => warning.delete().catch(() => {}), 5000);
 
-                // C. Log to Staff Channel (RED for Danger)
+                // C. Log to Staff Channel
                 if (alertChannel) {
-                    const container = new ContainerBuilder()
-                        .setAccentColor(0xED4245); // 🔴 Red
-
+                    const container = new ContainerBuilder().setAccentColor(0xED4245);
                     const section = new SectionBuilder()
+                        .addTextDisplayComponents((text) => text.setContent('### ⛔ Invite Link Blocked'))
                         .addTextDisplayComponents((text) =>
-                            text.setContent('### ⛔ Invite Link Blocked')
+                            text.setContent(`**User:** ${author}\n**Content:** \`${content}\`\n**Action:** Deleted`)
                         )
-                        .addTextDisplayComponents((text) =>
-                            text.setContent(
-                                `**User:** ${author} (\`${author.id}\`)\n` +
-                                `**Channel:** ${message.channel}\n` +
-                                `**Content:** \`${content}\`\n` +
-                                `**Action:** Deleted`
-                            )
-                        )
-                        .setThumbnailAccessory((thumb) =>
-                            thumb.setURL(author.displayAvatarURL())
-                        );
+                        .setThumbnailAccessory((thumb) => thumb.setURL(author.displayAvatarURL()));
 
                     container.addSectionComponents(section);
-
-                    await alertChannel.send({ 
-                        components: [container], 
-                        flags: MessageFlags.IsComponentsV2 
-                    });
+                    await alertChannel.send({ components: [container], flags: MessageFlags.IsComponentsV2 });
                 }
                 
-                // 🛑 STOP HERE: Do not check for mentions if we already deleted the message
-                return; 
+                return; // Stop processing
 
             } catch (error) {
                 console.error("Anti-Invite Error:", error);
@@ -84,44 +65,34 @@ module.exports = {
         // ====================================================
         // PRIORITY 2: ANTI-MENTION (The Soft Check)
         // ====================================================
-        // We only reach this code if NO invite link was found.
         const mentionRegex = /@(everyone|here)/;
 
         if (mentionRegex.test(content)) {
+            
+            // 👇 NEW CHECK: If they have permission to Mention Everyone, let them do it.
+            if (message.member.permissions.has(PermissionsBitField.Flags.MentionEveryone)) {
+                return; 
+            }
+
             try {
-                // A. REPLY to the user (Do NOT delete)
+                // A. REPLY (Do NOT delete)
                 await message.reply({
                     content: `⚠️ Please do not try to mention everyone/here`,
                     allowedMentions: { repliedUser: true }
                 });
 
-                // B. Log to Staff Channel (YELLOW for Warning)
+                // B. Log to Staff Channel
                 if (alertChannel) {
-                    const container = new ContainerBuilder()
-                        .setAccentColor(0xFEE75C); // 🟡 Yellow
-
+                    const container = new ContainerBuilder().setAccentColor(0xFEE75C);
                     const section = new SectionBuilder()
+                        .addTextDisplayComponents((text) => text.setContent('### ⚠️ Mass Mention Attempt'))
                         .addTextDisplayComponents((text) =>
-                            text.setContent('### ⚠️ Mass Mention Detected')
+                            text.setContent(`**User:** ${author}\n**Channel:** ${message.channel}\n**Content:** \`${content}\`\n**Action:** Warned (Message Kept)`)
                         )
-                        .addTextDisplayComponents((text) =>
-                            text.setContent(
-                                `**User:** ${author} (\`${author.id}\`)\n` +
-                                `**Channel:** ${message.channel}\n` +
-                                `**Content:** \`${content}\`\n` +
-                                `**Action:** Warned (Message Kept)`
-                            )
-                        )
-                        .setThumbnailAccessory((thumb) =>
-                            thumb.setURL(author.displayAvatarURL())
-                        );
+                        .setThumbnailAccessory((thumb) => thumb.setURL(author.displayAvatarURL()));
 
                     container.addSectionComponents(section);
-
-                    await alertChannel.send({ 
-                        components: [container], 
-                        flags: MessageFlags.IsComponentsV2 
-                    });
+                    await alertChannel.send({ components: [container], flags: MessageFlags.IsComponentsV2 });
                 }
 
             } catch (error) {

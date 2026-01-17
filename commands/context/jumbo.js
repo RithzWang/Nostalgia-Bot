@@ -83,7 +83,7 @@ module.exports = {
             const headerSection = new SectionBuilder()
                 // 1. The Text
                 .addTextDisplayComponents((text) => 
-                    text.setContent(`### 🧸 Sticker: ${sticker.name}`)
+                    text.setContent(`## Sticker: ${sticker.name}`)
                 )
                 // 2. The Button (Accessory)
                 .setButtonAccessory((btn) => 

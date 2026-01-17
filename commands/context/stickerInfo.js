@@ -7,8 +7,8 @@ const {
     SectionBuilder,
     SeparatorBuilder,
     SeparatorSpacingSize,
-    AttachmentBuilder, // <--- New Import
-    FileBuilder        // <--- New Import
+    AttachmentBuilder, 
+    FileBuilder        
 } = require('discord.js');
 
 module.exports = {
@@ -38,16 +38,25 @@ module.exports = {
             const isLottie = sticker.format === 3;
             const formatName = getStickerFormat(sticker.format);
             const extension = getStickerExtension(sticker.format);
-            
-            // Create a safe filename (e.g., "sticker.png" or "sticker.json")
             const fileName = `sticker.${extension}`;
 
             // ============================================
-            // 1. BUILD THE INFO CONTAINER
+            // 1. PREPARE THE FILE
+            // ============================================
+            // Create the actual attachment logic
+            const attachment = new AttachmentBuilder(sticker.url, { name: fileName });
+
+            // Create the UI Component pointing to the attachment
+            const fileComponent = new FileBuilder()
+                .setURL(`attachment://${fileName}`);
+
+            // ============================================
+            // 2. BUILD THE CONTAINER
             // ============================================
             const container = new ContainerBuilder()
                 .setAccentColor(0x888888); 
 
+            // --- A. METADATA SECTION ---
             const metaSection = new SectionBuilder()
                 .addTextDisplayComponents((text) => 
                     text.setContent(`## Sticker Information`)
@@ -65,31 +74,22 @@ module.exports = {
 
             container.addSectionComponents(metaSection);
 
-            // Optional: Separator between info and the file card below
+            // --- B. SEPARATOR ---
             container.addSeparatorComponents(
                 new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
             );
 
-            // ============================================
-            // 2. PREPARE THE FILE COMPONENT
-            // ============================================
-            
-            // A. Create the actual file attachment from the URL
-            const attachment = new AttachmentBuilder(sticker.url, { name: fileName });
-
-            // B. Create the File Component (The UI card)
-            // We reference the attachment using "attachment://filename"
-            const fileComponent = new FileBuilder()
-                .setURL(`attachment://${fileName}`);
+            // --- C. FILE CARD (Inside Container) ---
+            // This adds the file UI to the bottom of the container
+            container.addFileComponents(fileComponent);
 
             // ============================================
             // SEND RESPONSE
             // ============================================
             await interaction.editReply({ 
                 content: '',
-                // We send BOTH the Container and the FileComponent
-                components: [container, fileComponent],
-                files: [attachment],
+                components: [container], // Container now holds the file card inside it
+                files: [attachment],     // The physical file must still be attached here
                 flags: MessageFlags.IsComponentsV2
             });
 
@@ -119,7 +119,7 @@ function getStickerFormat(format) {
 function getStickerExtension(format) {
     switch (format) {
         case 1: return 'png';
-        case 2: return 'png'; // APNG usually uses .png extension
+        case 2: return 'png'; 
         case 3: return 'json';
         case 4: return 'gif';
         default: return 'png';

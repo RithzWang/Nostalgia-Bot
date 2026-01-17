@@ -25,7 +25,7 @@ module.exports = {
 
                     // Send a temporary warning message
                     const warning = await message.channel.send(
-                        `⛔ ${message.author}, **Server invites are not allowed!**`
+                        `⛔ ${message.author}, Server invites are not allowed!`
                     );
 
                     // Delete the bot's warning after 5 seconds to keep chat clean

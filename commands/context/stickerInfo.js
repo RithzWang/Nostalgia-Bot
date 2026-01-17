@@ -48,11 +48,11 @@ module.exports = {
             // --- SECTION 1: METADATA (ID, Name, Format) ---
             const metaSection = new SectionBuilder()
                 .addTextDisplayComponents((text) => 
-                    text.setContent(`## ${sticker.name}`)
+                    text.setContent(`## Sticker Information`)
                 )
                 .addTextDisplayComponents((text) => 
                     text.setContent(
-                        `**ID:** \`${sticker.id}\`\n` +
+                        `**Name:** **${sticker.name}**\n` +      `**ID:** \`${sticker.id}\`\n` +
                         `**Format:** ${formatName}` +
                         (isLottie ? '\n⚠️ *Lottie files cannot be previewed largely.*' : '')
                     )

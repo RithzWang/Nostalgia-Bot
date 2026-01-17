@@ -5,11 +5,11 @@ const {
     ContainerBuilder,
     TextDisplayBuilder,
     SectionBuilder,
-    MediaGalleryBuilder,
     ButtonBuilder,
     ButtonStyle,
     SeparatorBuilder,
-    SeparatorSpacingSize
+    SeparatorSpacingSize,
+    ActionRowBuilder // <--- Added ActionRowBuilder
 } = require('discord.js');
 
 module.exports = {
@@ -26,7 +26,7 @@ module.exports = {
             const sticker = targetMessage.stickers.first();
 
             // ============================================
-            // ERROR: NO STICKER (Switch to Hidden)
+            // ERROR: NO STICKER
             // ============================================
             if (!sticker) {
                 await interaction.deleteReply();
@@ -43,44 +43,42 @@ module.exports = {
             // BUILD THE CONTAINER
             // ============================================
             const container = new ContainerBuilder()
-                .setAccentColor(isLottie ? 0xFEE75C : 0x888888); // Yellow for Lottie, Grey for Standard
+                .setAccentColor(isLottie ? 0xFEE75C : 0x888888); 
 
-            // --- SECTION 1: METADATA (ID, Name, Format) ---
+            // --- SECTION 1: METADATA (Text + Thumbnail) ---
             const metaSection = new SectionBuilder()
                 .addTextDisplayComponents((text) => 
                     text.setContent(`## Sticker Information`)
                 )
                 .addTextDisplayComponents((text) => 
                     text.setContent(
-                        `**Name:** **${sticker.name}**\n` +      `**ID:** \`${sticker.id}\`\n` +
-                        `**Format:** ${formatName}` +
-                        (isLottie ? '\n⚠️ *Lottie files cannot be previewed largely.*' : '')
+                        `**Name:** **${sticker.name}**\n` +
+                        `**ID:** \`${sticker.id}\`\n` +
+                        `**Format:** ${formatName}`
                     )
                 )
-                // Add the "Link" button to the right side
-                .setButtonAccessory((btn) => 
-                    btn.setLabel(isLottie ? 'Download JSON' : 'Open in Browser')
-                       .setStyle(ButtonStyle.Link)
-                       .setURL(sticker.url)
+                // Thumbnail stays on the right
+                .setThumbnailAccessory((thumb) => 
+                    thumb.setURL(sticker.url)
                 );
-
-            // Add thumbnail (small preview)
-            metaSection.setThumbnailAccessory((thumb) => 
-                thumb.setURL(sticker.url)
-            );
 
             container.addSectionComponents(metaSection);
 
-            // --- SECTION 2: ENLARGED VIEW (Only if not Lottie) ---
-            if (!isLottie) {
-                container.addSeparatorComponents(
-                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
-                );
+            // --- SECTION 2: SEPARATOR ---
+            container.addSeparatorComponents(
+                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+            );
 
-                const gallery = new MediaGalleryBuilder();
-                gallery.addItems(item => item.setURL(sticker.url));
-                container.addMediaGalleryComponents(gallery);
-            }
+            // --- SECTION 3: BUTTON (Under Separator) ---
+            // We use an ActionRow for the button now, instead of an accessory
+            const buttonRow = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setLabel(isLottie ? 'Download JSON' : 'Open in Browser')
+                    .setStyle(ButtonStyle.Link)
+                    .setURL(sticker.url) 
+            );
+
+            container.addActionRowComponents(buttonRow);
 
             // ============================================
             // SEND RESPONSE
@@ -88,6 +86,9 @@ module.exports = {
             await interaction.editReply({ 
                 content: '',
                 components: [container],
+                // If it's a Lottie, we also attach the actual file to the message 
+                // so it's easy to drag-and-drop
+                files: isLottie ? [sticker.url] : [],
                 flags: MessageFlags.IsComponentsV2
             });
 

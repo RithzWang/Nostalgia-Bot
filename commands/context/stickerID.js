@@ -15,34 +15,36 @@ module.exports = {
         .setType(ApplicationCommandType.Message),
 
     async execute(interaction) {
-        // 1. Start EPHEMERAL (Hidden) because IDs are usually just for the user
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        // 1. Start PUBLIC (Everyone sees "Bot is thinking...")
+        await interaction.deferReply({ flags: 0 });
 
         try {
             const targetMessage = interaction.targetMessage;
             const sticker = targetMessage.stickers.first();
 
             // ============================================
-            // ERROR: NO STICKER
+            // ERROR: NO STICKER (Switch to Hidden)
             // ============================================
+            // If no sticker, we delete the public "thinking" message
+            // and send a private error so chat stays clean.
             if (!sticker) {
-                return interaction.editReply({ 
-                    content: '<:No:1297814819105144862> That message does not contain a sticker.' 
+                await interaction.deleteReply(); // 🗑️ Delete public loader
+                return interaction.followUp({ 
+                    content: '<:No:1297814819105144862> That message does not contain a sticker.', 
+                    flags: MessageFlags.Ephemeral // 👻 Send hidden error
                 });
             }
 
             // ============================================
-            // SUCCESS: SHOW ID
+            // SUCCESS: SHOW ID (Edit Public Message)
             // ============================================
             const container = new ContainerBuilder()
-                .setAccentColor(0x888888); // Blurple
+                .setAccentColor(0x888888); 
 
             const section = new SectionBuilder()
-                // 1. Title
                 .addTextDisplayComponents((text) => 
                     text.setContent(`## Sticker Info`)
                 )
-                // 2. Info Block (ID in code block for easy copying)
                 .addTextDisplayComponents((text) => 
                     text.setContent(
                         `**Name:** ${sticker.name}\n` +
@@ -50,28 +52,30 @@ module.exports = {
                         `**Format:** ${getStickerFormat(sticker.format)}`
                     )
                 )
-                // 3. Thumbnail (Small preview of the sticker)
                 .setThumbnailAccessory((thumb) => 
                     thumb.setURL(sticker.url)
                 );
 
             container.addSectionComponents(section);
 
-            // Optional: Separator for cleanliness
             container.addSeparatorComponents(
                 new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
             );
 
+            // Edit the existing PUBLIC message to show the result
             await interaction.editReply({ 
                 content: '',
                 components: [container],
-                flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral
+                flags: MessageFlags.IsComponentsV2 
             });
 
         } catch (error) {
             console.error(error);
-            await interaction.editReply({ 
-                content: '<:No:1297814819105144862> An error occurred while fetching the sticker.'
+            // If code crashes, try to clean up
+            await interaction.deleteReply().catch(() => {});
+            await interaction.followUp({ 
+                content: '<:No:1297814819105144862> An error occurred while fetching the sticker.',
+                flags: MessageFlags.Ephemeral
             });
         }
     },

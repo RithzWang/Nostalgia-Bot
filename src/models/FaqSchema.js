@@ -7,8 +7,7 @@ const faqSchema = new mongoose.Schema({
     questions: [
         {
             question: { type: String, required: true },
-            answer: { type: String, required: true },
-            image: { type: String, default: null } // Added image field
+            answer: { type: String, required: true }
         }
     ]
 });

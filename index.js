@@ -117,14 +117,32 @@ client.on('clientReady', async () => {
         currentInvites.each(invite => invitesCache.set(invite.code, invite.uses));
     }
 
-    setInterval(() => {
-        const thailandTime = moment().tz('Asia/Bangkok').format('HH:mm');
-        client.user.setPresence({
-            activities: [{ name: 'customstatus', type: ActivityType.Custom, state: `⏳ ${thailandTime} (GMT+7)` }],
-            status: 'dnd' 
-        });
-    }, 5000);
-});
+   setInterval(() => {
+    const now = moment().tz('Asia/Bangkok');
+    const formattedTime = now.format('HH:mm');
+    const currentHour = now.hour();
+
+    let timeEmoji = '🌛'; // Default: Night (18:00 - 05:59)
+
+    if (currentHour >= 6 && currentHour < 12) {
+        timeEmoji = '🌄'; // Morning (06:00 - 11:59)
+    } else if (currentHour >= 12 && currentHour < 16) {
+        timeEmoji = '🌞'; // Lunch/Day (12:00 - 15:59) <-- Extended to fill the gap
+    } else if (currentHour >= 16 && currentHour < 18) {
+        timeEmoji = '🌇'; // Afternoon (16:00 - 17:59) <-- Your requested time
+    }
+
+    client.user.setPresence({
+        activities: [{ 
+            name: 'customstatus', 
+            type: ActivityType.Custom, 
+            state: `${timeEmoji} ${formattedTime} (GMT+7)` 
+        }],
+        status: 'dnd'
+    });
+
+}, 2000); // Updates every 1 minute
+
 
 
 const { createWelcomeImage } = require('./welcomeCanvas6.js');

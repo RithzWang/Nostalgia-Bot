@@ -5,13 +5,11 @@ const {
     ChannelType,
     ContainerBuilder,
     TextDisplayBuilder,
-    SectionBuilder,
     SeparatorBuilder,
     SeparatorSpacingSize,
     ActionRowBuilder,
     ButtonBuilder,
-    ButtonStyle,
-    ThumbnailBuilder // <--- Changed from MediaGalleryBuilder
+    ButtonStyle
 } = require('discord.js');
 
 const moment = require('moment-timezone');
@@ -44,7 +42,6 @@ module.exports = {
                 .setDescription('Add a new Q&A pair')
                 .addStringOption(opt => opt.setName('question').setDescription('The question text').setRequired(true))
                 .addStringOption(opt => opt.setName('answer').setDescription('The answer text').setRequired(true))
-                .addAttachmentOption(opt => opt.setName('image').setDescription('Optional image (will appear as thumbnail)'))
         )
 
         // --- 3. EDIT QUESTION ---
@@ -54,7 +51,6 @@ module.exports = {
                 .addStringOption(opt => opt.setName('target_question').setDescription('The EXACT existing question you want to edit').setRequired(true))
                 .addStringOption(opt => opt.setName('new_question').setDescription('New question text (Optional)'))
                 .addStringOption(opt => opt.setName('new_answer').setDescription('New answer text (Optional)'))
-                .addAttachmentOption(opt => opt.setName('new_image').setDescription('New image (Optional)'))
         )
 
         // --- 4. REMOVE QUESTION ---
@@ -88,26 +84,15 @@ module.exports = {
             // 3. Loop through Questions
             if (faqData.questions.length > 0) {
                 faqData.questions.forEach((q, index) => {
-                    // A. Create SECTION Instance (Required for Thumbnails)
-                    const section = new SectionBuilder();
-
-                    // B. Create TEXT Instance
+                    // Create TEXT Instance 
+                    // CHANGED FORMAT HERE:
                     const qaText = new TextDisplayBuilder()
-                        .setContent(`### ${q.question}\n-# ${q.answer}`);
+                        .setContent(`### ${q.question}\n> ${q.answer}`);
                     
-                    section.addTextDisplayComponents(qaText);
+                    // Add DIRECTLY to Container
+                    container.addTextDisplayComponents(qaText);
 
-                    // C. Add Image (Thumbnail) if it exists
-                    if (q.image) {
-                        const thumb = new ThumbnailBuilder()
-                            .setURL(q.image);
-                        section.setThumbnailAccessory(thumb);
-                    }
-
-                    // D. Add Section to Container
-                    container.addSectionComponents(section);
-
-                    // E. Add Separator (except after the last one)
+                    // Add Separator (except after the last one)
                     if (index < faqData.questions.length - 1) {
                         const sep = new SeparatorBuilder()
                             .setSpacing(SeparatorSpacingSize.Small);
@@ -199,12 +184,10 @@ module.exports = {
             if (sub === 'add') {
                 const question = interaction.options.getString('question');
                 const answer = interaction.options.getString('answer');
-                const attachment = interaction.options.getAttachment('image');
 
                 faqEntry.questions.push({
                     question: question,
-                    answer: answer,
-                    image: attachment ? attachment.url : null
+                    answer: answer
                 });
                 await faqEntry.save();
 
@@ -221,14 +204,12 @@ module.exports = {
                 const targetQ = interaction.options.getString('target_question');
                 const newQ = interaction.options.getString('new_question');
                 const newA = interaction.options.getString('new_answer');
-                const newImg = interaction.options.getAttachment('new_image');
 
                 const index = faqEntry.questions.findIndex(q => q.question === targetQ);
                 if (index === -1) return interaction.editReply(`<:no:1297814819105144862> Question not found: \`${targetQ}\``);
 
                 if (newQ) faqEntry.questions[index].question = newQ;
                 if (newA) faqEntry.questions[index].answer = newA;
-                if (newImg) faqEntry.questions[index].image = newImg.url;
                 
                 await faqEntry.save();
 

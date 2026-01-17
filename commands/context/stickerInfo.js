@@ -5,11 +5,10 @@ const {
     ContainerBuilder,
     TextDisplayBuilder,
     SectionBuilder,
-    ButtonBuilder,
-    ButtonStyle,
     SeparatorBuilder,
     SeparatorSpacingSize,
-    ActionRowBuilder // <--- Added ActionRowBuilder
+    AttachmentBuilder, // <--- New Import
+    FileBuilder        // <--- New Import
 } = require('discord.js');
 
 module.exports = {
@@ -38,14 +37,17 @@ module.exports = {
 
             const isLottie = sticker.format === 3;
             const formatName = getStickerFormat(sticker.format);
+            const extension = getStickerExtension(sticker.format);
+            
+            // Create a safe filename (e.g., "sticker.png" or "sticker.json")
+            const fileName = `sticker.${extension}`;
 
             // ============================================
-            // BUILD THE CONTAINER
+            // 1. BUILD THE INFO CONTAINER
             // ============================================
             const container = new ContainerBuilder()
                 .setAccentColor(isLottie ? 0xFEE75C : 0x888888); 
 
-            // --- SECTION 1: METADATA (Text + Thumbnail) ---
             const metaSection = new SectionBuilder()
                 .addTextDisplayComponents((text) => 
                     text.setContent(`## Sticker Information`)
@@ -57,38 +59,37 @@ module.exports = {
                         `**Format:** ${formatName}`
                     )
                 )
-                // Thumbnail stays on the right
                 .setThumbnailAccessory((thumb) => 
                     thumb.setURL(sticker.url)
                 );
 
             container.addSectionComponents(metaSection);
 
-            // --- SECTION 2: SEPARATOR ---
+            // Optional: Separator between info and the file card below
             container.addSeparatorComponents(
                 new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
             );
 
-            // --- SECTION 3: BUTTON (Under Separator) ---
-            // We use an ActionRow for the button now, instead of an accessory
-            const buttonRow = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setLabel(isLottie ? 'Download JSON' : 'Open in Browser')
-                    .setStyle(ButtonStyle.Link)
-                    .setURL(sticker.url) 
-            );
+            // ============================================
+            // 2. PREPARE THE FILE COMPONENT
+            // ============================================
+            
+            // A. Create the actual file attachment from the URL
+            const attachment = new AttachmentBuilder(sticker.url, { name: fileName });
 
-            container.addActionRowComponents(buttonRow);
+            // B. Create the File Component (The UI card)
+            // We reference the attachment using "attachment://filename"
+            const fileComponent = new FileBuilder()
+                .setURL(`attachment://${fileName}`);
 
             // ============================================
             // SEND RESPONSE
             // ============================================
             await interaction.editReply({ 
                 content: '',
-                components: [container],
-                // If it's a Lottie, we also attach the actual file to the message 
-                // so it's easy to drag-and-drop
-                files: isLottie ? [sticker.url] : [],
+                // We send BOTH the Container and the FileComponent
+                components: [container, fileComponent],
+                files: [attachment],
                 flags: MessageFlags.IsComponentsV2
             });
 
@@ -103,7 +104,7 @@ module.exports = {
     },
 };
 
-// Helper to identify sticker type
+// Helper: Get readable format name
 function getStickerFormat(format) {
     switch (format) {
         case 1: return 'PNG';
@@ -111,5 +112,16 @@ function getStickerFormat(format) {
         case 3: return 'Lottie (JSON)';
         case 4: return 'GIF';
         default: return 'Unknown';
+    }
+}
+
+// Helper: Get correct file extension
+function getStickerExtension(format) {
+    switch (format) {
+        case 1: return 'png';
+        case 2: return 'png'; // APNG usually uses .png extension
+        case 3: return 'json';
+        case 4: return 'gif';
+        default: return 'png';
     }
 }

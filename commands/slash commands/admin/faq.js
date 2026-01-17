@@ -76,7 +76,7 @@ module.exports = {
 
             // 2. Create Header Instance
             const headerText = new TextDisplayBuilder()
-                .setContent('# ❓ Question — Answer');
+                .setContent('## ❓ Question — Answer');
             
             // Add Header
             container.addTextDisplayComponents(headerText);
@@ -86,7 +86,7 @@ module.exports = {
                 faqData.questions.forEach((q, index) => {
                     // Create TEXT Instance 
                     const qaText = new TextDisplayBuilder()
-                        .setContent(`## ${q.question}\n> ${q.answer}`);
+                        .setContent(`### ${q.question}\n> ${q.answer}`);
                     
                     // Add DIRECTLY to Container
                     container.addTextDisplayComponents(qaText);

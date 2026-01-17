@@ -20,14 +20,19 @@ module.exports = {
     async execute(interaction, client) {
 
         // ===============================================
-        // 1. SLASH COMMAND HANDLER
+        // 1. COMMAND HANDLER (SLASH & CONTEXT MENUS)
         // ===============================================
-        if (interaction.isChatInputCommand()) {
+        // 👇 CHANGED: Added || interaction.isContextMenuCommand()
+        if (interaction.isChatInputCommand() || interaction.isContextMenuCommand()) {
             const command = client.slashCommands.get(interaction.commandName);
-            if (!command) return;
+            
+            if (!command) {
+                console.error(`No command matching ${interaction.commandName} was found.`);
+                return;
+            }
 
             try {
-                await command.execute(interaction);
+                await command.execute(interaction, client);
             } catch (error) {
                 console.error(error);
                 const errorPayload = { content: 'There was an error executing this command!', flags: MessageFlags.Ephemeral };

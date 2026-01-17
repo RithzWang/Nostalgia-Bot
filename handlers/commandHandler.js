@@ -2,19 +2,14 @@ const fs = require('fs');
 const path = require('path');
 
 module.exports = (client) => {
-    // Arrays/Collections Setup
-    // We attach these to the client so we can access them in other files
-    client.slashCommands = new Map(); // or new Collection() if you import it
-    client.prefixCommands = new Map(); 
-    client.slashDatas = []; // We store the raw data here for the deploy script
+    // 1. Setup Collections
+    // We reuse 'slashCommands' for BOTH Slash and Context menus because Discord treats them similarly.
+    client.slashCommands = new Map(); 
+    client.slashDatas = []; 
 
-    // ====================================================
-    // 1. SLASH COMMANDS LOADER (Recursive)
-    // Path: handlers/ -> .. -> commands -> slash commands
-    // ====================================================
-    const slashCommandsFolder = path.join(__dirname, '..', 'commands', 'slash commands');
-
-    const loadSlashCommands = (dir) => {
+    // --- HELPER: Recursive File Loader ---
+    const loadCommands = (dir) => {
+        // If folder doesn't exist, skip it safely
         if (!fs.existsSync(dir)) return;
 
         const files = fs.readdirSync(dir);
@@ -24,60 +19,43 @@ module.exports = (client) => {
             const stat = fs.lstatSync(filePath);
 
             if (stat.isDirectory()) {
-                // If folder (e.g. 'owner'), go deeper
-                loadSlashCommands(filePath);
+                // If it's a folder (e.g. 'admin'), go deeper
+                loadCommands(filePath);
             } else if (file.endsWith('.js')) {
+                // Clear cache so you don't have to restart node process entirely if using nodemon
                 delete require.cache[require.resolve(filePath)];
-                const command = require(filePath);
+                
+                try {
+                    const command = require(filePath);
 
-                if (command.data && command.data.name) {
-                    client.slashCommands.set(command.data.name, command);
-                    client.slashDatas.push(command.data.toJSON());
-                    console.log(`[Slash] Loaded: ${command.data.name}`);
-                }
-            }
-        }
-    };
-
-    loadSlashCommands(slashCommandsFolder);
-
-
-    // ====================================================
-    // 2. PREFIX COMMANDS LOADER (Recursive)
-    // Path: handlers/ -> .. -> commands -> prefix commands
-    // ====================================================
-    const prefixCommandsFolder = path.join(__dirname, '..', 'commands', 'prefix commands');
-
-    const loadPrefixCommands = (dir) => {
-        if (!fs.existsSync(dir)) return;
-
-        const files = fs.readdirSync(dir);
-
-        for (const file of files) {
-            const filePath = path.join(dir, file);
-            const stat = fs.lstatSync(filePath);
-
-            if (stat.isDirectory()) {
-                // If folder (e.g. 'admin'), go deeper
-                loadPrefixCommands(filePath);
-            } else if (file.endsWith('.js')) {
-                delete require.cache[require.resolve(filePath)];
-                const command = require(filePath);
-
-                if (command.name) {
-                    client.prefixCommands.set(command.name, command);
-                    
-                    // Handle Aliases
-                    if (command.aliases && Array.isArray(command.aliases)) {
-                        for (const alias of command.aliases) {
-                            client.prefixCommands.set(alias, command);
-                        }
+                    // Check if it's a valid command file
+                    if (command.data && command.data.name) {
+                        // Store the command in the client
+                        client.slashCommands.set(command.data.name, command);
+                        
+                        // Push JSON data for the deploy script
+                        client.slashDatas.push(command.data.toJSON());
+                        
+                        console.log(`[Command] Loaded: ${command.data.name}`);
+                    } else {
+                        console.warn(`[Warning] The command at ${filePath} is missing "data.name".`);
                     }
-                    console.log(`[Prefix] Loaded: ${command.name}`);
+                } catch (error) {
+                    console.error(`[Error] Failed to load ${filePath}:`, error);
                 }
             }
         }
     };
 
-    loadPrefixCommands(prefixCommandsFolder);
+    // ====================================================
+    // 2. LOAD EVERYTHING
+    // ====================================================
+    
+    // A. Load Slash Commands
+    const slashFolder = path.join(__dirname, '..', 'commands', 'slash commands');
+    loadCommands(slashFolder);
+
+    // B. Load Context Menu Commands (Where 'jumbo.js' lives)
+    const contextFolder = path.join(__dirname, '..', 'commands', 'context');
+    loadCommands(contextFolder);
 };

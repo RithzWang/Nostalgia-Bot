@@ -22,7 +22,7 @@ module.exports = {
                     content: "⛔ **Do not try again! Or you will be banned.**", 
                     
                     // 👇 This makes the bot Reply, but NOT ping the user
-                    allowedMentions: { repliedUser: false } 
+                    allowedMentions: { repliedUser: true } 
                 });
 
             } catch (error) {

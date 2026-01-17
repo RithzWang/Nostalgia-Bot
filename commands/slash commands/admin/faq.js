@@ -72,7 +72,7 @@ module.exports = {
 
             // 1. Create Container Instance
             const container = new ContainerBuilder()
-                .setAccentColor(0x888888);
+              //  .setAccentColor(0x888888);
 
             // 2. Create Header Instance
             const headerText = new TextDisplayBuilder()

@@ -13,7 +13,7 @@ const {
 
 module.exports = {
     data: new ContextMenuCommandBuilder()
-        .setName('Sticker Info')
+        .setName('Sticker Information')
         .setType(ApplicationCommandType.Message),
 
     async execute(interaction) {

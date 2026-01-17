@@ -37,7 +37,7 @@ module.exports = {
 
                 // 5. Send Temporary Warning
                 const warning = await message.channel.send(
-                    `⛔ ${author}, **Do not try again! Or you will be banned.**`
+                    `⛔ ${author}, Do not try again! Or you will be banned.`
                 );
                 
                 // Delete warning after 5 seconds

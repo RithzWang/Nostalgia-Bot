@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
-const EmojiChannel = require('../../src/models/EmojiChannelSchema');
+const EmojiChannel = require('../../../src/models/EmojiChannelSchema');
 
 module.exports = {
     data: new SlashCommandBuilder()

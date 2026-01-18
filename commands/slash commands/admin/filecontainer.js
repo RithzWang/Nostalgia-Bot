@@ -66,12 +66,23 @@ module.exports = {
         const sub = interaction.options.getSubcommand();
         const guildId = interaction.guild.id;
 
-        // --- HELPER: RENDER CONTAINER ---
+        // --- 🛑 SIZE CHECK HELPER ---
+        // Gets the server's upload limit (in bytes)
+        // Default safe fallback is 25MB (26214400 bytes)
+        const getUploadLimit = () => {
+            const tier = interaction.guild.premiumTier;
+            switch (tier) {
+                case 2: return 50 * 1024 * 1024; // 50MB
+                case 3: return 100 * 1024 * 1024; // 100MB
+                default: return 25 * 1024 * 1024; // 25MB (Standard/Tier 1)
+            }
+        };
+
+        // --- RENDER CONTAINER ---
         const renderContainer = (data) => {
             const container = new ContainerBuilder();
             // .setAccentColor(0x5865F2); 
 
-            // 1. Main Title
             container.addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(`## ${data.title}`)
             );
@@ -79,37 +90,28 @@ module.exports = {
             const payloadFiles = [];
 
             if (data.files.length > 0) {
-                // Track filenames to prevent duplicates crashing the message
                 const usedFilenames = new Set();
 
                 data.files.forEach((fileData, index) => {
                     const num = index + 1;
 
-                    // Separator
                     container.addSeparatorComponents(
                         new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
                     );
 
-                    // Sub-Header (Display Name)
                     container.addTextDisplayComponents(
                         new TextDisplayBuilder().setContent(`### ${num}. ${fileData.name}`)
                     );
 
-                    // --- ORIGINAL FILENAME LOGIC ---
                     let uniqueFileName = fileData.filename;
-
-                    // Safeguard: If two files have the EXACT same name, Discord gets confused.
-                    // We append a number only if a duplicate exists.
                     if (usedFilenames.has(uniqueFileName)) {
                         uniqueFileName = `${num}_${uniqueFileName}`;
                     }
                     usedFilenames.add(uniqueFileName);
                     
-                    // Create Attachment using the Original Filename
                     const attachment = new AttachmentBuilder(fileData.url, { name: uniqueFileName });
                     payloadFiles.push(attachment);
 
-                    // Link File Component to that Filename
                     const fileComponent = new FileBuilder()
                         .setURL(`attachment://${uniqueFileName}`);
                     
@@ -177,6 +179,8 @@ module.exports = {
 
             if (!message) return interaction.editReply(`<:no:1297814819105144862> The actual message seems to be deleted.`);
 
+            const MAX_SIZE = getUploadLimit(); // Get dynamic limit
+
             // ===========================================
             //                 ADD
             // ===========================================
@@ -184,14 +188,25 @@ module.exports = {
                 const name = interaction.options.getString('name');
                 const attachment = interaction.options.getAttachment('file');
 
+                // 🛑 SIZE CHECK
+                if (attachment.size > MAX_SIZE) {
+                    return interaction.editReply(`<:no:1297814819105144862> **File too large!**\nThe file \`${attachment.name}\` is ${(attachment.size / 1024 / 1024).toFixed(2)}MB.\nThe bot limit for this server is **${(MAX_SIZE / 1024 / 1024).toFixed(0)}MB**.`);
+                }
+
                 data.files.push({
-                    name: name,                // UI Display Name
-                    url: attachment.url,       // Link
-                    filename: attachment.name  // Original Filename (e.g. "guide.pdf")
+                    name: name,                
+                    url: attachment.url,       
+                    filename: attachment.name  
                 });
 
                 await data.save();
-                await message.edit(renderContainer(data));
+                
+                try {
+                    await message.edit(renderContainer(data));
+                } catch (err) {
+                    // Catch Discord 413 Errors here
+                    return interaction.editReply(`<:no:1297814819105144862> **Discord Upload Error:** The total size of all files in the container is too large for the bot to update.`);
+                }
 
                 return interaction.editReply(`<:yes:1297814648417943565> Added **${name}** (File: \`${attachment.name}\`).`);
             }
@@ -207,13 +222,11 @@ module.exports = {
 
                 let changes = [];
 
-                // 1. Edit Main Title
                 if (newTitle) {
                     data.title = newTitle;
                     changes.push('Title');
                 }
 
-                // 2. Edit Specific File
                 if (number) {
                     const index = number - 1;
                     if (index < 0 || index >= data.files.length) {
@@ -226,8 +239,13 @@ module.exports = {
                     }
                     
                     if (newFile) {
+                        // 🛑 SIZE CHECK
+                        if (newFile.size > MAX_SIZE) {
+                            return interaction.editReply(`<:no:1297814819105144862> **File too large!**\nThe file \`${newFile.name}\` is ${(newFile.size / 1024 / 1024).toFixed(2)}MB.\nThe bot limit is **${(MAX_SIZE / 1024 / 1024).toFixed(0)}MB**.`);
+                        }
+
                         data.files[index].url = newFile.url;
-                        data.files[index].filename = newFile.name; // Update to new original filename
+                        data.files[index].filename = newFile.name; 
                         changes.push(`File #${number} Attachment`);
                     }
                 } else if (newName || newFile) {
@@ -239,7 +257,12 @@ module.exports = {
                 }
 
                 await data.save();
-                await message.edit(renderContainer(data));
+
+                try {
+                    await message.edit(renderContainer(data));
+                } catch (err) {
+                    return interaction.editReply(`<:no:1297814819105144862> **Discord Upload Error:** The total size of all files combined is too large.`);
+                }
 
                 return interaction.editReply(`<:yes:1297814648417943565> Updated: **${changes.join(', ')}**.`);
             }
@@ -266,6 +289,10 @@ module.exports = {
 
         } catch (error) {
             console.error(error);
+            // Catch generic "Request entity too large" if it happens elsewhere
+            if (error.code === 50035 || error.message.includes('too large')) {
+                return interaction.editReply(`<:no:1297814819105144862> **Error:** The request was too large for Discord to handle. Try using smaller files.`);
+            }
             return interaction.editReply(`<:no:1297814819105144862> Error: ${error.message}`);
         }
     }

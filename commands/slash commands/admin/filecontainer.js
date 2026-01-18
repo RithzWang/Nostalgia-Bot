@@ -10,342 +10,291 @@ const {
     AttachmentBuilder,
     SeparatorBuilder,
     SeparatorSpacingSize,
-    // --- Modal Imports ---
     ModalBuilder,
     TextInputBuilder,
     TextInputStyle,
     FileUploadBuilder,
-    LabelBuilder,
-    ActionRowBuilder
+    LabelBuilder
 } = require('discord.js');
 
+// Use native fetch (Node 18+) or require('undici').fetch
+const fetch = global.fetch || require('undici').fetch;
 const FileContainer = require('../../../src/models/FileContainerSchema'); 
 
 module.exports = {
-    guildOnly: true,
     data: new SlashCommandBuilder()
         .setName('filecontainer')
-        .setDescription('Manage Multi-File Container Messages via Modals')
+        .setDescription('Manage Multi-File Containers via Modals')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-        
-        // --- 1. SETUP (Creates new) ---
-        .addSubcommand(sub => 
-            sub.setName('setup')
-                .setDescription('Create a new File Container')
-                .addChannelOption(opt => opt.setName('channel').setDescription('Where to create it? (Optional)').addChannelTypes(ChannelType.GuildText))
-        )
-
-        // --- 2. ADD (Adds file) ---
-        .addSubcommand(sub => 
-            sub.setName('add')
-                .setDescription('Add a file to a container')
-                .addStringOption(opt => opt.setName('message_id').setDescription('The Container Message ID').setRequired(true))
-        )
-
-        // --- 3. EDIT (Edits file/title) ---
-        .addSubcommand(sub => 
-            sub.setName('edit')
-                .setDescription('Edit the Title or a specific File')
-                .addStringOption(opt => opt.setName('message_id').setDescription('The Container Message ID').setRequired(true))
-        )
-
-        // --- 4. REMOVE (Removes file) ---
-        .addSubcommand(sub => 
-            sub.setName('remove')
-                .setDescription('Remove a file by number')
-                .addStringOption(opt => opt.setName('message_id').setDescription('The Container Message ID').setRequired(true))
-        ),
+        // 1. SETUP
+        .addSubcommand(sub => sub.setName('setup').setDescription('Create a new Container')
+            .addChannelOption(opt => opt.setName('channel').setDescription('Target Channel')))
+        // 2. ADD
+        .addSubcommand(sub => sub.setName('add').setDescription('Add file to Container')
+            .addStringOption(opt => opt.setName('message_id').setDescription('Container Message ID').setRequired(true)))
+        // 3. EDIT
+        .addSubcommand(sub => sub.setName('edit').setDescription('Edit file/title in Container')
+            .addStringOption(opt => opt.setName('message_id').setDescription('Container Message ID').setRequired(true)))
+        // 4. REMOVE
+        .addSubcommand(sub => sub.setName('remove').setDescription('Remove file from Container')
+            .addStringOption(opt => opt.setName('message_id').setDescription('Container Message ID').setRequired(true))),
 
     async execute(interaction) {
-        // NOTE: Do NOT deferReply here yet. We must showModal first!
         const sub = interaction.options.getSubcommand();
-        const guildId = interaction.guild.id;
-
-        // ====================================================
-        // 1. BUILD THE MODAL BASED ON SUBCOMMAND
-        // ====================================================
-        const modal = new ModalBuilder()
-            .setCustomId(`fc_modal_${sub}`)
-            .setTitle(`File Container: ${sub.toUpperCase()}`);
-
-        if (sub === 'setup') {
-            const titleLabel = new LabelBuilder()
-                .setLabel('Container Title')
-                .setTextInputComponent(
-                    new TextInputBuilder()
-                        .setCustomId('title_input')
-                        .setLabel('Main Title')
-                        .setPlaceholder('e.g. Server Resources')
-                        .setStyle(TextInputStyle.Short)
-                        .setRequired(true)
-                );
-            modal.addLabelComponents(titleLabel);
-        }
-
-        if (sub === 'add') {
-            const nameLabel = new LabelBuilder()
-                .setLabel('File Display Name')
-                .setTextInputComponent(
-                    new TextInputBuilder()
-                        .setCustomId('name_input')
-                        .setLabel('Display Name')
-                        .setPlaceholder('e.g. Chapter 1 Notes')
-                        .setStyle(TextInputStyle.Short)
-                        .setRequired(true)
-                );
-            
-            const fileLabel = new LabelBuilder()
-                .setLabel('Upload File')
-                .setFileUploadComponent(
-                    new FileUploadBuilder()
-                        .setCustomId('file_upload')
-                        .setMaxValues(1)
-                        .setRequired(true)
-                );
-            
-            modal.addLabelComponents(nameLabel, fileLabel);
-        }
-
-        if (sub === 'edit') {
-            const numberLabel = new LabelBuilder()
-                .setLabel('File Number')
-                .setTextInputComponent(
-                    new TextInputBuilder()
-                        .setCustomId('number_input')
-                        .setLabel('File # to Edit (Leave empty if editing Title)')
-                        .setStyle(TextInputStyle.Short)
-                        .setRequired(false)
-                );
-
-            const titleLabel = new LabelBuilder()
-                .setLabel('New Title')
-                .setTextInputComponent(
-                    new TextInputBuilder()
-                        .setCustomId('title_input')
-                        .setLabel('New Main Title (Optional)')
-                        .setStyle(TextInputStyle.Short)
-                        .setRequired(false)
-                );
-
-            const nameLabel = new LabelBuilder()
-                .setLabel('New File Name')
-                .setTextInputComponent(
-                    new TextInputBuilder()
-                        .setCustomId('name_input')
-                        .setLabel('New Display Name (Optional)')
-                        .setStyle(TextInputStyle.Short)
-                        .setRequired(false)
-                );
-
-            const fileLabel = new LabelBuilder()
-                .setLabel('New File')
-                .setFileUploadComponent(
-                    new FileUploadBuilder()
-                        .setCustomId('file_upload')
-                        .setRequired(false)
-                );
-
-            modal.addLabelComponents(numberLabel, titleLabel, nameLabel, fileLabel);
-        }
-
-        if (sub === 'remove') {
-             const numberLabel = new LabelBuilder()
-                .setLabel('File Number')
-                .setTextInputComponent(
-                    new TextInputBuilder()
-                        .setCustomId('number_input')
-                        .setLabel('Which file number to delete?')
-                        .setStyle(TextInputStyle.Short)
-                        .setRequired(true)
-                );
-             modal.addLabelComponents(numberLabel);
-        }
-
-        // ====================================================
-        // 2. SHOW MODAL & WAIT
-        // ====================================================
-        await interaction.showModal(modal);
-
-        let submission;
-        try {
-            submission = await interaction.awaitModalSubmit({
-                time: 300_000,
-                filter: (i) => i.customId.startsWith('fc_modal_') && i.user.id === interaction.user.id
-            });
-        } catch (err) {
-            return; // Timed out
-        }
-
-        // NOW we defer reply because processing takes time
-        await submission.deferReply({ flags: MessageFlags.Ephemeral });
-
-        // ====================================================
-        // 3. PROCESS SUBMISSION
-        // ====================================================
-        
-        // --- RENDER HELPER ---
-        const renderContainer = (data) => {
-            const container = new ContainerBuilder().setAccentColor(0x5865F2);
-
-            // Title
-            container.addSectionComponents(
-                new SectionBuilder().addTextDisplayComponents(t => t.setContent(`## ${data.title}`))
-            );
-
-            const payloadFiles = [];
-
-            if (data.files.length > 0) {
-                const usedFilenames = new Set();
-                data.files.forEach((fileData, index) => {
-                    const num = index + 1;
-
-                    // Separator
-                    container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
-
-                    // Sub-Header
-                    container.addSectionComponents(
-                        new SectionBuilder().addTextDisplayComponents(t => t.setContent(`### ${num}. ${fileData.name}`))
-                    );
-
-                    // Unique Filename Logic
-                    let uniqueFileName = fileData.filename;
-                    if (usedFilenames.has(uniqueFileName)) uniqueFileName = `${num}_${uniqueFileName}`;
-                    usedFilenames.add(uniqueFileName);
-                    
-                    // Attachment & Component
-                    payloadFiles.push(new AttachmentBuilder(fileData.url, { name: uniqueFileName }));
-                    container.addFileComponents(new FileBuilder().setURL(`attachment://${uniqueFileName}`));
-                });
-            } else {
-                container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
-                container.addSectionComponents(
-                     new SectionBuilder().addTextDisplayComponents(t => t.setContent('*No files added yet.*'))
-                );
-            }
-
-            return { 
-                content: '', 
-                components: [container],
-                files: payloadFiles,
-                flags: MessageFlags.IsComponentsV2
-            };
-        };
 
         try {
-            // --- SETUP ---
-            if (sub === 'setup') {
-                const title = submission.fields.getTextInputValue('title_input');
-                const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
-                
-                const message = await targetChannel.send({ content: 'Initializing...' });
-                
-                await FileContainer.findOneAndDelete({ messageId: message.id }); // Cleanup ghosts
-                const newData = await FileContainer.create({
-                    guildId,
-                    channelId: targetChannel.id,
-                    messageId: message.id,
-                    title: title,
-                    files: []
-                });
-
-                await message.edit(renderContainer(newData));
-                return submission.editReply(`<:yes:1297814648417943565> Container created! ID: \`${message.id}\``);
-            }
-
-            // --- COMMON LOGIC FOR ADD/EDIT/REMOVE ---
-            const targetMsgId = interaction.options.getString('message_id');
-            const data = await FileContainer.findOne({ messageId: targetMsgId });
-
-            if (!data) return submission.editReply(`<:no:1297814819105144862> Container ID \`${targetMsgId}\` not found in database.`);
-
-            const targetChannel = await interaction.guild.channels.fetch(data.channelId);
-            const message = await targetChannel.messages.fetch(targetMsgId).catch(() => null);
-            if (!message) return submission.editReply(`<:no:1297814819105144862> The actual message seems to be deleted.`);
-
-            // --- ADD ---
-            if (sub === 'add') {
-                const name = submission.fields.getTextInputValue('name_input');
-                const files = submission.fields.getUploadedFiles('file_upload');
-                const file = files[0];
-
-                data.files.push({ name: name, url: file.url, filename: file.name });
-
-                try {
-                    await message.edit(renderContainer(data)); // Try Discord first
-                    await data.save(); // Save if success
-                    return submission.editReply(`<:yes:1297814648417943565> Added **${name}**.`);
-                } catch (err) {
-                    data.files.pop(); // Revert
-                    return submission.editReply(`<:no:1297814819105144862> **Failed:** Total size too large.`);
-                }
-            }
-
-            // --- EDIT ---
-            if (sub === 'edit') {
-                const numberStr = submission.fields.getTextInputValue('number_input');
-                const newTitle = submission.fields.getTextInputValue('title_input');
-                const newName = submission.fields.getTextInputValue('name_input');
-                const files = submission.fields.getUploadedFiles('file_upload');
-                const newFile = files ? files[0] : null;
-
-                let changes = [];
-                
-                if (newTitle) {
-                    data.title = newTitle;
-                    changes.push('Title');
-                }
-
-                if (numberStr) {
-                    const number = parseInt(numberStr);
-                    const index = number - 1;
-
-                    if (isNaN(number) || index < 0 || index >= data.files.length) {
-                        return submission.editReply(`<:no:1297814819105144862> Invalid file number.`);
-                    }
-
-                    if (newName) {
-                        data.files[index].name = newName;
-                        changes.push(`File #${number} Name`);
-                    }
-                    if (newFile) {
-                        data.files[index].url = newFile.url;
-                        data.files[index].filename = newFile.name;
-                        changes.push(`File #${number} Attachment`);
-                    }
-                }
-
-                if (changes.length === 0) return submission.editReply(`<:no:1297814819105144862> No changes made.`);
-
-                try {
-                    await message.edit(renderContainer(data));
-                    await data.save();
-                    return submission.editReply(`<:yes:1297814648417943565> Updated: **${changes.join(', ')}**.`);
-                } catch (err) {
-                    return submission.editReply(`<:no:1297814819105144862> **Failed:** New size is too large.`);
-                }
-            }
-
-            // --- REMOVE ---
-            if (sub === 'remove') {
-                const numberStr = submission.fields.getTextInputValue('number_input');
-                const number = parseInt(numberStr);
-                const index = number - 1;
-
-                if (isNaN(number) || index < 0 || index >= data.files.length) {
-                    return submission.editReply(`<:no:1297814819105144862> Invalid file number.`);
-                }
-
-                const removedName = data.files[index].name;
-                data.files.splice(index, 1);
-
-                await data.save();
-                await message.edit(renderContainer(data));
-                return submission.editReply(`<:yes:1297814648417943565> Removed **${removedName}**.`);
-            }
-
+            if (sub === 'setup') await showSetupModal(interaction);
+            else if (sub === 'add') await showAddModal(interaction);
+            else if (sub === 'edit') await showEditModal(interaction);
+            else if (sub === 'remove') await showRemoveModal(interaction);
         } catch (error) {
             console.error(error);
-            return submission.editReply(`<:no:1297814819105144862> Error: ${error.message}`);
+            if (!interaction.replied) await interaction.reply({ content: `<:no:1297814819105144862> Error: ${error.message}`, ephemeral: true });
         }
     }
 };
+
+// ==========================================
+// 1. MODAL BUILDERS
+// ==========================================
+
+async function showSetupModal(interaction) {
+    const modal = new ModalBuilder().setCustomId('fc_setup').setTitle('Setup Container');
+    const titleInput = new TextInputBuilder().setCustomId('title').setLabel('Main Title').setStyle(TextInputStyle.Short).setRequired(true);
+    modal.addLabelComponents(new LabelBuilder().setLabel('Title').setTextInputComponent(titleInput));
+    await interaction.showModal(modal);
+    await handleSubmission(interaction);
+}
+
+async function showAddModal(interaction) {
+    const msgId = interaction.options.getString('message_id');
+    const modal = new ModalBuilder().setCustomId(`fc_add_${msgId}`).setTitle('Add File');
+    
+    const nameInput = new TextInputBuilder().setCustomId('name').setLabel('Display Name').setStyle(TextInputStyle.Short).setRequired(true);
+    const fileUpload = new FileUploadBuilder().setCustomId('file').setMaxValues(1).setRequired(true); // Must upload
+    
+    modal.addLabelComponents(
+        new LabelBuilder().setLabel('Name').setTextInputComponent(nameInput),
+        new LabelBuilder().setLabel('File').setFileUploadComponent(fileUpload)
+    );
+    await interaction.showModal(modal);
+    await handleSubmission(interaction);
+}
+
+async function showEditModal(interaction) {
+    const msgId = interaction.options.getString('message_id');
+    const modal = new ModalBuilder().setCustomId(`fc_edit_${msgId}`).setTitle('Edit Container');
+
+    const numInput = new TextInputBuilder().setCustomId('number').setLabel('File # (Leave empty to edit Title)').setStyle(TextInputStyle.Short).setRequired(false);
+    const titleInput = new TextInputBuilder().setCustomId('title').setLabel('New Main Title').setStyle(TextInputStyle.Short).setRequired(false);
+    const nameInput = new TextInputBuilder().setCustomId('name').setLabel('New File Name').setStyle(TextInputStyle.Short).setRequired(false);
+    const fileUpload = new FileUploadBuilder().setCustomId('file').setMaxValues(1).setRequired(false);
+
+    modal.addLabelComponents(
+        new LabelBuilder().setLabel('Selection').setTextInputComponent(numInput),
+        new LabelBuilder().setLabel('New Title').setTextInputComponent(titleInput),
+        new LabelBuilder().setLabel('New Name').setTextInputComponent(nameInput),
+        new LabelBuilder().setLabel('New File').setFileUploadComponent(fileUpload)
+    );
+    await interaction.showModal(modal);
+    await handleSubmission(interaction);
+}
+
+async function showRemoveModal(interaction) {
+    const msgId = interaction.options.getString('message_id');
+    const modal = new ModalBuilder().setCustomId(`fc_remove_${msgId}`).setTitle('Remove File');
+    const numInput = new TextInputBuilder().setCustomId('number').setLabel('File Number to Remove').setStyle(TextInputStyle.Short).setRequired(true);
+    modal.addLabelComponents(new LabelBuilder().setLabel('File #').setTextInputComponent(numInput));
+    await interaction.showModal(modal);
+    await handleSubmission(interaction);
+}
+
+// ==========================================
+// 2. SUBMISSION HANDLER
+// ==========================================
+async function handleSubmission(originalInt) {
+    const submission = await originalInt.awaitModalSubmit({
+        time: 300_000, 
+        filter: i => i.user.id === originalInt.user.id
+    }).catch(() => null);
+
+    if (!submission) return;
+
+    // Defer immediately (Creating buffers takes time)
+    await submission.deferReply({ flags: MessageFlags.Ephemeral });
+
+    try {
+        const [action, ...idParts] = submission.customId.replace('fc_', '').split('_');
+        const targetMsgId = idParts.join('_'); // Handle IDs just in case
+        
+        // --- SETUP ---
+        if (action === 'setup') {
+            const title = submission.fields.getTextInputValue('title');
+            const channel = originalInt.options.getChannel('channel') || originalInt.channel;
+            
+            const msg = await channel.send({ content: 'Initializing...' });
+            await FileContainer.findOneAndDelete({ messageId: msg.id });
+            
+            const newData = await FileContainer.create({
+                guildId: originalInt.guild.id,
+                channelId: channel.id,
+                messageId: msg.id,
+                title: title,
+                files: []
+            });
+
+            const { container } = await buildPayload(newData, []); // No files yet
+            await msg.edit({ content: '', components: [container], flags: MessageFlags.IsComponentsV2 });
+            return submission.editReply(`<:yes:1297814648417943565> Container created! ID: \`${msg.id}\``);
+        }
+
+        // --- LOAD DATA ---
+        const data = await FileContainer.findOne({ messageId: targetMsgId });
+        if (!data) return submission.editReply(`<:no:1297814819105144862> Container not found in DB.`);
+
+        const channel = await originalInt.guild.channels.fetch(data.channelId);
+        const message = await channel.messages.fetch(targetMsgId).catch(() => null);
+        if (!message) return submission.editReply(`<:no:1297814819105144862> Message deleted.`);
+
+        // --- ADD ---
+        if (action === 'add') {
+            const name = submission.fields.getTextInputValue('name');
+            const uploadedFiles = submission.fields.getUploadedFiles('file');
+            const file = uploadedFiles.first();
+
+            // Temporarily push to object
+            data.files.push({ name, url: file.url, filename: file.name });
+
+            // Try Update
+            await updateContainerSafe(message, data, submission);
+        }
+
+        // --- EDIT ---
+        if (action === 'edit') {
+            const numStr = submission.fields.getTextInputValue('number');
+            const newTitle = submission.fields.getTextInputValue('title');
+            const newName = submission.fields.getTextInputValue('name');
+            const uploadedFiles = submission.fields.getUploadedFiles('file');
+            const newFile = uploadedFiles ? uploadedFiles.first() : null;
+
+            if (newTitle) data.title = newTitle;
+
+            if (numStr) {
+                const idx = parseInt(numStr) - 1;
+                if (idx < 0 || idx >= data.files.length) throw new Error("Invalid file number.");
+                
+                if (newName) data.files[idx].name = newName;
+                if (newFile) {
+                    data.files[idx].url = newFile.url;
+                    data.files[idx].filename = newFile.name; // Fixed typo (index -> idx)
+                }
+            }
+
+            await updateContainerSafe(message, data, submission);
+        }
+
+        // --- REMOVE ---
+        if (action === 'remove') {
+            const numStr = submission.fields.getTextInputValue('number');
+            const idx = parseInt(numStr) - 1;
+            
+            if (idx < 0 || idx >= data.files.length) throw new Error("Invalid file number.");
+            
+            const removed = data.files[idx].name;
+            data.files.splice(idx, 1);
+
+            await updateContainerSafe(message, data, submission);
+            await submission.editReply(`<:yes:1297814648417943565> Removed **${removed}**.`);
+        }
+
+    } catch (e) {
+        console.error(e);
+        await submission.editReply(`<:no:1297814819105144862> **Error:** ${e.message}`);
+    }
+}
+
+// ==========================================
+// 3. CORE LOGIC: STREAMING & UPDATING
+// ==========================================
+
+async function updateContainerSafe(message, data, interaction) {
+    try {
+        // 1. Prepare Payloads (Download all files as Buffers)
+        const { container, files } = await buildPayload(data);
+
+        // 2. Try Update Discord
+        await message.edit({
+            content: '',
+            components: [container],
+            files: files, // Array of AttachmentBuilders (Buffers)
+            flags: MessageFlags.IsComponentsV2
+        });
+
+        // 3. Save DB Only on Success
+        await data.save();
+        if (!interaction.replied) await interaction.editReply(`<:yes:1297814648417943565> Success!`);
+
+    } catch (error) {
+        // 4. Handle "Too Large" Error
+        if (error.status === 413 || error.code === 50035 || error.message.includes('too large')) {
+            throw new Error(`The total size of ALL files combined is too large for Discord to handle in one message.`);
+        }
+        throw error;
+    }
+}
+
+async function buildPayload(data) {
+    const container = new ContainerBuilder().setAccentColor(0x5865F2);
+    
+    // Title Section
+    container.addSectionComponents(
+        new SectionBuilder().addTextDisplayComponents(t => t.setContent(`## ${data.title}`))
+    );
+
+    const attachments = [];
+
+    if (data.files.length > 0) {
+        const usedNames = new Set();
+
+        // We must process sequentially to handle downloads
+        for (let i = 0; i < data.files.length; i++) {
+            const fileData = data.files[i];
+            const num = i + 1;
+
+            // Separator
+            container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
+
+            // Sub-Header
+            container.addSectionComponents(
+                new SectionBuilder().addTextDisplayComponents(t => t.setContent(`### ${num}. ${fileData.name}`))
+            );
+
+            // Unique Filename Logic
+            let fName = fileData.filename;
+            if (usedNames.has(fName)) fName = `${num}_${fName}`;
+            usedNames.add(fName);
+
+            // --- CRITICAL: DOWNLOAD TO BUFFER ---
+            const buffer = await downloadToBuffer(fileData.url);
+            
+            const attachment = new AttachmentBuilder(buffer, { name: fName });
+            attachments.push(attachment);
+
+            // File Component
+            container.addFileComponents(new FileBuilder().setURL(`attachment://${fName}`));
+        }
+    } else {
+        container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
+        container.addSectionComponents(new SectionBuilder().addTextDisplayComponents(t => t.setContent('*Empty*')));
+    }
+
+    return { container, files: attachments };
+}
+
+// Helper to fetch file content into a Buffer
+async function downloadToBuffer(url) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Failed to fetch file: ${url}`);
+    const arrayBuffer = await res.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+}

@@ -77,7 +77,7 @@ module.exports = {
             try {
                 // A. REPLY (Do NOT delete)
                 await message.reply({
-                    content: `⚠️ Please do not try to mention everyone/here`,
+                    content: `⚠️ Please do not try to mention everyone/here ever again.`,
                     stickers: ['755490897143136446'],
                     allowedMentions: { repliedUser: true }
                 });

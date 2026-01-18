@@ -11,33 +11,20 @@ const {
     PermissionFlagsBits 
 } = require('discord.js');
 
-// Native fetch (Node 18+)
-// If you are on an older Node version, install 'undici' and uncomment:
-// const { fetch } = require('undici'); 
-
-const EMOJI = {
-    YES: '<:yes:1297814648417943565>',
-    NO: '<:no:1297814819105144862>'
-};
+// Native Node.js fetch (Node 18+)
+// If on older Node, use: const { fetch } = require('undici');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('file')
         .setDescription('Manage file containers')
         .addSubcommand(subcommand =>
-            subcommand
-                .setName('send')
-                .setDescription('Open the file upload form')
-                .addChannelOption(option => 
-                    option.setName('channel').setDescription('Optional: Channel to send to')))
+            subcommand.setName('send').setDescription('Open the file upload form')
+                .addChannelOption(opt => opt.setName('channel').setDescription('Channel to send to')))
         .addSubcommand(subcommand =>
-            subcommand
-                .setName('edit')
-                .setDescription('Edit or Add to a file message')
-                .addStringOption(option => 
-                    option.setName('message_id').setDescription('The Message ID').setRequired(true))
-                .addChannelOption(option => 
-                    option.setName('channel').setDescription('Channel where the message is')))
+            subcommand.setName('edit').setDescription('Edit a file message')
+                .addStringOption(opt => opt.setName('message_id').setDescription('The Message ID').setRequired(true))
+                .addChannelOption(opt => opt.setName('channel').setDescription('Channel where the message is')))
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
 
     async execute(interaction) {
@@ -47,9 +34,7 @@ module.exports = {
             else if (subcommand === 'edit') await showEditModal(interaction);
         } catch (error) {
             console.error('Execute Error:', error);
-            if (!interaction.replied) {
-                await interaction.reply({ content: `${EMOJI.NO} Error: ${error.message}`, ephemeral: true });
-            }
+            if (!interaction.replied) await interaction.reply({ content: `<:no:1297814819105144862> Error: ${error.message}`, ephemeral: true });
         }
     }
 };
@@ -58,53 +43,49 @@ module.exports = {
 // 1. SHOW MODALS
 // ==========================================
 async function showSendModal(interaction) {
-    const modal = new ModalBuilder()
-        .setCustomId('file_modal_send')
-        .setTitle('Upload File');
-
+    const modal = new ModalBuilder().setCustomId('file_modal_send').setTitle('Upload File');
+    
     const nameInput = new TextInputBuilder()
         .setCustomId('name_input')
         .setStyle(TextInputStyle.Short)
-        .setPlaceholder('e.g. Paul Noble French')
+        .setPlaceholder('Title')
         .setRequired(true);
-
-    const nameLabel = new LabelBuilder().setLabel('Title').setTextInputComponent(nameInput);
 
     const fileUpload = new FileUploadBuilder()
         .setCustomId('file_upload')
         .setMinValues(1)
-        .setMaxValues(1) 
+        .setMaxValues(1)
         .setRequired(true);
-
-    const fileLabel = new LabelBuilder().setLabel('File').setFileUploadComponent(fileUpload);
-
-    modal.addLabelComponents(nameLabel, fileLabel);
+    
+    modal.addLabelComponents(
+        new LabelBuilder().setLabel('Title').setTextInputComponent(nameInput),
+        new LabelBuilder().setLabel('File').setFileUploadComponent(fileUpload)
+    );
+    
     await interaction.showModal(modal);
     await handleModalSubmit(interaction);
 }
 
 async function showEditModal(interaction) {
     const messageId = interaction.options.getString('message_id');
-    const modal = new ModalBuilder()
-        .setCustomId(`file_modal_edit_${messageId}`) 
-        .setTitle('Edit / Add File');
-
+    const modal = new ModalBuilder().setCustomId(`file_modal_edit_${messageId}`).setTitle('Edit File');
+    
     const nameInput = new TextInputBuilder()
         .setCustomId('name_input')
         .setStyle(TextInputStyle.Short)
         .setPlaceholder('Leave empty to keep current')
         .setRequired(false);
 
-    const nameLabel = new LabelBuilder().setLabel('New Title').setTextInputComponent(nameInput);
-
     const fileUpload = new FileUploadBuilder()
         .setCustomId('file_upload')
         .setMaxValues(1)
         .setRequired(false);
 
-    const fileLabel = new LabelBuilder().setLabel('New File').setFileUploadComponent(fileUpload);
+    modal.addLabelComponents(
+        new LabelBuilder().setLabel('New Title').setTextInputComponent(nameInput),
+        new LabelBuilder().setLabel('New File').setFileUploadComponent(fileUpload)
+    );
 
-    modal.addLabelComponents(nameLabel, fileLabel);
     await interaction.showModal(modal);
     await handleModalSubmit(interaction);
 }
@@ -114,7 +95,7 @@ async function showEditModal(interaction) {
 // ==========================================
 async function handleModalSubmit(originalInteraction) {
     const submission = await originalInteraction.awaitModalSubmit({
-        time: 300000, // 5 Minutes
+        time: 300000, 
         filter: i => i.user.id === originalInteraction.user.id
     }).catch(() => null);
 
@@ -127,82 +108,80 @@ async function handleModalSubmit(originalInteraction) {
         const isEdit = customId.startsWith('file_modal_edit');
         const targetChannel = originalInteraction.options.getChannel('channel') || originalInteraction.channel;
 
-        // CHECK GUILD LIMITS
-        // Tier 2 = 50MB, Tier 3 = 100MB, None = 25MB
-        const uploadLimit = originalInteraction.guild.premiumTier >= 2 ? 50 * 1024 * 1024 : 25 * 1024 * 1024;
+        // 1. DETERMINE REAL SERVER LIMIT
+        // Tier 2 (Boosts) = 50MB. Tier 3 = 100MB. Default = 25MB.
+        let uploadLimit = 25 * 1024 * 1024; // Default 25MB
+        if (originalInteraction.guild.premiumTier >= 2) uploadLimit = 50 * 1024 * 1024;
+        if (originalInteraction.guild.premiumTier >= 3) uploadLimit = 100 * 1024 * 1024;
 
         const nameText = submission.fields.getTextInputValue('name_input');
         const uploadedFiles = submission.fields.getUploadedFiles('file_upload');
         const uploadedFile = uploadedFiles ? uploadedFiles.first() : null;
 
-        // Manual Size Check
+        // 2. CHECK SIZE BEFORE TRYING
         if (uploadedFile && uploadedFile.size > uploadLimit) {
-            throw new Error(`File is too large! This server's limit is ${(uploadLimit / 1024 / 1024).toFixed(0)}MB.`);
+            throw new Error(`File is too large for this server! The bot limit is ${(uploadLimit / 1024 / 1024).toFixed(0)}MB.`);
         }
 
         if (!isEdit) {
+            // SEND
             if (!uploadedFile) throw new Error("No file received.");
-
-            // Use the streaming helper
-            const { container, filePayload } = await createSingleContainer(nameText, uploadedFile.name, uploadedFile.url);
+            
+            // Use streaming helper
+            const { container, filePayload } = await createStreamingContainer(nameText, uploadedFile.name, uploadedFile.url);
 
             await targetChannel.send({
                 components: [container],
-                files: [filePayload], // Streamed payload
+                files: [filePayload],
                 flags: MessageFlags.IsComponentsV2
             });
-
-            await submission.editReply(`${EMOJI.YES} **File sent!**`);
+            await submission.editReply(`<:yes:1297814648417943565> **File sent!**`);
 
         } else {
-            const messageId = customId.split('_').pop(); 
+            // EDIT
+            const messageId = customId.split('_').pop();
             const message = await targetChannel.messages.fetch(messageId);
-            if (!message) throw new Error("Message not found.");
-
-            const editPayload = { flags: MessageFlags.IsComponentsV2 };
-
+            
             if (uploadedFile) {
                 const finalName = nameText || uploadedFile.name;
-                const { container, filePayload } = await createSingleContainer(finalName, uploadedFile.name, uploadedFile.url);
+                const { container, filePayload } = await createStreamingContainer(finalName, uploadedFile.name, uploadedFile.url);
 
-                editPayload.components = [...message.components, container];
-                editPayload.files = [filePayload];
-                
-                await message.edit(editPayload);
-                await submission.editReply(`${EMOJI.YES} **Added** new file to stack.`);
+                await message.edit({
+                    components: [...message.components, container],
+                    files: [filePayload], 
+                    flags: MessageFlags.IsComponentsV2
+                });
+                await submission.editReply(`<:yes:1297814648417943565> **Added** new file.`);
             } else {
-                if (!nameText) return submission.editReply(`${EMOJI.NO} No changes.`);
-                
+                // Update Text Only logic
                 const components = [...message.components];
                 const lastIndex = components.length - 1;
                 const existingAttachment = message.attachments.at(lastIndex);
+                
+                if (!existingAttachment) throw new Error("No existing file found to reference.");
 
-                if (!existingAttachment) throw new Error("No existing file to reference.");
-
-                // Rebuild container pointing to OLD file (No fetch needed here)
+                // Simple container rebuild (no streaming needed for text update)
                 const container = new ContainerBuilder()
                     .addTextDisplayComponents(t => t.setContent(`### ${nameText}`))
                     .addSeparatorComponents(s => s)
                     .addFileComponents(f => f.setURL(`attachment://${existingAttachment.name}`));
-
-                components[lastIndex] = container;
-                editPayload.components = components;
                 
-                await message.edit(editPayload);
-                await submission.editReply(`${EMOJI.YES} **Updated** title.`);
+                components[lastIndex] = container;
+                
+                await message.edit({ components, flags: MessageFlags.IsComponentsV2 });
+                await submission.editReply(`<:yes:1297814648417943565> **Updated** title.`);
             }
         }
     } catch (e) {
         console.error(e);
-        await submission.editReply(`${EMOJI.NO} **Error:** ${e.message}`);
+        await submission.editReply(`<:no:1297814819105144862> **Error:** ${e.message}`);
     }
 }
 
 // ==========================================
-// HELPER: STREAMING DOWNLOAD (Fixes 413)
+// CRITICAL FIX: Manual Streaming
 // ==========================================
-async function createSingleContainer(title, fileName, fileUrl) {
-    // 1. Build the Visual Container
+async function createStreamingContainer(title, fileName, fileUrl) {
     const container = new ContainerBuilder()
         .addTextDisplayComponents(t => t.setContent(`### ${title}`))
         .addSeparatorComponents(s => s)
@@ -210,15 +189,15 @@ async function createSingleContainer(title, fileName, fileUrl) {
 
     let filePayload = null;
     if (fileUrl) {
-        // FIX: Fetch the stream manually instead of letting Discord.js handle the URL.
-        // This ensures the data is passed correctly for larger files.
+        // 1. Manually fetch the file
         const response = await fetch(fileUrl);
-        if (!response.ok) throw new Error(`Failed to download file: ${response.statusText}`);
-        
-        // Convert the web stream to an ArrayBuffer or Buffer for Discord.js
+        if (!response.ok) throw new Error("Failed to download file from Discord.");
+
+        // 2. Create a Buffer (This is much more stable for 15MB+ files)
         const arrayBuffer = await response.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
 
+        // 3. Attach the Buffer
         filePayload = new AttachmentBuilder(buffer, { name: fileName });
     }
 

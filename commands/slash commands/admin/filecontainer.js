@@ -34,20 +34,19 @@ module.exports = {
             sub.setName('add')
                 .setDescription('Add a file to a container')
                 .addStringOption(opt => opt.setName('message_id').setDescription('The Message ID').setRequired(true))
-                .addStringOption(opt => opt.setName('name').setDescription('Display Name').setRequired(true))
+                .addStringOption(opt => opt.setName('name').setDescription('Display Name (and Filename)').setRequired(true))
                 .addAttachmentOption(opt => opt.setName('file').setDescription('Upload the file').setRequired(true))
                 .addChannelOption(opt => opt.setName('channel').setDescription('Where is the message? (Optional)').addChannelTypes(ChannelType.GuildText))
         )
 
-        // --- 3. EDIT (New Feature) ---
+        // --- 3. EDIT ---
         .addSubcommand(sub => 
             sub.setName('edit')
                 .setDescription('Edit the Title or a specific File')
                 .addStringOption(opt => opt.setName('message_id').setDescription('The Message ID').setRequired(true))
-                // Options
                 .addStringOption(opt => opt.setName('title').setDescription('New Main Title (Optional)'))
                 .addIntegerOption(opt => opt.setName('number').setDescription('File Number to edit (Optional)'))
-                .addStringOption(opt => opt.setName('name').setDescription('New File Name (Optional)'))
+                .addStringOption(opt => opt.setName('name').setDescription('New Name (Optional)'))
                 .addAttachmentOption(opt => opt.setName('file').setDescription('New File Attachment (Optional)'))
                 .addChannelOption(opt => opt.setName('channel').setDescription('Where is the message? (Optional)').addChannelTypes(ChannelType.GuildText))
         )
@@ -70,7 +69,7 @@ module.exports = {
         // --- HELPER: RENDER CONTAINER ---
         const renderContainer = (data) => {
             const container = new ContainerBuilder();
-                // .setAccentColor(0x5865F2); 
+            // .setAccentColor(0x5865F2); 
 
             // 1. Main Title
             container.addTextDisplayComponents(
@@ -93,14 +92,34 @@ module.exports = {
                         new TextDisplayBuilder().setContent(`### ${num}. ${fileData.name}`)
                     );
 
-                    // File Attachment
-                    const uniqueFileName = `${num}_${fileData.filename}`;
-                    const attachment = new AttachmentBuilder(fileData.url, { name: uniqueFileName });
+                    // --- RENAME LOGIC START ---
+                    
+                    // 1. Get original extension (e.g. "png" from "image.png")
+                    const originalName = fileData.filename || 'file.txt';
+                    const extension = originalName.includes('.') ? originalName.split('.').pop() : '';
+
+                    // 2. Clean the user's custom name (Remove bad characters)
+                    // We allow spaces, but remove things like / or \ that break paths
+                    let cleanCustomName = fileData.name.replace(/[^a-zA-Z0-9 _-]/g, "").trim();
+                    if (!cleanCustomName) cleanCustomName = "file"; // fallback
+
+                    // 3. Construct the final name (User Name + Original Extension)
+                    // Example: "Homework" + ".pdf"
+                    let finalFileName = extension ? `${cleanCustomName}.${extension}` : cleanCustomName;
+                    
+                    // Edge case: If user already typed "Homework.pdf" in the name, don't double it to "Homework.pdf.pdf"
+                    if (fileData.name.endsWith(`.${extension}`)) {
+                        finalFileName = fileData.name;
+                    }
+
+                    // --- RENAME LOGIC END ---
+
+                    const attachment = new AttachmentBuilder(fileData.url, { name: finalFileName });
                     payloadFiles.push(attachment);
 
                     // File Component UI
                     const fileComponent = new FileBuilder()
-                        .setURL(`attachment://${uniqueFileName}`);
+                        .setURL(`attachment://${finalFileName}`);
                     
                     container.addFileComponents(fileComponent);
                 });
@@ -176,7 +195,7 @@ module.exports = {
                 data.files.push({
                     name: name,
                     url: attachment.url, 
-                    filename: attachment.name
+                    filename: attachment.name // We save original name to know the extension later
                 });
 
                 await data.save();
@@ -220,12 +239,11 @@ module.exports = {
                         changes.push(`File #${number} Attachment`);
                     }
                 } else if (newName || newFile) {
-                    // User provided name/file but forgot the number
                     return interaction.editReply(`<:no:1297814819105144862> You must provide the \`number\` option to edit a file.`);
                 }
 
                 if (changes.length === 0) {
-                    return interaction.editReply(`<:no:1297814819105144862> You didn't provide any changes (title, name, or file).`);
+                    return interaction.editReply(`<:no:1297814819105144862> You didn't provide any changes.`);
                 }
 
                 await data.save();

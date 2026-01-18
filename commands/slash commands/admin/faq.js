@@ -54,7 +54,7 @@ module.exports = {
         // --- 4. REMOVE ---
         .addSubcommand(sub => 
             sub.setName('remove')
-                .setDescription('Select a question to remove')
+                .setDescription('Select one or more questions to remove')
         ),
 
     async execute(interaction, client) {
@@ -163,7 +163,7 @@ module.exports = {
                     return interaction.reply({ content: `<:no:1297814819105144862> No questions to edit.`, flags: MessageFlags.Ephemeral });
                 }
 
-                // 1. Select Menu
+                // 1. Build Select Menu (Single Select for Edit)
                 const options = faqEntry.questions.slice(0, 25).map((q, index) => 
                     new StringSelectMenuOptionBuilder()
                         .setLabel(q.question.substring(0, 100))
@@ -172,16 +172,22 @@ module.exports = {
 
                 const selectMenu = new StringSelectMenuBuilder()
                     .setCustomId('faq_edit_select')
-                    .setPlaceholder('Select a question to edit')
+                    .setPlaceholder('Click to select a question')
                     .addOptions(options);
 
+                // 2. Create CONTAINER Prompt
+                const container = new ContainerBuilder()
+                    .setAccentColor(0x888888)
+                    .addTextDisplayComponents(t => t.setContent('### Which question would you like to edit?'))
+                    .addSeparatorComponents(s => s)
+                    .addActionRowComponents(row => row.setComponents(selectMenu));
+
                 const response = await interaction.reply({
-                    content: 'Which question would you like to edit?',
-                    components: [new ActionRowBuilder().addComponents(selectMenu)],
-                    flags: MessageFlags.Ephemeral
+                    components: [container],
+                    flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral
                 });
 
-                // 2. Wait for Selection
+                // 3. Wait for Selection
                 const selection = await response.awaitMessageComponent({
                     componentType: ComponentType.StringSelect,
                     time: 60000
@@ -189,7 +195,7 @@ module.exports = {
 
                 if (!selection) return interaction.deleteReply().catch(() => {});
 
-                // 3. Show Modal
+                // 4. Show Modal
                 const index = parseInt(selection.values[0]);
                 const targetQ = faqEntry.questions[index];
 
@@ -218,7 +224,7 @@ module.exports = {
 
                 await selection.showModal(modal);
 
-                // 4. Wait for Submit
+                // 5. Wait for Submit
                 const submitted = await selection.awaitModalSubmit({
                     time: 300000,
                     filter: i => i.user.id === interaction.user.id
@@ -245,24 +251,34 @@ module.exports = {
                     return interaction.reply({ content: `<:no:1297814819105144862> No questions to remove.`, flags: MessageFlags.Ephemeral });
                 }
 
+                // 1. Build Select Menu (Multi-Select Enabled)
                 const options = faqEntry.questions.slice(0, 25).map((q, index) => 
                     new StringSelectMenuOptionBuilder()
                         .setLabel(q.question.substring(0, 100))
-                        .setDescription('Click to remove this item')
+                        .setDescription('Select to remove')
                         .setValue(index.toString())
                 );
 
                 const selectMenu = new StringSelectMenuBuilder()
                     .setCustomId('faq_remove_select')
-                    .setPlaceholder('Select a question to REMOVE')
+                    .setPlaceholder('Choose questions to remove (Multiple allowed)')
+                    .setMinValues(1)
+                    .setMaxValues(options.length) // Allow selecting all
                     .addOptions(options);
 
+                // 2. Create CONTAINER Prompt
+                const container = new ContainerBuilder()
+                    .setAccentColor(0x888888)
+                    .addTextDisplayComponents(t => t.setContent('### Which question would you like to remove?'))
+                    .addSeparatorComponents(s => s)
+                    .addActionRowComponents(row => row.setComponents(selectMenu));
+
                 const response = await interaction.reply({
-                    content: 'Select the question you want to delete:',
-                    components: [new ActionRowBuilder().addComponents(selectMenu)],
-                    flags: MessageFlags.Ephemeral
+                    components: [container],
+                    flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral
                 });
 
+                // 3. Wait for Selection
                 const selection = await response.awaitMessageComponent({
                     componentType: ComponentType.StringSelect,
                     time: 60000
@@ -270,18 +286,27 @@ module.exports = {
 
                 if (!selection) return interaction.deleteReply().catch(() => {});
 
-                const indexToRemove = parseInt(selection.values[0]);
-                const removedQuestion = faqEntry.questions[indexToRemove].question;
+                // 4. Process Deletion (Multi-Delete Logic)
+                // We must sort indices descending (e.g., [3, 0]) so deleting 3 doesn't shift 0
+                const indicesToRemove = selection.values
+                    .map(v => parseInt(v))
+                    .sort((a, b) => b - a);
 
-                faqEntry.questions.splice(indexToRemove, 1);
+                let count = 0;
+                for (const index of indicesToRemove) {
+                    faqEntry.questions.splice(index, 1);
+                    count++;
+                }
+
                 await faqEntry.save();
 
                 await selection.deferUpdate();
                 await refreshFAQMessage(interaction, faqEntry);
                 
                 await selection.editReply({ 
-                    content: `<:yes:1297814648417943565> Removed: **${removedQuestion}**`, 
-                    components: [] 
+                    content: `<:yes:1297814648417943565> Successfully removed **${count}** question(s).`, 
+                    components: [],
+                    flags: MessageFlags.Ephemeral
                 });
             }
 
@@ -319,6 +344,7 @@ const renderFAQ = (faqData) => {
     const now = moment().tz('Asia/Bangkok').format('DD/MM/YYYY');
 
     const container = new ContainerBuilder();
+        // .setAccentColor(0x0099ff); // Main FAQ Color (optional)
 
     // Header
     const headerText = new TextDisplayBuilder().setContent('## ❓ Frequently Asked Questions');
@@ -331,13 +357,11 @@ const renderFAQ = (faqData) => {
                 new TextDisplayBuilder().setContent(`### ${q.question}\n${q.answer}`)
             );
 
-            // Add separator (unless it's the last item)
             if (index < faqData.questions.length - 1) {
                 container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
             }
         });
         
-        // Final separator
         container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
     } else {
         container.addTextDisplayComponents(

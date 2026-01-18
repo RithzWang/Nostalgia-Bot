@@ -11,7 +11,10 @@ const {
     PermissionFlagsBits 
 } = require('discord.js');
 
-// Custom Emojis
+// Native fetch (Node 18+)
+// If you are on an older Node version, install 'undici' and uncomment:
+// const { fetch } = require('undici'); 
+
 const EMOJI = {
     YES: '<:yes:1297814648417943565>',
     NO: '<:no:1297814819105144862>'
@@ -21,14 +24,12 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('file')
         .setDescription('Manage file containers')
-        // Subcommand: SEND
         .addSubcommand(subcommand =>
             subcommand
                 .setName('send')
                 .setDescription('Open the file upload form')
                 .addChannelOption(option => 
-                    option.setName('channel').setDescription('Optional: Channel to send to (defaults to current)')))
-        // Subcommand: EDIT
+                    option.setName('channel').setDescription('Optional: Channel to send to')))
         .addSubcommand(subcommand =>
             subcommand
                 .setName('edit')
@@ -36,18 +37,14 @@ module.exports = {
                 .addStringOption(option => 
                     option.setName('message_id').setDescription('The Message ID').setRequired(true))
                 .addChannelOption(option => 
-                    option.setName('channel').setDescription('Optional: Channel where the message is')))
+                    option.setName('channel').setDescription('Channel where the message is')))
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
 
     async execute(interaction) {
-        // NOTE: We do NOT deferReply here because we must show a Modal immediately.
         try {
             const subcommand = interaction.options.getSubcommand();
-            if (subcommand === 'send') {
-                await showSendModal(interaction);
-            } else if (subcommand === 'edit') {
-                await showEditModal(interaction);
-            }
+            if (subcommand === 'send') await showSendModal(interaction);
+            else if (subcommand === 'edit') await showEditModal(interaction);
         } catch (error) {
             console.error('Execute Error:', error);
             if (!interaction.replied) {
@@ -62,78 +59,53 @@ module.exports = {
 // ==========================================
 async function showSendModal(interaction) {
     const modal = new ModalBuilder()
-        .setCustomId('file_modal_send') // ID to identify this specific form
+        .setCustomId('file_modal_send')
         .setTitle('Upload File');
 
-    // Name Input
     const nameInput = new TextInputBuilder()
         .setCustomId('name_input')
         .setStyle(TextInputStyle.Short)
         .setPlaceholder('e.g. Paul Noble French')
         .setRequired(true);
 
-    const nameLabel = new LabelBuilder()
-        .setLabel('File Title')
-        .setDescription('The header text for this file')
-        .setTextInputComponent(nameInput);
+    const nameLabel = new LabelBuilder().setLabel('Title').setTextInputComponent(nameInput);
 
-    // File Upload Input
     const fileUpload = new FileUploadBuilder()
         .setCustomId('file_upload')
         .setMinValues(1)
         .setMaxValues(1) 
         .setRequired(true);
 
-    const fileLabel = new LabelBuilder()
-        .setLabel('Select File')
-        .setDescription('Upload the PDF or Image here')
-        .setFileUploadComponent(fileUpload);
+    const fileLabel = new LabelBuilder().setLabel('File').setFileUploadComponent(fileUpload);
 
     modal.addLabelComponents(nameLabel, fileLabel);
-    
-    // Show Modal
     await interaction.showModal(modal);
-
-    // Wait for response
     await handleModalSubmit(interaction);
 }
 
 async function showEditModal(interaction) {
     const messageId = interaction.options.getString('message_id');
-    
-    // We encode the Message ID into the customId so we can retrieve it later
     const modal = new ModalBuilder()
         .setCustomId(`file_modal_edit_${messageId}`) 
         .setTitle('Edit / Add File');
 
-    // Name Input (Optional)
     const nameInput = new TextInputBuilder()
         .setCustomId('name_input')
         .setStyle(TextInputStyle.Short)
-        .setPlaceholder('Leave empty to keep current title')
+        .setPlaceholder('Leave empty to keep current')
         .setRequired(false);
 
-    const nameLabel = new LabelBuilder()
-        .setLabel('New Title')
-        .setTextInputComponent(nameInput);
+    const nameLabel = new LabelBuilder().setLabel('New Title').setTextInputComponent(nameInput);
 
-    // File Upload (Optional)
     const fileUpload = new FileUploadBuilder()
         .setCustomId('file_upload')
         .setMaxValues(1)
         .setRequired(false);
 
-    const fileLabel = new LabelBuilder()
-        .setLabel('New File (Optional)')
-        .setDescription('Upload to add a new card or replace the old file')
-        .setFileUploadComponent(fileUpload);
+    const fileLabel = new LabelBuilder().setLabel('New File').setFileUploadComponent(fileUpload);
 
     modal.addLabelComponents(nameLabel, fileLabel);
-    
-    // Show Modal
     await interaction.showModal(modal);
-
-    // Wait for response
     await handleModalSubmit(interaction);
 }
 
@@ -141,16 +113,13 @@ async function showEditModal(interaction) {
 // 2. HANDLE SUBMISSION
 // ==========================================
 async function handleModalSubmit(originalInteraction) {
-    // Wait for the user to submit the modal form
-    // We filter by user ID to ensure we only get the submit from the person who ran the command
     const submission = await originalInteraction.awaitModalSubmit({
         time: 300000, // 5 Minutes
         filter: i => i.user.id === originalInteraction.user.id
     }).catch(() => null);
 
-    if (!submission) return; // Timed out (user closed the modal)
+    if (!submission) return; 
 
-    // Defer immediately to give us time to upload/edit
     await submission.deferReply({ ephemeral: true });
 
     try {
@@ -158,77 +127,69 @@ async function handleModalSubmit(originalInteraction) {
         const isEdit = customId.startsWith('file_modal_edit');
         const targetChannel = originalInteraction.options.getChannel('channel') || originalInteraction.channel;
 
-        // --- EXTRACT DATA ---
+        // CHECK GUILD LIMITS
+        // Tier 2 = 50MB, Tier 3 = 100MB, None = 25MB
+        const uploadLimit = originalInteraction.guild.premiumTier >= 2 ? 50 * 1024 * 1024 : 25 * 1024 * 1024;
+
         const nameText = submission.fields.getTextInputValue('name_input');
-        
-        // FIX: Use .first() to get the file from the Collection
         const uploadedFiles = submission.fields.getUploadedFiles('file_upload');
         const uploadedFile = uploadedFiles ? uploadedFiles.first() : null;
 
-        if (!isEdit) {
-            // --- SEND LOGIC ---
-            if (!uploadedFile) throw new Error("No file received. Please try again.");
+        // Manual Size Check
+        if (uploadedFile && uploadedFile.size > uploadLimit) {
+            throw new Error(`File is too large! This server's limit is ${(uploadLimit / 1024 / 1024).toFixed(0)}MB.`);
+        }
 
-            const { container, filePayload } = createSingleContainer(nameText, uploadedFile.name, uploadedFile.url);
+        if (!isEdit) {
+            if (!uploadedFile) throw new Error("No file received.");
+
+            // Use the streaming helper
+            const { container, filePayload } = await createSingleContainer(nameText, uploadedFile.name, uploadedFile.url);
 
             await targetChannel.send({
                 components: [container],
-                files: [filePayload],
+                files: [filePayload], // Streamed payload
                 flags: MessageFlags.IsComponentsV2
             });
 
             await submission.editReply(`${EMOJI.YES} **File sent!**`);
 
         } else {
-            // --- EDIT LOGIC ---
-            const messageId = customId.split('_').pop(); // Extract ID
-            let message;
-            
-            try {
-                message = await targetChannel.messages.fetch(messageId);
-            } catch (e) {
-                throw new Error("Message not found. Check ID and Channel.");
-            }
+            const messageId = customId.split('_').pop(); 
+            const message = await targetChannel.messages.fetch(messageId);
+            if (!message) throw new Error("Message not found.");
 
             const editPayload = { flags: MessageFlags.IsComponentsV2 };
 
             if (uploadedFile) {
-                // Scenario A: NEW FILE (Stacking)
-                // If name is blank, use filename
                 const finalName = nameText || uploadedFile.name;
-                
-                const { container, filePayload } = createSingleContainer(finalName, uploadedFile.name, uploadedFile.url);
+                const { container, filePayload } = await createSingleContainer(finalName, uploadedFile.name, uploadedFile.url);
 
-                // Add to existing components (Stacking effect)
                 editPayload.components = [...message.components, container];
-                // Add new file to existing files
-                editPayload.files = [filePayload]; 
+                editPayload.files = [filePayload];
                 
                 await message.edit(editPayload);
-                await submission.editReply(`${EMOJI.YES} **Added** new file to the stack.`);
-
+                await submission.editReply(`${EMOJI.YES} **Added** new file to stack.`);
             } else {
-                // Scenario B: TEXT UPDATE (No new file)
-                if (!nameText) return submission.editReply(`${EMOJI.NO} No changes provided.`);
+                if (!nameText) return submission.editReply(`${EMOJI.NO} No changes.`);
                 
                 const components = [...message.components];
-                if (components.length === 0) throw new Error("Message has no components to edit.");
-
-                // Update the LAST component in the stack
                 const lastIndex = components.length - 1;
                 const existingAttachment = message.attachments.at(lastIndex);
 
-                if (!existingAttachment) throw new Error("Could not find existing file to reference.");
+                if (!existingAttachment) throw new Error("No existing file to reference.");
 
-                // Rebuild container pointing to OLD file
-                const { container } = createSingleContainer(nameText, existingAttachment.name, null);
+                // Rebuild container pointing to OLD file (No fetch needed here)
+                const container = new ContainerBuilder()
+                    .addTextDisplayComponents(t => t.setContent(`### ${nameText}`))
+                    .addSeparatorComponents(s => s)
+                    .addFileComponents(f => f.setURL(`attachment://${existingAttachment.name}`));
+
                 components[lastIndex] = container;
-
                 editPayload.components = components;
-                // No 'files' array means "keep existing attachments"
                 
                 await message.edit(editPayload);
-                await submission.editReply(`${EMOJI.YES} **Updated** title successfully.`);
+                await submission.editReply(`${EMOJI.YES} **Updated** title.`);
             }
         }
     } catch (e) {
@@ -238,19 +199,27 @@ async function handleModalSubmit(originalInteraction) {
 }
 
 // ==========================================
-// HELPER: Build One "Card"
+// HELPER: STREAMING DOWNLOAD (Fixes 413)
 // ==========================================
-function createSingleContainer(title, fileName, fileUrl) {
+async function createSingleContainer(title, fileName, fileUrl) {
     // 1. Build the Visual Container
     const container = new ContainerBuilder()
         .addTextDisplayComponents(t => t.setContent(`### ${title}`))
         .addSeparatorComponents(s => s)
         .addFileComponents(f => f.setURL(`attachment://${fileName}`));
 
-    // 2. Build the File Payload (only if we have a URL to upload)
     let filePayload = null;
     if (fileUrl) {
-        filePayload = new AttachmentBuilder(fileUrl, { name: fileName });
+        // FIX: Fetch the stream manually instead of letting Discord.js handle the URL.
+        // This ensures the data is passed correctly for larger files.
+        const response = await fetch(fileUrl);
+        if (!response.ok) throw new Error(`Failed to download file: ${response.statusText}`);
+        
+        // Convert the web stream to an ArrayBuffer or Buffer for Discord.js
+        const arrayBuffer = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+
+        filePayload = new AttachmentBuilder(buffer, { name: fileName });
     }
 
     return { container, filePayload };

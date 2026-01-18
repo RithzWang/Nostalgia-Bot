@@ -5,7 +5,6 @@ const {
     ChannelType,
     ContainerBuilder,
     TextDisplayBuilder,
-    SectionBuilder,
     FileBuilder,
     AttachmentBuilder,
     SeparatorBuilder,
@@ -18,7 +17,7 @@ module.exports = {
     guildOnly: true,
     data: new SlashCommandBuilder()
         .setName('filecontainer')
-        .setDescription('Manage Multi-File Container Messages')
+        .setDescription('Manage File Container Messages')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         
         // --- 1. SETUP ---
@@ -61,7 +60,7 @@ module.exports = {
                 .addChannelOption(opt => opt.setName('channel').setDescription('Where is the message? (Optional)').addChannelTypes(ChannelType.GuildText))
         ),
 
-    async execute(interaction) {
+    async execute(interaction, client) {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         const sub = interaction.options.getSubcommand();
@@ -69,15 +68,12 @@ module.exports = {
 
         // --- RENDER FUNCTION ---
         const renderContainer = (data) => {
-            const container = new ContainerBuilder()
-                .setAccentColor(0x5865F2); // Blurple
+            const container = new ContainerBuilder();
 
-            // 1. MAIN TITLE
-            const titleSection = new SectionBuilder()
-                .addTextDisplayComponents((text) => 
-                    text.setContent(`## ${data.title}`)
-                );
-            container.addSectionComponents(titleSection);
+            // Main Title
+            container.addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(`## ${data.title}`)
+            );
 
             const payloadFiles = [];
 
@@ -87,32 +83,24 @@ module.exports = {
                 data.files.forEach((fileData, index) => {
                     const num = index + 1;
 
-                    // 2. SEPARATOR
                     container.addSeparatorComponents(
                         new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
                     );
 
-                    // 3. SUB-HEADER (### 1. Name)
-                    // Must be inside a Section
-                    const fileSection = new SectionBuilder()
-                        .addTextDisplayComponents((text) => 
-                            text.setContent(`### ${num}. ${fileData.name}`)
-                        );
-                    container.addSectionComponents(fileSection);
+                    container.addTextDisplayComponents(
+                        new TextDisplayBuilder().setContent(`### ${num}. ${fileData.name}`)
+                    );
 
-                    // 4. HANDLE FILENAME COLLISIONS
+                    // Ensure unique filenames for Discord attachments
                     let uniqueFileName = fileData.filename;
-                    // If multiple files have the exact same name, Discord gets confused
                     if (usedFilenames.has(uniqueFileName)) {
                         uniqueFileName = `${num}_${uniqueFileName}`;
                     }
                     usedFilenames.add(uniqueFileName);
                     
-                    // 5. ATTACHMENT LOGIC
                     const attachment = new AttachmentBuilder(fileData.url, { name: uniqueFileName });
                     payloadFiles.push(attachment);
 
-                    // 6. FILE UI COMPONENT
                     const fileComponent = new FileBuilder()
                         .setURL(`attachment://${uniqueFileName}`);
                     
@@ -120,9 +108,9 @@ module.exports = {
                 });
             } else {
                 container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
-                const emptySection = new SectionBuilder()
-                    .addTextDisplayComponents((t) => t.setContent('*No files added yet.*'));
-                container.addSectionComponents(emptySection);
+                container.addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent('*No files added yet.*')
+                );
             }
 
             return { 
@@ -173,7 +161,7 @@ module.exports = {
             const targetMsgId = interaction.options.getString('message_id');
             const data = await FileContainer.findOne({ messageId: targetMsgId });
             
-            if (!data) return interaction.editReply(`<:no:1297814819105144862> No container found with ID \`${targetMsgId}\`. Run setup first.`);
+            if (!data) return interaction.editReply(`<:no:1297814819105144862> No container found with ID \`${targetMsgId}\`.`);
 
             const targetChannel = interaction.options.getChannel('channel') || await interaction.guild.channels.fetch(data.channelId);
             const message = await targetChannel.messages.fetch(targetMsgId).catch(() => null);
@@ -187,26 +175,28 @@ module.exports = {
                 const name = interaction.options.getString('name');
                 const attachment = interaction.options.getAttachment('file');
 
-                // 1. Add to local object first
+                // 1. ADD TO LOCAL OBJECT (Memory Only)
                 data.files.push({
                     name: name,                
                     url: attachment.url,       
                     filename: attachment.name  
                 });
 
-                // 2. Try to update Discord FIRST
+                // 2. TRY TO UPDATE DISCORD MESSAGE
                 try {
                     await message.edit(renderContainer(data));
                     
-                    // 3. If success, Save to DB
+                    // 3. IF SUCCESS -> SAVE TO DB
                     await data.save();
                     return interaction.editReply(`<:yes:1297814648417943565> Added **${name}**.`);
 
                 } catch (err) {
-                    // 4. If fail, revert local change
+                    // 4. IF FAILED -> REVERT LOCAL OBJECT & DO NOT SAVE
+                    // We remove the file we just pushed so the object is clean again
                     data.files.pop(); 
                     console.error(err);
-                    return interaction.editReply(`<:no:1297814819105144862> **Upload Failed!**\nThe total size of all files combined is too large for Discord to handle in one message.`);
+
+                    return interaction.editReply(`<:no:1297814819105144862> **Upload Failed!**\nThe total size of all files combined exceeds the Discord limit for this bot.\n\n*Changes were NOT saved.*`);
                 }
             }
 
@@ -220,8 +210,9 @@ module.exports = {
                 const newFile = interaction.options.getAttachment('file');
 
                 let changes = [];
-                // Backup in case we need to revert
+                // Backup original files in case we need to revert
                 const originalFiles = JSON.parse(JSON.stringify(data.files));
+                const originalTitle = data.title;
 
                 if (newTitle) {
                     data.title = newTitle;
@@ -231,7 +222,7 @@ module.exports = {
                 if (number) {
                     const index = number - 1;
                     if (index < 0 || index >= data.files.length) {
-                        return interaction.editReply(`<:no:1297814819105144862> Invalid file number.`);
+                        return interaction.editReply(`<:no:1297814819105144862> Invalid file number: ${number}`);
                     }
 
                     if (newName) {
@@ -245,21 +236,26 @@ module.exports = {
                         changes.push(`File #${number} Attachment`);
                     }
                 } else if (newName || newFile) {
-                    return interaction.editReply(`<:no:1297814819105144862> Provide a \`number\` to edit a file.`);
+                    return interaction.editReply(`<:no:1297814819105144862> You must provide the \`number\` option to edit a file.`);
                 }
 
                 if (changes.length === 0) {
-                    return interaction.editReply(`<:no:1297814819105144862> No changes provided.`);
+                    return interaction.editReply(`<:no:1297814819105144862> You didn't provide any changes.`);
                 }
 
+                // TRY UPDATING DISCORD FIRST
                 try {
                     await message.edit(renderContainer(data));
+                    
+                    // IF SUCCESS -> SAVE TO DB
                     await data.save();
                     return interaction.editReply(`<:yes:1297814648417943565> Updated: **${changes.join(', ')}**.`);
 
                 } catch (err) {
-                    // Revert in memory (no need to save reverted state since we didn't save yet)
-                    return interaction.editReply(`<:no:1297814819105144862> **Update Failed!**\nThe new file size makes the container too large.`);
+                    // IF FAILED -> REVERT CHANGES
+                    // We simply do nothing (since we haven't saved to DB yet)
+                    // But to be safe for memory, we can restore:
+                    return interaction.editReply(`<:no:1297814819105144862> **Update Failed!**\nThe changes would make the container too large.\n\n*Changes were NOT saved.*`);
                 }
             }
 
@@ -271,13 +267,13 @@ module.exports = {
                 const index = number - 1;
 
                 if (index < 0 || index >= data.files.length) {
-                    return interaction.editReply(`<:no:1297814819105144862> Invalid number.`);
+                    return interaction.editReply(`<:no:1297814819105144862> Invalid number. Only ${data.files.length} files exist.`);
                 }
 
                 const removedName = data.files[index].name;
                 data.files.splice(index, 1);
                 
-                // Removing is always safe, save immediately
+                // Removing files is always safe (size goes down), so we can save immediately
                 await data.save();
                 await message.edit(renderContainer(data));
 
@@ -286,8 +282,9 @@ module.exports = {
 
         } catch (error) {
             console.error(error);
+            // Catch "Request entity too large" specifically
             if (error.code === 50035 || (error.message && error.message.includes('too large'))) {
-                 return interaction.editReply(`<:no:1297814819105144862> **Error:** Files are too large.`);
+                 return interaction.editReply(`<:no:1297814819105144862> **Critical Error:** Discord rejected the request because the files are too big.`);
             }
             return interaction.editReply(`<:no:1297814819105144862> Error: ${error.message}`);
         }

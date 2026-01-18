@@ -136,7 +136,7 @@ client.on('clientReady', async () => {
         activities: [{ 
             name: 'customstatus', 
             type: ActivityType.Custom, 
-            state: `${timeEmoji} ${formattedTime} (GMT+7) - صلي على النبي` 
+            state: `${timeEmoji} ${formattedTime} (GMT+7)` 
         }],
         status: 'dnd'
     });

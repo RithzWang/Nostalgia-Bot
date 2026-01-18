@@ -34,7 +34,7 @@ module.exports = {
             sub.setName('add')
                 .setDescription('Add a file to a container')
                 .addStringOption(opt => opt.setName('message_id').setDescription('The Message ID').setRequired(true))
-                .addStringOption(opt => opt.setName('name').setDescription('Display Name (e.g. Chapter 1)').setRequired(true))
+                .addStringOption(opt => opt.setName('name').setDescription('Display Name').setRequired(true))
                 .addAttachmentOption(opt => opt.setName('file').setDescription('Upload the file').setRequired(true))
                 .addChannelOption(opt => opt.setName('channel').setDescription('Where is the message? (Optional)').addChannelTypes(ChannelType.GuildText))
         )
@@ -66,23 +66,11 @@ module.exports = {
         const sub = interaction.options.getSubcommand();
         const guildId = interaction.guild.id;
 
-        // --- 🛑 SIZE CHECK HELPER ---
-        // Gets the server's upload limit (in bytes)
-        // Default safe fallback is 25MB (26214400 bytes)
-        const getUploadLimit = () => {
-            const tier = interaction.guild.premiumTier;
-            switch (tier) {
-                case 2: return 50 * 1024 * 1024; // 50MB
-                case 3: return 100 * 1024 * 1024; // 100MB
-                default: return 25 * 1024 * 1024; // 25MB (Standard/Tier 1)
-            }
-        };
-
-        // --- RENDER CONTAINER ---
+        // --- RENDER FUNCTION ---
         const renderContainer = (data) => {
             const container = new ContainerBuilder();
-            // .setAccentColor(0x5865F2); 
 
+            // Main Title
             container.addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(`## ${data.title}`)
             );
@@ -103,6 +91,7 @@ module.exports = {
                         new TextDisplayBuilder().setContent(`### ${num}. ${fileData.name}`)
                     );
 
+                    // Ensure unique filenames for Discord attachments
                     let uniqueFileName = fileData.filename;
                     if (usedFilenames.has(uniqueFileName)) {
                         uniqueFileName = `${num}_${uniqueFileName}`;
@@ -179,8 +168,6 @@ module.exports = {
 
             if (!message) return interaction.editReply(`<:no:1297814819105144862> The actual message seems to be deleted.`);
 
-            const MAX_SIZE = getUploadLimit(); // Get dynamic limit
-
             // ===========================================
             //                 ADD
             // ===========================================
@@ -188,27 +175,29 @@ module.exports = {
                 const name = interaction.options.getString('name');
                 const attachment = interaction.options.getAttachment('file');
 
-                // 🛑 SIZE CHECK
-                if (attachment.size > MAX_SIZE) {
-                    return interaction.editReply(`<:no:1297814819105144862> **File too large!**\nThe file \`${attachment.name}\` is ${(attachment.size / 1024 / 1024).toFixed(2)}MB.\nThe bot limit for this server is **${(MAX_SIZE / 1024 / 1024).toFixed(0)}MB**.`);
-                }
-
+                // 1. ADD TO LOCAL OBJECT (Memory Only)
                 data.files.push({
                     name: name,                
                     url: attachment.url,       
                     filename: attachment.name  
                 });
 
-                await data.save();
-                
+                // 2. TRY TO UPDATE DISCORD MESSAGE
                 try {
                     await message.edit(renderContainer(data));
-                } catch (err) {
-                    // Catch Discord 413 Errors here
-                    return interaction.editReply(`<:no:1297814819105144862> **Discord Upload Error:** The total size of all files in the container is too large for the bot to update.`);
-                }
+                    
+                    // 3. IF SUCCESS -> SAVE TO DB
+                    await data.save();
+                    return interaction.editReply(`<:yes:1297814648417943565> Added **${name}**.`);
 
-                return interaction.editReply(`<:yes:1297814648417943565> Added **${name}** (File: \`${attachment.name}\`).`);
+                } catch (err) {
+                    // 4. IF FAILED -> REVERT LOCAL OBJECT & DO NOT SAVE
+                    // We remove the file we just pushed so the object is clean again
+                    data.files.pop(); 
+                    console.error(err);
+
+                    return interaction.editReply(`<:no:1297814819105144862> **Upload Failed!**\nThe total size of all files combined exceeds the Discord limit for this bot.\n\n*Changes were NOT saved.*`);
+                }
             }
 
             // ===========================================
@@ -221,6 +210,9 @@ module.exports = {
                 const newFile = interaction.options.getAttachment('file');
 
                 let changes = [];
+                // Backup original files in case we need to revert
+                const originalFiles = JSON.parse(JSON.stringify(data.files));
+                const originalTitle = data.title;
 
                 if (newTitle) {
                     data.title = newTitle;
@@ -239,11 +231,6 @@ module.exports = {
                     }
                     
                     if (newFile) {
-                        // 🛑 SIZE CHECK
-                        if (newFile.size > MAX_SIZE) {
-                            return interaction.editReply(`<:no:1297814819105144862> **File too large!**\nThe file \`${newFile.name}\` is ${(newFile.size / 1024 / 1024).toFixed(2)}MB.\nThe bot limit is **${(MAX_SIZE / 1024 / 1024).toFixed(0)}MB**.`);
-                        }
-
                         data.files[index].url = newFile.url;
                         data.files[index].filename = newFile.name; 
                         changes.push(`File #${number} Attachment`);
@@ -256,15 +243,20 @@ module.exports = {
                     return interaction.editReply(`<:no:1297814819105144862> You didn't provide any changes.`);
                 }
 
-                await data.save();
-
+                // TRY UPDATING DISCORD FIRST
                 try {
                     await message.edit(renderContainer(data));
-                } catch (err) {
-                    return interaction.editReply(`<:no:1297814819105144862> **Discord Upload Error:** The total size of all files combined is too large.`);
-                }
+                    
+                    // IF SUCCESS -> SAVE TO DB
+                    await data.save();
+                    return interaction.editReply(`<:yes:1297814648417943565> Updated: **${changes.join(', ')}**.`);
 
-                return interaction.editReply(`<:yes:1297814648417943565> Updated: **${changes.join(', ')}**.`);
+                } catch (err) {
+                    // IF FAILED -> REVERT CHANGES
+                    // We simply do nothing (since we haven't saved to DB yet)
+                    // But to be safe for memory, we can restore:
+                    return interaction.editReply(`<:no:1297814819105144862> **Update Failed!**\nThe changes would make the container too large.\n\n*Changes were NOT saved.*`);
+                }
             }
 
             // ===========================================
@@ -281,6 +273,7 @@ module.exports = {
                 const removedName = data.files[index].name;
                 data.files.splice(index, 1);
                 
+                // Removing files is always safe (size goes down), so we can save immediately
                 await data.save();
                 await message.edit(renderContainer(data));
 
@@ -289,9 +282,9 @@ module.exports = {
 
         } catch (error) {
             console.error(error);
-            // Catch generic "Request entity too large" if it happens elsewhere
-            if (error.code === 50035 || error.message.includes('too large')) {
-                return interaction.editReply(`<:no:1297814819105144862> **Error:** The request was too large for Discord to handle. Try using smaller files.`);
+            // Catch "Request entity too large" specifically
+            if (error.code === 50035 || (error.message && error.message.includes('too large'))) {
+                 return interaction.editReply(`<:no:1297814819105144862> **Critical Error:** Discord rejected the request because the files are too big.`);
             }
             return interaction.editReply(`<:no:1297814819105144862> Error: ${error.message}`);
         }

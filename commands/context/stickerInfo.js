@@ -39,7 +39,7 @@ module.exports = {
             // fetch the format details
             const formatName = getStickerFormat(sticker.format);
             const extension = getStickerExtension(sticker.format);
-            const fileName = `${sticker.name}_${sticker.id}.${extension}`; 
+            const fileName = `${sticker.id}.${extension}`; 
 
             // ============================================
             // 1. PREPARE THE FILE

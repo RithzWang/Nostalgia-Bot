@@ -74,7 +74,7 @@ module.exports = {
 
             // 1. Main Title
             container.addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(`# ${data.title}`)
+                new TextDisplayBuilder().setContent(`## ${data.title}`)
             );
 
             const payloadFiles = [];
@@ -90,7 +90,7 @@ module.exports = {
 
                     // Sub-Header
                     container.addTextDisplayComponents(
-                        new TextDisplayBuilder().setContent(`## ${num}. ${fileData.name}`)
+                        new TextDisplayBuilder().setContent(`### ${num}. ${fileData.name}`)
                     );
 
                     // File Attachment

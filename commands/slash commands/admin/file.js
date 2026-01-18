@@ -4,8 +4,6 @@ const {
     MessageFlags, 
     ChannelType,
     ContainerBuilder,
-    TextDisplayBuilder,
-    SectionBuilder, // <--- IMPORTANT: Added this
     FileBuilder,
     AttachmentBuilder,
     SeparatorBuilder,
@@ -44,25 +42,10 @@ module.exports = {
 
         // --- HELPER: RENDER UI ---
         const renderCard = (displayName, url, originalFilename) => {
-            const container = new ContainerBuilder()
-                .setAccentColor(0x5865F2); // Blurple
-
-            // 1. SECTION (Text requires a Section wrapper)
-            const textSection = new SectionBuilder();
-            textSection.addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(`### ${displayName}`)
-            );
-            container.addSectionComponents(textSection);
-
-            // 2. SEPARATOR
-            container.addSeparatorComponents(
-                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
-            );
-
-            // --- FILENAME LOGIC ---
-            const extension = originalFilename.includes('.') ? originalFilename.split('.').pop() : '';
             
-            // Clean the name (Remove special chars that might break the attachment link)
+            // 1. Clean Filename Logic
+            const extension = originalFilename.includes('.') ? originalFilename.split('.').pop() : '';
+            // Remove special characters that might break the attachment link
             let finalFilename = displayName.replace(/[^a-zA-Z0-9 _-]/g, "").trim(); 
             if (!finalFilename) finalFilename = "file";
             
@@ -71,15 +54,27 @@ module.exports = {
                 finalFilename = `${finalFilename}.${extension}`;
             }
 
-            // 3. ATTACHMENT
-            const attachment = new AttachmentBuilder(url, { name: finalFilename });
+            // 2. Build Container
+            const container = new ContainerBuilder()
+                .setAccentColor(0x5865F2) // Blurple
+                
+                // A. TEXT (Using Callback Style)
+                .addTextDisplayComponents((text) => 
+                    text.setContent(`### ${displayName}`)
+                )
 
-            // 4. FILE CARD
-            // Note: We use encodeURIComponent just in case the name has spaces
-            const fileComponent = new FileBuilder()
-                .setURL(`attachment://${finalFilename}`);
-            
-            container.addFileComponents(fileComponent);
+                // B. SEPARATOR (Using Callback Style)
+                .addSeparatorComponents((sep) => 
+                    sep.setSpacing(SeparatorSpacingSize.Small)
+                )
+
+                // C. FILE (Using Instance Style)
+                .addFileComponents(
+                    new FileBuilder().setURL(`attachment://${finalFilename}`)
+                );
+
+            // 3. Create Attachment Object
+            const attachment = new AttachmentBuilder(url, { name: finalFilename });
 
             return { 
                 content: '',
@@ -140,10 +135,8 @@ module.exports = {
                 }
 
                 // --- RECOVER OLD DATA ---
-                // Fallback to "Updated File" if we can't find a name and user didn't provide one
                 let currentName = newName || (newFile ? newFile.name : "Updated File");
                 
-                // Get old file if no new file provided
                 const fileUrl = newFile ? newFile.url : (message.attachments.first()?.url);
                 const fileName = newFile ? newFile.name : (message.attachments.first()?.name || 'file');
 

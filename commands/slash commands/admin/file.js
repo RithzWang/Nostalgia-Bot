@@ -1,164 +1,169 @@
 const { 
     SlashCommandBuilder, 
-    PermissionFlagsBits, 
+    ContainerBuilder, 
+    FileBuilder, 
+    AttachmentBuilder, 
     MessageFlags, 
-    ChannelType,
-    ContainerBuilder,
-    TextDisplayBuilder,
-    SectionBuilder,
-    FileBuilder,
-    AttachmentBuilder,
-    SeparatorBuilder,
-    SeparatorSpacingSize
+    PermissionFlagsBits 
 } = require('discord.js');
+
+// Custom Emojis
+const EMOJI = {
+    YES: '<:yes:1297814648417943565>',
+    NO: '<:no:1297814819105144862>'
+};
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('file')
-        .setDescription('Send or Edit a File Card')
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
-        
-        // --- SEND ---
-        .addSubcommand(sub => 
-            sub.setName('send')
-                .setDescription('Send a new file')
-                .addStringOption(opt => opt.setName('name').setDescription('The display name').setRequired(true))
-                .addAttachmentOption(opt => opt.setName('file').setDescription('The file to upload').setRequired(true))
-                .addStringOption(opt => opt.setName('message_id').setDescription('Reply to this Message ID (Optional)').setRequired(false))
-                .addChannelOption(opt => opt.setName('channel').setDescription('Target Channel (Optional)').addChannelTypes(ChannelType.GuildText))
+        .setDescription('Manage file containers')
+        // Subcommand: SEND
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('send')
+                .setDescription('Send a new file container')
+                .addStringOption(option => 
+                    option.setName('name').setDescription('The title/header for the file').setRequired(true))
+                .addAttachmentOption(option => 
+                    option.setName('file').setDescription('The file to upload').setRequired(true))
+                .addStringOption(option => 
+                    option.setName('message_id').setDescription('Optional: Message ID to reply to'))
+                .addChannelOption(option => 
+                    option.setName('channel').setDescription('Optional: Channel to send to (defaults to current)'))
         )
-
-        // --- EDIT ---
-        .addSubcommand(sub => 
-            sub.setName('edit')
-                .setDescription('Edit an existing File Card')
-                .addStringOption(opt => opt.setName('message_id').setDescription('The Bot Message ID to edit').setRequired(true))
-                .addStringOption(opt => opt.setName('name').setDescription('New display name (Optional)'))
-                .addAttachmentOption(opt => opt.setName('file').setDescription('New file (Optional)'))
-                .addChannelOption(opt => opt.setName('channel').setDescription('Where is the message? (Optional)'))
-        ),
+        // Subcommand: EDIT
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('edit')
+                .setDescription('Edit an existing file container')
+                .addStringOption(option => 
+                    option.setName('message_id').setDescription('The ID of the message to edit').setRequired(true))
+                .addStringOption(option => 
+                    option.setName('name').setDescription('New title (optional)'))
+                .addAttachmentOption(option => 
+                    option.setName('file').setDescription('New file (optional)'))
+                .addChannelOption(option => 
+                    option.setName('channel').setDescription('Channel where the message is (defaults to current)'))
+        )
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
 
     async execute(interaction) {
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const sub = interaction.options.getSubcommand();
-
-        // --- HELPER: RENDER UI ---
-        const renderCard = (displayName, url, originalFilename) => {
-            
-            // 1. SAFE FILENAME LOGIC
-            // Discord is strict about attachment:// names. We remove spaces and special chars.
-            const extension = originalFilename.includes('.') ? originalFilename.split('.').pop() : '';
-            let safeName = displayName.replace(/[^a-zA-Z0-9_-]/g, "_"); // Replace spaces with _
-            if (!safeName) safeName = "file";
-            
-            const finalFilename = extension && !safeName.endsWith(`.${extension}`) 
-                ? `${safeName}.${extension}` 
-                : safeName;
-
-            // 2. BUILD CONTAINER
-            const container = new ContainerBuilder()
-                .setAccentColor(0x5865F2); // Blurple
-
-            // A. HEADER SECTION (### Name)
-            // Text must be inside a Section
-            const headerSection = new SectionBuilder()
-                .addTextDisplayComponents((text) => 
-                    text.setContent(`### ${displayName}`)
-                );
-            container.addSectionComponents(headerSection);
-
-            // B. SEPARATOR
-            container.addSeparatorComponents(
-                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
-            );
-
-            // C. FILE COMPONENT
-            // This is the "File Card" UI
-            const fileComponent = new FileBuilder()
-                .setURL(`attachment://${finalFilename}`);
-            
-            // Add File Component to Container
-            container.addFileComponents(fileComponent);
-
-            // 3. CREATE ACTUAL ATTACHMENT
-            const attachment = new AttachmentBuilder(url, { name: finalFilename });
-
-            return { 
-                content: '',
-                components: [container], 
-                files: [attachment],
-                flags: MessageFlags.IsComponentsV2
-            };
-        };
+        const subcommand = interaction.options.getSubcommand();
+        
+        // Defer reply immediately
+        await interaction.deferReply({ ephemeral: true });
 
         try {
-            // ===========================================
-            //                 SEND
-            // ===========================================
-            if (sub === 'send') {
-                const name = interaction.options.getString('name');
-                const file = interaction.options.getAttachment('file');
-                const replyToId = interaction.options.getString('message_id');
-                const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
-
-                const payload = renderCard(name, file.url, file.name);
-
-                if (replyToId) {
-                    try {
-                        const messageToReply = await targetChannel.messages.fetch(replyToId);
-                        await messageToReply.reply(payload);
-                        return interaction.editReply(`<:yes:1297814648417943565> Replied to \`${replyToId}\` with **${name}**.`);
-                    } catch (e) {
-                        return interaction.editReply(`<:no:1297814819105144862> Message \`${replyToId}\` not found.`);
-                    }
-                } else {
-                    await targetChannel.send(payload);
-                    return interaction.editReply(`<:yes:1297814648417943565> Sent **${name}** in ${targetChannel}.`);
-                }
+            if (subcommand === 'send') {
+                await handleSend(interaction);
+            } else if (subcommand === 'edit') {
+                await handleEdit(interaction);
             }
-
-            // ===========================================
-            //                 EDIT
-            // ===========================================
-            if (sub === 'edit') {
-                const msgId = interaction.options.getString('message_id');
-                const newName = interaction.options.getString('name');
-                const newFile = interaction.options.getAttachment('file');
-                const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
-
-                let message;
-                try {
-                    message = await targetChannel.messages.fetch(msgId);
-                } catch (e) {
-                    return interaction.editReply(`<:no:1297814819105144862> Message \`${msgId}\` not found.`);
-                }
-
-                if (message.author.id !== interaction.client.user.id) {
-                    return interaction.editReply(`<:no:1297814819105144862> I can only edit my own messages.`);
-                }
-
-                if (!newName && !newFile) {
-                    return interaction.editReply(`<:no:1297814819105144862> Provide a new name or file.`);
-                }
-
-                // Recover Old Data
-                let currentName = newName || (newFile ? newFile.name : "Updated File");
-                const fileUrl = newFile ? newFile.url : (message.attachments.first()?.url);
-                const fileName = newFile ? newFile.name : (message.attachments.first()?.name || 'file');
-
-                if (!fileUrl) {
-                     return interaction.editReply(`<:no:1297814819105144862> Old file not found. Please upload a new one.`);
-                }
-
-                const payload = renderCard(currentName, fileUrl, fileName);
-                
-                await message.edit(payload);
-                return interaction.editReply(`<:yes:1297814648417943565> Updated message \`${msgId}\`.`);
-            }
-
         } catch (error) {
-            console.error(error);
-            return interaction.editReply(`<:no:1297814819105144862> Error: ${error.message}`);
+            console.error('File Command Error:', error);
+            await interaction.editReply(`${EMOJI.NO} **An error occurred:** ${error.message}`);
         }
-    }
+    },
 };
+
+// ==========================================
+// Logic: SEND
+// ==========================================
+async function handleSend(interaction) {
+    const name = interaction.options.getString('name');
+    const attachment = interaction.options.getAttachment('file');
+    const replyMessageId = interaction.options.getString('message_id');
+    const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
+
+    // 1. Build Payload
+    const { container, filePayload } = buildContainerPayload(name, attachment.name, attachment.url);
+
+    // 2. Determine Send Method
+    const sendOptions = {
+        components: [container],
+        files: [filePayload],
+        flags: MessageFlags.IsComponentsV2
+    };
+
+    if (replyMessageId) {
+        try {
+            const messageToReply = await targetChannel.messages.fetch(replyMessageId);
+            await messageToReply.reply(sendOptions);
+            await interaction.editReply(`${EMOJI.YES} File sent as a reply in ${targetChannel}!`);
+        } catch (e) {
+            throw new Error(`Could not reply to message ${replyMessageId}. Check ID and permissions.`);
+        }
+    } else {
+        await targetChannel.send(sendOptions);
+        await interaction.editReply(`${EMOJI.YES} File sent to ${targetChannel}!`);
+    }
+}
+
+// ==========================================
+// Logic: EDIT
+// ==========================================
+async function handleEdit(interaction) {
+    const messageId = interaction.options.getString('message_id');
+    const newName = interaction.options.getString('name');
+    const newFile = interaction.options.getAttachment('file');
+    const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
+
+    // 1. Fetch Message
+    let message;
+    try {
+        message = await targetChannel.messages.fetch(messageId);
+    } catch (e) {
+        throw new Error("Message not found. Check the ID and Channel.");
+    }
+
+    if (!message.editable) throw new Error("I cannot edit that message (wrong author?).");
+
+    // 2. Determine Data
+    const titleToUse = newName || "Updated File";
+
+    const editOptions = {
+        flags: MessageFlags.IsComponentsV2
+    };
+
+    if (newFile) {
+        // Scenario A: Replacing the file (New file, New Container)
+        const { container, filePayload } = buildContainerPayload(titleToUse, newFile.name, newFile.url);
+        editOptions.components = [container];
+        editOptions.files = [filePayload];
+    } else {
+        // Scenario B: Updating Text Only (Keep existing file)
+        const existingAttachment = message.attachments.first();
+        if (!existingAttachment) throw new Error("The message has no existing file to preserve.");
+
+        // Rebuild container pointing to EXISTING filename
+        const container = new ContainerBuilder()
+            .addTextDisplayComponents(t => t.setContent(`### ${titleToUse}`))
+            .addSeparatorComponents(s => s)
+            .addFileComponents(f => f.setURL(`attachment://${existingAttachment.name}`)); 
+
+        editOptions.components = [container];
+        // Note: We deliberately do NOT add `files: []` here, which tells Discord to keep the current attachments.
+    }
+
+    // 3. Execute Edit
+    await message.edit(editOptions);
+    await interaction.editReply(`${EMOJI.YES} Message updated successfully.`);
+}
+
+// ==========================================
+// Helper: Container Builder
+// ==========================================
+function buildContainerPayload(nameText, fileName, fileUrl) {
+    const filePayload = new AttachmentBuilder(fileUrl, { name: fileName });
+
+    const container = new ContainerBuilder()
+        .addTextDisplayComponents(text => 
+            text.setContent(`### ${nameText}`)
+        )
+        .addSeparatorComponents(sep => sep)
+        .addFileComponents(file => 
+            file.setURL(`attachment://${fileName}`)
+        );
+
+    return { container, filePayload };
+}

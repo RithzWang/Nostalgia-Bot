@@ -7,7 +7,7 @@ const {
 } = require('discord.js');
 
 // 👇 PASTE YOUR ALERT/LOG CHANNEL ID HERE
-const ALERT_CHANNEL_ID = '123456789012345678'; 
+const ALERT_CHANNEL_ID = '1456197056988319869'; 
 
 module.exports = {
     name: 'messageCreate',

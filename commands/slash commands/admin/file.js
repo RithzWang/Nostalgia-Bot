@@ -18,7 +18,7 @@ module.exports = {
         .setDescription('Send or Edit a File Card')
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
         
-        // --- SUBCOMMAND: SEND ---
+        // --- SEND ---
         .addSubcommand(sub => 
             sub.setName('send')
                 .setDescription('Send a new file')
@@ -28,7 +28,7 @@ module.exports = {
                 .addChannelOption(opt => opt.setName('channel').setDescription('Target Channel (Optional)').addChannelTypes(ChannelType.GuildText))
         )
 
-        // --- SUBCOMMAND: EDIT ---
+        // --- EDIT ---
         .addSubcommand(sub => 
             sub.setName('edit')
                 .setDescription('Edit an existing File Card')
@@ -45,28 +45,26 @@ module.exports = {
         // --- HELPER: RENDER UI ---
         const renderCard = (displayName, url, originalFilename) => {
             
-            // 1. FILENAME LOGIC
+            // 1. SAFE FILENAME LOGIC
+            // Discord is strict about attachment:// names. We remove spaces and special chars.
             const extension = originalFilename.includes('.') ? originalFilename.split('.').pop() : '';
+            let safeName = displayName.replace(/[^a-zA-Z0-9_-]/g, "_"); // Replace spaces with _
+            if (!safeName) safeName = "file";
             
-            // Clean name (spaces to underscores helps stability)
-            let cleanName = displayName.replace(/[^a-zA-Z0-9_-]/g, "_");
-            if (!cleanName) cleanName = "file";
-            
-            // Ensure extension
-            const finalFilename = extension && !cleanName.endsWith(`.${extension}`) 
-                ? `${cleanName}.${extension}` 
-                : cleanName;
+            const finalFilename = extension && !safeName.endsWith(`.${extension}`) 
+                ? `${safeName}.${extension}` 
+                : safeName;
 
             // 2. BUILD CONTAINER
             const container = new ContainerBuilder()
                 .setAccentColor(0x5865F2); // Blurple
 
-            // A. HEADER SECTION
+            // A. HEADER SECTION (### Name)
+            // Text must be inside a Section
             const headerSection = new SectionBuilder()
                 .addTextDisplayComponents((text) => 
                     text.setContent(`### ${displayName}`)
                 );
-            
             container.addSectionComponents(headerSection);
 
             // B. SEPARATOR
@@ -74,13 +72,15 @@ module.exports = {
                 new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
             );
 
-            // C. FILE COMPONENT (Inside Container!)
+            // C. FILE COMPONENT
+            // This is the "File Card" UI
             const fileComponent = new FileBuilder()
                 .setURL(`attachment://${finalFilename}`);
             
+            // Add File Component to Container
             container.addFileComponents(fileComponent);
 
-            // 3. ATTACHMENT
+            // 3. CREATE ACTUAL ATTACHMENT
             const attachment = new AttachmentBuilder(url, { name: finalFilename });
 
             return { 

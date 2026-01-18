@@ -354,7 +354,7 @@ const renderFAQ = (faqData) => {
     if (faqData.questions.length > 0) {
         faqData.questions.forEach((q, index) => {
             container.addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(`### ${q.question}\n${q.answer}`)
+                new TextDisplayBuilder().setContent(`### ${q.question}\n-# > ${q.answer}`)
             );
 
             if (index < faqData.questions.length - 1) {

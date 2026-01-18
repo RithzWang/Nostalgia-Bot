@@ -28,6 +28,7 @@ module.exports = {
             // ERROR: NO STICKER
             // ============================================
             if (!sticker) {
+                // If deferred, we must delete or edit. deleteReply + followUp is cleanest for error.
                 await interaction.deleteReply();
                 return interaction.followUp({ 
                     content: '<:No:1297814819105144862> That message does not contain a sticker.', 
@@ -35,10 +36,10 @@ module.exports = {
                 });
             }
 
-            const isLottie = sticker.format === 3;
+            // fetch the format details
             const formatName = getStickerFormat(sticker.format);
             const extension = getStickerExtension(sticker.format);
-            const fileName = `${sticker.id}xA2-Q.${extension}`;
+            const fileName = `${sticker.name}_${sticker.id}.${extension}`; 
 
             // ============================================
             // 1. PREPARE THE FILE
@@ -65,7 +66,8 @@ module.exports = {
                     text.setContent(
                         `**Name:** ${sticker.name}\n` +
                         `**ID:** \`${sticker.id}\`\n` +
-                        `**Format:** ${formatName}`
+                        `**Format:** ${formatName}\n` + // This will now show "APNG" clearly
+                        `**File Type:** \`.${extension}\``
                     )
                 )
                 .setThumbnailAccessory((thumb) => 
@@ -79,8 +81,7 @@ module.exports = {
                 new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
             );
 
-            // --- C. FILE CARD (Inside Container) ---
-            // This adds the file UI to the bottom of the container
+            // --- C. FILE CARD ---
             container.addFileComponents(fileComponent);
 
             // ============================================
@@ -88,8 +89,8 @@ module.exports = {
             // ============================================
             await interaction.editReply({ 
                 content: '',
-                components: [container], // Container now holds the file card inside it
-                files: [attachment],     // The physical file must still be attached here
+                components: [container], 
+                files: [attachment],     
                 flags: MessageFlags.IsComponentsV2
             });
 
@@ -107,11 +108,11 @@ module.exports = {
 // Helper: Get readable format name
 function getStickerFormat(format) {
     switch (format) {
-        case 1: return 'PNG';
-        case 2: return 'APNG (Animated)';
-        case 3: return 'Lottie (JSON)';
+        case 1: return 'PNG (Static)';
+        case 2: return 'APNG (Animated PNG)'; // Clarified this label
+        case 3: return 'Lottie (Vector JSON)';
         case 4: return 'GIF';
-        default: return 'Unknown';
+        default: return 'Unknown Format';
     }
 }
 
@@ -119,7 +120,7 @@ function getStickerFormat(format) {
 function getStickerExtension(format) {
     switch (format) {
         case 1: return 'png';
-        case 2: return 'png'; 
+        case 2: return 'png'; // APNGs use .png extension strictly
         case 3: return 'json';
         case 4: return 'gif';
         default: return 'png';

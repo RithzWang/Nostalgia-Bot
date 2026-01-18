@@ -102,7 +102,7 @@ module.exports = {
 
                         // Success Message
                         const successContainer = new ContainerBuilder()
-                            .setAccentColor(0x57F287) // Green
+                            .setAccentColor(0x888888) // Green
                             .addTextDisplayComponents(t => 
                                 t.setContent(`### <:yes:1297814648417943565> Sticker Added!\nAdded \`${createdSticker.name}\` to this server.`)
                             );

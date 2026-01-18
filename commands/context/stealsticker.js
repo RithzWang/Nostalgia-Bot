@@ -48,7 +48,7 @@ module.exports = {
 
             // 3. BUILD PREVIEW CONTAINER
             const container = new ContainerBuilder()
-                .setAccentColor(0x2b2d31) // Dark grey
+                .setAccentColor(0x888888) // Dark grey
                 .addTextDisplayComponents(t => t.setContent('## Steal this Sticker?'))
                 .addSectionComponents(section => 
                     section

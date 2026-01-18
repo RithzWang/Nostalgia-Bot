@@ -34,7 +34,7 @@ module.exports = {
             sub.setName('add')
                 .setDescription('Add a file to a container')
                 .addStringOption(opt => opt.setName('message_id').setDescription('The Message ID').setRequired(true))
-                .addStringOption(opt => opt.setName('name').setDescription('Display Name (and Filename)').setRequired(true))
+                .addStringOption(opt => opt.setName('name').setDescription('Display Name (e.g. Chapter 1)').setRequired(true))
                 .addAttachmentOption(opt => opt.setName('file').setDescription('Upload the file').setRequired(true))
                 .addChannelOption(opt => opt.setName('channel').setDescription('Where is the message? (Optional)').addChannelTypes(ChannelType.GuildText))
         )
@@ -46,7 +46,7 @@ module.exports = {
                 .addStringOption(opt => opt.setName('message_id').setDescription('The Message ID').setRequired(true))
                 .addStringOption(opt => opt.setName('title').setDescription('New Main Title (Optional)'))
                 .addIntegerOption(opt => opt.setName('number').setDescription('File Number to edit (Optional)'))
-                .addStringOption(opt => opt.setName('name').setDescription('New Name (Optional)'))
+                .addStringOption(opt => opt.setName('name').setDescription('New Display Name (Optional)'))
                 .addAttachmentOption(opt => opt.setName('file').setDescription('New File Attachment (Optional)'))
                 .addChannelOption(opt => opt.setName('channel').setDescription('Where is the message? (Optional)').addChannelTypes(ChannelType.GuildText))
         )
@@ -79,6 +79,9 @@ module.exports = {
             const payloadFiles = [];
 
             if (data.files.length > 0) {
+                // Track filenames to prevent duplicates crashing the message
+                const usedFilenames = new Set();
+
                 data.files.forEach((fileData, index) => {
                     const num = index + 1;
 
@@ -87,39 +90,28 @@ module.exports = {
                         new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
                     );
 
-                    // Sub-Header
+                    // Sub-Header (Display Name)
                     container.addTextDisplayComponents(
                         new TextDisplayBuilder().setContent(`### ${num}. ${fileData.name}`)
                     );
 
-                    // --- RENAME LOGIC START ---
-                    
-                    // 1. Get original extension (e.g. "png" from "image.png")
-                    const originalName = fileData.filename || 'file.txt';
-                    const extension = originalName.includes('.') ? originalName.split('.').pop() : '';
+                    // --- ORIGINAL FILENAME LOGIC ---
+                    let uniqueFileName = fileData.filename;
 
-                    // 2. Clean the user's custom name (Remove bad characters)
-                    // We allow spaces, but remove things like / or \ that break paths
-                    let cleanCustomName = fileData.name.replace(/[^a-zA-Z0-9 _-]/g, "").trim();
-                    if (!cleanCustomName) cleanCustomName = "file"; // fallback
-
-                    // 3. Construct the final name (User Name + Original Extension)
-                    // Example: "Homework" + ".pdf"
-                    let finalFileName = extension ? `${cleanCustomName}.${extension}` : cleanCustomName;
-                    
-                    // Edge case: If user already typed "Homework.pdf" in the name, don't double it to "Homework.pdf.pdf"
-                    if (fileData.name.endsWith(`.${extension}`)) {
-                        finalFileName = fileData.name;
+                    // Safeguard: If two files have the EXACT same name, Discord gets confused.
+                    // We append a number only if a duplicate exists.
+                    if (usedFilenames.has(uniqueFileName)) {
+                        uniqueFileName = `${num}_${uniqueFileName}`;
                     }
-
-                    // --- RENAME LOGIC END ---
-
-                    const attachment = new AttachmentBuilder(fileData.url, { name: finalFileName });
+                    usedFilenames.add(uniqueFileName);
+                    
+                    // Create Attachment using the Original Filename
+                    const attachment = new AttachmentBuilder(fileData.url, { name: uniqueFileName });
                     payloadFiles.push(attachment);
 
-                    // File Component UI
+                    // Link File Component to that Filename
                     const fileComponent = new FileBuilder()
-                        .setURL(`attachment://${finalFileName}`);
+                        .setURL(`attachment://${uniqueFileName}`);
                     
                     container.addFileComponents(fileComponent);
                 });
@@ -193,15 +185,15 @@ module.exports = {
                 const attachment = interaction.options.getAttachment('file');
 
                 data.files.push({
-                    name: name,
-                    url: attachment.url, 
-                    filename: attachment.name // We save original name to know the extension later
+                    name: name,                // UI Display Name
+                    url: attachment.url,       // Link
+                    filename: attachment.name  // Original Filename (e.g. "guide.pdf")
                 });
 
                 await data.save();
                 await message.edit(renderContainer(data));
 
-                return interaction.editReply(`<:yes:1297814648417943565> Added **${name}**.`);
+                return interaction.editReply(`<:yes:1297814648417943565> Added **${name}** (File: \`${attachment.name}\`).`);
             }
 
             // ===========================================
@@ -235,7 +227,7 @@ module.exports = {
                     
                     if (newFile) {
                         data.files[index].url = newFile.url;
-                        data.files[index].filename = newFile.name;
+                        data.files[index].filename = newFile.name; // Update to new original filename
                         changes.push(`File #${number} Attachment`);
                     }
                 } else if (newName || newFile) {

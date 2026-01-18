@@ -5,6 +5,7 @@ const {
     ChannelType,
     ContainerBuilder,
     TextDisplayBuilder,
+    SectionBuilder, // <--- IMPORTANT: Added this
     FileBuilder,
     AttachmentBuilder,
     SeparatorBuilder,
@@ -46,21 +47,22 @@ module.exports = {
             const container = new ContainerBuilder()
                 .setAccentColor(0x5865F2); // Blurple
 
-            // 1. Header (### Name)
-            container.addTextDisplayComponents(
+            // 1. SECTION (Text requires a Section wrapper)
+            const textSection = new SectionBuilder();
+            textSection.addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(`### ${displayName}`)
             );
+            container.addSectionComponents(textSection);
 
-            // 2. Separator
+            // 2. SEPARATOR
             container.addSeparatorComponents(
                 new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
             );
 
             // --- FILENAME LOGIC ---
-            // Ensure the downloaded file has the correct extension
             const extension = originalFilename.includes('.') ? originalFilename.split('.').pop() : '';
             
-            // Clean the name so it's a valid filename
+            // Clean the name (Remove special chars that might break the attachment link)
             let finalFilename = displayName.replace(/[^a-zA-Z0-9 _-]/g, "").trim(); 
             if (!finalFilename) finalFilename = "file";
             
@@ -69,10 +71,11 @@ module.exports = {
                 finalFilename = `${finalFilename}.${extension}`;
             }
 
-            // 3. Prepare Attachment
+            // 3. ATTACHMENT
             const attachment = new AttachmentBuilder(url, { name: finalFilename });
 
-            // 4. File Component (The Card)
+            // 4. FILE CARD
+            // Note: We use encodeURIComponent just in case the name has spaces
             const fileComponent = new FileBuilder()
                 .setURL(`attachment://${finalFilename}`);
             
@@ -137,11 +140,10 @@ module.exports = {
                 }
 
                 // --- RECOVER OLD DATA ---
-                // If user didn't provide a new name, try to use the new file name, or fallback to 'Updated File'
-                // (Since we don't have a DB, we can't easily read the old name from the UI component)
+                // Fallback to "Updated File" if we can't find a name and user didn't provide one
                 let currentName = newName || (newFile ? newFile.name : "Updated File");
                 
-                // If user didn't provide a new file, use the old one
+                // Get old file if no new file provided
                 const fileUrl = newFile ? newFile.url : (message.attachments.first()?.url);
                 const fileName = newFile ? newFile.name : (message.attachments.first()?.name || 'file');
 

@@ -4,6 +4,8 @@ const {
     MessageFlags, 
     ChannelType,
     ContainerBuilder,
+    TextDisplayBuilder,
+    SectionBuilder,
     FileBuilder,
     AttachmentBuilder,
     SeparatorBuilder,
@@ -43,37 +45,42 @@ module.exports = {
         // --- HELPER: RENDER UI ---
         const renderCard = (displayName, url, originalFilename) => {
             
-            // 1. Clean Filename Logic
+            // 1. FILENAME LOGIC
             const extension = originalFilename.includes('.') ? originalFilename.split('.').pop() : '';
-            // Remove special characters that might break the attachment link
-            let finalFilename = displayName.replace(/[^a-zA-Z0-9 _-]/g, "").trim(); 
-            if (!finalFilename) finalFilename = "file";
             
-            // Append extension if missing
-            if (extension && !finalFilename.endsWith(`.${extension}`)) {
-                finalFilename = `${finalFilename}.${extension}`;
-            }
+            // Clean name (spaces to underscores helps stability)
+            let cleanName = displayName.replace(/[^a-zA-Z0-9_-]/g, "_");
+            if (!cleanName) cleanName = "file";
+            
+            // Ensure extension
+            const finalFilename = extension && !cleanName.endsWith(`.${extension}`) 
+                ? `${cleanName}.${extension}` 
+                : cleanName;
 
-            // 2. Build Container
+            // 2. BUILD CONTAINER
             const container = new ContainerBuilder()
-                .setAccentColor(0x5865F2) // Blurple
-                
-                // A. TEXT (Using Callback Style)
+                .setAccentColor(0x5865F2); // Blurple
+
+            // A. HEADER SECTION
+            const headerSection = new SectionBuilder()
                 .addTextDisplayComponents((text) => 
                     text.setContent(`### ${displayName}`)
-                )
-
-                // B. SEPARATOR (Using Callback Style)
-                .addSeparatorComponents((sep) => 
-                    sep.setSpacing(SeparatorSpacingSize.Small)
-                )
-
-                // C. FILE (Using Instance Style)
-                .addFileComponents(
-                    new FileBuilder().setURL(`attachment://${finalFilename}`)
                 );
+            
+            container.addSectionComponents(headerSection);
 
-            // 3. Create Attachment Object
+            // B. SEPARATOR
+            container.addSeparatorComponents(
+                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+            );
+
+            // C. FILE COMPONENT (Inside Container!)
+            const fileComponent = new FileBuilder()
+                .setURL(`attachment://${finalFilename}`);
+            
+            container.addFileComponents(fileComponent);
+
+            // 3. ATTACHMENT
             const attachment = new AttachmentBuilder(url, { name: finalFilename });
 
             return { 
@@ -134,9 +141,8 @@ module.exports = {
                     return interaction.editReply(`<:no:1297814819105144862> Provide a new name or file.`);
                 }
 
-                // --- RECOVER OLD DATA ---
+                // Recover Old Data
                 let currentName = newName || (newFile ? newFile.name : "Updated File");
-                
                 const fileUrl = newFile ? newFile.url : (message.attachments.first()?.url);
                 const fileName = newFile ? newFile.name : (message.attachments.first()?.name || 'file');
 

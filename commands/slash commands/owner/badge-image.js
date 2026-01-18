@@ -9,130 +9,140 @@ const {
     ComponentType
 } = require('discord.js');
 
-// Standard Discord Badge Assets
+const REPO = 'https://raw.githubusercontent.com/mezotv/discord-badges/main/assets';
+
 const BADGES = {
-    staff: { name: 'Discord Staff', url: 'https://cdn.discordapp.com/badge-icons/5e74e9b6d94a4d6e45f94d9361d743a6.png' },
-    partner: { name: 'Partner', url: 'https://cdn.discordapp.com/badge-icons/3f9748e53446a137aa8df69548880a0e.png' },
-    hypesquad_events: { name: 'HypeSquad Events', url: 'https://cdn.discordapp.com/badge-icons/bf01d1073931f921909045f3a39fd264.png' },
-    bravery: { name: 'HypeSquad Bravery', url: 'https://cdn.discordapp.com/badge-icons/8a88d638f3f8a71cd5e3e275f2735274.png' },
-    brilliance: { name: 'HypeSquad Brilliance', url: 'https://cdn.discordapp.com/badge-icons/011940fd013da3f7fb9c6db115273dfa.png' },
-    balance: { name: 'HypeSquad Balance', url: 'https://cdn.discordapp.com/badge-icons/3aa41de486fa12454c3761e8e223442e.png' },
-    bughunter_1: { name: 'Bug Hunter 1', url: 'https://cdn.discordapp.com/badge-icons/2717692c7dca7250b23a36240955836a.png' },
-    bughunter_2: { name: 'Bug Hunter 2', url: 'https://cdn.discordapp.com/badge-icons/848f0136b4c215e61d3dda19f79e2464.png' },
-    developer: { name: 'Active Developer', url: 'https://cdn.discordapp.com/badge-icons/6bdc42827a38498929531b0bf29c94b7.png' },
-    early_supporter: { name: 'Early Supporter', url: 'https://cdn.discordapp.com/badge-icons/7060786766c9c840eb3019e725d2b358.png' },
-    nitro: { name: 'Nitro', url: 'https://cdn.discordapp.com/badge-icons/2ba85e8026a8614b640c2837bcdfe21b.png' },
-    boost: { name: 'Booster', url: 'https://cdn.discordapp.com/badge-icons/723784dd5773fe8088192911609a5f74.png' },
-    verified_bot_dev: { name: 'Verified Dev', url: 'https://cdn.discordapp.com/badge-icons/6df5d9d24f94660c0f6854261b206471.png' }
+    // --- 1. SYSTEM & UI TAGS ---
+    automod:            { name: 'Automod System', url: `${REPO}/automod.png` },
+    supports_commands:  { name: 'Supports Commands (Slash)', url: `${REPO}/supports_commands.png` },
+    system:             { name: 'System User', url: 'https://i.imgur.com/K9enj8J.png' }, // Custom asset for System
+    
+    // --- 2. SERVER / GUILD BADGES ---
+    guild_owner:        { name: 'Server Owner (Crown)', url: `${REPO}/owner.png` },
+    guild_verified:     { name: 'Verified Server', url: `${REPO}/verified.png` },
+    guild_partner:      { name: 'Partnered Server', url: `${REPO}/partner.png` },
+    
+    // --- 3. STAFF & RARE ---
+    staff:              { name: 'Discord Staff', url: `${REPO}/discord_staff.png` },
+    partner_user:       { name: 'Partnered User', url: `${REPO}/partner.png` },
+    mod_alumni:         { name: 'Moderator Alumni', url: `${REPO}/moderator_programs_alumni.png` },
+    certified_mod:      { name: 'Certified Moderator', url: `${REPO}/certified_moderator.png` },
+    translator:         { name: 'Crowdin Translator', url: `${REPO}/crowdin_translator.png` },
+
+    // --- 4. NITRO & BOOSTS ---
+    nitro:              { name: 'Nitro Subscriber', url: `${REPO}/nitro.png` },
+    boost_1m:           { name: 'Boost 1 Month', url: `${REPO}/boosts/1_month.png` },
+    boost_24m:          { name: 'Boost 24 Months', url: `${REPO}/boosts/24_months.png` },
+
+    // --- 5. DEVELOPER & BUGS ---
+    active_dev:         { name: 'Active Developer', url: `${REPO}/active_developer.png` },
+    verified_dev:       { name: 'Verified Bot Developer', url: `${REPO}/early_verified_bot_developer.png` },
+    bughunter_1:        { name: 'Bug Hunter (Green)', url: `${REPO}/bug_hunter_level_1.png` },
+    bughunter_2:        { name: 'Bug Hunter (Gold)', url: `${REPO}/bug_hunter_level_2.png` },
+
+    // --- 6. HYPESQUAD ---
+    hypesquad_events:   { name: 'HypeSquad Events', url: `${REPO}/hypesquad_events.png` },
+    bravery:            { name: 'HypeSquad Bravery', url: `${REPO}/hypesquad_bravery.png` },
+    brilliance:         { name: 'HypeSquad Brilliance', url: `${REPO}/hypesquad_brilliance.png` },
+    balance:            { name: 'HypeSquad Balance', url: `${REPO}/hypesquad_balance.png` },
+    
+    // --- 7. LEGACY ---
+    legacy_username:    { name: 'Legacy Username', url: `${REPO}/legacy_username.png` },
+    early_supporter:    { name: 'Early Supporter', url: `${REPO}/early_supporter.png` },
+    quest_completed:    { name: 'Completed a Quest', url: `${REPO}/completed_a_quest.png` }
 };
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('badge-image')
-        .setDescription('Get badge images or upload them as emojis')
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator) // 🔒 LOCK COMMAND TO ADMINS
+        .setDescription('Get Discord System Tags & Badges (Admin Only)')
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addStringOption(option =>
             option.setName('name')
-                .setDescription('Which badge?')
+                .setDescription('Select a badge')
                 .setRequired(true)
                 .addChoices(
-                    { name: '🌟 All Badges (View/Upload)', value: 'all' },
-                    { name: 'Discord Staff', value: 'staff' },
-                    { name: 'Partner', value: 'partner' },
-                    { name: 'HypeSquad Events', value: 'hypesquad_events' },
-                    { name: 'HypeSquad Bravery', value: 'bravery' },
-                    { name: 'HypeSquad Brilliance', value: 'brilliance' },
-                    { name: 'HypeSquad Balance', value: 'balance' },
-                    { name: 'Bug Hunter (Green)', value: 'bughunter_1' },
-                    { name: 'Bug Hunter (Gold)', value: 'bughunter_2' },
-                    { name: 'Active Developer', value: 'developer' },
-                    { name: 'Early Supporter', value: 'early_supporter' },
-                    { name: 'Nitro', value: 'nitro' },
-                    { name: 'Server Booster', value: 'boost' },
-                    { name: 'Verified Bot Dev', value: 'verified_bot_dev' }
+                    { name: '🌟 ALL BADGES (View & Upload)', value: 'all' },
+                    { name: '🤖 Automod Tag', value: 'automod' },
+                    { name: '⚡ Supports Commands Tag', value: 'supports_commands' },
+                    { name: '👑 Server Owner Crown', value: 'guild_owner' },
+                    { name: '✅ Verified Server Shield', value: 'guild_verified' },
+                    { name: '♾️ Partner Server', value: 'guild_partner' },
+                    { name: '🛡️ Certified Moderator', value: 'certified_mod' },
+                    { name: '🌍 Translator', value: 'translator' },
+                    { name: '💎 Nitro', value: 'nitro' },
+                    { name: '👨‍💻 Active Developer', value: 'active_dev' }
                 )
         ),
 
     async execute(interaction) {
-        // Double check in case of permission sync issues
         if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
-            return interaction.reply({ content: '<:no:1297814819105144862> You must be an Administrator to use this.', ephemeral: true });
+            return interaction.reply({ content: '<:no:1297814819105144862> Admin permission required.', ephemeral: true });
         }
 
         const choice = interaction.options.getString('name');
 
         // ============================================
-        // 1. ALL BADGES + UPLOAD BUTTON
+        // 1. ALL BADGES MODE
         // ============================================
         if (choice === 'all') {
             await interaction.deferReply();
 
-            const allBadges = Object.values(BADGES);
-            const batch1 = allBadges.slice(0, 9); 
-            const files1 = batch1.map(b => new AttachmentBuilder(b.url, { name: `${b.name.replace(/ /g, '_')}.png` }));
-            
+            const allValues = Object.values(BADGES);
+            // Preview the "System" ones first as they are new
+            const previewFiles = [
+                new AttachmentBuilder(BADGES.automod.url, { name: 'automod.png' }),
+                new AttachmentBuilder(BADGES.guild_verified.url, { name: 'verified.png' }),
+                new AttachmentBuilder(BADGES.guild_owner.url, { name: 'crown.png' })
+            ];
+
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
                     .setCustomId('upload_badges')
-                    .setLabel('Make all as Emojis')
+                    .setLabel(`Upload ALL (${allValues.length}) as Emojis`)
                     .setStyle(ButtonStyle.Success)
                     .setEmoji('📤')
             );
 
-            const message = await interaction.editReply({ 
-                content: `**All Discord Badges (Preview)**\nClick the button below to upload these to your server emojis!`,
-                files: files1,
+            const msg = await interaction.editReply({ 
+                content: `**Found ${allValues.length} Badges**\nIncludes: System Tags, Server Flags, Boosts, and Profile Badges.\n\nClick below to upload them to this server.`,
+                files: previewFiles,
                 components: [row]
             });
 
-            // Create Collector
-            const collector = message.createMessageComponentCollector({ 
-                componentType: ComponentType.Button, 
-                time: 60000 
-            });
+            const collector = msg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
 
             collector.on('collect', async (i) => {
                 if (i.customId === 'upload_badges') {
-                    // 🔒 LOCK BUTTON TO ADMINS
-                    if (!i.member.permissions.has(PermissionFlagsBits.Administrator)) {
-                        return i.reply({ content: '<:no:1297814819105144862> Only Administrators can perform this action.', ephemeral: true });
-                    }
+                    if (!i.member.permissions.has(PermissionFlagsBits.Administrator)) return i.reply({ content: 'Admin only.', ephemeral: true });
 
-                    await i.update({ components: [] }); // Remove button to prevent double clicks
-                    const statusMsg = await i.followUp({ content: '⏳ **Processing...** Uploading emojis to server...' });
+                    await i.update({ components: [] });
+                    const status = await i.followUp('⏳ **Uploading...**');
 
-                    let successCount = 0;
-                    let failCount = 0;
-                    const entries = Object.entries(BADGES);
+                    let success = 0;
+                    let fail = 0;
 
-                    for (const [key, badge] of entries) {
+                    for (const [key, badge] of Object.entries(BADGES)) {
                         try {
-                            await interaction.guild.emojis.create({ 
-                                attachment: badge.url, 
-                                name: key 
-                            });
-                            successCount++;
-                        } catch (error) {
-                            failCount++;
-                            if (error.code === 30008) {
-                                await statusMsg.edit(`⚠️ **Stopped:** Server emoji slots are full!`);
+                            await interaction.guild.emojis.create({ attachment: badge.url, name: key });
+                            success++;
+                        } catch (e) {
+                            fail++;
+                            if (e.code === 30008) {
+                                await status.edit(`⚠️ **Stopped:** Server emoji limit reached!`);
                                 break;
                             }
                         }
                     }
 
-                    await statusMsg.edit(
-                        `<:yes:1297814648417943565> **Operation Complete**\n` +
-                        `✅ Uploaded: ${successCount}\n` +
-                        `❌ Failed: ${failCount} (Duplicates or Full)`
-                    );
+                    await status.edit(`<:yes:1297814648417943565> **Finished!**\n✅ Uploaded: ${success}\n❌ Skipped/Failed: ${fail}`);
                 }
             });
             return;
         }
 
         // ============================================
-        // 2. SPECIFIC BADGE
+        // 2. SINGLE BADGE MODE
         // ============================================
         const badge = BADGES[choice];
         if (!badge) return interaction.reply({ content: '<:no:1297814819105144862> Badge not found.', ephemeral: true });

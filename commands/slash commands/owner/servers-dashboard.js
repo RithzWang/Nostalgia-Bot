@@ -31,12 +31,17 @@ module.exports = {
             sub.setName('removeserver')
                 .setDescription('Remove a server from the global list'))
 
-        // 4. EDIT SERVER (NEW)
+        // 4. EDIT SERVER (Now with Autocomplete List)
         .addSubcommand(sub => 
             sub.setName('edit')
-                .setDescription('Edit details of an existing server'))
+                .setDescription('Edit details of an existing server')
+                .addStringOption(option => 
+                    option.setName('server')
+                        .setDescription('Select the server to edit')
+                        .setAutocomplete(true) // 👈 Enables dynamic list
+                        .setRequired(true)))
 
-        // 5. MANUAL UPDATE (NEW)
+        // 5. MANUAL UPDATE
         .addSubcommand(sub => 
             sub.setName('update')
                 .setDescription('Force update all dashboards immediately')),
@@ -46,9 +51,67 @@ module.exports = {
 
         const sub = interaction.options.getSubcommand();
 
+        // ====================================================
+        // 🚨 IMPORTANT: 'EDIT' & 'ADD' CANNOT USE DEFERREPLY
+        // Modals must be the very first response.
+        // ====================================================
+
+        // --- EDIT SERVER ---
+        if (sub === 'edit') {
+            const guildId = interaction.options.getString('server');
+            
+            // Fetch data to pre-fill the modal
+            const serverData = await TrackedServer.findOne({ guildId });
+
+            if (!serverData) {
+                return interaction.reply({ content: "❌ Server not found in database.", flags: MessageFlags.Ephemeral });
+            }
+
+            const modal = new ModalBuilder()
+                .setCustomId('dashboard_edit_modal')
+                .setTitle('Edit Server Details');
+
+            modal.addComponents(
+                new ActionRowBuilder().addComponents(
+                    new TextInputBuilder().setCustomId('server_id').setLabel("Server ID (Cannot Change)").setStyle(TextInputStyle.Short).setValue(serverData.guildId).setDisabled(true)
+                ),
+                new ActionRowBuilder().addComponents(
+                    new TextInputBuilder().setCustomId('display_name').setLabel("Display Name").setStyle(TextInputStyle.Short).setValue(serverData.displayName).setRequired(true)
+                ),
+                new ActionRowBuilder().addComponents(
+                    new TextInputBuilder().setCustomId('tag_text').setLabel("Tag Text").setStyle(TextInputStyle.Short).setValue(serverData.tagText || "").setRequired(false)
+                ),
+                new ActionRowBuilder().addComponents(
+                    new TextInputBuilder().setCustomId('role_id').setLabel("Role ID").setStyle(TextInputStyle.Short).setValue(serverData.roleId || "").setRequired(false)
+                ),
+                new ActionRowBuilder().addComponents(
+                    new TextInputBuilder().setCustomId('invite_link').setLabel("Invite Link").setStyle(TextInputStyle.Short).setValue(serverData.inviteLink || "").setRequired(true)
+                )
+            );
+
+            return interaction.showModal(modal);
+        }
+
+        // --- ADD SERVER ---
+        if (sub === 'addserver') {
+            const modal = new ModalBuilder().setCustomId('dashboard_add_server').setTitle('Add Server');
+            modal.addComponents(
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('server_id').setLabel("Server ID").setStyle(TextInputStyle.Short).setRequired(true)),
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('display_name').setLabel("Display Name").setStyle(TextInputStyle.Short).setRequired(true)),
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('tag_text').setLabel("Tag Text (Display Only)").setStyle(TextInputStyle.Short).setRequired(false)),
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('role_id').setLabel("Role ID (For Tracking)").setStyle(TextInputStyle.Short).setRequired(false)),
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('invite_link').setLabel("Invite Link").setStyle(TextInputStyle.Short).setRequired(true))
+            );
+            return interaction.showModal(modal);
+        }
+
+        // ====================================================
+        // OTHER COMMANDS CAN DEFER (They take time)
+        // ====================================================
+        await interaction.deferReply({ ephemeral: true });
+
         // --- ENABLE ---
         if (sub === 'enable') {
-            await interaction.deferReply({ ephemeral: true });
             const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
             const msgId = interaction.options.getString('message_id');
 
@@ -81,22 +144,8 @@ module.exports = {
             } catch (e) { interaction.editReply(`❌ Error: ${e.message}`); }
         }
 
-        // --- ADD SERVER ---
-        if (sub === 'addserver') {
-            const modal = new ModalBuilder().setCustomId('dashboard_add_server').setTitle('Add Server');
-            modal.addComponents(
-                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('server_id').setLabel("Server ID").setStyle(TextInputStyle.Short).setRequired(true)),
-                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('display_name').setLabel("Display Name").setStyle(TextInputStyle.Short).setRequired(true)),
-                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('tag_text').setLabel("Tag Text (Display Only)").setStyle(TextInputStyle.Short).setRequired(false)),
-                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('role_id').setLabel("Role ID (For Tracking)").setStyle(TextInputStyle.Short).setRequired(false)),
-                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('invite_link').setLabel("Invite Link").setStyle(TextInputStyle.Short).setRequired(true))
-            );
-            await interaction.showModal(modal);
-        }
-
         // --- REMOVE SERVER ---
         if (sub === 'removeserver') {
-            await interaction.deferReply({ ephemeral: true });
             const servers = await TrackedServer.find();
             if (servers.length === 0) return interaction.editReply("❌ No servers found.");
 
@@ -105,24 +154,8 @@ module.exports = {
             await interaction.editReply({ content: "Select server to remove:", components: [new ActionRowBuilder().addComponents(select)] });
         }
 
-        // --- EDIT SERVER (NEW) ---
-        if (sub === 'edit') {
-            await interaction.deferReply({ ephemeral: true });
-            const servers = await TrackedServer.find();
-            if (servers.length === 0) return interaction.editReply("❌ No servers found to edit.");
-
-            const options = servers.map(s => new StringSelectMenuOptionBuilder().setLabel(s.displayName).setDescription(`ID: ${s.guildId}`).setValue(s.guildId));
-            const select = new StringSelectMenuBuilder().setCustomId('dashboard_edit_select').setPlaceholder('Select server to edit').addOptions(options);
-            
-            await interaction.editReply({ 
-                content: "Select the server you want to edit:", 
-                components: [new ActionRowBuilder().addComponents(select)] 
-            });
-        }
-
-        // --- MANUAL UPDATE (NEW) ---
+        // --- MANUAL UPDATE ---
         if (sub === 'update') {
-            await interaction.deferReply({ ephemeral: true });
             await updateAllDashboards(interaction.client);
             await interaction.editReply("✅ **Force Update Complete!** All dashboards have been refreshed.");
         }

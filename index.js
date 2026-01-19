@@ -51,6 +51,7 @@ client.prefixCommands = new Collection();
 client.slashCommands = new Collection();
 client.slashDatas = []; 
 
+require('./systems/tagChecker.js')(client);
 require('./handlers/commandHandler')(client);
 
 // EVENT LOADER

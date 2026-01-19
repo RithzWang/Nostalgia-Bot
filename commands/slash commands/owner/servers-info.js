@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags, ContainerBuilder, TextDisplayBuilder } = require('discord.js');
 const ServerInfoSchema = require('../../../src/models/ServerInfoSchema'); 
 const { generateServerInfoPayload } = require('../../../utils/serverInfoUtils');
 
@@ -9,7 +9,7 @@ module.exports = {
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addStringOption(option => 
             option.setName('message_id')
-                .setDescription('The ID of the existing message (OPTIONAL)')
+                .setDescription('ID of the message to convert (Optional)')
                 .setRequired(false))
         .addChannelOption(option =>
             option.setName('channel')
@@ -23,48 +23,67 @@ module.exports = {
 
         await interaction.deferReply({ ephemeral: true });
 
-        // Default to current channel if none provided
         const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
         const targetMessageId = interaction.options.getString('message_id');
         const client = interaction.client;
 
         try {
-            const payloadComponents = await generateServerInfoPayload(client);
+            // 1. Generate the Server Info Data
+            const finalPayload = await generateServerInfoPayload(client);
             let message;
 
             if (targetMessageId) {
-                // --- ATTEMPT TO EDIT ---
+                // --- CONVERSION LOGIC ---
                 try {
-                    // 1. Try to fetch the message from the SPECIFIED channel
                     message = await targetChannel.messages.fetch(targetMessageId);
-                    
-                    // 2. If successful, edit it
+
+                    if (message.author.id !== client.user.id) {
+                        return interaction.editReply(`❌ **I cannot edit that message.** It belongs to ${message.author.username}, not me.`);
+                    }
+
+                    // A. Create Temporary "Loading" Container
+                    // This is the trick: We send a valid Container to force the "V2" switch.
+                    const loadingContainer = new ContainerBuilder()
+                        .setAccentColor(0xFEE75C) // Yellow
+                        .addTextDisplayComponents(
+                            new TextDisplayBuilder().setContent('### 🔄 Converting to Server Info Panel...')
+                        );
+
+                    // B. FORCE CONVERT (Wipe Text -> Set V2 Flag)
+                    await message.edit({
+                        content: '',             // 🗑️ Clear Plain Text
+                        embeds: [],              // 🗑️ Clear Embeds
+                        files: [],               // 🗑️ Clear Attachments
+                        components: [loadingContainer], 
+                        flags: MessageFlags.IsComponentsV2 // 🚩 Force Container Mode
+                    });
+
+                    // Wait 1 second to let Discord process the type change (Safety buffer)
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+
+                    // C. Apply Final Server Info
                     await message.edit({ 
-                        components: payloadComponents,
-                        flags: [MessageFlags.IsComponentsV2] 
+                        components: finalPayload,
+                        flags: MessageFlags.IsComponentsV2 
                     });
 
                 } catch (e) {
-                    console.error("Fetch Error:", e);
-                    
-                    // --- SMART ERROR MESSAGE ---
-                    // This explains exactly WHY it failed (usually ID vs Channel mismatch)
+                    console.error("Conversion Error:", e);
                     return interaction.editReply({ 
-                        content: `❌ **Could not find that message!**\n\n` + 
-                                 `**Are you sure Message \`${targetMessageId}\` is inside ${targetChannel}?**\n` + 
-                                 `- Bots cannot search the whole server. You must select the correct channel in the command options.\n` + 
-                                 `- If the message is in a different channel, run the command again and select that channel in the \`channel\` option.` 
+                        content: `❌ **Conversion Failed!**\n\n` + 
+                                 `I found message \`${targetMessageId}\` but couldn't convert it.\n` + 
+                                 `Error: \`${e.message}\`` 
                     });
                 }
             } else {
-                // --- SEND NEW ---
+                // --- SEND NEW (Standard) ---
                 message = await targetChannel.send({ 
-                    components: payloadComponents,
+                    components: finalPayload,
                     flags: [MessageFlags.IsComponentsV2]
                 });
             }
 
-            // Save to DB
+            // 2. Save to Database
             await ServerInfoSchema.findOneAndUpdate(
                 { guildId: interaction.guild.id }, 
                 { 
@@ -75,7 +94,7 @@ module.exports = {
                 { upsert: true, new: true }
             );
 
-            // Start Interval
+            // 3. Start Auto-Update Interval
             setInterval(async () => {
                 try {
                     const newPayload = await generateServerInfoPayload(client);
@@ -84,17 +103,15 @@ module.exports = {
                         flags: [MessageFlags.IsComponentsV2]
                     });
                 } catch (err) {
-                    console.error(`[Session Auto-Update] Failed:`, err);
+                    console.error(`[Auto-Update] Failed:`, err);
                 }
             }, 5 * 60 * 1000);
 
-            await interaction.editReply(`✅ **Success!**\nLinked to message in ${targetChannel}.\nI will auto-update this every 5 minutes.`);
+            await interaction.editReply(`✅ **Success!**\nServer Info Panel active in ${targetChannel}.\n(Converted ID: ${message.id})`);
 
         } catch (error) {
             console.error("CRITICAL ERROR:", error);
-            await interaction.editReply({ 
-                content: `❌ **Crash Error:** \`${error.message}\`\nCheck console for details.` 
-            });
+            await interaction.editReply(`❌ **Crash:** ${error.message}`);
         }
     },
 };

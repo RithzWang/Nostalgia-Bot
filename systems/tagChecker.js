@@ -1,49 +1,29 @@
 const TAG_CONFIG = {
     targetServerID: "1456197054782111756",      // YOUR SERVER ID
     rewardRoleID: "1462217123433545812"         // THE ROLE ID
-    // Removed logChannelID because we are not sending messages anymore
 };
 
 module.exports = (client) => {
-    
-    // 1. STARTUP & INTERVAL LOOP
-    if (client.isReady()) {
-        startLoop(client);
-    } else {
-        client.once('clientReady', () => startLoop(client));
-    }
+    if (client.isReady()) startLoop(client);
+    else client.once('clientReady', () => startLoop(client));
 
-    // 2. INSTANT MESSAGE CHECKER
     client.on('messageCreate', async (message) => {
         if (!message.guild || message.guild.id !== TAG_CONFIG.targetServerID || message.author.bot) return;
-
-        // Check silently when they chat
         await checkMemberTag(message.member, message.guild);
     });
 };
 
-// --- LOGIC FUNCTIONS ---
-
 function startLoop(client) {
-    console.log("✅ Tag Checker System Loaded (Silent Mode).");
-    
-    // Run once immediately
+    console.log("✅ Tag Checker Started.");
     runSweep(client);
-
-    // Run every 60 seconds
-    setInterval(() => {
-        runSweep(client);
-    }, 2 * 1000);
+    setInterval(() => runSweep(client), 60 * 1000);
 }
 
 async function runSweep(client) {
     const guild = client.guilds.cache.get(TAG_CONFIG.targetServerID);
     if (!guild) return;
-
-    // Force Fetch all members to ensure we see the latest tags
     try { await guild.members.fetch({ force: true }); } catch (e) {}
 
-    // Loop through everyone
     guild.members.cache.forEach(async (member) => {
         if (member.user.bot) return;
         await checkMemberTag(member, guild);
@@ -57,25 +37,24 @@ async function checkMemberTag(member, guild) {
     // --- GET DATA ---
     const userTagData = member.user.primaryGuild;
     
-    // --- CHECK ---
+    // Check if valid
     const isWearingTag = userTagData && 
                          userTagData.identityGuildId === TAG_CONFIG.targetServerID;
     
     const hasRole = member.roles.cache.has(role.id);
 
-    // A. GIVE ROLE (Silent)
+    // --- DEBUGGING (Use this to find the bug) ---
+    // If the bot decides to GIVE the role, it will print WHY it did it.
     if (isWearingTag && !hasRole) {
-        try {
-            await member.roles.add(role);
-            console.log(`✅ [Tag System] Gave role to ${member.user.tag} (Silent)`);
-        } catch (e) { console.error(`Failed to add role: ${e.message}`); }
+        console.log(`🚨 GIVING ROLE TO: ${member.user.tag}`);
+        console.log(`   Reason: Discord API says they have Tag ID: ${userTagData.identityGuildId}`);
+        console.log(`   (Matching Target ID: ${TAG_CONFIG.targetServerID})`);
+        
+        try { await member.roles.add(role); } catch (e) {}
     }
 
-    // B. REMOVE ROLE (Silent)
     else if (!isWearingTag && hasRole) {
-        try {
-            await member.roles.remove(role);
-            console.log(`❌ [Tag System] Removed role from ${member.user.tag} (Silent)`);
-        } catch (e) { console.error(`Failed to remove role: ${e.message}`); }
+        console.log(`🗑️ REMOVING ROLE FROM: ${member.user.tag} (No Tag Detected)`);
+        try { await member.roles.remove(role); } catch (e) {}
     }
 }

@@ -1,46 +1,60 @@
-// ⚠️ Ensure your discord.js version supports these experimental builders
 const { 
-    TextDisplayBuilder, 
-    SeparatorBuilder, 
-    SeparatorSpacingSize, 
-    ButtonBuilder, 
-    ButtonStyle, 
-    SectionBuilder, 
-    ContainerBuilder 
+    TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, 
+    ButtonBuilder, ButtonStyle, SectionBuilder, ContainerBuilder 
 } = require('discord.js');
 
-// === CONFIGURATION ===
+// ==========================================
+// CONFIGURATION
+// ==========================================
 const SERVER_1_ID = '1456197054782111756'; // Qahtani ID
 const SERVER_2_ID = '1348929026445803530'; // Mutairi ID
 
+// The EXACT text of the official Server Tag (e.g. "A2-Q")
 const TAG_TEXT_SERVER_1 = 'A2-Q'; 
 const TAG_TEXT_SERVER_2 = 'A2-Q'; 
 
-// === HELPER: COUNT TAGS ===
-async function getTagCount(guild, tagText) {
+// ==========================================
+// HELPER: COUNT OFFICIAL TAGS
+// ==========================================
+async function getTagCount(guild, targetTag) {
     if (!guild) return 0;
-    // Force fetch members to ensure cache is full
-    await guild.members.fetch().catch(() => null);
-    
-    return guild.members.cache.filter(m => 
-        m.displayName.toLowerCase().includes(tagText.toLowerCase())
-    ).size;
+    try {
+        // We must fetch members to ensure we have the latest User objects
+        await guild.members.fetch(); 
+        
+        // Filter based on the OFFICIAL 'primaryGuild' property you provided
+        return guild.members.cache.filter(member => {
+            const user = member.user;
+            
+            // Check if the user has the primaryGuild object and if the tag matches
+            if (user.primaryGuild && user.primaryGuild.tag === targetTag) {
+                return true;
+            }
+            return false;
+        }).size;
+
+    } catch (e) {
+        console.log(`[Warning] Could not count tags for guild ${guild.id}: ${e.message}`);
+        return 0;
+    }
 }
 
-// === MAIN LOGIC: BUILD PAYLOAD ===
+// ==========================================
+// MAIN LOGIC
+// ==========================================
 async function generateServerInfoPayload(client) {
     const guild1 = client.guilds.cache.get(SERVER_1_ID);
     const guild2 = client.guilds.cache.get(SERVER_2_ID);
 
-    // Get Data (Default to 0 if bot isn't in the server)
+    // 1. Get Member Counts
     const g1Count = guild1 ? guild1.memberCount : 0;
     const g2Count = guild2 ? guild2.memberCount : 0;
     const totalMembers = g1Count + g2Count;
 
+    // 2. Get Official Tag Counts (Using the new logic)
     const g1TagCount = await getTagCount(guild1, TAG_TEXT_SERVER_1);
     const g2TagCount = await getTagCount(guild2, TAG_TEXT_SERVER_2);
 
-    // Next update timestamp (5 mins from now)
     const nextUpdateUnix = Math.floor((Date.now() + 5 * 60 * 1000) / 1000);
 
     const components = [
@@ -52,7 +66,7 @@ async function generateServerInfoPayload(client) {
             .addSeparatorComponents(
                 new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true),
             )
-            // --- SERVER 1 (Qahtani) ---
+            // --- SERVER 1 ---
             .addSectionComponents(
                 new SectionBuilder()
                     .setButtonAccessory(
@@ -69,7 +83,7 @@ async function generateServerInfoPayload(client) {
             .addSeparatorComponents(
                 new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true),
             )
-            // --- SERVER 2 (Mutairi) ---
+            // --- SERVER 2 ---
             .addSectionComponents(
                 new SectionBuilder()
                     .setButtonAccessory(
@@ -86,7 +100,6 @@ async function generateServerInfoPayload(client) {
             .addSeparatorComponents(
                 new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true),
             )
-            // --- FOOTER ---
             .addTextDisplayComponents(
                 new TextDisplayBuilder()
                     .setContent(`### 🔁 Next Update: <t:${nextUpdateUnix}:R>`),

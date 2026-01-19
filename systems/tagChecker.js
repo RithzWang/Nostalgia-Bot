@@ -34,7 +34,7 @@ function startLoop(client) {
     // Run every 60 seconds
     setInterval(() => {
         runSweep(client);
-    }, 60 * 1000);
+    }, 5 * 1000);
 }
 
 async function runSweep(client) {

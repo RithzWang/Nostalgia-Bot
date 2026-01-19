@@ -31,6 +31,12 @@ const { loadFonts } = require('./fontLoader');
 // --- CONFIGURATION ---
 const config = require("./config.json");
 
+// ==========================================
+// 🆕 ADDED: IMPORTS FOR SERVER INFO
+// ==========================================
+const ServerInfoSchema = require('./src/models/ServerInfoSchema');
+const { generateServerInfoPayload } = require('./utils/serverInfoUtils');
+
 const { prefix, serverID, welcomeLog, roleupdateLog, roleforLog, colourEmbed } = config;
 let roleupdateMessageID = config.roleupdateMessageID || null;
 
@@ -118,31 +124,68 @@ client.on('clientReady', async () => {
         currentInvites.each(invite => invitesCache.set(invite.code, invite.uses));
     }
 
-   setInterval(() => {
-    const now = moment().tz('Asia/Bangkok');
-    const formattedTime = now.format('HH:mm');
-    const currentHour = now.hour();
+    // Presence Interval
+    setInterval(() => {
+        const now = moment().tz('Asia/Bangkok');
+        const formattedTime = now.format('HH:mm');
+        const currentHour = now.hour();
 
-    let timeEmoji = '🌙'; // Default: Night (18:00 - 05:59)
+        let timeEmoji = '🌙'; 
 
-    if (currentHour >= 6 && currentHour < 9) {
-        timeEmoji = '🌄'; // Morning (06:00 - 11:59)
-    } else if (currentHour >= 9 && currentHour < 16) {
-        timeEmoji = '☀️'; // Lunch/Day (12:00 - 15:59) <-- Extended to fill the gap
-    } else if (currentHour >= 16 && currentHour < 18) {
-        timeEmoji = '🌇'; // Afternoon (16:00 - 17:59) <-- Your requested time
+        if (currentHour >= 6 && currentHour < 9) {
+            timeEmoji = '🌄'; 
+        } else if (currentHour >= 9 && currentHour < 16) {
+            timeEmoji = '☀️'; 
+        } else if (currentHour >= 16 && currentHour < 18) {
+            timeEmoji = '🌇'; 
+        }
+
+        client.user.setPresence({
+            activities: [{ 
+                name: 'customstatus', 
+                type: ActivityType.Custom, 
+                state: `${timeEmoji} ${formattedTime} (GMT+7)` 
+            }],
+            status: 'dnd'
+        });
+
+    }, 5000); 
+
+    // ====================================================
+    // 🆕 ADDED: AUTO-RESUME SERVER INFO UPDATES
+    // ====================================================
+    try {
+        const configs = await ServerInfoSchema.find();
+        if (configs.length > 0) {
+            console.log(`[Startup] Found ${configs.length} server-info panels to resume.`);
+        }
+
+        configs.forEach(async (config) => {
+            const channel = client.channels.cache.get(config.channelId);
+            if (!channel) return; 
+
+            try {
+                const message = await channel.messages.fetch(config.messageId);
+                if (!message) return;
+
+                console.log(`[Startup] Resuming updates for message: ${message.id}`);
+
+                setInterval(async () => {
+                    try {
+                        const payload = await generateServerInfoPayload(client);
+                        await message.edit({ components: payload });
+                    } catch (err) {
+                        console.error(`[Auto-Update] Failed for ${message.id}:`, err);
+                    }
+                }, 5 * 60 * 1000); // 5 Minutes
+
+            } catch (err) {
+                console.log(`[Startup] Message ${config.messageId} not found. Skipping.`);
+            }
+        });
+    } catch (err) {
+        console.error('[Startup] Failed to initialize auto-updates:', err);
     }
-
-    client.user.setPresence({
-        activities: [{ 
-            name: 'customstatus', 
-            type: ActivityType.Custom, 
-            state: `${timeEmoji} ${formattedTime} (GMT+7)` 
-        }],
-        status: 'dnd'
-    });
-
-}, 5000); // Updates every 1 minute
 });
 
 
@@ -239,13 +282,6 @@ client.on('guildMemberAdd', async (member) => {
 
     } catch (e) { console.error("Welcome Error:", e); }
 });
-
-
-
-
-
-
-
 
 // --- DB & LOGIN ---
 (async () => {

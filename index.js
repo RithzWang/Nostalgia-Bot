@@ -32,9 +32,11 @@ const { loadFonts } = require('./fontLoader');
 const config = require("./config.json");
 
 // ==========================================
-// 🆕 ADDED: IMPORTS FOR SERVER INFO
+// 🆕 UPDATED PATHS HERE
 // ==========================================
-const ServerInfoSchema = require('./src/models/ServerInfoSchema');
+// Schema is in src/models/
+const ServerInfoSchema = require('./src/models/ServerInfoSchema'); 
+// Utils is in utils/ (Root)
 const { generateServerInfoPayload } = require('./utils/serverInfoUtils');
 
 const { prefix, serverID, welcomeLog, roleupdateLog, roleforLog, colourEmbed } = config;
@@ -97,7 +99,6 @@ client.on('clientReady', async () => {
     try {
         console.log(`Started refreshing ${globalDatas.length} global and ${guildDatas.length} guild commands.`);
 
-        // 2. Deploy GUILD Commands (Instant update for specific server)
         if (guildDatas.length > 0) {
             await rest.put(
                 Routes.applicationGuildCommands(client.user.id, serverID),
@@ -106,7 +107,6 @@ client.on('clientReady', async () => {
             console.log('✅ Guild-only commands registered.');
         }
 
-        // 3. Deploy GLOBAL Commands (Takes ~1 hour to update cache)
         if (globalDatas.length > 0) {
             await rest.put(
                 Routes.applicationCommands(client.user.id),
@@ -152,7 +152,7 @@ client.on('clientReady', async () => {
     }, 5000); 
 
     // ====================================================
-    // 🆕 ADDED: AUTO-RESUME SERVER INFO UPDATES
+    // 🔄 AUTO-RESUME SERVER INFO UPDATES
     // ====================================================
     try {
         const configs = await ServerInfoSchema.find();
@@ -191,12 +191,9 @@ client.on('clientReady', async () => {
 
 const { createWelcomeImage } = require('./welcomeCanvas6.js');
 
-// --- 1. IMPORT THE IMAGE GENERATOR ---
-
 client.on('guildMemberAdd', async (member) => {
     if (member.user.bot || member.guild.id !== serverID) return;
 
-    // --- Roles & Nickname ---
     const rolesToAdd = ['1456238105345527932', '1456197055092625573'];
     try { 
         await member.roles.add(rolesToAdd); 
@@ -204,7 +201,6 @@ client.on('guildMemberAdd', async (member) => {
     } catch (e) {}
 
     try {
-        // --- Invites & Data ---
         const newInvites = await member.guild.invites.fetch().catch(() => new Collection());
         let usedInvite = newInvites.find(inv => inv.uses > (invitesCache.get(inv.code) || 0));
         newInvites.each(inv => invitesCache.set(inv.code, inv.uses));
@@ -213,19 +209,12 @@ client.on('guildMemberAdd', async (member) => {
         const inviterId = usedInvite?.inviter ? usedInvite.inviter.id : null;
         const inviteCode = usedInvite ? usedInvite.code : 'Unknown';
 
-        // --- Generate Image ---
         const buffer = await createWelcomeImage(member);
         const attachment = new AttachmentBuilder(buffer, { name: 'welcome-image.png' });
         const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
-
-        // ==========================================
-        //      CONTAINER BUILDER (CHAINED)
-        // ==========================================
         
         const mainContainer = new ContainerBuilder()
             .setAccentColor(0x888888)
-            
-            // 1. Main Section (Text + Avatar)
             .addSectionComponents((section) => 
                 section
                     .addTextDisplayComponents(
@@ -241,8 +230,6 @@ client.on('guildMemberAdd', async (member) => {
                         thumb.setURL(member.user.displayAvatarURL())
                     )
             )
-
-            // 2. Buttons (Only Register Button)
             .addActionRowComponents((row) => 
                 row.setComponents(
                     new ButtonBuilder()
@@ -252,30 +239,21 @@ client.on('guildMemberAdd', async (member) => {
                         .setURL('https://discord.com/channels/1456197054782111756/1456197056250122352')
                 )
             )
-
-            // 3. Separator
             .addSeparatorComponents((sep) => 
                 sep.setSpacing(SeparatorSpacingSize.Small)
             )
-
-            // 4. Media Gallery (The Welcome Image)
             .addMediaGalleryComponents((gallery) => 
                 gallery.addItems((item) => 
-                    item
-                        .setURL("attachment://welcome-image.png")
+                    item.setURL("attachment://welcome-image.png")
                 )
             );
 
-        // --- SEND MESSAGE ---
         const channel = client.channels.cache.get(welcomeLog);
         if (channel) {
             await channel.send({ 
                 flags: [MessageFlags.IsComponentsV2],
                 files: [attachment],
                 components: [mainContainer],
-                
-                // 👇 THIS IS THE FIX 👇
-                // This allows the NEW MEMBER to be pinged, but ignores the inviter.
                 allowedMentions: { users: [member.user.id] } 
             });
         }
@@ -283,7 +261,6 @@ client.on('guildMemberAdd', async (member) => {
     } catch (e) { console.error("Welcome Error:", e); }
 });
 
-// --- DB & LOGIN ---
 (async () => {
     try {
         await mongoose.connect(process.env.MONGO_TOKEN, { dbName: 'MyBotData' });

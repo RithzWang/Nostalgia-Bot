@@ -20,7 +20,7 @@ async function createServerTagCard(member, mockName = null) {
     const tagText = mockName || guildInfo.tag; 
 
     // 2. Configuration & Dimensions
-    const fontSize = 200; 
+    const fontSize = 190; 
     const paddingX = 80;
     const paddingY = 60;
     const badgeSize = 200; 
@@ -98,7 +98,7 @@ async function createServerTagCard(member, mockName = null) {
     }
 
     // Draw Text (Using tagText)
-    ctx.font = `bold ${fontSize}px "Prima Sans Regular", ${fontStack}`;
+    ctx.font = `${fontSize}px "Prima Sans Regular", ${fontStack}`;
     ctx.fillStyle = '#ffffff';
     ctx.textBaseline = 'middle'; 
     ctx.fillText(tagText, currentContentX, centerY - 5);

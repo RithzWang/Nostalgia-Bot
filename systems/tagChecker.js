@@ -16,7 +16,7 @@ module.exports = (client) => {
 function startLoop(client) {
     console.log("✅ Tag Checker Started.");
     runSweep(client);
-    setInterval(() => runSweep(client), 60 * 1000);
+    setInterval(() => runSweep(client), 1 * 1000);
 }
 
 async function runSweep(client) {

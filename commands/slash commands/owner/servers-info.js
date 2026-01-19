@@ -1,26 +1,19 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
-
-// ==========================================
-// 🆕 UPDATED RELATIVE PATHS
-// ==========================================
-// Go up 3 folders -> src/models/
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const ServerInfoSchema = require('../../../src/models/ServerInfoSchema'); 
-// Go up 3 folders -> utils/
 const { generateServerInfoPayload } = require('../../../utils/serverInfoUtils');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('servers-info')
         .setDescription('Setup the live server info display')
-        // Lock to Admins Only
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addStringOption(option => 
             option.setName('message_id')
-                .setDescription('The ID of an existing message to convert (optional)')
+                .setDescription('The ID of the existing message (Must be in the channel selected below!)')
                 .setRequired(false))
         .addChannelOption(option =>
             option.setName('channel')
-                .setDescription('The channel to send/find the message (optional)')
+                .setDescription('The channel where the message is located')
                 .setRequired(false)),
 
     async execute(interaction) {
@@ -35,23 +28,32 @@ module.exports = {
         const client = interaction.client;
 
         try {
-            // 1. Create the payload
             const payloadComponents = await generateServerInfoPayload(client);
             let message;
 
-            // 2. Edit existing OR Send new
             if (targetMessageId) {
+                // --- EDIT EXISTING ---
                 try {
                     message = await targetChannel.messages.fetch(targetMessageId);
-                    await message.edit({ components: payloadComponents });
+                    await message.edit({ 
+                        components: payloadComponents,
+                        flags: [MessageFlags.IsComponentsV2] // 👈 REQUIRED FOR NEW UI
+                    });
                 } catch (e) {
-                    return interaction.editReply(`❌ Could not find message ID ${targetMessageId} in ${targetChannel}.`);
+                    console.error("Fetch Error:", e);
+                    return interaction.editReply({ 
+                        content: `❌ **Failed to find message!**\n\n1. Check ID: \`${targetMessageId}\`\n2. Channel: ${targetChannel}\n3. Ensure I have View permissions.` 
+                    });
                 }
             } else {
-                message = await targetChannel.send({ components: payloadComponents });
+                // --- SEND NEW ---
+                message = await targetChannel.send({ 
+                    components: payloadComponents,
+                    flags: [MessageFlags.IsComponentsV2] // 👈 REQUIRED FOR NEW UI
+                });
             }
 
-            // 3. Save to Database
+            // Save to DB
             await ServerInfoSchema.findOneAndUpdate(
                 { guildId: interaction.guild.id }, 
                 { 
@@ -62,22 +64,27 @@ module.exports = {
                 { upsert: true, new: true }
             );
 
-            // 4. Start the interval for this session immediately
-            const intervalTime = 5 * 60 * 1000; // 5 mins
+            // Start Interval
+            const intervalTime = 5 * 60 * 1000;
             setInterval(async () => {
                 try {
                     const newPayload = await generateServerInfoPayload(client);
-                    await message.edit({ components: newPayload });
+                    await message.edit({ 
+                        components: newPayload,
+                        flags: [MessageFlags.IsComponentsV2] // 👈 KEEP FLAG ON UPDATE
+                    });
                 } catch (err) {
                     console.error(`[Session Auto-Update] Failed:`, err);
                 }
             }, intervalTime);
 
-            await interaction.editReply(`✅ **Setup Complete!**\nAuto-updating message created in ${targetChannel}.\nI have saved this to the database, so it will resume even if I restart.`);
+            await interaction.editReply(`✅ **Setup Complete!**\nAuto-updating message active in ${targetChannel}.`);
 
         } catch (error) {
-            console.error(error);
-            await interaction.editReply('❌ An error occurred while setting up the info.');
+            console.error("CRITICAL ERROR in /servers-info:", error);
+            await interaction.editReply({ 
+                content: `❌ **An error occurred.**\nCheck your bot console for details.\nError: \`${error.message}\`` 
+            });
         }
     },
 };

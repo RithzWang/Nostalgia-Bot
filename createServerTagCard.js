@@ -49,7 +49,7 @@ async function createServerTagCard(member, mockName = null) {
     // 4. Measure Text (Using the new tagText variable)
     const tempCanvas = createCanvas(1, 1);
     const tempCtx = tempCanvas.getContext('2d');
-    tempCtx.font = `bold ${fontSize}px "Prima Sans Regular", ${fontStack}`;
+    tempCtx.font = `${fontSize}px "Prima Sans Regular", ${fontStack}`;
     
     const textMetrics = tempCtx.measureText(tagText);
     const textWidth = textMetrics.width;

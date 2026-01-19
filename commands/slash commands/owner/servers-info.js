@@ -1,6 +1,12 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
-const ServerInfoSchema = require('../../../src/models/ServerInfoSchema'); // Adjust path if needed
-const { generateServerInfoPayload } = require('../../../utils/serverInfoUtils'); // Adjust path if needed
+
+// ==========================================
+// 🆕 UPDATED RELATIVE PATHS
+// ==========================================
+// Go up 3 folders -> src/models/
+const ServerInfoSchema = require('../../../src/models/ServerInfoSchema'); 
+// Go up 3 folders -> utils/
+const { generateServerInfoPayload } = require('../../../utils/serverInfoUtils');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -18,7 +24,6 @@ module.exports = {
                 .setRequired(false)),
 
     async execute(interaction) {
-        // Redundant check for safety
         if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
             return interaction.reply({ content: '❌ Admin only.', ephemeral: true });
         }
@@ -46,7 +51,7 @@ module.exports = {
                 message = await targetChannel.send({ components: payloadComponents });
             }
 
-            // 3. Save to Database (Upsert: Create or Update)
+            // 3. Save to Database
             await ServerInfoSchema.findOneAndUpdate(
                 { guildId: interaction.guild.id }, 
                 { 
@@ -58,7 +63,6 @@ module.exports = {
             );
 
             // 4. Start the interval for this session immediately
-            // (So we don't have to restart bot to see updates)
             const intervalTime = 5 * 60 * 1000; // 5 mins
             setInterval(async () => {
                 try {

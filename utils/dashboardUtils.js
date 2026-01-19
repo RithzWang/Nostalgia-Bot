@@ -73,7 +73,7 @@ async function generateDashboardPayload(client) {
             }
         }
 
-        const displayTagCount = isRoleValid ? `\`${tagUserCount}\`` : "`(not available yet)`";
+        const displayTagCount = isRoleValid ? `${tagUserCount}` : "(not available yet)";
         const displayTagText = data.tagText || "None";
 
         const section = new SectionBuilder()

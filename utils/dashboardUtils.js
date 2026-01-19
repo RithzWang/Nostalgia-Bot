@@ -128,7 +128,7 @@ async function generateDashboardPayload(client) {
     for (const section of serverSections) {
         container.addSectionComponents(section);
         container.addSeparatorComponents(
-            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
         );
     }
 

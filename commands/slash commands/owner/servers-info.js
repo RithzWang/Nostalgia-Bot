@@ -1,4 +1,3 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 // ⚠️ Ensure your discord.js version supports these experimental builders
 const { 
     TextDisplayBuilder, 
@@ -10,30 +9,30 @@ const {
     ContainerBuilder 
 } = require('discord.js');
 
-// ==========================================
-// CONFIGURATION
-// ==========================================
+// === CONFIGURATION ===
 const SERVER_1_ID = '1456197054782111756'; // Qahtani ID
 const SERVER_2_ID = '1348929026445803530'; // Mutairi ID
 
 const TAG_TEXT_SERVER_1 = 'A2-Q'; 
 const TAG_TEXT_SERVER_2 = 'A2-Q'; 
 
-// ==========================================
-// HELPERS
-// ==========================================
+// === HELPER: COUNT TAGS ===
 async function getTagCount(guild, tagText) {
     if (!guild) return 0;
+    // Force fetch members to ensure cache is full
     await guild.members.fetch().catch(() => null);
+    
     return guild.members.cache.filter(m => 
         m.displayName.toLowerCase().includes(tagText.toLowerCase())
     ).size;
 }
 
+// === MAIN LOGIC: BUILD PAYLOAD ===
 async function generateServerInfoPayload(client) {
     const guild1 = client.guilds.cache.get(SERVER_1_ID);
     const guild2 = client.guilds.cache.get(SERVER_2_ID);
 
+    // Get Data (Default to 0 if bot isn't in the server)
     const g1Count = guild1 ? guild1.memberCount : 0;
     const g2Count = guild2 ? guild2.memberCount : 0;
     const totalMembers = g1Count + g2Count;
@@ -41,6 +40,7 @@ async function generateServerInfoPayload(client) {
     const g1TagCount = await getTagCount(guild1, TAG_TEXT_SERVER_1);
     const g2TagCount = await getTagCount(guild2, TAG_TEXT_SERVER_2);
 
+    // Next update timestamp (5 mins from now)
     const nextUpdateUnix = Math.floor((Date.now() + 5 * 60 * 1000) / 1000);
 
     const components = [
@@ -52,7 +52,7 @@ async function generateServerInfoPayload(client) {
             .addSeparatorComponents(
                 new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true),
             )
-            // --- SERVER 1 ---
+            // --- SERVER 1 (Qahtani) ---
             .addSectionComponents(
                 new SectionBuilder()
                     .setButtonAccessory(
@@ -69,7 +69,7 @@ async function generateServerInfoPayload(client) {
             .addSeparatorComponents(
                 new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true),
             )
-            // --- SERVER 2 ---
+            // --- SERVER 2 (Mutairi) ---
             .addSectionComponents(
                 new SectionBuilder()
                     .setButtonAccessory(
@@ -86,6 +86,7 @@ async function generateServerInfoPayload(client) {
             .addSeparatorComponents(
                 new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true),
             )
+            // --- FOOTER ---
             .addTextDisplayComponents(
                 new TextDisplayBuilder()
                     .setContent(`### 🔁 Next Update: <t:${nextUpdateUnix}:R>`),
@@ -95,71 +96,4 @@ async function generateServerInfoPayload(client) {
     return components;
 }
 
-// ==========================================
-// COMMAND
-// ==========================================
-module.exports = {
-    data: new SlashCommandBuilder()
-        .setName('servers-info')
-        .setDescription('Setup the live server info display')
-        // 🔒 LOCK COMMAND TO ADMINS ONLY
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator) 
-        .addStringOption(option => 
-            option.setName('message_id')
-                .setDescription('The ID of the existing message to edit (optional)')
-                .setRequired(false))
-        .addChannelOption(option =>
-            option.setName('channel')
-                .setDescription('The channel where the message is (optional)')
-                .setRequired(false)),
-
-    async execute(interaction) {
-        // Double security check (optional, but good practice)
-        if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
-             return interaction.reply({ content: '❌ You do not have permission to use this.', ephemeral: true });
-        }
-
-        await interaction.deferReply({ ephemeral: true });
-
-        const targetMessageId = interaction.options.getString('message_id');
-        const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
-        const client = interaction.client;
-
-        try {
-            const payloadComponents = await generateServerInfoPayload(client);
-            
-            let message;
-
-            if (targetMessageId) {
-                try {
-                    message = await targetChannel.messages.fetch(targetMessageId);
-                    await message.edit({ components: payloadComponents });
-                    await interaction.editReply(`✅ **Updated!** Showing info in ${targetChannel}.`);
-                } catch (e) {
-                    return interaction.editReply(`❌ Could not find message ID ${targetMessageId} in ${targetChannel}.`);
-                }
-            } else {
-                message = await targetChannel.send({ components: payloadComponents });
-                await interaction.editReply(`✅ **Created!** Live info sent to ${targetChannel}.`);
-            }
-
-            // Simple Auto-Update Interval (Lasts until bot restarts)
-            if (message) {
-                const intervalTime = 5 * 60 * 1000; 
-                
-                setInterval(async () => {
-                    try {
-                        const newComponents = await generateServerInfoPayload(client);
-                        await message.edit({ components: newComponents });
-                    } catch (err) {
-                        console.error('[Auto-Update] Failed:', err);
-                    }
-                }, intervalTime);
-            }
-
-        } catch (error) {
-            console.error(error);
-            await interaction.editReply('❌ An error occurred.');
-        }
-    },
-};
+module.exports = { generateServerInfoPayload };

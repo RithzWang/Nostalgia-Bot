@@ -73,7 +73,7 @@ async function generateDashboardPayload(client) {
             }
         }
 
-        const displayTagCount = isRoleValid ? `${tagUserCount}` : "(not available yet)";
+        const displayTagCount = isRoleValid ? `${tagUserCount}` : "`not available yet`";
         const displayTagText = data.tagText || "None";
 
         const section = new SectionBuilder()
@@ -104,9 +104,17 @@ async function generateDashboardPayload(client) {
         )
         .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true));
 
-    for (const section of serverSections) {
-        container.addSectionComponents(section);
-        container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true));
+    // 👇 UPDATED LOOP FOR SEPARATORS
+    for (let i = 0; i < serverSections.length; i++) {
+        container.addSectionComponents(serverSections[i]);
+        
+        // Logic: Small between servers, Large after the last one (before footer)
+        const isLastItem = i === serverSections.length - 1;
+        const spacingSize = isLastItem ? SeparatorSpacingSize.Large : SeparatorSpacingSize.Small;
+
+        container.addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(spacingSize).setDivider(true)
+        );
     }
 
     container.addTextDisplayComponents(

@@ -9,28 +9,31 @@ async function createServerTagCard(member, mockName = null) {
     const user = await member.user.fetch(true);
     const guildInfo = user.primaryGuild;
 
-    // We need at least a guild info (for the badge) OR a mock name to draw anything.
-    // If the user has no tag AND provided no mock name, return null.
+    // Guard Clause: No guild tag AND no custom text = nothing to draw
     if ((!guildInfo || !guildInfo.tag) && !mockName) {
         return null;
     }
 
-    // --- LOGIC CHANGE: DETERMINE TEXT ---
-    // Use mockName if provided, otherwise use real tag
+    // Determine Text to Display
     const tagText = mockName || guildInfo.tag; 
 
-    // 2. Configuration & Dimensions
+    // 2. Configuration (Stable Sizes)
     const fontSize = 190; 
-    const paddingX = 80;
-    const paddingY = 60;
-    const badgeSize = 200; 
-    const contentGap = 40; 
+    const badgeSize = 200; // Fixed size for the icon
+    const paddingX = 80;   // Left/Right padding inside the box
+    const paddingY = 60;   // Top/Bottom padding
+    const contentGap = 40; // Space between Icon and Text
     const cornerRadius = 60;
-    const margin = 50; 
+    const margin = 50;     // Outer margin for shadow
+
+    // --- STABILITY CONFIG ---
+    // Minimum width of the content box (excluding margins). 
+    // This ensures cards for "ABC" and "TEST" are the same width.
+    const minBoxWidth = 750; 
 
     const fontStack = `"Prima Sans Regular", "SFArabic", "Thonburi", "Apple Gothic", "Hiragino Sans", "Pingfang", "Apple Color Emoji", "Symbol", "Apple Symbols", "Noto Symbol", "Noto Symbol 2", "Noto Math", "Noto Hieroglyphs", "Noto Music", sans-serif`;
 
-    // 3. Pre-Load Badge (Only if user actually has a guild/badge)
+    // 3. Pre-Load Badge
     let badgeURL = null;
     let badgeImage = null;
 
@@ -46,20 +49,28 @@ async function createServerTagCard(member, mockName = null) {
         }
     }
 
-    // 4. Measure Text (Using the new tagText variable)
+    // 4. Measure Text & Calculate Dimensions
     const tempCanvas = createCanvas(1, 1);
     const tempCtx = tempCanvas.getContext('2d');
-    tempCtx.font = `${fontSize}px "Prima Sans Regular", ${fontStack}`;
+    tempCtx.font = `bold ${fontSize}px "Prima Sans Regular", ${fontStack}`;
     
     const textMetrics = tempCtx.measureText(tagText);
     const textWidth = textMetrics.width;
     
-    let boxWidth = (paddingX * 2) + textWidth;
+    // Calculate the "Natural" width needed
+    let naturalContentWidth = (paddingX * 2) + textWidth;
     if (badgeImage) {
-        boxWidth += badgeSize + contentGap;
+        naturalContentWidth += badgeSize + contentGap;
     }
+
+    // Apply Minimum Width for Stability
+    // If text is short, use minBoxWidth. If text is long, expand.
+    const boxWidth = Math.max(minBoxWidth, naturalContentWidth);
     
+    // Fixed Height based on font size (Stable vertical size)
     const boxHeight = fontSize + (paddingY * 2);
+
+    // Final Canvas Dimensions
     const canvasWidth = boxWidth + (margin * 2);
     const canvasHeight = boxHeight + (margin * 2);
 
@@ -72,35 +83,40 @@ async function createServerTagCard(member, mockName = null) {
     // 6. Draw
     const startX = margin;
     const startY = margin;
+    const centerY = startY + (boxHeight / 2);
 
-    // Shadow
+    // A. Drop Shadow
     ctx.save();
     ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
     ctx.shadowBlur = 25;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 10;
     
-    // Background
+    // B. Background Box
     ctx.fillStyle = '#404249'; 
     ctx.beginPath();
     ctx.roundRect(startX, startY, boxWidth, boxHeight, cornerRadius);
     ctx.fill();
     ctx.restore();
 
-    // Content
+    // C. Draw Content (Left Aligned for Stability)
+    // We start drawing from the left padding.
     let currentContentX = startX + paddingX;
-    const centerY = startY + (boxHeight / 2);
 
+    // Draw Icon (if exists)
     if (badgeImage) {
         const badgeY = centerY - (badgeSize / 2);
         ctx.drawImage(badgeImage, currentContentX, badgeY, badgeSize, badgeSize);
+        // Move X cursor to the right of the badge
         currentContentX += badgeSize + contentGap;
     }
 
-    // Draw Text (Using tagText)
-    ctx.font = `${fontSize}px "Prima Sans Regular", ${fontStack}`;
+    // Draw Text
+    ctx.font = `bold ${fontSize}px "Prima Sans Regular", ${fontStack}`;
     ctx.fillStyle = '#ffffff';
     ctx.textBaseline = 'middle'; 
+    
+    // Vertical correction: '- 5' moves text up slightly to center it visually against the icon
     ctx.fillText(tagText, currentContentX, centerY - 5);
 
     return canvas.toBuffer('image/png');

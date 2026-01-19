@@ -90,7 +90,7 @@ async function generateDashboardPayload(client) {
                         `## ${data.displayName}\n` +
                         `**<:sparkles:1462851309219872841> Server Tag :** ${displayTagText}\n` +
                         `**<:members:1462851249836654592> Server Member :** ${memberCount}\n` +
-                        `**<:greysword:1462851200721354996> Tag User :** ${displayTagCount}`
+                        `**<:greysword:1462852588633456700> Tag User :** ${displayTagCount}`
                     )
             );
         serverSections.push(section);

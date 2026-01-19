@@ -8,14 +8,12 @@ const {
     TextInputBuilder, 
     TextInputStyle,
     Colors,
-    // Discord Components v2 Builders
     ContainerBuilder,
     TextDisplayBuilder,
     SeparatorBuilder,
     SeparatorSpacingSize
 } = require('discord.js');
 
-// 🆕 IMPORT SCHEMAS FOR DASHBOARD
 const TrackedServer = require('../src/models/TrackedServerSchema');
 
 module.exports = {
@@ -23,16 +21,14 @@ module.exports = {
     async execute(interaction, client) {
 
         // ===============================================
-        // 1. COMMAND HANDLER (SLASH & CONTEXT MENUS)
+        // 1. COMMAND HANDLER
         // ===============================================
         if (interaction.isChatInputCommand() || interaction.isContextMenuCommand()) {
             const command = client.slashCommands.get(interaction.commandName);
-            
             if (!command) {
                 console.error(`No command matching ${interaction.commandName} was found.`);
                 return;
             }
-
             try {
                 await command.execute(interaction, client);
             } catch (error) {
@@ -44,11 +40,11 @@ module.exports = {
         }
 
         // ===============================================
-        // 2. GENERAL BUTTON HANDLERS
+        // 2. BUTTON HANDLERS
         // ===============================================
         if (interaction.isButton()) {
 
-            // A. LEGACY ROLE BUTTONS
+            // A. LEGACY ROLE
             if (interaction.customId.startsWith('role_')) {
                 const parts = interaction.customId.split('_');
                 const roleId = parts[1];
@@ -77,7 +73,7 @@ module.exports = {
                 }
             }
 
-            // B. BUTTON ROLE HANDLER (Single & Multi)
+            // B. BUTTON ROLES
             if (interaction.customId.startsWith('btn_role_') || interaction.customId.startsWith('btn_single_')) {
                 const isSingleMode = interaction.customId.startsWith('btn_single_');
                 const roleId = interaction.customId.replace('btn_role_', '').replace('btn_single_', '');
@@ -88,20 +84,18 @@ module.exports = {
 
                 try {
                     if (isSingleMode) {
-                        // Toggle off if already have it
                         if (interaction.member.roles.cache.has(roleId)) {
                              await interaction.member.roles.remove(role);
                              return interaction.reply({ content: `<:no:1297814819105144862> **Removed:** ${role.name}`, flags: MessageFlags.Ephemeral });
                         }
                         
-                        // Remove other roles in the same group
                         const rolesToRemove = [];
                         const removedNames = [];
                         const container = interaction.message.components[0]; 
                         if (container) {
                             const findButtons = (components) => {
                                 components.forEach(comp => {
-                                    if (comp.type === 1) { // ActionRow
+                                    if (comp.type === 1) { 
                                         comp.components.forEach(btn => {
                                             if (btn.customId && btn.customId.startsWith('btn_single_')) {
                                                 const otherId = btn.customId.replace('btn_single_', '');
@@ -130,7 +124,6 @@ module.exports = {
                         return interaction.reply({ content: msg, flags: MessageFlags.Ephemeral });
 
                     } else {
-                        // Multi Mode
                         if (interaction.member.roles.cache.has(roleId)) {
                             await interaction.member.roles.remove(role);
                             return interaction.reply({ content: `<:no:1297814819105144862> **Removed:** ${role.name}`, flags: MessageFlags.Ephemeral });
@@ -144,14 +137,27 @@ module.exports = {
                     return interaction.reply({ content: "<:no:1297814819105144862> Error changing roles.", flags: MessageFlags.Ephemeral });
                 }
             }
+
+            // C. REGISTRATION START
+            if (interaction.customId === 'reg_btn_open') {
+                const REGISTERED_ROLE_ID = '1456197055117787136';
+                if (interaction.member.roles.cache.has(REGISTERED_ROLE_ID)) {
+                    return interaction.reply({ content: `<:no:1297814819105144862> You are already registered!`, flags: MessageFlags.Ephemeral });
+                }
+                const modal = new ModalBuilder().setCustomId('reg_modal_submit').setTitle('A2-Q Registration');
+                const nameInput = new TextInputBuilder().setCustomId('reg_name').setLabel("Name").setStyle(TextInputStyle.Short).setPlaceholder("e.g. Naif, PrimeQahtani").setMaxLength(20).setRequired(true);
+                const countryInput = new TextInputBuilder().setCustomId('reg_country').setLabel("Country Flag").setStyle(TextInputStyle.Short).setPlaceholder("e.g. 🇵🇸, 🏴󠁧󠁢󠁥󠁮󠁧󠁿").setMaxLength(15).setRequired(true);
+                modal.addComponents(new ActionRowBuilder().addComponents(nameInput), new ActionRowBuilder().addComponents(countryInput));
+                await interaction.showModal(modal);
+            }
         }
 
         // ===============================================
-        // 3. SELECT MENU HANDLERS
+        // 3. SELECT MENUS
         // ===============================================
         if (interaction.isStringSelectMenu()) {
             
-            // A. ROLE SELECT MENU
+            // A. ROLE SELECT
             if (interaction.customId.startsWith('role_select_')) {
                 const restrictionId = interaction.customId.replace('role_select_', '');
                 if (restrictionId !== 'public' && restrictionId !== 'menu') {
@@ -207,125 +213,113 @@ module.exports = {
                 return interaction.editReply({ content: feedbackText.join('\n') });
             }
 
-            // 🆕 B. DASHBOARD REMOVE SERVER
+            // B. DASHBOARD REMOVE SERVER
             if (interaction.customId === 'dashboard_remove_server') {
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral });
                 const guildId = interaction.values[0];
                 
-                // Delete from DB
                 await TrackedServer.deleteOne({ guildId });
                 
                 await interaction.editReply({ 
-                    content: `✅ **Removed Server!**\nID: \`${guildId}\`\nThe dashboard will update in the next cycle (approx 5 mins).`, 
+                    content: `✅ **Removed Server!**\nID: \`${guildId}\`\nThe dashboard will update in the next cycle (approx 3 mins).`, 
                     components: [] 
                 });
             }
         }
 
         // ===============================================
-        // 4. REGISTRATION & MODAL SYSTEMS
+        // 4. MODAL SUBMITS
         // ===============================================
-        
-        // --- OPEN REGISTRATION MODAL ---
-        if (interaction.isButton() && interaction.customId === 'reg_btn_open') {
-            const REGISTERED_ROLE_ID = '1456197055117787136';
-            if (interaction.member.roles.cache.has(REGISTERED_ROLE_ID)) {
-                return interaction.reply({ content: `<:no:1297814819105144862> You are already registered!`, flags: MessageFlags.Ephemeral });
-            }
-            const modal = new ModalBuilder().setCustomId('reg_modal_submit').setTitle('A2-Q Registration');
-            const nameInput = new TextInputBuilder().setCustomId('reg_name').setLabel("Name").setStyle(TextInputStyle.Short).setPlaceholder("e.g. Naif, PrimeQahtani").setMaxLength(20).setRequired(true);
-            const countryInput = new TextInputBuilder().setCustomId('reg_country').setLabel("Country Flag").setStyle(TextInputStyle.Short).setPlaceholder("e.g. 🇵🇸, 🏴󠁧󠁢󠁥󠁮󠁧󠁿").setMaxLength(15).setRequired(true);
-            modal.addComponents(new ActionRowBuilder().addComponents(nameInput), new ActionRowBuilder().addComponents(countryInput));
-            await interaction.showModal(modal);
-        }
+        if (interaction.isModalSubmit()) {
 
-        // --- REGISTRATION SUBMIT ---
-        if (interaction.isModalSubmit() && interaction.customId === 'reg_modal_submit') {
-            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+            // A. REGISTRATION SUBMIT
+            if (interaction.customId === 'reg_modal_submit') {
+                await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-            const REGISTERED_ROLE_ID = '1456197055117787136';
-            const UNVERIFIED_ROLE_ID = '1456238105345527932'; 
-            const LOG_CHANNEL_ID = '1456197056988319871';
+                const REGISTERED_ROLE_ID = '1456197055117787136';
+                const UNVERIFIED_ROLE_ID = '1456238105345527932'; 
+                const LOG_CHANNEL_ID = '1456197056988319871';
 
-            const name = interaction.fields.getTextInputValue('reg_name');
-            const country = interaction.fields.getTextInputValue('reg_country');
-            const newNickname = `${country} | ${name}`;
-            const member = interaction.member;
+                const name = interaction.fields.getTextInputValue('reg_name');
+                const country = interaction.fields.getTextInputValue('reg_country');
+                const newNickname = `${country} | ${name}`;
+                const member = interaction.member;
 
-            if (newNickname.length > 32) return interaction.editReply({ content: `<:no:1297814819105144862> Nickname too long.` });
+                if (newNickname.length > 32) return interaction.editReply({ content: `<:no:1297814819105144862> Nickname too long.` });
 
-            try {
-                await member.roles.add(REGISTERED_ROLE_ID);
-                if (member.roles.cache.has(UNVERIFIED_ROLE_ID)) {
-                    await member.roles.remove(UNVERIFIED_ROLE_ID).catch(err => console.error("Could not remove Visitor role:", err));
-                }
-
-                if (member.id !== interaction.guild.ownerId && member.roles.highest.position < interaction.guild.members.me.roles.highest.position) {
-                    await member.setNickname(newNickname);
-                } 
-
-                const logChannel = interaction.guild.channels.cache.get(LOG_CHANNEL_ID);
-                if (logChannel) {
-                    const embed = new EmbedBuilder().setTitle('New Registration').setDescription(`User: ${member}\nName: **${name}**\nFrom: ${country}`).setColor(0x57F287).setThumbnail(member.user.displayAvatarURL());
-                    await logChannel.send({ embeds: [embed] });
-                }
-
-                // Update Registration Counter
                 try {
-                    const dashboardMsg = interaction.message; 
-                    if (dashboardMsg) {
-                        const role = interaction.guild.roles.cache.get(REGISTERED_ROLE_ID);
-                        const newCount = role ? role.members.size : 'N/A';
-                        
-                        const newContainer = new ContainerBuilder();
-                        newContainer.addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent('## <:registration:1447143542643490848> A2-Q Registration')
-                        );
-                        newContainer.addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent(`To access chat and connect to voice channels, please register below.\n\n**Note:**\n\`Name\` : your desired name.\n\`Country\` : your country’s flag emoji.\n\n❓ [**Why Do I Require Registration?**](https://discord.com/channels/1456197054782111756/1456197056250122353)`)
-                        );
-                        newContainer.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
-
-                        const registerBtn = new ButtonBuilder().setCustomId('reg_btn_open').setLabel('Register').setStyle(ButtonStyle.Primary);
-                        const countBtn = new ButtonBuilder().setCustomId('reg_btn_stats').setLabel(`Total Registered: ${newCount}`).setStyle(ButtonStyle.Secondary).setDisabled(true);
-                        
-                        newContainer.addActionRowComponents(new ActionRowBuilder().addComponents(registerBtn, countBtn));
-                        
-                        await dashboardMsg.edit({ components: [newContainer], flags: MessageFlags.IsComponentsV2 });
+                    await member.roles.add(REGISTERED_ROLE_ID);
+                    if (member.roles.cache.has(UNVERIFIED_ROLE_ID)) {
+                        await member.roles.remove(UNVERIFIED_ROLE_ID).catch(err => console.error("Could not remove Visitor role:", err));
                     }
-                } catch (e) { console.error("Counter update failed", e); }
 
-                return interaction.editReply({ content: `<:yes:1297814648417943565> Welcome! You’re now a member of the server.` });
+                    if (member.id !== interaction.guild.ownerId && member.roles.highest.position < interaction.guild.members.me.roles.highest.position) {
+                        await member.setNickname(newNickname);
+                    } 
 
-            } catch (error) {
-                console.error(error);
-                return interaction.editReply({ content: `<:no:1297814819105144862> Something went wrong.` });
+                    const logChannel = interaction.guild.channels.cache.get(LOG_CHANNEL_ID);
+                    if (logChannel) {
+                        const embed = new EmbedBuilder().setTitle('New Registration').setDescription(`User: ${member}\nName: **${name}**\nFrom: ${country}`).setColor(0x57F287).setThumbnail(member.user.displayAvatarURL());
+                        await logChannel.send({ embeds: [embed] });
+                    }
+
+                    // Update Registration Counter
+                    try {
+                        const dashboardMsg = interaction.message; 
+                        if (dashboardMsg) {
+                            const role = interaction.guild.roles.cache.get(REGISTERED_ROLE_ID);
+                            const newCount = role ? role.members.size : 'N/A';
+                            
+                            const newContainer = new ContainerBuilder();
+                            newContainer.addTextDisplayComponents(
+                                new TextDisplayBuilder().setContent('## <:registration:1447143542643490848> A2-Q Registration')
+                            );
+                            newContainer.addTextDisplayComponents(
+                                new TextDisplayBuilder().setContent(`To access chat and connect to voice channels, please register below.\n\n**Note:**\n\`Name\` : your desired name.\n\`Country\` : your country’s flag emoji.\n\n❓ [**Why Do I Require Registration?**](https://discord.com/channels/1456197054782111756/1456197056250122353)`)
+                            );
+                            newContainer.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
+
+                            const registerBtn = new ButtonBuilder().setCustomId('reg_btn_open').setLabel('Register').setStyle(ButtonStyle.Primary);
+                            const countBtn = new ButtonBuilder().setCustomId('reg_btn_stats').setLabel(`Total Registered: ${newCount}`).setStyle(ButtonStyle.Secondary).setDisabled(true);
+                            
+                            newContainer.addActionRowComponents(new ActionRowBuilder().addComponents(registerBtn, countBtn));
+                            
+                            await dashboardMsg.edit({ components: [newContainer], flags: MessageFlags.IsComponentsV2 });
+                        }
+                    } catch (e) { console.error("Counter update failed", e); }
+
+                    return interaction.editReply({ content: `<:yes:1297814648417943565> Welcome! You’re now a member of the server.` });
+
+                } catch (error) {
+                    console.error(error);
+                    return interaction.editReply({ content: `<:no:1297814819105144862> Something went wrong.` });
+                }
             }
-        }
 
-        // 🆕 --- DASHBOARD ADD SERVER SUBMIT ---
-        if (interaction.isModalSubmit() && interaction.customId === 'dashboard_add_server') {
-            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+            // B. DASHBOARD ADD SERVER
+            if (interaction.customId === 'dashboard_add_server') {
+                await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-            const guildId = interaction.fields.getTextInputValue('server_id');
-            const displayName = interaction.fields.getTextInputValue('display_name');
-            const tagText = interaction.fields.getTextInputValue('tag_text');
-            const roleId = interaction.fields.getTextInputValue('role_id');
-            const inviteLink = interaction.fields.getTextInputValue('invite_link');
+                const guildId = interaction.fields.getTextInputValue('server_id');
+                const displayName = interaction.fields.getTextInputValue('display_name');
+                const tagText = interaction.fields.getTextInputValue('tag_text');
+                const roleId = interaction.fields.getTextInputValue('role_id');
+                const inviteLink = interaction.fields.getTextInputValue('invite_link');
 
-            await TrackedServer.findOneAndUpdate(
-                { guildId },
-                { 
-                    displayName, 
-                    tagText, 
-                    roleId, 
-                    inviteLink,
-                    addedBy: interaction.user.id
-                },
-                { upsert: true, new: true }
-            );
+                await TrackedServer.findOneAndUpdate(
+                    { guildId },
+                    { 
+                        displayName, 
+                        tagText, 
+                        roleId, 
+                        inviteLink,
+                        addedBy: interaction.user.id
+                    },
+                    { upsert: true, new: true }
+                );
 
-            await interaction.editReply({ content: `✅ **Added ${displayName}!**\nThe dashboard will update in the next cycle (approx 5 mins).` });
+                await interaction.editReply({ content: `✅ **Added ${displayName}!**\nThe dashboard will update in the next cycle (approx 3 mins).` });
+            }
         }
     }
 };

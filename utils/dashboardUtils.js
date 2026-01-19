@@ -5,12 +5,13 @@ const {
 const TrackedServer = require('../src/models/TrackedServerSchema');
 
 // ==========================================
-// 1. ROLE MANAGER (Auto-Giver)
+// 1. ROLE MANAGER (Official Tag Check)
 // ==========================================
 async function runRoleUpdates(client) {
     const servers = await TrackedServer.find();
     
     for (const serverData of servers) {
+        // We need a Role ID and a Tag Text (e.g. "A2-Q") to check against
         if (!serverData.tagText || !serverData.roleId) continue;
 
         const guild = client.guilds.cache.get(serverData.guildId);
@@ -20,16 +21,26 @@ async function runRoleUpdates(client) {
             const role = guild.roles.cache.get(serverData.roleId);
             if (!role) continue; 
 
+            // Force fetch members to ensure User objects have the latest 'primaryGuild' data
             await guild.members.fetch();
 
             for (const [id, member] of guild.members.cache) {
-                const hasTagInName = member.displayName.toLowerCase().includes(serverData.tagText.toLowerCase());
+                const user = member.user;
                 const hasRole = member.roles.cache.has(role.id);
+                
+                // 🔍 NEW LOGIC: Check the Official User Primary Guild Tag
+                // We access the property from the code you showed me
+                const userTag = user.primaryGuild?.tag; 
+                
+                // Check if the user's current tag matches the server's tracked tag
+                const hasOfficialTag = userTag === serverData.tagText;
 
-                if (hasTagInName && !hasRole) {
+                // A. Give Role (Has Official Tag, missing role)
+                if (hasOfficialTag && !hasRole) {
                     await member.roles.add(role).catch(() => {});
                 }
-                else if (!hasTagInName && hasRole) {
+                // B. Remove Role (Does NOT have Official Tag, but has role)
+                else if (!hasOfficialTag && hasRole) {
                     await member.roles.remove(role).catch(() => {});
                 }
             }
@@ -51,9 +62,11 @@ async function generateDashboardPayload(client) {
     for (const data of servers) {
         const guild = client.guilds.cache.get(data.guildId);
         
+        // 1. Member Count
         const memberCount = guild ? guild.memberCount : 0;
         totalNetworkMembers += memberCount;
         
+        // 2. Tag User Count (Based on Role members, which we just updated above)
         let tagUserCount = 0;
         let isRoleValid = false;
 
@@ -71,6 +84,7 @@ async function generateDashboardPayload(client) {
 
         const displayTagText = data.tagText || "None";
 
+        // Build Section
         const section = new SectionBuilder()
             .setButtonAccessory(
                 new ButtonBuilder()
@@ -92,7 +106,7 @@ async function generateDashboardPayload(client) {
         serverSections.push(section);
     }
 
-    // 👇 CHANGED: 3 Minutes calculation (3 * 60 * 1000)
+    // 3 Minute Update Timer
     const nextUpdateUnix = Math.floor((Date.now() + 3 * 60 * 1000) / 1000);
     
     const container = new ContainerBuilder()

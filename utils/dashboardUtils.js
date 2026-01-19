@@ -111,9 +111,10 @@ async function generateDashboardPayload(client) {
         // Logic: Small between servers, Large after the last one (before footer)
         const isLastItem = i === serverSections.length - 1;
         const spacingSize = isLastItem ? SeparatorSpacingSize.Large : SeparatorSpacingSize.Small;
+        const visibleType = isLastItem ? true : false;
 
         container.addSeparatorComponents(
-            new SeparatorBuilder().setSpacing(spacingSize).setDivider(true)
+            new SeparatorBuilder().setSpacing(spacingSize).setDivider(visibleType)
         );
     }
 

@@ -32,12 +32,10 @@ const { loadFonts } = require('./fontLoader');
 const config = require("./config.json");
 
 // ==========================================
-// 🆕 UPDATED PATHS HERE
+// 🆕 UPDATED: GLOBAL DASHBOARD IMPORTS
 // ==========================================
-// Schema is in src/models/
-const ServerInfoSchema = require('./src/models/ServerInfoSchema'); 
-// Utils is in utils/ (Root)
-const { generateServerInfoPayload } = require('./utils/serverInfoUtils');
+const DashboardLocation = require('./src/models/DashboardLocationSchema');
+const { generateDashboardPayload, runRoleUpdates } = require('./utils/dashboardUtils');
 
 const { prefix, serverID, welcomeLog, roleupdateLog, roleforLog, colourEmbed } = config;
 let roleupdateMessageID = config.roleupdateMessageID || null;
@@ -151,40 +149,45 @@ client.on('clientReady', async () => {
     }, 5000); 
 
     // ====================================================
-    // 🔄 AUTO-RESUME SERVER INFO UPDATES
+    // 🌍 GLOBAL DASHBOARD CONTROLLER
     // ====================================================
-    try {
-        const configs = await ServerInfoSchema.find();
-        if (configs.length > 0) {
-            console.log(`[Startup] Found ${configs.length} server-info panels to resume.`);
-        }
+    // This function handles the logic for ALL servers at once
+    async function updateAllDashboards() {
+        console.log('[Dashboard] Starting Global Update Cycle...');
 
-        configs.forEach(async (config) => {
-            const channel = client.channels.cache.get(config.channelId);
-            if (!channel) return; 
+        // 1. Run Role Assignments (Auto-Tag Check)
+        await runRoleUpdates(client);
+
+        // 2. Generate Fresh UI (The Dashboard Card)
+        const payload = await generateDashboardPayload(client);
+
+        // 3. Find all dashboard messages in DB and update them
+        const locations = await DashboardLocation.find();
+        
+        for (const loc of locations) {
+            const channel = client.channels.cache.get(loc.channelId);
+            if (!channel) continue;
 
             try {
-                const message = await channel.messages.fetch(config.messageId);
-                if (!message) return;
-
-                console.log(`[Startup] Resuming updates for message: ${message.id}`);
-
-                setInterval(async () => {
-                    try {
-                        const payload = await generateServerInfoPayload(client);
-                        await message.edit({ components: payload });
-                    } catch (err) {
-                        console.error(`[Auto-Update] Failed for ${message.id}:`, err);
-                    }
-                }, 5 * 60 * 1000); // 5 Minutes
-
-            } catch (err) {
-                console.log(`[Startup] Message ${config.messageId} not found. Skipping.`);
+                const msg = await channel.messages.fetch(loc.messageId);
+                await msg.edit({ 
+                    components: payload,
+                    flags: [MessageFlags.IsComponentsV2]
+                });
+            } catch (e) {
+                console.log(`[Dashboard] Failed to update in Guild ${loc.guildId}: ${e.message}`);
             }
-        });
-    } catch (err) {
-        console.error('[Startup] Failed to initialize auto-updates:', err);
+        }
+        if (locations.length > 0) {
+            console.log(`[Dashboard] Updated ${locations.length} dashboards.`);
+        }
     }
+
+    // A. Run immediately on startup
+    updateAllDashboards();
+
+    // B. Run every 5 minutes
+    setInterval(updateAllDashboards, 5 * 60 * 1000);
 });
 
 

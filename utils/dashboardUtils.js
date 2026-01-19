@@ -119,7 +119,7 @@ async function generateDashboardPayload(client) {
     }
 
     container.addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(`### 🔁 Next Update: <t:${nextUpdateUnix}:R>`)
+        new TextDisplayBuilder().setContent(`### <a:loading:1462914121753432086> Next Update: <t:${nextUpdateUnix}:R>`)
     );
 
     return [container];

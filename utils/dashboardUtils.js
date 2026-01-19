@@ -88,9 +88,9 @@ async function generateDashboardPayload(client) {
                 new TextDisplayBuilder()
                     .setContent(
                         `## ${data.displayName}\n` +
-                        `**<:sparkle:1462848652958499008> Server Tag :** ${displayTagText}\n` +
-                        `**<:members:1462848537774784542> Server Member :** ${memberCount}\n` +
-                        `**<:greysword:1462848186774196408> Tag User :** ${displayTagCount}`
+                        `**<:sparkles:1462851309219872841> Server Tag :** ${displayTagText}\n` +
+                        `**<:members:1462851249836654592> Server Member :** ${memberCount}\n` +
+                        `**<:greysword:1462851200721354996> Tag User :** ${displayTagCount}`
                     )
             );
         serverSections.push(section);

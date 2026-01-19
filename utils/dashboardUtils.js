@@ -89,7 +89,7 @@ async function generateDashboardPayload(client) {
                     .setContent(
                         `## ${data.displayName}\n` +
                         `**<:greysword:1462740515043938438> Server Tag :** ${displayTagText}\n` +
-                        `**<:member:1462768443546669076> Server Member :** \`${memberCount}\`\n` +
+                        `**<:member:1462768443546669076> Server Member :** ${memberCount}\n` +
                         `**<:greysword_icon:1462768517685317778> Tag User :** ${displayTagCount}`
                     )
             );
@@ -100,7 +100,7 @@ async function generateDashboardPayload(client) {
     
     const container = new ContainerBuilder()
         .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(`# A2-Q Servers\n-# Total Members : \`${totalNetworkMembers}\``)
+            new TextDisplayBuilder().setContent(`# A2-Q Servers\n-# Total Members : ${totalNetworkMembers}`)
         )
         .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true));
 

@@ -102,7 +102,7 @@ async function generateDashboardPayload(client) {
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(`# A2-Q Servers\n-# Total Members : \`(${totalNetworkMembers})\``)
         )
-        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true));
+        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false));
 
     for (const section of serverSections) {
         container.addSectionComponents(section);

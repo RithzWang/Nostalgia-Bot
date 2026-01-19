@@ -31,15 +31,10 @@ module.exports = {
             sub.setName('removeserver')
                 .setDescription('Remove a server from the global list'))
 
-        // 4. EDIT SERVER (Now with Autocomplete List)
+        // 4. EDIT SERVER (Fixed: Uses Select Menu)
         .addSubcommand(sub => 
             sub.setName('edit')
-                .setDescription('Edit details of an existing server')
-                .addStringOption(option => 
-                    option.setName('server')
-                        .setDescription('Select the server to edit')
-                        .setAutocomplete(true) // 👈 Enables dynamic list
-                        .setRequired(true)))
+                .setDescription('Edit details of an existing server'))
 
         // 5. MANUAL UPDATE
         .addSubcommand(sub => 
@@ -52,47 +47,8 @@ module.exports = {
         const sub = interaction.options.getSubcommand();
 
         // ====================================================
-        // 🚨 IMPORTANT: 'EDIT' & 'ADD' CANNOT USE DEFERREPLY
-        // Modals must be the very first response.
+        // 🛑 MODAL COMMANDS (ADD) - CANNOT DEFER
         // ====================================================
-
-        // --- EDIT SERVER ---
-        if (sub === 'edit') {
-            const guildId = interaction.options.getString('server');
-            
-            // Fetch data to pre-fill the modal
-            const serverData = await TrackedServer.findOne({ guildId });
-
-            if (!serverData) {
-                return interaction.reply({ content: "❌ Server not found in database.", flags: MessageFlags.Ephemeral });
-            }
-
-            const modal = new ModalBuilder()
-                .setCustomId('dashboard_edit_modal')
-                .setTitle('Edit Server Details');
-
-            modal.addComponents(
-                new ActionRowBuilder().addComponents(
-                    new TextInputBuilder().setCustomId('server_id').setLabel("Server ID (Cannot Change)").setStyle(TextInputStyle.Short).setValue(serverData.guildId).setDisabled(true)
-                ),
-                new ActionRowBuilder().addComponents(
-                    new TextInputBuilder().setCustomId('display_name').setLabel("Display Name").setStyle(TextInputStyle.Short).setValue(serverData.displayName).setRequired(true)
-                ),
-                new ActionRowBuilder().addComponents(
-                    new TextInputBuilder().setCustomId('tag_text').setLabel("Tag Text").setStyle(TextInputStyle.Short).setValue(serverData.tagText || "").setRequired(false)
-                ),
-                new ActionRowBuilder().addComponents(
-                    new TextInputBuilder().setCustomId('role_id').setLabel("Role ID").setStyle(TextInputStyle.Short).setValue(serverData.roleId || "").setRequired(false)
-                ),
-                new ActionRowBuilder().addComponents(
-                    new TextInputBuilder().setCustomId('invite_link').setLabel("Invite Link").setStyle(TextInputStyle.Short).setValue(serverData.inviteLink || "").setRequired(true)
-                )
-            );
-
-            return interaction.showModal(modal);
-        }
-
-        // --- ADD SERVER ---
         if (sub === 'addserver') {
             const modal = new ModalBuilder().setCustomId('dashboard_add_server').setTitle('Add Server');
             modal.addComponents(
@@ -106,9 +62,43 @@ module.exports = {
         }
 
         // ====================================================
-        // OTHER COMMANDS CAN DEFER (They take time)
+        // 🟢 OTHER COMMANDS - DEFER ALLOWED
         // ====================================================
         await interaction.deferReply({ ephemeral: true });
+
+        // --- EDIT SERVER (SELECT MENU) ---
+        if (sub === 'edit') {
+            const servers = await TrackedServer.find();
+            if (servers.length === 0) return interaction.editReply("❌ No servers found to edit.");
+
+            // Create Dropdown
+            const options = servers.map(s => 
+                new StringSelectMenuOptionBuilder()
+                    .setLabel(s.displayName)
+                    .setDescription(`ID: ${s.guildId}`)
+                    .setValue(s.guildId)
+            );
+
+            const select = new StringSelectMenuBuilder()
+                .setCustomId('dashboard_edit_select')
+                .setPlaceholder('Pick a server to edit...')
+                .addOptions(options);
+            
+            return interaction.editReply({ 
+                content: "📋 **Select the server you want to edit:**", 
+                components: [new ActionRowBuilder().addComponents(select)] 
+            });
+        }
+
+        // --- REMOVE SERVER ---
+        if (sub === 'removeserver') {
+            const servers = await TrackedServer.find();
+            if (servers.length === 0) return interaction.editReply("❌ No servers found.");
+
+            const options = servers.map(s => new StringSelectMenuOptionBuilder().setLabel(s.displayName).setDescription(s.guildId).setValue(s.guildId));
+            const select = new StringSelectMenuBuilder().setCustomId('dashboard_remove_server').setPlaceholder('Select to remove').addOptions(options);
+            return interaction.editReply({ content: "Select server to remove:", components: [new ActionRowBuilder().addComponents(select)] });
+        }
 
         // --- ENABLE ---
         if (sub === 'enable') {
@@ -144,20 +134,10 @@ module.exports = {
             } catch (e) { interaction.editReply(`❌ Error: ${e.message}`); }
         }
 
-        // --- REMOVE SERVER ---
-        if (sub === 'removeserver') {
-            const servers = await TrackedServer.find();
-            if (servers.length === 0) return interaction.editReply("❌ No servers found.");
-
-            const options = servers.map(s => new StringSelectMenuOptionBuilder().setLabel(s.displayName).setDescription(s.guildId).setValue(s.guildId));
-            const select = new StringSelectMenuBuilder().setCustomId('dashboard_remove_server').setPlaceholder('Select to remove').addOptions(options);
-            await interaction.editReply({ content: "Select server to remove:", components: [new ActionRowBuilder().addComponents(select)] });
-        }
-
         // --- MANUAL UPDATE ---
         if (sub === 'update') {
             await updateAllDashboards(interaction.client);
-            await interaction.editReply("✅ **Force Update Complete!** All dashboards have been refreshed.");
+            return interaction.editReply("✅ **Force Update Complete!** All dashboards have been refreshed.");
         }
     }
 };

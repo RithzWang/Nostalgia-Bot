@@ -32,7 +32,7 @@ const { loadFonts } = require('./fontLoader');
 const config = require("./config.json");
 
 // ==========================================
-// 🆕 UPDATED: GLOBAL DASHBOARD IMPORTS
+// 🆕 GLOBAL DASHBOARD IMPORTS
 // ==========================================
 const DashboardLocation = require('./src/models/DashboardLocationSchema');
 const { generateDashboardPayload, runRoleUpdates } = require('./utils/dashboardUtils');
@@ -149,19 +149,18 @@ client.on('clientReady', async () => {
     }, 5000); 
 
     // ====================================================
-    // 🌍 GLOBAL DASHBOARD CONTROLLER
+    // 🌍 GLOBAL DASHBOARD CONTROLLER (3 MINS)
     // ====================================================
-    // This function handles the logic for ALL servers at once
     async function updateAllDashboards() {
         console.log('[Dashboard] Starting Global Update Cycle...');
 
-        // 1. Run Role Assignments (Auto-Tag Check)
+        // 1. Run Role Assignments
         await runRoleUpdates(client);
 
-        // 2. Generate Fresh UI (The Dashboard Card)
+        // 2. Generate Fresh UI
         const payload = await generateDashboardPayload(client);
 
-        // 3. Find all dashboard messages in DB and update them
+        // 3. Update all messages
         const locations = await DashboardLocation.find();
         
         for (const loc of locations) {
@@ -186,8 +185,8 @@ client.on('clientReady', async () => {
     // A. Run immediately on startup
     updateAllDashboards();
 
-    // B. Run every 5 minutes
-    setInterval(updateAllDashboards, 5 * 60 * 1000);
+    // B. Run every 3 minutes (changed from 5)
+    setInterval(updateAllDashboards, 3 * 60 * 1000);
 });
 
 

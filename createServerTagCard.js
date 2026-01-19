@@ -28,7 +28,7 @@ async function createServerTagCard(member) {
     const margin = 50; 
 
     // Font Stack
-    const fontStack = `"gg sans Bold", "Geeza Bold", "SFArabic", "Thonburi", "Apple Gothic", "Hiragino Sans", "Pingfang", "Apple Color Emoji", "Symbol", "Apple Symbols", "Noto Symbol", "Noto Symbol 2", "Noto Math", "Noto Hieroglyphs", "Noto Music", sans-serif`;
+    const fontStack = `"gg sans Bold", "SFArabic", "Thonburi", "Apple Gothic", "Hiragino Sans", "Pingfang", "Apple Color Emoji", "Symbol", "Apple Symbols", "Noto Symbol", "Noto Symbol 2", "Noto Math", "Noto Hieroglyphs", "Noto Music", sans-serif`;
 
     // 3. Pre-Load Badge (if exists)
     let badgeURL = null;

@@ -28,7 +28,7 @@ async function createServerTagCard(member, mockName = null) {
     const cornerRadius = 60;
     const margin = 50; 
 
-    const fontStack = `"Prima Sans Regular", "Geeza Bold", "Thonburi", "Apple Gothic", "Hiragino Sans", "Pingfang", "Apple Color Emoji", "Symbol", "Apple Symbols", "Noto Symbol", "Noto Symbol 2", "Noto Math", "Noto Hieroglyphs", "Noto Music", sans-serif`;
+    const fontStack = `"Prima Sans Regular", "SFArabic", "Thonburi", "Apple Gothic", "Hiragino Sans", "Pingfang", "Apple Color Emoji", "Symbol", "Apple Symbols", "Noto Symbol", "Noto Symbol 2", "Noto Math", "Noto Hieroglyphs", "Noto Music", sans-serif`;
 
     // 3. Pre-Load Badge (Only if user actually has a guild/badge)
     let badgeURL = null;

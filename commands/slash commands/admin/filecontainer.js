@@ -14,7 +14,6 @@ const {
 const FileContainer = require('../../../src/models/FileContainerSchema'); 
 
 module.exports = {
-    guildOnly: true,
     data: new SlashCommandBuilder()
         .setName('filecontainer')
         .setDescription('Manage File Container Messages')

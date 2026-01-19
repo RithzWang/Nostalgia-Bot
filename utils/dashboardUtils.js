@@ -22,7 +22,6 @@ async function runRoleUpdates(client) {
             const role = guild.roles.cache.get(serverData.roleId);
             if (!role) continue; 
 
-            // Force fetch to ensure 'primaryGuild' data is fresh
             await guild.members.fetch({ force: true });
 
             for (const [id, member] of guild.members.cache) {
@@ -31,7 +30,6 @@ async function runRoleUpdates(client) {
                 const userTagData = member.user.primaryGuild;
                 const hasRole = member.roles.cache.has(role.id);
 
-                // Check Official Identity
                 const isWearingTag = userTagData && 
                                      userTagData.identityGuildId === serverData.guildId &&
                                      userTagData.identityEnabled === true;
@@ -96,7 +94,8 @@ async function generateDashboardPayload(client) {
         serverSections.push(section);
     }
 
-    const nextUpdateUnix = Math.floor((Date.now() + 3 * 60 * 1000) / 1000);
+    // 👇 CHANGED: 1 Minute (60 * 1000)
+    const nextUpdateUnix = Math.floor((Date.now() + 60 * 1000) / 1000);
     
     const container = new ContainerBuilder()
         .addTextDisplayComponents(
@@ -104,11 +103,9 @@ async function generateDashboardPayload(client) {
         )
         .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true));
 
-    // 👇 UPDATED LOOP FOR SEPARATORS
     for (let i = 0; i < serverSections.length; i++) {
         container.addSectionComponents(serverSections[i]);
         
-        // Logic: Small between servers, Large after the last one (before footer)
         const isLastItem = i === serverSections.length - 1;
         const spacingSize = isLastItem ? SeparatorSpacingSize.Large : SeparatorSpacingSize.Small;
         const visibleType = isLastItem ? true : false;
@@ -126,7 +123,7 @@ async function generateDashboardPayload(client) {
 }
 
 // ==========================================
-// 3. MASTER UPDATE FUNCTION (NEW)
+// 3. MASTER UPDATE FUNCTION
 // ==========================================
 async function updateAllDashboards(client) {
     console.log('[Dashboard] Starting Global Update Cycle...');

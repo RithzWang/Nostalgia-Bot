@@ -186,7 +186,7 @@ client.on('clientReady', async () => {
     updateAllDashboards();
 
     // B. Run every 3 minutes (changed from 5)
-    setInterval(updateAllDashboards, 3 * 60 * 1000);
+    setInterval(updateAllDashboards, 60 * 1000);
 });
 
 

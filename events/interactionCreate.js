@@ -23,7 +23,7 @@ module.exports = {
     async execute(interaction, client) {
 
         // ===============================================
-        // 1. COMMAND HANDLER (SLASH & CONTEXT MENUS)
+        // 1. COMMAND HANDLER
         // ===============================================
         if (interaction.isChatInputCommand() || interaction.isContextMenuCommand()) {
             const command = client.slashCommands.get(interaction.commandName);
@@ -90,7 +90,6 @@ module.exports = {
                              await interaction.member.roles.remove(role);
                              return interaction.reply({ content: `<:no:1297814819105144862> **Removed:** ${role.name}`, flags: MessageFlags.Ephemeral });
                         }
-                        
                         const rolesToRemove = [];
                         const removedNames = [];
                         const container = interaction.message.components[0]; 
@@ -111,7 +110,6 @@ module.exports = {
                             };
                             if (container.components) findButtons(container.components);
                         }
-
                         for (const rID of rolesToRemove) {
                             const r = interaction.guild.roles.cache.get(rID);
                             if (r) {
@@ -119,12 +117,10 @@ module.exports = {
                                 removedNames.push(r.name);
                             }
                         }
-
                         await interaction.member.roles.add(role);
                         let msg = `<:yes:1297814648417943565> **Added:** ${role.name}`;
                         if (removedNames.length > 0) msg += `\n<:no:1297814819105144862> **Removed:** ${removedNames.join(', ')}`;
                         return interaction.reply({ content: msg, flags: MessageFlags.Ephemeral });
-
                     } else {
                         if (interaction.member.roles.cache.has(roleId)) {
                             await interaction.member.roles.remove(role);
@@ -140,7 +136,7 @@ module.exports = {
                 }
             }
 
-            // C. REGISTRATION - OPEN MODAL
+            // C. REGISTRATION START
             if (interaction.customId === 'reg_btn_open') {
                 const REGISTERED_ROLE_ID = '1456197055117787136';
                 if (interaction.member.roles.cache.has(REGISTERED_ROLE_ID)) {
@@ -159,7 +155,7 @@ module.exports = {
         // ===============================================
         if (interaction.isStringSelectMenu()) {
             
-            // A. ROLE SELECT MENU
+            // A. ROLE SELECT
             if (interaction.customId.startsWith('role_select_')) {
                 const restrictionId = interaction.customId.replace('role_select_', '');
                 if (restrictionId !== 'public' && restrictionId !== 'menu') {
@@ -172,7 +168,6 @@ module.exports = {
                 }
 
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
                 const selectedRoleIds = interaction.values;
                 const allRoleIds = interaction.component.options.map(opt => opt.value);
                 const added = [];
@@ -210,7 +205,7 @@ module.exports = {
                 await interaction.editReply({ content: `✅ **Removed Server!**\nID: \`${guildId}\`\nUpdate pending...`, components: [] });
             }
 
-            // 🆕 C. DASHBOARD EDIT SELECT (FIXED & DEBUGGED)
+            // 🆕 C. DASHBOARD EDIT SELECT (FIXED)
             if (interaction.customId === 'dashboard_edit_select') {
                 try {
                     const guildId = interaction.values[0];
@@ -219,13 +214,21 @@ module.exports = {
                     const serverData = await TrackedServer.findOne({ guildId });
 
                     if (!serverData) {
-                        return interaction.reply({ content: "❌ Server data not found in Database.", flags: MessageFlags.Ephemeral });
+                        return interaction.reply({ content: "❌ Server data not found.", flags: MessageFlags.Ephemeral });
                     }
 
-                    // Create Modal with SAFE value handling (Prevents crashing on nulls)
+                    // Create Modal
                     const modal = new ModalBuilder().setCustomId('dashboard_edit_modal').setTitle('Edit Server Details');
 
-                    const inputID = new TextInputBuilder().setCustomId('server_id').setLabel("Server ID (Locked)").setStyle(TextInputStyle.Short).setValue(String(serverData.guildId)).setDisabled(true);
+                    // 🛑 FIX: Removed .setDisabled(true) because Modals don't support it.
+                    // Instead, we rely on the label to tell user not to change it.
+                    const inputID = new TextInputBuilder()
+                        .setCustomId('server_id')
+                        .setLabel("Server ID (DO NOT CHANGE)") 
+                        .setStyle(TextInputStyle.Short)
+                        .setValue(String(serverData.guildId))
+                        .setRequired(true);
+
                     const inputName = new TextInputBuilder().setCustomId('display_name').setLabel("Display Name").setStyle(TextInputStyle.Short).setValue(String(serverData.displayName || "")).setRequired(true);
                     const inputTag = new TextInputBuilder().setCustomId('tag_text').setLabel("Tag Text").setStyle(TextInputStyle.Short).setValue(String(serverData.tagText || "")).setRequired(false);
                     const inputRole = new TextInputBuilder().setCustomId('role_id').setLabel("Role ID").setStyle(TextInputStyle.Short).setValue(String(serverData.roleId || "")).setRequired(false);
@@ -283,7 +286,6 @@ module.exports = {
                         await logChannel.send({ embeds: [embed] });
                     }
                     
-                    // Update Registration Counter
                     try {
                         const dashboardMsg = interaction.message; 
                         if (dashboardMsg) {

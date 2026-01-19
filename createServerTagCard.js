@@ -52,7 +52,7 @@ async function createServerTagCard(member, mockName = null) {
     // 4. Measure Text & Calculate Dimensions
     const tempCanvas = createCanvas(1, 1);
     const tempCtx = tempCanvas.getContext('2d');
-    tempCtx.font = `bold ${fontSize}px "Prima Sans Regular", ${fontStack}`;
+    tempCtx.font = `${fontSize}px "Prima Sans Regular", ${fontStack}`;
     
     const textMetrics = tempCtx.measureText(tagText);
     const textWidth = textMetrics.width;
@@ -112,7 +112,7 @@ async function createServerTagCard(member, mockName = null) {
     }
 
     // Draw Text
-    ctx.font = `bold ${fontSize}px "Prima Sans Regular", ${fontStack}`;
+    ctx.font = `${fontSize}px "Prima Sans Regular", ${fontStack}`;
     ctx.fillStyle = '#ffffff';
     ctx.textBaseline = 'middle'; 
     

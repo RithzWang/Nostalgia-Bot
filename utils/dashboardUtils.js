@@ -100,7 +100,7 @@ async function generateDashboardPayload(client) {
     const container = new ContainerBuilder()
         .setSpoiler(false)
         .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(`# A2-Qabilatan – القبيلتان\n Total Members : ${totalNetworkMembers}`)
+            new TextDisplayBuilder().setContent(`# A2-Qabīlatān – القبيلتان\n Total Members : ${totalNetworkMembers}`)
         )
         .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true));
 

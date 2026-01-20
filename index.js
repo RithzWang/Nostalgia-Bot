@@ -202,7 +202,7 @@ client.on('guildMemberAdd', async (member) => {
     const rolesToAdd = ['1456238105345527932', '1456197055092625573'];
     try { 
         await member.roles.add(rolesToAdd); 
-        setTimeout(() => member.setNickname(`🌱 • ${member.globalName}`.substring(0, 32)), 5000);
+        setTimeout(() => member.setNickname(`🌱 • ${member.displayName}`.substring(0, 32)), 5000);
     } catch (e) {}
 
     try {

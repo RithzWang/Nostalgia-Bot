@@ -1,6 +1,6 @@
 const { 
     SlashCommandBuilder, PermissionFlagsBits, MessageFlags, 
-    ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder,
+    ModalBuilder, ThumbnailBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder,
     StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ContainerBuilder, TextDisplayBuilder
 } = require('discord.js');
 

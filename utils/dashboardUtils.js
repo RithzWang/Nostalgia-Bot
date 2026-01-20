@@ -109,7 +109,7 @@ async function generateDashboardPayload(client) {
                 .setContent(`# A2-Qabīlatān\n Total Members : ${totalNetworkMembers}`)
         )
         .setThumbnailAccessory(
-            new ThumbnailBuilder().setURL(PERMANENT_IMAGE_URL)
+            new ThumbnailBuilder().setURL(PERMANENT_IMAGE_URL).setDescription("القبيلتان")
         );
 
     const container = new ContainerBuilder()

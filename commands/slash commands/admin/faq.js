@@ -73,28 +73,36 @@ module.exports = {
                 const targetMsgId = interaction.options.getString('message_id');
                 let message;
 
-                if (targetMsgId) {
-                    try {
-                        message = await targetChannel.messages.fetch(targetMsgId);
-                    } catch (e) {
-                        return interaction.editReply(`<:no:1297814819105144862> Could not find message ID \`${targetMsgId}\`.`);
+                try {
+                    if (targetMsgId) {
+                        try {
+                            message = await targetChannel.messages.fetch(targetMsgId);
+                        } catch (e) {
+                            return interaction.editReply(`<:no:1297814819105144862> Could not find message ID \`${targetMsgId}\`.`);
+                        }
+                    } else {
+                        message = await targetChannel.send({ content: 'Initializing FAQ...' });
                     }
-                } else {
-                    message = await targetChannel.send({ content: 'Initializing FAQ...' });
+
+                    await FAQ.deleteMany({ guildId: guildId });
+
+                    const newFaqData = await FAQ.create({
+                        guildId: guildId,
+                        channelId: targetChannel.id,
+                        messageId: message.id,
+                        questions: []
+                    });
+
+                    await message.edit(renderFAQ(newFaqData));
+                    
+                    // Use Safe Reply
+                    await safeReply(interaction, `<:yes:1297814648417943565> FAQ Panel linked in ${targetChannel}.`);
+
+                } catch (setupError) {
+                    console.error("Setup Error:", setupError);
+                    await safeReply(interaction, `<:no:1297814819105144862> Setup failed: ${setupError.message}`);
                 }
-
-                await FAQ.deleteMany({ guildId: guildId });
-
-                const newFaqData = await FAQ.create({
-                    guildId: guildId,
-                    channelId: targetChannel.id,
-                    messageId: message.id,
-                    questions: []
-                });
-
-                await message.edit(renderFAQ(newFaqData));
-                await interaction.editReply(`<:yes:1297814648417943565> FAQ Panel linked in ${targetChannel}.`);
-                return; // STOP EXECUTION HERE
+                return; // STOP
             }
 
             // --- CHECK: Ensure FAQ exists ---
@@ -136,14 +144,13 @@ module.exports = {
 
                 await interaction.showModal(modal);
 
-                // Isolate Modal Logic in its own try/catch to prevent ghost errors
                 try {
                     const submitted = await interaction.awaitModalSubmit({
                         time: 300000,
                         filter: i => i.user.id === interaction.user.id && i.customId === 'faq_add_modal'
                     });
 
-                    // Defer immediately to buy time
+                    // Defer immediately
                     await submitted.deferReply({ flags: MessageFlags.Ephemeral });
 
                     const question = submitted.fields.getTextInputValue('question');
@@ -152,21 +159,19 @@ module.exports = {
                     faqEntry.questions.push({ question, answer });
                     await faqEntry.save();
 
+                    // Refresh public message
                     const success = await refreshFAQMessage(interaction, faqEntry);
-                    
+
                     if (success) {
-                        // We add .catch here. If the message sends but the API response is slow, 
-                        // it throws "Unknown Interaction". We swallow that error because the DB save worked.
-                        await submitted.editReply(`<:yes:1297814648417943565> Added question: **${question}**`)
-                            .catch(e => console.log("Confirmation sent but interaction closed (safe to ignore)."));
+                        await safeReply(submitted, `<:yes:1297814648417943565> Added question: **${question}**`);
                     } else {
-                        await submitted.editReply(`<:no:1297814819105144862> Database updated, but message edit failed.`);
+                        await safeReply(submitted, `<:no:1297814819105144862> Database updated, but message edit failed.`);
                     }
                 } catch (innerErr) {
-                    if (innerErr.code === 'InteractionCollectorError') return; // Timeout is fine
+                    if (innerErr.code === 'InteractionCollectorError') return;
                     console.error("Error in Modal Add:", innerErr);
                 }
-                return; // STOP EXECUTION HERE
+                return; // STOP
             }
 
             // -----------------------------------------------------
@@ -248,12 +253,12 @@ module.exports = {
                     await faqEntry.save();
                     await refreshFAQMessage(interaction, faqEntry);
                     
-                    await submitted.editReply(`<:yes:1297814648417943565> Question updated successfully.`)
-                        .catch(() => {});
+                    await safeReply(submitted, `<:yes:1297814648417943565> Question updated successfully.`);
                 } catch (e) {
+                    if (e.code === 'InteractionCollectorError') return;
                     console.error("Edit modal error:", e);
                 }
-                return; // STOP EXECUTION HERE
+                return; // STOP
             }
 
             // -----------------------------------------------------
@@ -296,39 +301,37 @@ module.exports = {
 
                 if (!selection) return interaction.deleteReply().catch(() => {});
 
-                // Defer FIRST to prevent timeout during DB save
-                await selection.deferUpdate();
+                try {
+                    // Defer immediately
+                    await selection.deferUpdate();
 
-                const indicesToRemove = selection.values
-                    .map(v => parseInt(v))
-                    .sort((a, b) => b - a);
+                    const indicesToRemove = selection.values
+                        .map(v => parseInt(v))
+                        .sort((a, b) => b - a);
 
-                let count = 0;
-                for (const index of indicesToRemove) {
-                    faqEntry.questions.splice(index, 1);
-                    count++;
+                    let count = 0;
+                    for (const index of indicesToRemove) {
+                        faqEntry.questions.splice(index, 1);
+                        count++;
+                    }
+
+                    await faqEntry.save();
+                    await refreshFAQMessage(interaction, faqEntry);
+                    
+                    // Attempt to reply. If it fails, fallback to channel message.
+                    await safeReply(selection, `<:yes:1297814648417943565> Successfully removed **${count}** question(s).`, true);
+
+                } catch (removeError) {
+                    console.error("Remove Flow Error:", removeError);
                 }
-
-                await faqEntry.save();
-                await refreshFAQMessage(interaction, faqEntry);
-                
-                await selection.editReply({ 
-                    content: `<:yes:1297814648417943565> Successfully removed **${count}** question(s).`, 
-                    components: [],
-                    flags: MessageFlags.Ephemeral
-                }).catch(() => {});
-                
-                return; // STOP EXECUTION HERE
+                return; // STOP
             }
 
         } catch (error) {
             console.error("Main Command Error:", error);
+            // This is the safety net for unknown errors
             if (!interaction.replied && !interaction.deferred) {
-                await interaction.reply({ content: `<:no:1297814819105144862> Error: ${error.message}`, flags: MessageFlags.Ephemeral });
-            } else {
-                // Only send error if we really have to
-                await interaction.followUp({ content: `<:no:1297814819105144862> Error: ${error.message}`, flags: MessageFlags.Ephemeral })
-                    .catch(() => console.log("Could not send error follow-up (likely unknown interaction)"));
+                await interaction.reply({ content: `<:no:1297814819105144862> Error: ${error.message}`, flags: MessageFlags.Ephemeral }).catch(() => {});
             }
         }
     }
@@ -337,6 +340,37 @@ module.exports = {
 // ==========================================
 // HELPERS
 // ==========================================
+
+/**
+ * Attempts to reply to an interaction.
+ * If the interaction is dead/unknown, it falls back to sending a message in the channel.
+ * @param {object} interactionOrSelection - The interaction object (modal submit or select menu)
+ * @param {string} content - The message content
+ * @param {boolean} clearComponents - Whether to clear components (used for remove command)
+ */
+async function safeReply(interactionOrSelection, content, clearComponents = false) {
+    try {
+        const payload = { 
+            content: content, 
+            flags: MessageFlags.Ephemeral 
+        };
+        if (clearComponents) payload.components = [];
+
+        await interactionOrSelection.editReply(payload);
+    } catch (err) {
+        console.warn("Interaction reply failed, falling back to channel message:", err.code);
+        // Fallback: Send a regular message to the channel if possible
+        if (interactionOrSelection.channel) {
+            try {
+                // Stripping custom emojis for safety or keeping them if the bot has access
+                // Note: Regular messages are public, so we tag the user.
+                await interactionOrSelection.channel.send(`${interactionOrSelection.user} ${content}`);
+            } catch (sendErr) {
+                console.warn("Could not send fallback message:", sendErr);
+            }
+        }
+    }
+}
 
 async function refreshFAQMessage(interaction, faqData) {
     try {

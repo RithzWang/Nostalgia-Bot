@@ -98,7 +98,7 @@ async function generateDashboardPayload(client) {
     const nextUpdateUnix = Math.floor((Date.now() + 60 * 1000) / 1000);
     
     const container = new ContainerBuilder()
-        .setSpoiler(true)
+        .setSpoiler(false)
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(`# A2-Qabilatan – القبيلتان\n Total Members : ${totalNetworkMembers}`)
         )

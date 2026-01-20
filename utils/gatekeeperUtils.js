@@ -11,17 +11,11 @@ async function runGatekeeper(client) {
     const mainGuild = client.guilds.cache.get(MAIN_GUILD_ID);
     if (!mainGuild) return console.log('[Gatekeeper] ❌ Bot is not in the Main Server!');
 
-    // ============================================================
-    // 🛑 FIX: SMART FETCH (PREVENTS RATE LIMIT CRASH)
-    // ============================================================
-    // Only fetch if our cache is missing members. 
-    // If cache size is equal (or close) to the real member count, we skip fetching.
+    // SMART FETCH (Prevents Rate Limit Crash)
     if (mainGuild.members.cache.size < mainGuild.memberCount) {
         try {
             await mainGuild.members.fetch();
         } catch (e) {
-            // If we get rate limited, JUST LOG IT and continue using whatever cache we have.
-            // Do NOT crash the bot.
             console.log(`[Gatekeeper] ⚠️ Rate limit hit. Using existing cache (${mainGuild.members.cache.size} members).`);
         }
     }
@@ -35,7 +29,6 @@ async function runGatekeeper(client) {
         if (!satelliteGuild) continue;
 
         try {
-            // Same fix for satellite servers: Only fetch if needed
             if (satelliteGuild.members.cache.size < satelliteGuild.memberCount) {
                 try { await satelliteGuild.members.fetch(); } catch (e) {}
             }
@@ -44,7 +37,6 @@ async function runGatekeeper(client) {
                 if (member.user.bot) continue;           
                 if (memberId === satelliteGuild.ownerId) continue; 
 
-                // CHECK: Is this user present in the Main Hub?
                 const isInMain = mainGuild.members.cache.has(memberId);
                 const kickKey = `${serverData.guildId}-${memberId}`;
 
@@ -65,7 +57,7 @@ async function runGatekeeper(client) {
                             await member.send(
                                 `⚠️ **Security Check: ${satelliteGuild.name}**\n` +
                                 `You must be a member of our Main Hub Server to stay in our satellite servers.\n\n` +
-                                `⏱️ **You have 20 MINUTES to join (or rejoin), or you will be kicked.**\n` +
+                                `⏱️ **You have 10 MINUTES to join (or rejoin), or you will be kicked.**\n` +
                                 `🔗 **Join Here:** ${MAIN_SERVER_INVITE}`
                             );
                         } catch (e) {} 
@@ -73,11 +65,13 @@ async function runGatekeeper(client) {
                         // B. CHECK TIMER
                         const startTime = pendingKicks.get(kickKey);
                         const timeDiff = Date.now() - startTime;
-                        const TWENTY_MINUTES = 20 * 60 * 1000; 
+                        
+                        // 👇 CHANGED TO 10 MINUTES
+                        const TEN_MINUTES = 10 * 60 * 1000; 
 
-                        if (timeDiff > TWENTY_MINUTES) {
+                        if (timeDiff > TEN_MINUTES) {
                             try {
-                                await member.kick("Gatekeeper: Left Main Hub Server and did not return in 20m.");
+                                await member.kick("Gatekeeper: Left Main Hub Server and did not return in 10m.");
                                 console.log(`[Gatekeeper] 🥾 KICKED ${member.user.tag} from ${satelliteGuild.name}`);
                                 pendingKicks.delete(kickKey);
                             } catch (e) {

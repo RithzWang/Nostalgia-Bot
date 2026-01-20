@@ -102,7 +102,7 @@ async function generateDashboardPayload(client) {
         .setThumbnailAccessory(
                         new ThumbnailBuilder()
                             .setURL("https://cdn.discordapp.com/attachments/853503167706693632/1463148760866750560/Untitled206_20260120193001.png?ex=6970c6f8&is=696f7578&hm=a6599d4f5977662dde83dcd1824493dededddb90fc9b7b9d918918b637562727&")
-                    )
+                    );
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(`# A2-Qabīlatān – القبيلتان\n Total Members : ${totalNetworkMembers}`)
         )

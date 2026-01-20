@@ -6,8 +6,9 @@ const {
 const TrackedServer = require('../src/models/TrackedServerSchema');
 const DashboardLocation = require('../src/models/DashboardLocationSchema');
 
-// 🔒 REPLACE THIS WITH YOUR MAIN SERVER ID
+// 🔒 CONFIGURATION
 const MAIN_GUILD_ID = '1456197054782111756'; 
+const GLOBAL_TAG_ROLE_ID = '1462217123433545812'; // 👈 The Role for ANYONE wearing a valid tag
 
 // ==========================================
 // 1. ROLE MANAGER
@@ -21,8 +22,10 @@ async function runRoleUpdates(client) {
     // Create Lookup Maps
     const tagToRoleMap = new Map();
     const roleToGuildMap = new Map();
+    const validTagServerIds = new Set(); // To check if they are wearing ANY valid tag
 
     for (const server of trackedServers) {
+        validTagServerIds.add(server.guildId); // Register valid server IDs
         if (server.roleId) {
             tagToRoleMap.set(server.guildId, server.roleId);
             roleToGuildMap.set(server.roleId, server.guildId);
@@ -31,6 +34,7 @@ async function runRoleUpdates(client) {
 
     try {
         await mainGuild.members.fetch({ force: true });
+        const globalRole = mainGuild.roles.cache.get(GLOBAL_TAG_ROLE_ID);
 
         for (const [memberId, member] of mainGuild.members.cache) {
             if (member.user.bot) continue;
@@ -39,7 +43,14 @@ async function runRoleUpdates(client) {
             const isTagEnabled = identity && identity.identityEnabled === true;
             const currentTagGuildId = isTagEnabled ? identity.identityGuildId : null;
 
-            // A. ADD ROLE
+            // Flag: Is the user wearing a tag from ANY of our tracked servers?
+            const isWearingAnyValidTag = currentTagGuildId && validTagServerIds.has(currentTagGuildId);
+
+            // ---------------------------------------------------------
+            // A. MANAGE SPECIFIC SERVER ROLES
+            // ---------------------------------------------------------
+            
+            // 1. ADD Specific Role
             if (currentTagGuildId && tagToRoleMap.has(currentTagGuildId)) {
                 const targetRoleId = tagToRoleMap.get(currentTagGuildId);
                 const role = mainGuild.roles.cache.get(targetRoleId);
@@ -48,13 +59,29 @@ async function runRoleUpdates(client) {
                 }
             }
 
-            // B. REMOVE ROLE
+            // 2. REMOVE Specific Roles (if mismatched)
             for (const [rId, sourceGuildId] of roleToGuildMap.entries()) {
                 if (member.roles.cache.has(rId)) {
                     if (currentTagGuildId !== sourceGuildId) {
                         const roleToRemove = mainGuild.roles.cache.get(rId);
                         if (roleToRemove) await member.roles.remove(roleToRemove).catch(() => {});
                     }
+                }
+            }
+
+            // ---------------------------------------------------------
+            // B. MANAGE GLOBAL ROLE (The "Any Tag" Role)
+            // ---------------------------------------------------------
+            if (globalRole) {
+                const hasGlobalRole = member.roles.cache.has(GLOBAL_TAG_ROLE_ID);
+
+                if (isWearingAnyValidTag && !hasGlobalRole) {
+                    // ✅ Wear Tag -> Add Global Role
+                    await member.roles.add(globalRole).catch(() => {});
+                } 
+                else if (!isWearingAnyValidTag && hasGlobalRole) {
+                    // ❌ No Tag (or wrong tag) -> Remove Global Role
+                    await member.roles.remove(globalRole).catch(() => {});
                 }
             }
         }
@@ -71,7 +98,7 @@ async function generateDashboardPayload(client) {
     
     // 📊 Counters
     let totalNetworkMembers = 0;
-    let totalTagUsers = 0; // New Counter
+    let totalTagUsers = 0; 
     
     const serverSections = [];
 
@@ -85,7 +112,6 @@ async function generateDashboardPayload(client) {
 
         if (guild) {
             // 🔢 Calculate Tag Users for this server
-            // We calculate this first so we can add it to the TOTAL regardless of boost status
             const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS');
             let currentServerTagCount = 0;
 
@@ -97,7 +123,7 @@ async function generateDashboardPayload(client) {
                            identity.identityEnabled === true;
                 });
                 currentServerTagCount = tagWearers.size;
-                totalTagUsers += currentServerTagCount; // Add to global total
+                totalTagUsers += currentServerTagCount; 
             }
 
             // 🔍 CHECK 1: Boost Level (Min 3)
@@ -126,7 +152,7 @@ async function generateDashboardPayload(client) {
                 new ButtonBuilder()
                     .setStyle(ButtonStyle.Link)
                     .setLabel("Join Server")
-                    .setURL(data.inviteLink || "https://discord.gg/")
+                    .setURL(data.inviteLink || "[https://discord.gg/](https://discord.gg/)")
                     .setDisabled(!data.inviteLink)
             )
             .addTextDisplayComponents(
@@ -144,7 +170,7 @@ async function generateDashboardPayload(client) {
     const nextUpdateUnix = Math.floor((Date.now() + 60 * 1000) / 1000);
     
     // Header
-    const PERMANENT_IMAGE_URL = "https://cdn.discordapp.com/attachments/853503167706693632/1463227084817039558/A2-Q_20260121004151.png?ex=69710fea&is=696fbe6a&hm=77aab04999980ef14e5e3d51329b20f84a2fd3e01046bd93d16ac71be4410ef9&"; 
+    const PERMANENT_IMAGE_URL = "[https://cdn.discordapp.com/attachments/853503167706693632/1463227084817039558/A2-Q_20260121004151.png?ex=69710fea&is=696fbe6a&hm=77aab04999980ef14e5e3d51329b20f84a2fd3e01046bd93d16ac71be4410ef9](https://cdn.discordapp.com/attachments/853503167706693632/1463227084817039558/A2-Q_20260121004151.png?ex=69710fea&is=696fbe6a&hm=77aab04999980ef14e5e3d51329b20f84a2fd3e01046bd93d16ac71be4410ef9)&"; 
 
     const headerSection = new SectionBuilder()
         .addTextDisplayComponents(
@@ -152,7 +178,7 @@ async function generateDashboardPayload(client) {
                 .setContent(
                     `# A2-Qabīlatān\n` +
                     `\`\`\`\nTotal Members : ${totalNetworkMembers}\n` + 
-                    `Total Tag Users : ${totalTagUsers}\`\`\`` // 👈 NEW LINE ADDED HERE
+                    `Total Tag Users : ${totalTagUsers}\`\`\``
                 )
         )
         .setThumbnailAccessory(

@@ -237,4 +237,4 @@ async function updateAllDashboards(client) {
     if (locations.length > 0) console.log(`[Dashboard] Updated ${locations.length} dashboards.`);
 }
 
-module.exports = { runRoleUpdates, generateDashboardPayload, updateAllDashboards };
+module.exports = { runRoleUpdates, generateDashboardPayload, updateAllDashboards, runGatekeeper };

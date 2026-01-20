@@ -104,7 +104,7 @@ async function generateDashboardPayload(client) {
 
             if (boostsNeeded > 0) {
                 const plural = boostsNeeded === 1 ? "Boost" : "Boosts";
-                const remainPlural = boostsNeeded === 1 ? "remains" : "remain";
+                const remainPlural = boostsNeeded === 1 ? "Remains" : "Remain";
                 tagStatusLine = `<:no_boost:1463260278241362086> **${boostsNeeded} ${plural} ${remainPlural}**`;
             } else {
                 // 🔍 CHECK 2: Does the server have the Clan feature?

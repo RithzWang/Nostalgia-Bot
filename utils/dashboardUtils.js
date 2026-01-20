@@ -31,7 +31,6 @@ async function runRoleUpdates(client) {
                 const userTagData = member.user.primaryGuild;
                 const hasRole = member.roles.cache.has(role.id);
 
-                // Check Official Identity
                 const isWearingTag = userTagData && 
                                      userTagData.identityGuildId === serverData.guildId &&
                                      userTagData.identityEnabled === true;
@@ -63,8 +62,8 @@ async function generateDashboardPayload(client) {
         const memberCount = guild ? guild.memberCount : 0;
         totalNetworkMembers += memberCount;
         
-        let displayTagCount = "`Unavailable`";
         let displayTagText = data.tagText || "None";
+        let tagStatusLine = ""; // We will build the entire line dynamically
 
         if (guild) {
             // 🔍 CHECK 1: Boost Level Requirement (Min 3 Boosts)
@@ -72,30 +71,32 @@ async function generateDashboardPayload(client) {
             const boostsNeeded = 3 - boostCount;
 
             if (boostsNeeded > 0) {
-                // Grammar Logic: "1 boost remains" vs "2 boosts remain"
-                if (boostsNeeded === 1) {
-                    displayTagCount = "`1 boost remains`";
-                } else {
-                    displayTagCount = `\`${boostsNeeded} boosts remain\``;
-                }
+                // 🔴 Case 1: Not enough boosts
+                const plural = boostsNeeded === 1 ? "Boost" : "Boosts";
+                const remainPlural = boostsNeeded === 1 ? "remains" : "remain";
+                tagStatusLine = `<:no_boost:1463260278241362086> **${boostsNeeded} ${plural} ${remainPlural}**`;
             } else {
                 // 🔍 CHECK 2: Does the server have the Clan feature?
-                // We check for 'CLAN' or 'GUILD_TAGS'.
                 const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS');
 
                 if (!hasClanFeature) {
-                    displayTagCount = "Not Supported";
-                } else if (data.roleId) {
-                    const role = guild.roles.cache.get(data.roleId);
-                    if (role) {
-                        displayTagCount = ${role.members.size};
-                    } else {
-                        displayTagCount = "Role Missing";
-                    }
+                    // 🟡 Case 2: Boosted, but Tag feature not enabled
+                    tagStatusLine = `<:no_tag:1463260221412605994> **Not Enabled**`;
                 } else {
-                    displayTagCount = "Setup Required";
+                    // 🟢 Case 3: Fully Operational (Count Real Tag Wearers)
+                    const tagWearers = guild.members.cache.filter(member => {
+                        const identity = member.user.primaryGuild;
+                        return identity && 
+                               identity.identityGuildId === data.guildId &&
+                               identity.identityEnabled === true;
+                    });
+                    
+                    tagStatusLine = `<:greysword:1462853724824404069> **Tag Users:** ${tagWearers.size}`;
                 }
             }
+        } else {
+            // Fallback if bot is not in the server
+            tagStatusLine = `<:no_tag:1463260221412605994> **Not Connected**`;
         }
 
         const section = new SectionBuilder()
@@ -112,7 +113,7 @@ async function generateDashboardPayload(client) {
                         `## [${data.displayName}](${data.inviteLink})\n` +
                         `**<:sparkles:1462851309219872841> Server Tag:** ${displayTagText}\n` +
                         `**<:members:1462851249836654592> Members:** ${memberCount}\n` +
-                        `**<:greysword:1462853724824404069> Tag Users:** ${displayTagCount}`
+                        `${tagStatusLine}` // 👈 Replaces the old static line
                     )
             );
         serverSections.push(section);
@@ -120,7 +121,7 @@ async function generateDashboardPayload(client) {
 
     const nextUpdateUnix = Math.floor((Date.now() + 60 * 1000) / 1000);
     
-    // 2. Create the Header Section (Text + Thumbnail)
+    // 2. Create the Header
     const PERMANENT_IMAGE_URL = "https://cdn.discordapp.com/attachments/853503167706693632/1463227084817039558/A2-Q_20260121004151.png?ex=69710fea&is=696fbe6a&hm=77aab04999980ef14e5e3d51329b20f84a2fd3e01046bd93d16ac71be4410ef9&"; 
 
     const headerSection = new SectionBuilder()

@@ -101,7 +101,7 @@ async function generateDashboardPayload(client) {
     
     // 2. Create the Header Section (Text + Thumbnail)
     // ⚠️ Ensure this link is permanent (e.g., Imgur) or it will expire in 24h
-    const PERMANENT_IMAGE_URL = "https://cdn.discordapp.com/attachments/853503167706693632/1463148760866750560/Untitled206_20260120193001.png?ex=6970c6f8&is=696f7578&hm=a6599d4f5977662dde83dcd1824493dededddb90fc9b7b9d918918b637562727&"; 
+    const PERMANENT_IMAGE_URL = "https://cdn.discordapp.com/attachments/853503167706693632/1463227084817039558/A2-Q_20260121004151.png?ex=69710fea&is=696fbe6a&hm=77aab04999980ef14e5e3d51329b20f84a2fd3e01046bd93d16ac71be4410ef9&"; 
 
     const headerSection = new SectionBuilder()
         .addTextDisplayComponents(

@@ -6,45 +6,78 @@ const {
 const TrackedServer = require('../src/models/TrackedServerSchema');
 const DashboardLocation = require('../src/models/DashboardLocationSchema');
 
+// 🔒 REPLACE THIS WITH YOUR MAIN SERVER ID (The "Hub" where roles are added)
+const MAIN_GUILD_ID = '837741275603009626'; // <--- PUT YOUR MAIN SERVER ID HERE
+
 // ==========================================
-// 1. ROLE MANAGER
+// 1. ROLE MANAGER (UPDATED FOR HUB SERVER)
 // ==========================================
 async function runRoleUpdates(client) {
-    const servers = await TrackedServer.find();
+    // 1. Get the Main Hub Server
+    const mainGuild = client.guilds.cache.get(MAIN_GUILD_ID);
+    if (!mainGuild) return console.log('[Role Manager] ❌ Bot is not in the Main Server defined!');
+
+    // 2. Load all tracked servers (to map Tag IDs -> Role IDs)
+    const trackedServers = await TrackedServer.find();
     
-    for (const serverData of servers) {
-        if (!serverData.roleId) continue;
+    // 3. Create a quick lookup map: "GuildID" -> "RoleID"
+    // This lets us instantly know which role to give based on the tag they are wearing
+    const tagMap = new Map();
+    for (const server of trackedServers) {
+        if (server.roleId) {
+            tagMap.set(server.guildId, server.roleId);
+        }
+    }
 
-        const guild = client.guilds.cache.get(serverData.guildId);
-        if (!guild) continue; 
+    try {
+        // 4. Force fetch all members in the Main Server to ensure tag data is fresh
+        await mainGuild.members.fetch({ force: true });
 
-        try {
-            const role = guild.roles.cache.get(serverData.roleId);
-            if (!role) continue; 
+        // 5. Loop through every member in your Main Server
+        for (const [memberId, member] of mainGuild.members.cache) {
+            if (member.user.bot) continue;
 
-            // Force fetch to ensure 'primaryGuild' data is fresh
-            await guild.members.fetch({ force: true });
+            // Get their official Primary Guild data
+            const identity = member.user.primaryGuild; //
 
-            for (const [id, member] of guild.members.cache) {
-                if (member.user.bot) continue;
+            // Check if they are officially wearing a tag enabled
+            const isWearingTag = identity && identity.identityEnabled === true;
+            
+            // If wearing a tag, which server is it from?
+            const tagSourceGuildId = isWearingTag ? identity.identityGuildId : null;
+            
+            // Does that source server correspond to a Role in our database?
+            const targetRoleId = tagSourceGuildId ? tagMap.get(tagSourceGuildId) : null;
 
-                const userTagData = member.user.primaryGuild;
-                const hasRole = member.roles.cache.has(role.id);
-
-                const isWearingTag = userTagData && 
-                                     userTagData.identityGuildId === serverData.guildId &&
-                                     userTagData.identityEnabled === true;
-
-                if (isWearingTag && !hasRole) {
-                    await member.roles.add(role).catch(() => {});
+            // --- SYNC ROLES ---
+            
+            // A. If they should have a role (Target Role Found)
+            if (targetRoleId) {
+                const role = mainGuild.roles.cache.get(targetRoleId);
+                
+                if (role && !member.roles.cache.has(targetRoleId)) {
+                    // Give the role
+                    await member.roles.add(role).catch(e => console.error(`[Role Manager] Failed to add role: ${e.message}`));
                 }
-                else if (!isWearingTag && hasRole) {
-                    await member.roles.remove(role).catch(() => {});
+
+                // (Optional) Remove OTHER clan roles? 
+                // If you want them to only have 1 clan role at a time, you can loop through 'tagMap.values()' here and remove others.
+            }
+
+            // B. (Optional) If they disable their tag, should we remove the role?
+            // This loop checks if they have a role they shouldn't have anymore
+            /*
+            for (const [sId, rId] of tagMap.entries()) {
+                // If they have a role (rId) BUT their current tag (tagSourceGuildId) does not match the server (sId)
+                if (member.roles.cache.has(rId) && tagSourceGuildId !== sId) {
+                    const roleToRemove = mainGuild.roles.cache.get(rId);
+                    if (roleToRemove) await member.roles.remove(roleToRemove).catch(() => {});
                 }
             }
-        } catch (e) {
-            console.error(`[Role Manager] Error in ${serverData.displayName}:`, e.message);
+            */
         }
+    } catch (e) {
+        console.error(`[Role Manager] Error processing Hub updates:`, e.message);
     }
 }
 
@@ -56,14 +89,13 @@ async function generateDashboardPayload(client) {
     let totalNetworkMembers = 0;
     const serverSections = [];
 
-    // 1. Calculate Data & Build Server List
     for (const data of servers) {
         const guild = client.guilds.cache.get(data.guildId);
         const memberCount = guild ? guild.memberCount : 0;
         totalNetworkMembers += memberCount;
         
         let displayTagText = data.tagText || "None";
-        let tagStatusLine = ""; // We will build the entire line dynamically
+        let tagStatusLine = ""; 
 
         if (guild) {
             // 🔍 CHECK 1: Boost Level Requirement (Min 3 Boosts)
@@ -71,7 +103,6 @@ async function generateDashboardPayload(client) {
             const boostsNeeded = 3 - boostCount;
 
             if (boostsNeeded > 0) {
-                // 🔴 Case 1: Not enough boosts
                 const plural = boostsNeeded === 1 ? "Boost" : "Boosts";
                 const remainPlural = boostsNeeded === 1 ? "remains" : "remain";
                 tagStatusLine = `<:no_boost:1463260278241362086> **${boostsNeeded} ${plural} ${remainPlural}**`;
@@ -80,10 +111,10 @@ async function generateDashboardPayload(client) {
                 const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS');
 
                 if (!hasClanFeature) {
-                    // 🟡 Case 2: Boosted, but Tag feature not enabled
-                    tagStatusLine = `<:no_tag:1463260221412605994> **Not Enabled**`;
+                    tagStatusLine = `<:no_tag:1463260221412605994> **__Not Enabled__**`;
                 } else {
-                    // 🟢 Case 3: Fully Operational (Count Real Tag Wearers)
+                    // 🟢 COUNT REAL TAG WEARERS (Global Strength)
+                    // We check the actual clan server to see how many people are representing it globally
                     const tagWearers = guild.members.cache.filter(member => {
                         const identity = member.user.primaryGuild;
                         return identity && 
@@ -95,8 +126,7 @@ async function generateDashboardPayload(client) {
                 }
             }
         } else {
-            // Fallback if bot is not in the server
-            tagStatusLine = `<:no_tag:1463260221412605994> **Not Connected**`;
+            tagStatusLine = `<:no_tag:1463260221412605994> **__Not Connected__**`;
         }
 
         const section = new SectionBuilder()
@@ -113,7 +143,7 @@ async function generateDashboardPayload(client) {
                         `## [${data.displayName}](${data.inviteLink})\n` +
                         `**<:sparkles:1462851309219872841> Server Tag:** ${displayTagText}\n` +
                         `**<:members:1462851249836654592> Members:** ${memberCount}\n` +
-                        `${tagStatusLine}` // 👈 Replaces the old static line
+                        `${tagStatusLine}`
                     )
             );
         serverSections.push(section);
@@ -121,7 +151,7 @@ async function generateDashboardPayload(client) {
 
     const nextUpdateUnix = Math.floor((Date.now() + 60 * 1000) / 1000);
     
-    // 2. Create the Header
+    // Header
     const PERMANENT_IMAGE_URL = "https://cdn.discordapp.com/attachments/853503167706693632/1463227084817039558/A2-Q_20260121004151.png?ex=69710fea&is=696fbe6a&hm=77aab04999980ef14e5e3d51329b20f84a2fd3e01046bd93d16ac71be4410ef9&"; 
 
     const headerSection = new SectionBuilder()

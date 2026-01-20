@@ -6,23 +6,20 @@ const {
 const TrackedServer = require('../src/models/TrackedServerSchema');
 const DashboardLocation = require('../src/models/DashboardLocationSchema');
 
-// 🔒 REPLACE THIS WITH YOUR MAIN SERVER ID (The "Hub" where roles are added)
+// 🔒 REPLACE THIS WITH YOUR MAIN SERVER ID
 const MAIN_GUILD_ID = '1456197054782111756'; 
 
 // ==========================================
-// 1. ROLE MANAGER (ADD + REMOVE)
+// 1. ROLE MANAGER
 // ==========================================
 async function runRoleUpdates(client) {
-    // 1. Get the Main Hub Server
     const mainGuild = client.guilds.cache.get(MAIN_GUILD_ID);
     if (!mainGuild) return console.log('[Role Manager] ❌ Bot is not in the Main Server defined!');
 
     const trackedServers = await TrackedServer.find();
     
-    // 2. Create Lookup Maps
-    // Map: GuildID -> RoleID (For Adding)
+    // Create Lookup Maps
     const tagToRoleMap = new Map();
-    // Map: RoleID -> GuildID (For Removing)
     const roleToGuildMap = new Map();
 
     for (const server of trackedServers) {
@@ -40,35 +37,23 @@ async function runRoleUpdates(client) {
 
             const identity = member.user.primaryGuild; 
             const isTagEnabled = identity && identity.identityEnabled === true;
-            
-            // The Server ID of the tag they are currently wearing (or null)
             const currentTagGuildId = isTagEnabled ? identity.identityGuildId : null;
 
-            // ---------------------------------------------------------
-            // A. ADD ROLE (If they wear a tracked tag)
-            // ---------------------------------------------------------
+            // A. ADD ROLE
             if (currentTagGuildId && tagToRoleMap.has(currentTagGuildId)) {
                 const targetRoleId = tagToRoleMap.get(currentTagGuildId);
                 const role = mainGuild.roles.cache.get(targetRoleId);
-
                 if (role && !member.roles.cache.has(targetRoleId)) {
                     await member.roles.add(role).catch(() => {});
                 }
             }
 
-            // ---------------------------------------------------------
-            // B. REMOVE ROLE (If they stopped wearing the matching tag)
-            // ---------------------------------------------------------
-            // We check every tracked role. If they have the role, but their 
-            // CURRENT tag does not match that role's source server -> Remove it.
+            // B. REMOVE ROLE
             for (const [rId, sourceGuildId] of roleToGuildMap.entries()) {
                 if (member.roles.cache.has(rId)) {
-                    // If the tag they are wearing is NOT the one required for this role
                     if (currentTagGuildId !== sourceGuildId) {
                         const roleToRemove = mainGuild.roles.cache.get(rId);
-                        if (roleToRemove) {
-                            await member.roles.remove(roleToRemove).catch(() => {});
-                        }
+                        if (roleToRemove) await member.roles.remove(roleToRemove).catch(() => {});
                     }
                 }
             }
@@ -83,7 +68,11 @@ async function runRoleUpdates(client) {
 // ==========================================
 async function generateDashboardPayload(client) {
     const servers = await TrackedServer.find();
+    
+    // 📊 Counters
     let totalNetworkMembers = 0;
+    let totalTagUsers = 0; // New Counter
+    
     const serverSections = [];
 
     for (const data of servers) {
@@ -95,7 +84,23 @@ async function generateDashboardPayload(client) {
         let tagStatusLine = ""; 
 
         if (guild) {
-            // 🔍 CHECK 1: Boost Level Requirement (Min 3 Boosts)
+            // 🔢 Calculate Tag Users for this server
+            // We calculate this first so we can add it to the TOTAL regardless of boost status
+            const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS');
+            let currentServerTagCount = 0;
+
+            if (hasClanFeature) {
+                const tagWearers = guild.members.cache.filter(member => {
+                    const identity = member.user.primaryGuild;
+                    return identity && 
+                           identity.identityGuildId === data.guildId &&
+                           identity.identityEnabled === true;
+                });
+                currentServerTagCount = tagWearers.size;
+                totalTagUsers += currentServerTagCount; // Add to global total
+            }
+
+            // 🔍 CHECK 1: Boost Level (Min 3)
             const boostCount = guild.premiumSubscriptionCount || 0;
             const boostsNeeded = 3 - boostCount;
 
@@ -104,21 +109,12 @@ async function generateDashboardPayload(client) {
                 const remainPlural = boostsNeeded === 1 ? "Remains" : "Remain";
                 tagStatusLine = `<:no_boost:1463260278241362086> **${boostsNeeded} ${plural} ${remainPlural}**`;
             } else {
-                // 🔍 CHECK 2: Does the server have the Clan feature?
-                const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS');
-
+                // 🔍 CHECK 2: Feature Enabled?
                 if (!hasClanFeature) {
                     tagStatusLine = `<:no_tag:1463260221412605994> **Not Enabled**`;
                 } else {
-                    // 🟢 COUNT REAL TAG WEARERS (Global Strength)
-                    const tagWearers = guild.members.cache.filter(member => {
-                        const identity = member.user.primaryGuild;
-                        return identity && 
-                               identity.identityGuildId === data.guildId &&
-                               identity.identityEnabled === true;
-                    });
-                    
-                    tagStatusLine = `<:greysword:1462853724824404069> **Tag Users:** ${tagWearers.size}`;
+                    // 🟢 Show Count
+                    tagStatusLine = `<:greysword:1462853724824404069> **Tag Users:** ${currentServerTagCount}`;
                 }
             }
         } else {
@@ -153,7 +149,11 @@ async function generateDashboardPayload(client) {
     const headerSection = new SectionBuilder()
         .addTextDisplayComponents(
             new TextDisplayBuilder()
-                .setContent(`# A2-Qabīlatān\n Total Members : ${totalNetworkMembers}`)
+                .setContent(
+                    `# A2-Qabīlatān\n` +
+                    `Total Members : ${totalNetworkMembers}\n` + 
+                    `Total Tag Users : ${totalTagUsers}` // 👈 NEW LINE ADDED HERE
+                )
         )
         .setThumbnailAccessory(
             new ThumbnailBuilder().setURL(PERMANENT_IMAGE_URL)

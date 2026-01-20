@@ -198,13 +198,15 @@ client.on('guildMemberAdd', async (member) => {
     const rolesToAdd = ['1456238105345527932', '1456197055092625573'];
     try { 
         await member.roles.add(rolesToAdd); 
-        setTimeout(() => member.setNickname(`🌱 • ${member.displayName}`.substring(0, 32)), 5000);
+        setTimeout(() => member.setNickname(`🌱 • ${member.globalName}`.substring(0, 32)), 5000);
     } catch (e) {}
 
     try {
         const newInvites = await member.guild.invites.fetch().catch(() => new Collection());
         let usedInvite = newInvites.find(inv => inv.uses > (invitesCache.get(inv.code) || 0));
         newInvites.each(inv => invitesCache.set(inv.code, inv.uses));
+
+        const displayName = member.user.globalName || member.user.username;
 
         const inviterName = usedInvite?.inviter ? usedInvite.inviter.username : 'Unknown';
         const inviterId = usedInvite?.inviter ? usedInvite.inviter.id : null;
@@ -245,7 +247,7 @@ client.on('guildMemberAdd', async (member) => {
             )
             .addMediaGalleryComponents((gallery) => 
                 gallery.addItems((item) => 
-                    item.setURL("attachment://welcome-image.png").setDescription(`${member.user.globalName} (${member.user.username})`)
+                    item.setURL("attachment://welcome-image.png").setDescription(`${displayName} (${member.user.username})`)
                 )
             );
 

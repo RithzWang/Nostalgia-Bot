@@ -37,6 +37,8 @@ module.exports = {
 
         try {
             const member = interaction.options.getMember('target') || interaction.member;
+
+            const displayName = member.user.globalName || member.user.username;
             
             // 2. Retrieve Mock Colors
             const mockPrimary = interaction.options.getString('mock_primary');
@@ -105,7 +107,7 @@ module.exports = {
                 )
                 .addMediaGalleryComponents((gallery) => 
                     gallery.addItems((item) => 
-                        item.setURL("attachment://welcome-image.png").setDescription(`${member.user.globalName} (${member.user.username})`)
+                        item.setURL("attachment://welcome-image.png").setDescription(`${displayName} (${member.user.username})`)
                     )
                 );
 

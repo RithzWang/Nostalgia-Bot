@@ -7,7 +7,7 @@ const TrackedServer = require('../src/models/TrackedServerSchema');
 const DashboardLocation = require('../src/models/DashboardLocationSchema');
 
 // 🔒 REPLACE THIS WITH YOUR MAIN SERVER ID (The "Hub" where roles are added)
-const MAIN_GUILD_ID = '837741275603009626'; 
+const MAIN_GUILD_ID = '1456197054782111756'; 
 
 // ==========================================
 // 1. ROLE MANAGER (ADD + REMOVE)

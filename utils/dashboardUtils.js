@@ -107,18 +107,18 @@ async function generateDashboardPayload(client) {
             if (boostsNeeded > 0) {
                 const plural = boostsNeeded === 1 ? "Boost" : "Boosts";
                 const remainPlural = boostsNeeded === 1 ? "Remains" : "Remain";
-                tagStatusLine = `<:no_boost:1463260278241362086> **${boostsNeeded} ${plural} ${remainPlural}**`;
+                tagStatusLine = `<:no_boost:1463272235056889917> **${boostsNeeded} ${plural} ${remainPlural}**`;
             } else {
                 // 🔍 CHECK 2: Feature Enabled?
                 if (!hasClanFeature) {
-                    tagStatusLine = `<:no_tag:1463260221412605994> **Not Enabled**`;
+                    tagStatusLine = `<:no_tag:1463272172201050336> **Not Enabled**`;
                 } else {
                     // 🟢 Show Count
                     tagStatusLine = `<:greysword:1462853724824404069> **Tag Users:** ${currentServerTagCount}`;
                 }
             }
         } else {
-            tagStatusLine = `<:no_tag:1463260221412605994> **Not Connected**`;
+            tagStatusLine = `<:no_tag:1463272172201050336> **Not Connected**`;
         }
 
         const section = new SectionBuilder()

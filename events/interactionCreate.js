@@ -5,6 +5,7 @@ const {
     ButtonStyle, 
     MessageFlags, 
     ModalBuilder, 
+    ThumbnailBuilder,
     TextInputBuilder, 
     TextInputStyle,
     Colors,

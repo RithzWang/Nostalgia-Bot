@@ -35,7 +35,8 @@ const config = require("./config.json");
 // 🆕 GLOBAL DASHBOARD IMPORTS
 // ==========================================
 const DashboardLocation = require('./src/models/DashboardLocationSchema');
-const { generateDashboardPayload, runRoleUpdates } = require('./utils/dashboardUtils');
+// 👇 CHANGE THIS LINE (Added runGatekeeper)
+const { generateDashboardPayload, runRoleUpdates, runGatekeeper } = require('./utils/dashboardUtils');
 
 const { prefix, serverID, welcomeLog, roleupdateLog, roleforLog, colourEmbed } = config;
 let roleupdateMessageID = config.roleupdateMessageID || null;
@@ -149,13 +150,16 @@ client.on('clientReady', async () => {
     }, 5000); 
 
     // ====================================================
-    // 🌍 GLOBAL DASHBOARD CONTROLLER (3 MINS)
+    // 🌍 GLOBAL DASHBOARD CONTROLLER (1 MIN)
     // ====================================================
     async function updateAllDashboards() {
         console.log('[Dashboard] Starting Global Update Cycle...');
 
         // 1. Run Role Assignments
         await runRoleUpdates(client);
+
+        // 👇 NEW: Run Gatekeeper (Scans & Kicks users not in Main Server)
+        await runGatekeeper(client);
 
         // 2. Generate Fresh UI
         const payload = await generateDashboardPayload(client);
@@ -185,7 +189,7 @@ client.on('clientReady', async () => {
     // A. Run immediately on startup
     updateAllDashboards();
 
-    // B. Run every 3 minutes (changed from 5)
+    // B. Run every 1 minute (to ensure Gatekeeper checks frequently)
     setInterval(updateAllDashboards, 60 * 1000);
 });
 

@@ -151,8 +151,8 @@ async function generateDashboardPayload(client) {
             new TextDisplayBuilder()
                 .setContent(
                     `# A2-Qabīlatān\n` +
-                    `Total Members : ${totalNetworkMembers}\n` + 
-                    `Total Tag Users : ${totalTagUsers}` // 👈 NEW LINE ADDED HERE
+                    `\`\`\`\nTotal Members : ${totalNetworkMembers}\n` + 
+                    `Total Tag Users : ${totalTagUsers}\`\`\`` // 👈 NEW LINE ADDED HERE
                 )
         )
         .setThumbnailAccessory(

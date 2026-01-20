@@ -84,16 +84,16 @@ async function generateDashboardPayload(client) {
                 const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS');
 
                 if (!hasClanFeature) {
-                    displayTagCount = "`Not Supported`";
+                    displayTagCount = "Not Supported";
                 } else if (data.roleId) {
                     const role = guild.roles.cache.get(data.roleId);
                     if (role) {
-                        displayTagCount = `${role.members.size}`;
+                        displayTagCount = ${role.members.size};
                     } else {
-                        displayTagCount = "`Role Missing`";
+                        displayTagCount = "Role Missing";
                     }
                 } else {
-                    displayTagCount = "`Setup Required`";
+                    displayTagCount = "Setup Required";
                 }
             }
         }

@@ -93,7 +93,8 @@ module.exports = {
                 });
 
                 await message.edit(renderFAQ(newFaqData));
-                return interaction.editReply(`<:yes:1297814648417943565> FAQ Panel linked in ${targetChannel}.`);
+                await interaction.editReply(`<:yes:1297814648417943565> FAQ Panel linked in ${targetChannel}.`);
+                return; // STOP EXECUTION HERE
             }
 
             // --- CHECK: Ensure FAQ exists ---
@@ -135,24 +136,37 @@ module.exports = {
 
                 await interaction.showModal(modal);
 
-                const submitted = await interaction.awaitModalSubmit({
-                    time: 300000,
-                    filter: i => i.user.id === interaction.user.id && i.customId === 'faq_add_modal'
-                }).catch(() => null);
+                // Isolate Modal Logic in its own try/catch to prevent ghost errors
+                try {
+                    const submitted = await interaction.awaitModalSubmit({
+                        time: 300000,
+                        filter: i => i.user.id === interaction.user.id && i.customId === 'faq_add_modal'
+                    });
 
-                if (!submitted) return;
+                    // Defer immediately to buy time
+                    await submitted.deferReply({ flags: MessageFlags.Ephemeral });
 
-                await submitted.deferReply({ flags: MessageFlags.Ephemeral });
+                    const question = submitted.fields.getTextInputValue('question');
+                    const answer = submitted.fields.getTextInputValue('answer');
 
-                const question = submitted.fields.getTextInputValue('question');
-                const answer = submitted.fields.getTextInputValue('answer');
+                    faqEntry.questions.push({ question, answer });
+                    await faqEntry.save();
 
-                faqEntry.questions.push({ question, answer });
-                await faqEntry.save();
-
-                const success = await refreshFAQMessage(interaction, faqEntry);
-                if (success) await submitted.editReply(`<:yes:1297814648417943565> Added question: **${question}**`);
-                else await submitted.editReply(`<:no:1297814819105144862> Database updated, but message edit failed.`);
+                    const success = await refreshFAQMessage(interaction, faqEntry);
+                    
+                    if (success) {
+                        // We add .catch here. If the message sends but the API response is slow, 
+                        // it throws "Unknown Interaction". We swallow that error because the DB save worked.
+                        await submitted.editReply(`<:yes:1297814648417943565> Added question: **${question}**`)
+                            .catch(e => console.log("Confirmation sent but interaction closed (safe to ignore)."));
+                    } else {
+                        await submitted.editReply(`<:no:1297814819105144862> Database updated, but message edit failed.`);
+                    }
+                } catch (innerErr) {
+                    if (innerErr.code === 'InteractionCollectorError') return; // Timeout is fine
+                    console.error("Error in Modal Add:", innerErr);
+                }
+                return; // STOP EXECUTION HERE
             }
 
             // -----------------------------------------------------
@@ -163,7 +177,6 @@ module.exports = {
                     return interaction.reply({ content: `<:no:1297814819105144862> No questions to edit.`, flags: MessageFlags.Ephemeral });
                 }
 
-                // 1. Build Select Menu (Single Select for Edit)
                 const options = faqEntry.questions.slice(0, 25).map((q, index) => 
                     new StringSelectMenuOptionBuilder()
                         .setLabel(q.question.substring(0, 100))
@@ -175,7 +188,6 @@ module.exports = {
                     .setPlaceholder('Click to select a question')
                     .addOptions(options);
 
-                // 2. Create CONTAINER Prompt
                 const container = new ContainerBuilder()
                     .setAccentColor(0x888888)
                     .addTextDisplayComponents(t => t.setContent('### Which question would you like to edit?'))
@@ -187,7 +199,6 @@ module.exports = {
                     flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral
                 });
 
-                // 3. Wait for Selection
                 const selection = await response.awaitMessageComponent({
                     componentType: ComponentType.StringSelect,
                     time: 60000
@@ -195,7 +206,6 @@ module.exports = {
 
                 if (!selection) return interaction.deleteReply().catch(() => {});
 
-                // 4. Show Modal
                 const index = parseInt(selection.values[0]);
                 const targetQ = faqEntry.questions[index];
 
@@ -224,23 +234,26 @@ module.exports = {
 
                 await selection.showModal(modal);
 
-                // 5. Wait for Submit
-                const submitted = await selection.awaitModalSubmit({
-                    time: 300000,
-                    filter: i => i.user.id === interaction.user.id
-                }).catch(() => null);
+                try {
+                    const submitted = await selection.awaitModalSubmit({
+                        time: 300000,
+                        filter: i => i.user.id === interaction.user.id
+                    });
 
-                if (!submitted) return;
+                    await submitted.deferReply({ flags: MessageFlags.Ephemeral });
 
-                await submitted.deferReply({ flags: MessageFlags.Ephemeral });
-
-                faqEntry.questions[index].question = submitted.fields.getTextInputValue('question');
-                faqEntry.questions[index].answer = submitted.fields.getTextInputValue('answer');
-                
-                await faqEntry.save();
-                await refreshFAQMessage(interaction, faqEntry);
-                
-                await submitted.editReply(`<:yes:1297814648417943565> Question updated successfully.`);
+                    faqEntry.questions[index].question = submitted.fields.getTextInputValue('question');
+                    faqEntry.questions[index].answer = submitted.fields.getTextInputValue('answer');
+                    
+                    await faqEntry.save();
+                    await refreshFAQMessage(interaction, faqEntry);
+                    
+                    await submitted.editReply(`<:yes:1297814648417943565> Question updated successfully.`)
+                        .catch(() => {});
+                } catch (e) {
+                    console.error("Edit modal error:", e);
+                }
+                return; // STOP EXECUTION HERE
             }
 
             // -----------------------------------------------------
@@ -251,7 +264,6 @@ module.exports = {
                     return interaction.reply({ content: `<:no:1297814819105144862> No questions to remove.`, flags: MessageFlags.Ephemeral });
                 }
 
-                // 1. Build Select Menu (Multi-Select Enabled)
                 const options = faqEntry.questions.slice(0, 25).map((q, index) => 
                     new StringSelectMenuOptionBuilder()
                         .setLabel(q.question.substring(0, 100))
@@ -263,10 +275,9 @@ module.exports = {
                     .setCustomId('faq_remove_select')
                     .setPlaceholder('Choose questions to remove (Multiple allowed)')
                     .setMinValues(1)
-                    .setMaxValues(options.length) // Allow selecting all
+                    .setMaxValues(options.length) 
                     .addOptions(options);
 
-                // 2. Create CONTAINER Prompt
                 const container = new ContainerBuilder()
                     .setAccentColor(0x888888)
                     .addTextDisplayComponents(t => t.setContent('### Which question would you like to remove?'))
@@ -278,7 +289,6 @@ module.exports = {
                     flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral
                 });
 
-                // 3. Wait for Selection
                 const selection = await response.awaitMessageComponent({
                     componentType: ComponentType.StringSelect,
                     time: 60000
@@ -286,8 +296,9 @@ module.exports = {
 
                 if (!selection) return interaction.deleteReply().catch(() => {});
 
-                // 4. Process Deletion (Multi-Delete Logic)
-                // We must sort indices descending (e.g., [3, 0]) so deleting 3 doesn't shift 0
+                // Defer FIRST to prevent timeout during DB save
+                await selection.deferUpdate();
+
                 const indicesToRemove = selection.values
                     .map(v => parseInt(v))
                     .sort((a, b) => b - a);
@@ -299,23 +310,25 @@ module.exports = {
                 }
 
                 await faqEntry.save();
-
-                await selection.deferUpdate();
                 await refreshFAQMessage(interaction, faqEntry);
                 
                 await selection.editReply({ 
                     content: `<:yes:1297814648417943565> Successfully removed **${count}** question(s).`, 
                     components: [],
                     flags: MessageFlags.Ephemeral
-                });
+                }).catch(() => {});
+                
+                return; // STOP EXECUTION HERE
             }
 
         } catch (error) {
-            console.error(error);
+            console.error("Main Command Error:", error);
             if (!interaction.replied && !interaction.deferred) {
                 await interaction.reply({ content: `<:no:1297814819105144862> Error: ${error.message}`, flags: MessageFlags.Ephemeral });
             } else {
-                await interaction.followUp({ content: `<:no:1297814819105144862> Error: ${error.message}`, flags: MessageFlags.Ephemeral });
+                // Only send error if we really have to
+                await interaction.followUp({ content: `<:no:1297814819105144862> Error: ${error.message}`, flags: MessageFlags.Ephemeral })
+                    .catch(() => console.log("Could not send error follow-up (likely unknown interaction)"));
             }
         }
     }
@@ -344,7 +357,6 @@ const renderFAQ = (faqData) => {
     const now = moment().tz('Asia/Bangkok').format('DD/MM/YYYY');
 
     const container = new ContainerBuilder();
-        // .setAccentColor(0x0099ff); // Main FAQ Color (optional)
 
     // Header
     const headerText = new TextDisplayBuilder().setContent('## ❓ Frequently Asked Questions');

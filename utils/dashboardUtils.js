@@ -6,55 +6,14 @@ const {
 const TrackedServer = require('../src/models/TrackedServerSchema');
 const DashboardLocation = require('../src/models/DashboardLocationSchema');
 
-// ==========================================
-// 1. ROLE MANAGER
-// ==========================================
-async function runRoleUpdates(client) {
-    const servers = await TrackedServer.find();
-    
-    for (const serverData of servers) {
-        if (!serverData.roleId) continue;
+// [ ... runRoleUpdates function remains the same ... ]
 
-        const guild = client.guilds.cache.get(serverData.guildId);
-        if (!guild) continue; 
-
-        try {
-            const role = guild.roles.cache.get(serverData.roleId);
-            if (!role) continue; 
-
-            await guild.members.fetch({ force: true });
-
-            for (const [id, member] of guild.members.cache) {
-                if (member.user.bot) continue;
-
-                const userTagData = member.user.primaryGuild;
-                const hasRole = member.roles.cache.has(role.id);
-
-                const isWearingTag = userTagData && 
-                                     userTagData.identityGuildId === serverData.guildId &&
-                                     userTagData.identityEnabled === true;
-
-                if (isWearingTag && !hasRole) {
-                    await member.roles.add(role).catch(() => {});
-                }
-                else if (!isWearingTag && hasRole) {
-                    await member.roles.remove(role).catch(() => {});
-                }
-            }
-        } catch (e) {
-            console.error(`[Role Manager] Error in ${serverData.displayName}:`, e.message);
-        }
-    }
-}
-
-// ==========================================
-// 2. DASHBOARD UI GENERATOR
-// ==========================================
 async function generateDashboardPayload(client) {
     const servers = await TrackedServer.find();
     let totalNetworkMembers = 0;
     const serverSections = [];
 
+    // 1. Calculate Data & Build Server List
     for (const data of servers) {
         const guild = client.guilds.cache.get(data.guildId);
         const memberCount = guild ? guild.memberCount : 0;
@@ -62,7 +21,6 @@ async function generateDashboardPayload(client) {
         
         let tagUserCount = 0;
         let isRoleValid = false;
-
         if (guild && data.roleId) {
             const role = guild.roles.cache.get(data.roleId);
             if (role) {
@@ -94,20 +52,30 @@ async function generateDashboardPayload(client) {
         serverSections.push(section);
     }
 
-    // 👇 CHANGED: 1 Minute (60 * 1000)
     const nextUpdateUnix = Math.floor((Date.now() + 60 * 1000) / 1000);
+
+    // 2. Create the Header Section (Text + Thumbnail)
+    // ⚠️ REPLACE THIS URL WITH A PERMANENT ONE OR IT WILL BREAK TOMORROW
+    const PERMANENT_IMAGE_URL = "https://cdn.discordapp.com/attachments/853503167706693632/1463148760866750560/Untitled206_20260120193001.png?ex=6970c6f8&is=696f7578&hm=a6599d4f5977662dde83dcd1824493dededddb90fc9b7b9d918918b637562727&"; 
+
+    const headerSection = new SectionBuilder()
+        .addTextDisplayComponents(
+            new TextDisplayBuilder()
+                .setContent(`# A2-Qabīlatān – القبيلتان\n Total Members : ${totalNetworkMembers}`)
+        )
+        // ✅ Thumbnail goes HERE (inside the Section, not the Container)
+        .setThumbnailAccessory(
+            new ThumbnailBuilder().setURL(PERMANENT_IMAGE_URL)
+        );
     
+    // 3. Build Main Container
     const container = new ContainerBuilder()
         .setSpoiler(false)
-        .setThumbnailAccessory(
-                        new ThumbnailBuilder()
-                            .setURL("https://cdn.discordapp.com/attachments/853503167706693632/1463148760866750560/Untitled206_20260120193001.png?ex=6970c6f8&is=696f7578&hm=a6599d4f5977662dde83dcd1824493dededddb90fc9b7b9d918918b637562727&")
-                    );
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(`# A2-Qabīlatān – القبيلتان\n Total Members : ${totalNetworkMembers}`)
-        )
+        // Add the Header Section created above
+        .addSectionComponents(headerSection)
         .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true));
 
+    // 4. Add Server Sections
     for (let i = 0; i < serverSections.length; i++) {
         container.addSectionComponents(serverSections[i]);
         
@@ -120,6 +88,7 @@ async function generateDashboardPayload(client) {
         );
     }
 
+    // 5. Footer
     container.addTextDisplayComponents(
         new TextDisplayBuilder().setContent(`-# <a:loading:1447184742934909032> Next Update: <t:${nextUpdateUnix}:R>`)
     );
@@ -127,31 +96,6 @@ async function generateDashboardPayload(client) {
     return [container];
 }
 
-// ==========================================
-// 3. MASTER UPDATE FUNCTION
-// ==========================================
-async function updateAllDashboards(client) {
-    console.log('[Dashboard] Starting Global Update Cycle...');
-
-    await runRoleUpdates(client);
-    const payload = await generateDashboardPayload(client);
-    const locations = await DashboardLocation.find();
-    
-    for (const loc of locations) {
-        const channel = client.channels.cache.get(loc.channelId);
-        if (!channel) continue;
-
-        try {
-            const msg = await channel.messages.fetch(loc.messageId);
-            await msg.edit({ 
-                components: payload,
-                flags: [MessageFlags.IsComponentsV2]
-            });
-        } catch (e) {
-            console.log(`[Dashboard] Failed to update in Guild ${loc.guildId}: ${e.message}`);
-        }
-    }
-    if (locations.length > 0) console.log(`[Dashboard] Updated ${locations.length} dashboards.`);
-}
+// [ ... updateAllDashboards function remains the same ... ]
 
 module.exports = { runRoleUpdates, generateDashboardPayload, updateAllDashboards };

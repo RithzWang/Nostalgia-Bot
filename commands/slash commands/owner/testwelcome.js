@@ -105,7 +105,7 @@ module.exports = {
                 )
                 .addMediaGalleryComponents((gallery) => 
                     gallery.addItems((item) => 
-                        item.setURL("attachment://welcome-image.png").setDescription(`${member.user.globalName}’s info image`)
+                        item.setURL("attachment://welcome-image.png").setDescription(`${member.user.globalName} (${member.user.username})`)
                     )
                 );
 

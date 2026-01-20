@@ -6,12 +6,15 @@ const {
 const TrackedServer = require('../src/models/TrackedServerSchema');
 const DashboardLocation = require('../src/models/DashboardLocationSchema');
 
+// 👇 IMPORT THE GATEKEEPER LOGIC
+const { runGatekeeper } = require('./gatekeeperUtils');
+
 // 🔒 CONFIGURATION
 const MAIN_GUILD_ID = '1456197054782111756'; 
-const GLOBAL_TAG_ROLE_ID = '1462217123433545812'; // 👈 The Role for ANYONE wearing a valid tag
+const GLOBAL_TAG_ROLE_ID = '1462217123433545812'; 
 
 // ==========================================
-// 1. ROLE MANAGER
+// 1. ROLE MANAGER (Specific & Global)
 // ==========================================
 async function runRoleUpdates(client) {
     const mainGuild = client.guilds.cache.get(MAIN_GUILD_ID);
@@ -22,10 +25,10 @@ async function runRoleUpdates(client) {
     // Create Lookup Maps
     const tagToRoleMap = new Map();
     const roleToGuildMap = new Map();
-    const validTagServerIds = new Set(); // To check if they are wearing ANY valid tag
+    const validTagServerIds = new Set(); 
 
     for (const server of trackedServers) {
-        validTagServerIds.add(server.guildId); // Register valid server IDs
+        validTagServerIds.add(server.guildId); 
         if (server.roleId) {
             tagToRoleMap.set(server.guildId, server.roleId);
             roleToGuildMap.set(server.roleId, server.guildId);
@@ -46,11 +49,7 @@ async function runRoleUpdates(client) {
             // Flag: Is the user wearing a tag from ANY of our tracked servers?
             const isWearingAnyValidTag = currentTagGuildId && validTagServerIds.has(currentTagGuildId);
 
-            // ---------------------------------------------------------
             // A. MANAGE SPECIFIC SERVER ROLES
-            // ---------------------------------------------------------
-            
-            // 1. ADD Specific Role
             if (currentTagGuildId && tagToRoleMap.has(currentTagGuildId)) {
                 const targetRoleId = tagToRoleMap.get(currentTagGuildId);
                 const role = mainGuild.roles.cache.get(targetRoleId);
@@ -59,7 +58,7 @@ async function runRoleUpdates(client) {
                 }
             }
 
-            // 2. REMOVE Specific Roles (if mismatched)
+            // B. REMOVE Specific Roles (if mismatched)
             for (const [rId, sourceGuildId] of roleToGuildMap.entries()) {
                 if (member.roles.cache.has(rId)) {
                     if (currentTagGuildId !== sourceGuildId) {
@@ -69,18 +68,14 @@ async function runRoleUpdates(client) {
                 }
             }
 
-            // ---------------------------------------------------------
-            // B. MANAGE GLOBAL ROLE (The "Any Tag" Role)
-            // ---------------------------------------------------------
+            // C. MANAGE GLOBAL ROLE
             if (globalRole) {
                 const hasGlobalRole = member.roles.cache.has(GLOBAL_TAG_ROLE_ID);
 
                 if (isWearingAnyValidTag && !hasGlobalRole) {
-                    // ✅ Wear Tag -> Add Global Role
                     await member.roles.add(globalRole).catch(() => {});
                 } 
                 else if (!isWearingAnyValidTag && hasGlobalRole) {
-                    // ❌ No Tag (or wrong tag) -> Remove Global Role
                     await member.roles.remove(globalRole).catch(() => {});
                 }
             }
@@ -152,7 +147,7 @@ async function generateDashboardPayload(client) {
                 new ButtonBuilder()
                     .setStyle(ButtonStyle.Link)
                     .setLabel("Join Server")
-                    .setURL(data.inviteLink || "[https://discord.gg/](https://discord.gg/)")
+                    .setURL(data.inviteLink || "https://discord.gg/")
                     .setDisabled(!data.inviteLink)
             )
             .addTextDisplayComponents(
@@ -170,7 +165,7 @@ async function generateDashboardPayload(client) {
     const nextUpdateUnix = Math.floor((Date.now() + 60 * 1000) / 1000);
     
     // Header
-    const PERMANENT_IMAGE_URL = "[https://cdn.discordapp.com/attachments/853503167706693632/1463227084817039558/A2-Q_20260121004151.png?ex=69710fea&is=696fbe6a&hm=77aab04999980ef14e5e3d51329b20f84a2fd3e01046bd93d16ac71be4410ef9](https://cdn.discordapp.com/attachments/853503167706693632/1463227084817039558/A2-Q_20260121004151.png?ex=69710fea&is=696fbe6a&hm=77aab04999980ef14e5e3d51329b20f84a2fd3e01046bd93d16ac71be4410ef9)&"; 
+    const PERMANENT_IMAGE_URL = "https://cdn.discordapp.com/attachments/853503167706693632/1463227084817039558/A2-Q_20260121004151.png?ex=69710fea&is=696fbe6a&hm=77aab04999980ef14e5e3d51329b20f84a2fd3e01046bd93d16ac71be4410ef9&"; 
 
     const headerSection = new SectionBuilder()
         .addTextDisplayComponents(
@@ -210,12 +205,18 @@ async function generateDashboardPayload(client) {
 }
 
 // ==========================================
-// 3. MASTER UPDATE FUNCTION
+// 3. MASTER UPDATE FUNCTION (CONTROLLER)
 // ==========================================
 async function updateAllDashboards(client) {
     console.log('[Dashboard] Starting Global Update Cycle...');
 
+    // 1. Run Role Manager
     await runRoleUpdates(client);
+    
+    // 2. Run Gatekeeper (Imported Security Check)
+    await runGatekeeper(client);
+
+    // 3. Update Dashboard UI
     const payload = await generateDashboardPayload(client);
     const locations = await DashboardLocation.find();
     

@@ -7,74 +7,71 @@ const TrackedServer = require('../src/models/TrackedServerSchema');
 const DashboardLocation = require('../src/models/DashboardLocationSchema');
 
 // 🔒 REPLACE THIS WITH YOUR MAIN SERVER ID (The "Hub" where roles are added)
-const MAIN_GUILD_ID = '1456197054782111756'; // <--- PUT YOUR MAIN SERVER ID HERE
+const MAIN_GUILD_ID = '837741275603009626'; 
 
 // ==========================================
-// 1. ROLE MANAGER (UPDATED FOR HUB SERVER)
+// 1. ROLE MANAGER (ADD + REMOVE)
 // ==========================================
 async function runRoleUpdates(client) {
     // 1. Get the Main Hub Server
     const mainGuild = client.guilds.cache.get(MAIN_GUILD_ID);
     if (!mainGuild) return console.log('[Role Manager] ❌ Bot is not in the Main Server defined!');
 
-    // 2. Load all tracked servers (to map Tag IDs -> Role IDs)
     const trackedServers = await TrackedServer.find();
     
-    // 3. Create a quick lookup map: "GuildID" -> "RoleID"
-    // This lets us instantly know which role to give based on the tag they are wearing
-    const tagMap = new Map();
+    // 2. Create Lookup Maps
+    // Map: GuildID -> RoleID (For Adding)
+    const tagToRoleMap = new Map();
+    // Map: RoleID -> GuildID (For Removing)
+    const roleToGuildMap = new Map();
+
     for (const server of trackedServers) {
         if (server.roleId) {
-            tagMap.set(server.guildId, server.roleId);
+            tagToRoleMap.set(server.guildId, server.roleId);
+            roleToGuildMap.set(server.roleId, server.guildId);
         }
     }
 
     try {
-        // 4. Force fetch all members in the Main Server to ensure tag data is fresh
         await mainGuild.members.fetch({ force: true });
 
-        // 5. Loop through every member in your Main Server
         for (const [memberId, member] of mainGuild.members.cache) {
             if (member.user.bot) continue;
 
-            // Get their official Primary Guild data
-            const identity = member.user.primaryGuild; //
+            const identity = member.user.primaryGuild; 
+            const isTagEnabled = identity && identity.identityEnabled === true;
+            
+            // The Server ID of the tag they are currently wearing (or null)
+            const currentTagGuildId = isTagEnabled ? identity.identityGuildId : null;
 
-            // Check if they are officially wearing a tag enabled
-            const isWearingTag = identity && identity.identityEnabled === true;
-            
-            // If wearing a tag, which server is it from?
-            const tagSourceGuildId = isWearingTag ? identity.identityGuildId : null;
-            
-            // Does that source server correspond to a Role in our database?
-            const targetRoleId = tagSourceGuildId ? tagMap.get(tagSourceGuildId) : null;
-
-            // --- SYNC ROLES ---
-            
-            // A. If they should have a role (Target Role Found)
-            if (targetRoleId) {
+            // ---------------------------------------------------------
+            // A. ADD ROLE (If they wear a tracked tag)
+            // ---------------------------------------------------------
+            if (currentTagGuildId && tagToRoleMap.has(currentTagGuildId)) {
+                const targetRoleId = tagToRoleMap.get(currentTagGuildId);
                 const role = mainGuild.roles.cache.get(targetRoleId);
-                
+
                 if (role && !member.roles.cache.has(targetRoleId)) {
-                    // Give the role
-                    await member.roles.add(role).catch(e => console.error(`[Role Manager] Failed to add role: ${e.message}`));
-                }
-
-                // (Optional) Remove OTHER clan roles? 
-                // If you want them to only have 1 clan role at a time, you can loop through 'tagMap.values()' here and remove others.
-            }
-
-            // B. (Optional) If they disable their tag, should we remove the role?
-            // This loop checks if they have a role they shouldn't have anymore
-            /*
-            for (const [sId, rId] of tagMap.entries()) {
-                // If they have a role (rId) BUT their current tag (tagSourceGuildId) does not match the server (sId)
-                if (member.roles.cache.has(rId) && tagSourceGuildId !== sId) {
-                    const roleToRemove = mainGuild.roles.cache.get(rId);
-                    if (roleToRemove) await member.roles.remove(roleToRemove).catch(() => {});
+                    await member.roles.add(role).catch(() => {});
                 }
             }
-            */
+
+            // ---------------------------------------------------------
+            // B. REMOVE ROLE (If they stopped wearing the matching tag)
+            // ---------------------------------------------------------
+            // We check every tracked role. If they have the role, but their 
+            // CURRENT tag does not match that role's source server -> Remove it.
+            for (const [rId, sourceGuildId] of roleToGuildMap.entries()) {
+                if (member.roles.cache.has(rId)) {
+                    // If the tag they are wearing is NOT the one required for this role
+                    if (currentTagGuildId !== sourceGuildId) {
+                        const roleToRemove = mainGuild.roles.cache.get(rId);
+                        if (roleToRemove) {
+                            await member.roles.remove(roleToRemove).catch(() => {});
+                        }
+                    }
+                }
+            }
         }
     } catch (e) {
         console.error(`[Role Manager] Error processing Hub updates:`, e.message);
@@ -111,10 +108,9 @@ async function generateDashboardPayload(client) {
                 const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS');
 
                 if (!hasClanFeature) {
-                    tagStatusLine = `<:no_tag:1463260221412605994> **__Not Enabled__**`;
+                    tagStatusLine = `<:no_tag:1463260221412605994> **Not Enabled**`;
                 } else {
                     // 🟢 COUNT REAL TAG WEARERS (Global Strength)
-                    // We check the actual clan server to see how many people are representing it globally
                     const tagWearers = guild.members.cache.filter(member => {
                         const identity = member.user.primaryGuild;
                         return identity && 
@@ -126,7 +122,7 @@ async function generateDashboardPayload(client) {
                 }
             }
         } else {
-            tagStatusLine = `<:no_tag:1463260221412605994> **__Not Connected__**`;
+            tagStatusLine = `<:no_tag:1463260221412605994> **Not Connected**`;
         }
 
         const section = new SectionBuilder()

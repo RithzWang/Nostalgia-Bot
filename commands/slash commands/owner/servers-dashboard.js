@@ -8,11 +8,13 @@ const TrackedServer = require('../../../src/models/TrackedServerSchema');
 const DashboardLocation = require('../../../src/models/DashboardLocationSchema');
 const { generateDashboardPayload, updateAllDashboards } = require('../../../utils/dashboardUtils');
 
+const OWNER_ID = '837741275603009626'; // 🔒 Bot Owner ID
+
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('our-servers')
         .setDescription('Manage the A2-Q Server Dashboard')
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator) // Keeps it hidden from regular members
         
         // 1. ENABLE
         .addSubcommand(sub => 
@@ -31,7 +33,7 @@ module.exports = {
             sub.setName('removeserver')
                 .setDescription('Remove a server from the global list'))
 
-        // 4. EDIT SERVER (Fixed: Uses Select Menu)
+        // 4. EDIT SERVER
         .addSubcommand(sub => 
             sub.setName('edit')
                 .setDescription('Edit details of an existing server'))
@@ -42,7 +44,13 @@ module.exports = {
                 .setDescription('Force update all dashboards immediately')),
 
     async execute(interaction) {
-        if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) return;
+        // 🔒 RESTRICT TO OWNER ONLY
+        if (interaction.user.id !== OWNER_ID) {
+            return interaction.reply({ 
+                content: '⛔ **Access Denied:** This command is restricted to the bot owner.', 
+                flags: MessageFlags.Ephemeral 
+            });
+        }
 
         const sub = interaction.options.getSubcommand();
 

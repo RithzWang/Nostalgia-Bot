@@ -63,19 +63,40 @@ async function generateDashboardPayload(client) {
         const memberCount = guild ? guild.memberCount : 0;
         totalNetworkMembers += memberCount;
         
-        let tagUserCount = 0;
-        let isRoleValid = false;
+        let displayTagCount = "`Unavailable`";
+        let displayTagText = data.tagText || "None";
 
-        if (guild && data.roleId) {
-            const role = guild.roles.cache.get(data.roleId);
-            if (role) {
-                tagUserCount = role.members.size; 
-                isRoleValid = true;
+        if (guild) {
+            // 🔍 CHECK 1: Boost Level Requirement (Min 3 Boosts)
+            const boostCount = guild.premiumSubscriptionCount || 0;
+            const boostsNeeded = 3 - boostCount;
+
+            if (boostsNeeded > 0) {
+                // Grammar Logic: "1 boost remains" vs "2 boosts remain"
+                if (boostsNeeded === 1) {
+                    displayTagCount = "`1 boost remains`";
+                } else {
+                    displayTagCount = `\`${boostsNeeded} boosts remain\``;
+                }
+            } else {
+                // 🔍 CHECK 2: Does the server have the Clan feature?
+                // We check for 'CLAN' or 'GUILD_TAGS'.
+                const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS');
+
+                if (!hasClanFeature) {
+                    displayTagCount = "`Not Supported`";
+                } else if (data.roleId) {
+                    const role = guild.roles.cache.get(data.roleId);
+                    if (role) {
+                        displayTagCount = `${role.members.size}`;
+                    } else {
+                        displayTagCount = "`Role Missing`";
+                    }
+                } else {
+                    displayTagCount = "`Setup Required`";
+                }
             }
         }
-
-        const displayTagCount = isRoleValid ? `${tagUserCount}` : "`not available yet`";
-        const displayTagText = data.tagText || "None";
 
         const section = new SectionBuilder()
             .setButtonAccessory(
@@ -100,7 +121,6 @@ async function generateDashboardPayload(client) {
     const nextUpdateUnix = Math.floor((Date.now() + 60 * 1000) / 1000);
     
     // 2. Create the Header Section (Text + Thumbnail)
-    // ⚠️ Ensure this link is permanent (e.g., Imgur) or it will expire in 24h
     const PERMANENT_IMAGE_URL = "https://cdn.discordapp.com/attachments/853503167706693632/1463227084817039558/A2-Q_20260121004151.png?ex=69710fea&is=696fbe6a&hm=77aab04999980ef14e5e3d51329b20f84a2fd3e01046bd93d16ac71be4410ef9&"; 
 
     const headerSection = new SectionBuilder()

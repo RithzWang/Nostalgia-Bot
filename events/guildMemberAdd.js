@@ -37,8 +37,7 @@ module.exports = {
         } else {
             // ❌ SCENARIO B: Not in Main Server (Warning)
             messageContent = `${member}, Welcome to **${member.guild.name}** server!\n\n` +
-                             `-# It seems like you have not joined our main server! Please join within 10 minutes or you will get kicked from **${member.guild.name}**\n` + // 👈 CHANGED TO 10 MINUTES
-                             `-# 🔗 **Join Main Server:** ${MAIN_SERVER_INVITE}`;
+                             `-# It seems like you have not joined our [main server](https://discord.gg/3pJPe9QUcs)! Please join within 10 minutes or you will get kicked from **${member.guild.name}**`;
         }
 
         // 4. Send Message

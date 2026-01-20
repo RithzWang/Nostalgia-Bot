@@ -10,7 +10,7 @@ const { generateDashboardPayload, updateAllDashboards } = require('../../../util
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('servers-dashboard')
+        .setName('our-servers')
         .setDescription('Manage the A2-Q Server Dashboard')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         

@@ -245,7 +245,7 @@ client.on('guildMemberAdd', async (member) => {
             )
             .addMediaGalleryComponents((gallery) => 
                 gallery.addItems((item) => 
-                    item.setURL("attachment://welcome-image.png")
+                    item.setURL("attachment://welcome-image.png").setDescription(`${member.user.globalName} (${member.user.username})`)
                 )
             );
 

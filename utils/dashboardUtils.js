@@ -106,7 +106,7 @@ async function generateDashboardPayload(client) {
     const headerSection = new SectionBuilder()
         .addTextDisplayComponents(
             new TextDisplayBuilder()
-                .setContent(`# A2-Qabīlatān – القبيلتان\n Total Members : ${totalNetworkMembers}`)
+                .setContent(`# A2-Qabīlatān\n Total Members : ${totalNetworkMembers}`)
         )
         .setThumbnailAccessory(
             new ThumbnailBuilder().setURL(PERMANENT_IMAGE_URL)

@@ -34,6 +34,10 @@ async function loadFonts() {
 const psRegularPath = path.join(FONT_DIR, 'Prima Sans Regular.otf');
     if (fs.existsSync(psRegularPath)) GlobalFonts.registerFromPath(psRegularPath, 'Prima Sans Regular');
 
+
+const timesBoldPath = path.join(FONT_DIR, 'Times New Roman Bold.ttf');
+    if (fs.existsSync(timesBoldPath)) GlobalFonts.registerFromPath(timesBoldPath, 'Times Bold');
+
     
     // 3. SF Pro SemiBold (Username) << NEW
     const sfProSemiPath = path.join(FONT_DIR, 'SF Pro - Semibold.otf');

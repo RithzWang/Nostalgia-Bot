@@ -172,7 +172,7 @@ async function generateDashboardPayload(client) {
             new TextDisplayBuilder()
                 .setContent(
                     `# A2-Qabīlatān\n` +
-                    `\`\`\`\nTotal Members : ${totalNetworkMembers}\n` + 
+                    `\`\`\`js\nTotal Members : ${totalNetworkMembers}\n` + 
                     `Total Tag Users : ${totalTagUsers}\`\`\``
                 )
         )

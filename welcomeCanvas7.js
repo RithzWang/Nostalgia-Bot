@@ -291,7 +291,7 @@ async function createWelcomeImage(member, themeColors = null) {
     let currentY = dim.height / 2 - 15;
     const displayName = user.globalName || user.username;
     
-    const fontStack = `"gg sans Bold", "Geeza Bold", "SFArabic", "Thonburi", "Apple Gothic", "Hiragino Sans", "Pingfang", "Apple Color Emoji", "Symbol", "Apple Symbols", "Noto Symbol", "Noto Symbol 2", "Noto Math", "Noto Hieroglyphs", "Noto Music", sans-serif`;
+    const fontStack = `"gg sans Bold", "Times Bold", "Thonburi", "Apple Gothic", "Hiragino Sans", "Pingfang", "Apple Color Emoji", "Symbol", "Apple Symbols", "Noto Symbol", "Noto Symbol 2", "Noto Math", "Noto Hieroglyphs", "Noto Music", sans-serif`;
     const baseDisplaySize = 115;
 
     ctx.font = `bold ${baseDisplaySize}px ${fontStack}`;

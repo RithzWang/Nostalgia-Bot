@@ -199,6 +199,8 @@ const { createWelcomeImage } = require('./welcomeCanvas6.js');
 client.on('guildMemberAdd', async (member) => {
     if (member.user.bot || member.guild.id !== serverID) return;
 
+   const displayName = member.user.globalName || member.user.username;
+
     const rolesToAdd = ['1456238105345527932', '1456197055092625573'];
     try { 
         await member.roles.add(rolesToAdd); 

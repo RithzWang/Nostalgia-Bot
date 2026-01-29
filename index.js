@@ -251,7 +251,7 @@ client.on('guildMemberAdd', async (member) => {
             )
             .addMediaGalleryComponents((gallery) => 
                 gallery.addItems((item) => 
-                    item.setURL("attachment://welcome-image.png").setDescription(`thank you ${displayName} for joining our server!`)
+                    item.setURL("attachment://welcome-image.png").setDescription(`${displayName} is here!`)
                 )
             );
 

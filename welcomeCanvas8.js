@@ -275,7 +275,7 @@ async function createWelcomeImage(member, themeColors = null) {
     const badgeImage = await loadImage('./pics/logo/A2-Q.png').catch(() => null);
     if (badgeImage) {
         const badgeWidth = 160; 
-        const badgeHeight = 96;
+        const badgeHeight = 98;
         const avatarCenterX = dim.margin + 30 + avatarRadius;
         const badgeX = avatarCenterX - badgeWidth;
         const badgeY = topOffset - (badgeHeight / 2) + 10;

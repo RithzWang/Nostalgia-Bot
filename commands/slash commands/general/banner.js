@@ -47,20 +47,11 @@ module.exports = {
                 });
             }
 
-            // 4. Static Timestamp
-            const now = new Date();
-            const staticTimeString = new Intl.DateTimeFormat('en-GB', { 
-                timeZone: 'Asia/Bangkok', 
-                day: '2-digit', month: '2-digit', year: 'numeric', 
-                hour: '2-digit', minute: '2-digit', hour12: false 
-            }).format(now);
-
-            // 5. Build Container Helper
+            // 4. Build Container Helper
             const createBannerContainer = (isShowingGlobal, disableToggle = false) => {
                 const currentImage = isShowingGlobal ? globalBanner : displayBanner;
                 const titleText = isShowingGlobal ? `## Banner` : `## Pre-server Banner`;
                 
-                // 👇 UPDATED: Uses <@ID> format now
                 const bodyText = isShowingGlobal 
                     ? `-# Banner of <@${targetUser.id}>` 
                     : `-# Pre-server Banner of <@${targetUser.id}>`;
@@ -80,26 +71,13 @@ module.exports = {
 
                 if (disableToggle) toggleButton.setDisabled(true);
 
-                const timeButton = new ButtonBuilder()
-                    .setCustomId('timestamp_btn')
-                    .setLabel(`${staticTimeString} (GMT+7)`)
-                    .setStyle(ButtonStyle.Secondary)
-                    .setDisabled(true);
-
-                const browserButton = new ButtonBuilder()
-                    .setLabel('Open in Browser')
-                    .setStyle(ButtonStyle.Link);
-                
-                if (currentImage) browserButton.setURL(currentImage);
-                else browserButton.setDisabled(true).setURL('https://discord.com');
-
                 // Construct Container
                 const container = new ContainerBuilder()
                     .setAccentColor(0x888888)
                     .addSectionComponents((section) => 
                         section
                             .addTextDisplayComponents((text) => text.setContent(`${titleText}\n${bodyText}`))
-                            .setButtonAccessory(() => browserButton)
+                            // Removed setButtonAccessory (Open in Browser)
                     );
 
                 if (currentImage) {
@@ -109,18 +87,19 @@ module.exports = {
                     container.addSeparatorComponents((sep) => sep.setSpacing(SeparatorSpacingSize.Small));
                 }
 
-                container.addActionRowComponents((row) => row.setComponents(toggleButton, timeButton));
+                // Removed Timestamp Button from components list
+                container.addActionRowComponents((row) => row.setComponents(toggleButton));
                 return container;
             };
 
-            // 6. Send Initial Reply
+            // 5. Send Initial Reply
             let isGlobalMode = !!globalBanner;
             const initialContainer = createBannerContainer(isGlobalMode, false);
 
             const response = await interaction.reply({ 
                 components: [initialContainer], 
                 flags: [MessageFlags.IsComponentsV2], 
-                allowedMentions: { parse: [] }, // ✅ Blocks Ping
+                allowedMentions: { parse: [] }, 
                 fetchReply: true
             });
 
@@ -130,10 +109,10 @@ module.exports = {
             const canToggle = globalBanner && displayBanner;
             if (!canToggle) return; 
 
-            // 7. Collector
+            // 6. Collector
             const collector = response.createMessageComponentCollector({ 
                 componentType: ComponentType.Button, 
-                idle: 60_000 // 30 seconds idle
+                idle: 60_000 // 60 seconds idle
             });
 
             collector.on('collect', async (i) => {
@@ -146,7 +125,7 @@ module.exports = {
                     await i.update({ 
                         components: [newContainer], 
                         flags: [MessageFlags.IsComponentsV2], 
-                        allowedMentions: { parse: [] } // ✅ Blocks Ping
+                        allowedMentions: { parse: [] } 
                     });
                 }
             });
@@ -157,7 +136,7 @@ module.exports = {
                     await interaction.editReply({ 
                         components: [disabledContainer], 
                         flags: [MessageFlags.IsComponentsV2], 
-                        allowedMentions: { parse: [] } // ✅ Blocks Ping (Critical for timeout edits)
+                        allowedMentions: { parse: [] } 
                     });
                 } catch (e) { /* Ignore */ }
             });

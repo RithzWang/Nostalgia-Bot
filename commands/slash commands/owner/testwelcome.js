@@ -10,7 +10,7 @@ const {
 } = require('discord.js');
 
 // ⚠️ PATH CHECK: Verify this relative path is correct
-const { createWelcomeImage } = require('../../../welcomeCanvas7.js'); 
+const { createWelcomeImage } = require('../../../welcomeCanvas8.js'); 
 
 module.exports = {
     guildOnly: true,

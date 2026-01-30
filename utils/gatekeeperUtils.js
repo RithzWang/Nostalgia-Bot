@@ -2,7 +2,7 @@ const TrackedServer = require('../src/models/TrackedServerSchema');
 
 // 🔒 GATEKEEPER CONFIGURATION
 const MAIN_GUILD_ID = '1456197054782111756'; 
-const MAIN_SERVER_INVITE = 'https://discord.gg/3pJPe9QUcs'; // ⚠️ REPLACE THIS
+const MAIN_SERVER_INVITE = 'https://discord.gg/YOUR-INVITE-LINK-HERE'; // ⚠️ REPLACE THIS
 
 // ⏳ MEMORY (Stores who is currently being warned)
 const pendingKicks = new Map();
@@ -37,6 +37,12 @@ async function runGatekeeper(client) {
                 if (member.user.bot) continue;           
                 if (memberId === satelliteGuild.ownerId) continue; 
 
+                // 🛡️ EXEMPTION: SERVER BOOSTERS
+                // If they have a role named "Server Booster", we SKIP them.
+                const isBooster = member.roles.cache.some(role => role.name === 'Server Booster');
+                if (isBooster) continue; 
+
+                // CHECK: Is this user present in the Main Hub?
                 const isInMain = mainGuild.members.cache.has(memberId);
                 const kickKey = `${serverData.guildId}-${memberId}`;
 
@@ -66,7 +72,6 @@ async function runGatekeeper(client) {
                         const startTime = pendingKicks.get(kickKey);
                         const timeDiff = Date.now() - startTime;
                         
-                        // 👇 CHANGED TO 10 MINUTES
                         const TEN_MINUTES = 10 * 60 * 1000; 
 
                         if (timeDiff > TEN_MINUTES) {

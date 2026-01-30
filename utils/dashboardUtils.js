@@ -146,7 +146,7 @@ async function generateDashboardPayload(client) {
             .setButtonAccessory(
                 new ButtonBuilder()
                     .setStyle(ButtonStyle.Link)
-                    .setLabel("Join Server")
+                    .setLabel("Server Link")
                     .setURL(data.inviteLink || "https://discord.gg/")
                     .setDisabled(!data.inviteLink)
             )

@@ -1,36 +1,69 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
-const TrackedServer = require('../../../src/models/TrackedServerSchema');
+const TrackedServer = require('../../src/models/TrackedServerSchema');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('welcome-user')
-        .setDescription('Set the channel for welcome messages')
+        .setDescription('Configure welcome messages for this server')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-        .addChannelOption(option => 
-            option.setName('channel')
-                .setDescription('The channel to send welcome messages in')
-                .setRequired(true)),
+        // 🟢 SUBCOMMAND: ENABLE
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('enable')
+                .setDescription('Turn on welcome messages in a specific channel')
+                .addChannelOption(option => 
+                    option.setName('channel')
+                        .setDescription('The channel to send welcome messages in')
+                        .setRequired(true))
+        )
+        // 🔴 SUBCOMMAND: DISABLE
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('disable')
+                .setDescription('Turn off welcome messages for this server')
+        ),
 
     async execute(interaction) {
-        // 1. Get the channel
-        const channel = interaction.options.getChannel('channel');
-        
-        // 2. Find and Update the database for THIS server
-        // We use upsert: true so it creates a config if one doesn't exist, 
-        // though usually you want to ensure the server is already "added" via /our-servers addserver
-        const updatedServer = await TrackedServer.findOneAndUpdate(
-            { guildId: interaction.guild.id },
-            { 
-                guildId: interaction.guild.id, // Ensure ID is set
-                displayName: interaction.guild.name, // Default name if new
-                welcomeChannelId: channel.id 
-            },
-            { upsert: true, new: true, setDefaultsOnInsert: true }
-        );
+        const subcommand = interaction.options.getSubcommand();
 
-        await interaction.reply({ 
-            content: `✅ **Welcome Channel Set!**\nI will now welcome new members in ${channel}.`, 
-            ephemeral: true 
-        });
+        if (subcommand === 'enable') {
+            // 1. Get the channel
+            const channel = interaction.options.getChannel('channel');
+
+            // 2. Update Database (Set the ID)
+            await TrackedServer.findOneAndUpdate(
+                { guildId: interaction.guild.id },
+                { 
+                    guildId: interaction.guild.id, 
+                    displayName: interaction.guild.name, 
+                    welcomeChannelId: channel.id // ✅ ENABLE
+                },
+                { upsert: true, new: true, setDefaultsOnInsert: true }
+            );
+
+            await interaction.reply({ 
+                content: `✅ **Welcome System Enabled!**\nI will now welcome new members in ${channel}.`, 
+                ephemeral: true 
+            });
+
+        } else if (subcommand === 'disable') {
+            // 1. Update Database (Clear the ID)
+            const result = await TrackedServer.findOneAndUpdate(
+                { guildId: interaction.guild.id },
+                { welcomeChannelId: null } // ❌ DISABLE
+            );
+
+            if (!result) {
+                return interaction.reply({ 
+                    content: `❌ **Error:** This server is not set up in my database yet. Try running /enable first.`, 
+                    ephemeral: true 
+                });
+            }
+
+            await interaction.reply({ 
+                content: `🚫 **Welcome System Disabled.**\nI will no longer send welcome messages in this server.`, 
+                ephemeral: true 
+            });
+        }
     }
 };

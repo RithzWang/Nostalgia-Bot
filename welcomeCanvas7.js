@@ -446,12 +446,12 @@ async function createWelcomeImage(member, themeColors = null) {
     // ==========================================
     ctx.restore(); // Restore global context (remove translation)
 
-    const badgeImage = await loadImage('./pics/logo/A2-Q.png').catch(() => null);
+    const badgeImage = await loadImage('./pics/logo/A2-Q-2026.png').catch(() => null);
 
     if (badgeImage) {
         // Badge Configuration
         const badgeWidth = 160; 
-        const badgeHeight = 96;
+        const badgeHeight = 98;
 
         // Position: X (Right edge touches middle of avatar)
         const avatarCenterX = dim.margin + 30 + avatarRadius;

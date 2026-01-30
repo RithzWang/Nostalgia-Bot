@@ -272,7 +272,7 @@ async function createWelcomeImage(member, themeColors = null) {
 
     ctx.restore();
 
-    const badgeImage = await loadImage('./pics/logo/A2-Q.png').catch(() => null);
+    const badgeImage = await loadImage('./pics/logo/A2-Q-2026.png').catch(() => null);
     if (badgeImage) {
         const badgeWidth = 160; 
         const badgeHeight = 98;

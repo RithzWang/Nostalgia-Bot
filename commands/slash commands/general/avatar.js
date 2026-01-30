@@ -56,12 +56,12 @@ module.exports = {
                 const currentImage = isShowingGlobal ? globalAvatar : displayAvatar;
                 
                 const titleText = isShowingGlobal 
-                    ? `## Global Avatar` 
-                    : `## Display Avatar`;
+                    ? `## Avatar` 
+                    : `## Pre-server Avatar`;
                 
                 const bodyText = isShowingGlobal
-                    ? `-# Global Avatar of <@${targetUser.id}>`
-                    : `-# Display Avatar of <@${targetUser.id}>`;
+                    ? `-# Avatar of <@${targetUser.id}>`
+                    : `-# Pre-server Avatar of <@${targetUser.id}>`;
 
                 // --- Buttons ---
                 const toggleButton = new ButtonBuilder()
@@ -69,9 +69,9 @@ module.exports = {
                     .setStyle(ButtonStyle.Secondary);
 
                 if (isShowingGlobal) {
-                    toggleButton.setLabel('Show Display Avatar');
+                    toggleButton.setLabel('Show Pre-server Avatar');
                     if (!hasServerAvatar) {
-                        toggleButton.setDisabled(true).setLabel('No Display Avatar');
+                        toggleButton.setDisabled(true).setLabel('No Pre-server Avatar');
                     }
                 } else {
                     toggleButton.setLabel('Show Global Avatar');

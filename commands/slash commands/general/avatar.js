@@ -32,7 +32,6 @@ module.exports = {
             }
 
             // 2. Get URLs
-            // 👇 CHANGE: Removed "extension: 'png'" so GIFs work now!
             const globalAvatar = targetUser.displayAvatarURL({ size: 1024, forceStatic: false });
             
             const displayAvatar = targetMember 
@@ -42,16 +41,7 @@ module.exports = {
             // Check if they are actually different
             const hasServerAvatar = globalAvatar !== displayAvatar;
 
-            // 3. CAPTURE TIME ONCE
-            const now = new Date();
-            const timeOptions = { 
-                timeZone: 'Asia/Bangkok', 
-                day: '2-digit', month: '2-digit', year: 'numeric', 
-                hour: '2-digit', minute: '2-digit', hour12: false 
-            };
-            const staticTimeString = new Intl.DateTimeFormat('en-GB', timeOptions).format(now);
-
-            // 4. Helper Function
+            // 3. Helper Function
             const createAvatarContainer = (isShowingGlobal, disableToggle = false) => {
                 const currentImage = isShowingGlobal ? globalAvatar : displayAvatar;
                 
@@ -81,17 +71,6 @@ module.exports = {
                     toggleButton.setDisabled(true);
                 }
 
-                const timeButton = new ButtonBuilder()
-                    .setCustomId('timestamp_btn')
-                    .setLabel(`${staticTimeString} (GMT+7)`)
-                    .setStyle(ButtonStyle.Secondary)
-                    .setDisabled(true);
-
-                const browserButton = new ButtonBuilder()
-                    .setLabel('Open in Browser')
-                    .setStyle(ButtonStyle.Link)
-                    .setURL(currentImage);
-
                 // --- Build Container ---
                 return new ContainerBuilder()
                     .setAccentColor(0x888888) 
@@ -101,7 +80,7 @@ module.exports = {
                             .addTextDisplayComponents((text) => 
                                 text.setContent(`${titleText}\n${bodyText}`)
                             )
-                            .setButtonAccessory(() => browserButton)
+                            // Removed setButtonAccessory (Open in Browser)
                     )
                     .addMediaGalleryComponents((gallery) => 
                         gallery.addItems((item) => item.setURL(currentImage))
@@ -109,12 +88,13 @@ module.exports = {
                     .addSeparatorComponents((sep) => 
                         sep.setSpacing(SeparatorSpacingSize.Small)
                     )
+                    // Removed Time Button from components list
                     .addActionRowComponents((row) => 
-                        row.setComponents(toggleButton, timeButton)
+                        row.setComponents(toggleButton)
                     );
             };
 
-            // 5. Send Initial Reply
+            // 4. Send Initial Reply
             let isGlobalMode = true;
             const initialContainer = createAvatarContainer(true, false);
 
@@ -128,7 +108,7 @@ module.exports = {
             // ⚡ OPTIMIZATION CHECK ⚡
             if (!hasServerAvatar) return;
 
-            // 6. Collector
+            // 5. Collector
             const collector = response.createMessageComponentCollector({ 
                 componentType: ComponentType.Button, 
                 idle: 60_000 

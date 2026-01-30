@@ -42,7 +42,7 @@ module.exports = {
 
             if (!globalBanner && !displayBanner) {
                 return interaction.reply({ 
-                    content: `❌ **${targetUser.username}** has no global or server banner set.`,
+                    content: `❌ **${targetUser.username}** has no global or pre-server banner set.`,
                     flags: [MessageFlags.Ephemeral] 
                 });
             }
@@ -58,12 +58,12 @@ module.exports = {
             // 5. Build Container Helper
             const createBannerContainer = (isShowingGlobal, disableToggle = false) => {
                 const currentImage = isShowingGlobal ? globalBanner : displayBanner;
-                const titleText = isShowingGlobal ? `## Global Banner` : `## Display Banner`;
+                const titleText = isShowingGlobal ? `## Banner` : `## Pre-server Banner`;
                 
                 // 👇 UPDATED: Uses <@ID> format now
                 const bodyText = isShowingGlobal 
-                    ? `-# Global Banner of <@${targetUser.id}>` 
-                    : `-# Display Banner of <@${targetUser.id}>`;
+                    ? `-# Banner of <@${targetUser.id}>` 
+                    : `-# Pre-server Banner of <@${targetUser.id}>`;
 
                 // Buttons
                 const toggleButton = new ButtonBuilder()
@@ -71,8 +71,8 @@ module.exports = {
                     .setStyle(ButtonStyle.Secondary);
 
                 if (isShowingGlobal) {
-                    toggleButton.setLabel('Show Display Banner');
-                    if (!displayBanner) toggleButton.setDisabled(true).setLabel('No Display Banner');
+                    toggleButton.setLabel('Show Pre-server Banner');
+                    if (!displayBanner) toggleButton.setDisabled(true).setLabel('No Pre-server Banner');
                 } else {
                     toggleButton.setLabel('Show Global Banner');
                     if (!globalBanner) toggleButton.setDisabled(true).setLabel('No Global Banner');

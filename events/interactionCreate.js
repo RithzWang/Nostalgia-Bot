@@ -293,8 +293,8 @@ module.exports = {
                             const role = interaction.guild.roles.cache.get(REGISTERED_ROLE_ID);
                             const newCount = role ? role.members.size : 'N/A';
                             const newContainer = new ContainerBuilder();
-                            newContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent('## <:registration:1447143542643490848> A2-Q Registration'));
-                            newContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`To access chat and connect to voice channels, please register below.\n\n**Note:**\n\`Name\` : your desired name.\n\`Country\` : your country’s flag emoji.\n\n❓ [**Why Do I Require Registration?**](https://discord.com/channels/1456197054782111756/1456197056250122353)`));
+                            newContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent('## <:A2Q_1:1466981218758426634><:A2Q_2:1466981281060360232> Registration'));
+                            newContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`To access chat and connect to voice channels, please register below.\n\n**Note:**\n\`Name\` : your desired name.\n\`Country\` : your country’s flag emoji.`));
                             newContainer.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
                             const registerBtn = new ButtonBuilder().setCustomId('reg_btn_open').setLabel('Register').setStyle(ButtonStyle.Primary);
                             const countBtn = new ButtonBuilder().setCustomId('reg_btn_stats').setLabel(`Total Registered: ${newCount}`).setStyle(ButtonStyle.Secondary).setDisabled(true);

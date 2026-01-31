@@ -29,8 +29,10 @@ module.exports = {
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
+        // 1. Defer cleanly (Only you see the reply)
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
+        // 2. Define the NEW Components Payload
         const components = [
             new ContainerBuilder()
                 .addMediaGalleryComponents(
@@ -50,7 +52,13 @@ module.exports = {
                     new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
                 )
                 .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent("We’re a community server built for people who love to game, talk, and just have a good time. From chill voice chats to lively text convos, there’s always something going on.\n\nOur goal is to keep things safe, fun, and friendly — a place where everyone can relax, share moments, and enjoy being part of something good.\n\n### **A2-Q** Established Date:\n<t:1698316020:F>\n### **A2-Q Server** Created Date:\n<t:1767254820:F>"),
+                    new TextDisplayBuilder().setContent("```\nA2-Q came from the word Al-Qabīlatān (القبيلتان) which means The Two Tribes in Arabic.\n```"),
+                )
+                .addSeparatorComponents(
+                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
+                )
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent("We’re a community server built for people who love to game, talk, and just have a good time. From chill voice chats to lively text convos, there’s always something going on.\n \nOur goal is to keep things safe, fun, and friendly — a place where everyone can relax, share moments, and enjoy being part of something good.\n\n### **A2-Q** Established Date:\n<t:1698316020:F>\n### **A2-Q Server** Created Date: \n<t:1767254820:F>"),
                 )
                 .addSeparatorComponents(
                     new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
@@ -63,7 +71,7 @@ module.exports = {
                     new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
                 )
                 .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent("1. Be friendly to each other, we want to keep the chat respectful, although we do joke around quite a lot, it’s important to stay respectful!\n\n2. Keep Racism & Bad Behaviour out of the chat!\n\n3. No Spamming.\n\nIf you notice any inappropriate behaviour or rule-breaking, do not hesitate to inform **Moderator**.\n\n```ansi\n\u001b[2;31mRule violations will lead to appropriate punishment.\u001b[0m\n```"),
+                    new TextDisplayBuilder().setContent("1. Be friendly to each other, we want to keep the chat respectful, although we do joke around quite a lot, it’s important to stay respectful.\n\n2. Keep Racism & Bad Behaviour out of the chat.\n\n3. No Spamming.\n\nIf you notice any inappropriate behaviour or rule-breaking, do not hesitate to inform **Moderator**.\n\n```ansi\n\u001b[2;31mRule violations will lead to appropriate punishment.\u001b[0m\n```"),
                 )
                 .addSeparatorComponents(
                     new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
@@ -114,45 +122,47 @@ module.exports = {
                 ),
         ];
 
+        // 3. Logic to Find and Edit (or Send)
         const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
         const targetMessageId = interaction.options.getString('message_id');
 
         try {
             if (targetMessageId) {
-                // --- EDIT EXISTING ---
+                // --- Case A: User provided a Message ID (EDIT) ---
                 const messageToEdit = await targetChannel.messages.fetch(targetMessageId);
 
                 if (!messageToEdit) {
-                    return interaction.editReply({ content: `❌ Could not find message \`${targetMessageId}\`.` });
+                    return interaction.editReply({ content: `❌ Could not find message \`${targetMessageId}\` in channel ${targetChannel}.` });
                 }
 
                 if (messageToEdit.author.id !== interaction.client.user.id) {
                     return interaction.editReply({ content: '❌ I can only edit my own messages.' });
                 }
 
+                // Edit the message
                 await messageToEdit.edit({ 
                     content: '',
                     components: components,
-                    flags: MessageFlags.IsComponentsV2, // Force V2 flag
-                    allowedMentions: { parse: [] }      // No pings
+                    flags: MessageFlags.IsComponentsV2,
+                    allowedMentions: { parse: [] } // Ensure no pings
                 });
                 
-                await interaction.editReply({ content: `✅ Updated message in ${targetChannel}.` });
+                await interaction.editReply({ content: `✅ Successfully updated the server info in ${targetChannel}.` });
 
             } else {
-                // --- SEND NEW ---
+                // --- Case B: No ID provided (SEND NEW) ---
                 await targetChannel.send({ 
                     components: components,
-                    flags: MessageFlags.IsComponentsV2, // Force V2 flag
-                    allowedMentions: { parse: [] }      // No pings
+                    flags: MessageFlags.IsComponentsV2,
+                    allowedMentions: { parse: [] } // Ensure no pings
                 });
                 
-                await interaction.editReply({ content: `✅ Sent new message to ${targetChannel}.` });
+                await interaction.editReply({ content: `✅ Successfully sent the new server info to ${targetChannel}.` });
             }
 
         } catch (error) {
             console.error(error);
-            await interaction.editReply({ content: `❌ Error: \`${error.message}\`` });
+            await interaction.editReply({ content: `❌ An error occurred: \`${error.message}\`.` });
         }
     },
 };

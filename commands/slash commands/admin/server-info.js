@@ -14,6 +14,7 @@ const {
 } = require('discord.js');
 
 module.exports = {
+    guildOnly: true;
     data: new SlashCommandBuilder()
         .setName('server-info')
         .setDescription('Updates or sends the server information layout.')

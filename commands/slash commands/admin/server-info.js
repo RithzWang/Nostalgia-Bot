@@ -49,7 +49,7 @@ module.exports = {
                     new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
                 )
                 .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent("> We’re a community server built for people who love to game, talk, and just have a good time. From chill voice chats to lively text convos, there’s always something going on.\n> \n> Our goal is to keep things safe, fun, and friendly — a place where everyone can relax, share moments, and enjoy being part of something good.\n\n### **A2-Q** Established Date:\n<t:1698316020:F>\n### **A2-Q Server** Created Date:\n<t:1767254820:F>"),
+                    new TextDisplayBuilder().setContent("We’re a community server built for people who love to game, talk, and just have a good time. From chill voice chats to lively text convos, there’s always something going on.\n\nOur goal is to keep things safe, fun, and friendly — a place where everyone can relax, share moments, and enjoy being part of something good.\n\n### **A2-Q** Established Date:\n<t:1698316020:F>\n### **A2-Q Server** Created Date:\n<t:1767254820:F>"),
                 )
                 .addSeparatorComponents(
                     new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),

@@ -171,7 +171,7 @@ async function generateDashboardPayload(client) {
         .addTextDisplayComponents(
             new TextDisplayBuilder()
                 .setContent(
-                    `# A2-Qabīlatān\n` +
+                    `# A2-Q Servers\n` +
                     `\`\`\`js\nTotal Members : ${totalNetworkMembers}\n` + 
                     `Total Tag Users : ${totalTagUsers}\`\`\``
                 )

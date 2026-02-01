@@ -22,12 +22,7 @@ module.exports = {
         try {
             // 1. Resolve User
             const targetUser = interaction.options.getUser('target') || interaction.user;
-            let targetMember;
-            if (interaction.options.getUser('target')) {
-                targetMember = interaction.options.getMember('target');
-            } else {
-                targetMember = interaction.member;
-            }
+            const targetMember = interaction.options.getMember('target') || interaction.member;
 
             if (!targetUser) {
                 return interaction.reply({ 
@@ -36,8 +31,10 @@ module.exports = {
                 });
             }
 
-            // 2. Fetch User & URLs
+            // 2. Fetch User (Required for Banners)
             const fetchedUser = await interaction.client.users.fetch(targetUser.id, { force: true });
+
+            // 3. Get URLs
             const globalBanner = fetchedUser.bannerURL({ size: 4096, forceStatic: false });
             const displayBanner = targetMember 
                 ? targetMember.bannerURL({ size: 4096, forceStatic: false }) 
@@ -50,14 +47,25 @@ module.exports = {
                 });
             }
 
-            // 3. Container Helper
+            // 4. Static Timestamp
+            const now = new Date();
+            const staticTimeString = new Intl.DateTimeFormat('en-GB', { 
+                timeZone: 'Asia/Bangkok', 
+                day: '2-digit', month: '2-digit', year: 'numeric', 
+                hour: '2-digit', minute: '2-digit', hour12: false 
+            }).format(now);
+
+            // 5. Build Container Helper
             const createBannerContainer = (isShowingGlobal, disableToggle = false) => {
                 const currentImage = isShowingGlobal ? globalBanner : displayBanner;
                 const titleText = isShowingGlobal ? `## Banner` : `## Pre-server Banner`;
+                
+                // 👇 UPDATED: Uses <@ID> format now
                 const bodyText = isShowingGlobal 
                     ? `-# Banner of <@${targetUser.id}>` 
                     : `-# Pre-server Banner of <@${targetUser.id}>`;
 
+                // Buttons
                 const toggleButton = new ButtonBuilder()
                     .setCustomId('toggle_banner')
                     .setStyle(ButtonStyle.Secondary);
@@ -72,57 +80,73 @@ module.exports = {
 
                 if (disableToggle) toggleButton.setDisabled(true);
 
-                const container = new ContainerBuilder().setAccentColor(0x888888);
+                const timeButton = new ButtonBuilder()
+                    .setCustomId('timestamp_btn')
+                    .setLabel(`${staticTimeString} (GMT+7)`)
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(true);
 
-                container.addSectionComponents((section) => 
-                    section.addTextDisplayComponents((text) => text.setContent(`${titleText}\n${bodyText}`))
-                );
+                const browserButton = new ButtonBuilder()
+                    .setLabel('Open in Browser')
+                    .setStyle(ButtonStyle.Link);
+                
+                if (currentImage) browserButton.setURL(currentImage);
+                else browserButton.setDisabled(true).setURL('https://discord.com');
+
+                // Construct Container
+                const container = new ContainerBuilder()
+                    .setAccentColor(0x888888)
+                    .addSectionComponents((section) => 
+                        section
+                            .addTextDisplayComponents((text) => text.setContent(`${titleText}\n${bodyText}`))
+                            .setButtonAccessory(() => browserButton)
+                    );
 
                 if (currentImage) {
-                    container.addMediaGalleryComponents((gallery) => gallery.addItems((item) => item.setURL(currentImage)));
+                    container.addMediaGalleryComponents((gallery) => gallery.addItems((item) => item.setURL(currentImage)))
+                             .addSeparatorComponents((sep) => sep.setSpacing(SeparatorSpacingSize.Small));
+                } else {
+                    container.addSeparatorComponents((sep) => sep.setSpacing(SeparatorSpacingSize.Small));
                 }
-                
-                container.addSeparatorComponents((sep) => sep.setSpacing(SeparatorSpacingSize.Small));
-                container.addActionRowComponents((row) => row.setComponents(toggleButton));
 
+                container.addActionRowComponents((row) => row.setComponents(toggleButton, timeButton));
                 return container;
             };
 
-            // 4. Send Initial Reply
+            // 6. Send Initial Reply
             let isGlobalMode = !!globalBanner;
             const initialContainer = createBannerContainer(isGlobalMode, false);
 
-            // ⬇️ FIX: Removed fetchReply: true
-            await interaction.reply({ 
+            const response = await interaction.reply({ 
                 components: [initialContainer], 
                 flags: [MessageFlags.IsComponentsV2], 
-                allowedMentions: { parse: [] }
+                allowedMentions: { parse: [] }, // ✅ Blocks Ping
+                fetchReply: true
             });
 
-            // ⬇️ FIX: Explicitly fetch the response here
-            const response = await interaction.fetchReply();
-
-            // 5. Collector
+            // ---------------------------------------------------------
+            // ⚡ OPTIMIZATION CHECK ⚡
+            // ---------------------------------------------------------
             const canToggle = globalBanner && displayBanner;
             if (!canToggle) return; 
 
+            // 7. Collector
             const collector = response.createMessageComponentCollector({ 
                 componentType: ComponentType.Button, 
-                idle: 60_000 
+                idle: 60_000 // 30 seconds idle
             });
 
             collector.on('collect', async (i) => {
                 if (i.user.id !== interaction.user.id) {
                     return i.reply({ content: `Only <@${interaction.user.id}> can use this button`, flags: [MessageFlags.Ephemeral] });
                 }
-
                 if (i.customId === 'toggle_banner') {
                     isGlobalMode = !isGlobalMode;
                     const newContainer = createBannerContainer(isGlobalMode, false);
                     await i.update({ 
                         components: [newContainer], 
                         flags: [MessageFlags.IsComponentsV2], 
-                        allowedMentions: { parse: [] } 
+                        allowedMentions: { parse: [] } // ✅ Blocks Ping
                     });
                 }
             });
@@ -133,7 +157,7 @@ module.exports = {
                     await interaction.editReply({ 
                         components: [disabledContainer], 
                         flags: [MessageFlags.IsComponentsV2], 
-                        allowedMentions: { parse: [] } 
+                        allowedMentions: { parse: [] } // ✅ Blocks Ping (Critical for timeout edits)
                     });
                 } catch (e) { /* Ignore */ }
             });

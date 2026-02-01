@@ -55,7 +55,7 @@ module.exports = {
                 container.addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
                         `We are glad to have you here in **${member.guild.name}**.\n` +
-                        `You are verified as a member of our Main Hub.`
+                        `You are verified as a member of our Main A2-Q server.`
                     )
                 );
             } else {
@@ -63,7 +63,7 @@ module.exports = {
                 container.addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
                         `### ⚠️ Security Alert\n` +
-                        `You are **not** in our Main Hub Server.\n` +
+                        `You are **not** in our Main A2-Q Server.\n` +
                         `**You have 10 minutes to join, or you will be kicked.**`
                     )
                 );
@@ -71,7 +71,7 @@ module.exports = {
                     new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
                 );
                 container.addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent(`🔗 **[Click here to Join Main Server](${MAIN_SERVER_INVITE})**`)
+                    new TextDisplayBuilder().setContent(`🔗 **[Click here to Join Main A2-Q Server](${MAIN_SERVER_INVITE})**`)
                 );
             }
 

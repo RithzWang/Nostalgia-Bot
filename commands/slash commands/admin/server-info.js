@@ -71,7 +71,7 @@ module.exports = {
                     new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
                 )
                 .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent("1. Be friendly to each other, we want to keep the chat respectful, although we do joke around quite a lot, it’s important to stay respectful.\n\n2. Keep Racism & Bad Behaviour out of the chat.\n\n3. No Spamming.\n\nIf you notice any inappropriate behaviour or rule-breaking, do not hesitate to inform **Moderator**.\n\n```ansi\n\u001b[2;31mRule violations will lead to appropriate punishment.\u001b[0m\n```"),
+                    new TextDisplayBuilder().setContent("1. Be friendly to each other, we want to keep the chat respectful, although we do joke around quite a lot, it’s important to stay respectful.\n\n2. Keep Racism & Bad Behaviour out of the chat.\n\n3. No Spamming or Advertising.\n\nIf you notice any inappropriate behaviour or rule-breaking, do not hesitate to inform **Moderator**.\n\n```ansi\n\u001b[2;31mRule violations will lead to appropriate punishment.\u001b[0m\n```"),
                 )
                 .addSeparatorComponents(
                     new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),

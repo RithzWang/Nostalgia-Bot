@@ -165,7 +165,7 @@ async function generateDashboardPayload(client) {
     const nextUpdateUnix = Math.floor((Date.now() + 60 * 1000) / 1000);
     
     // Header
-    const PERMANENT_IMAGE_URL = "https://cdn.discordapp.com/attachments/853503167706693632/1463227084817039558/A2-Q_20260121004151.png?ex=69710fea&is=696fbe6a&hm=77aab04999980ef14e5e3d51329b20f84a2fd3e01046bd93d16ac71be4410ef9&"; 
+    const PERMANENT_IMAGE_URL = "https://cdn.discordapp.com/attachments/"; 
 
     const headerSection = new SectionBuilder()
         .addTextDisplayComponents(

@@ -14,7 +14,7 @@ const OWNER_ID = '837741275603009626';
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('tag-hello')
+        .setName('tag-greet')
         .setDescription('Configure welcome channel and local tag role (Disables Security Alerts)')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         

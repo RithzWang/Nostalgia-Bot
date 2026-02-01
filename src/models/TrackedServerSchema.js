@@ -5,12 +5,15 @@ const TrackedServerSchema = new mongoose.Schema({
     displayName: { type: String, required: true },
     inviteLink: { type: String, default: null },
     tagText: { type: String, default: null },
-    roleId: { type: String, default: null }, // Main Server Role
     
-    // 👇 Saved by /tag-hello command
+    // Main Server Role (The role tracked globally)
+    roleId: { type: String, default: null }, 
+    
+    // 👇 Local Server Settings (Managed by /tag-hello)
     localRoleId: { type: String, default: null }, 
     welcomeChannelId: { type: String, default: null },
-    warnChannelId: { type: String, default: null },
+    
+    // 🗑️ REMOVED: warnChannelId (Since you don't want alerts anymore)
     
     addedBy: { type: String, default: null }
 });

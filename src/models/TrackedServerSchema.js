@@ -1,21 +1,21 @@
 const mongoose = require('mongoose');
 
 const TrackedServerSchema = new mongoose.Schema({
-    // Core Identity
     guildId: { type: String, required: true, unique: true },
     displayName: { type: String, required: true },
-    
-    // Dashboard Stats Info
     inviteLink: { type: String, default: null },
     tagText: { type: String, default: null },
-    roleId: { type: String, default: null }, // Main Server Role (Still needed for stats)
     
-    // 👇 Local Server Settings (Managed by /tag-welcome)
+    // Global Role
+    roleId: { type: String, default: null }, 
+    
+    // Welcome & Warn Settings
     welcomeChannelId: { type: String, default: null },
+    warnChannelId: { type: String, default: null }, // 👈 Added back
     
-    // 🗑️ DELETED: warnChannelId (No more security alerts)
-    // 🗑️ DELETED: localRoleId (No more auto-role giving)
-    
+    // (Optional: keep localRoleId if you still want it, otherwise you can remove it)
+    localRoleId: { type: String, default: null },
+
     addedBy: { type: String, default: null }
 });
 

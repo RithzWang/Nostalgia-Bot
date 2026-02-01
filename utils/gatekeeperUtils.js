@@ -2,7 +2,7 @@ const TrackedServer = require('../src/models/TrackedServerSchema');
 
 // 🔒 GATEKEEPER CONFIGURATION
 const MAIN_GUILD_ID = '1456197054782111756'; 
-const MAIN_SERVER_INVITE = 'https://discord.gg/YOUR-INVITE-LINK-HERE'; // ⚠️ REPLACE THIS
+const MAIN_SERVER_INVITE = 'https://discord.gg/Sra726wPJs'; // ⚠️ REPLACE THIS
 
 // ⏳ MEMORY (Stores who is currently being warned)
 const pendingKicks = new Map();

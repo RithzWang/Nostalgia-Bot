@@ -13,10 +13,10 @@ const {
 } = require('discord.js');
 
 module.exports = {
-    name: 'av',
-    aliases: ['avatar'],
+    name: 'avatar',
+    aliases: ['av'],
     description: 'Shows user avatar',
-    channels: ['1456197056510165026', '1456197056510165029', '1456197056988319870'], // Uncomment to restrict
+    channels: ['1456197056510165026', '1456197056510165029', '1456197056988319870'], 
 
     async execute(message, args) {
         try {
@@ -30,7 +30,7 @@ module.exports = {
             if (!targetUser) {
                 return message.reply({ 
                     content: "<:No:1297814819105144862> User not found.", 
-                    flags: [MessageFlags.Ephemeral],
+                    flags: [MessageFlags.Ephemeral, MessageFlags.SuppressNotifications], // Silent Error
                     allowedMentions: { repliedUser: false }
                 });
             }
@@ -72,11 +72,11 @@ module.exports = {
 
             let isGlobalMode = true;
 
-            // 4. Send Reply (SILENT)
+            // 4. Send Reply (SILENT & NO PING)
             const sentMessage = await message.reply({ 
                 components: [createAvatarContainer(true)], 
-                flags: [MessageFlags.IsComponentsV2],
-                // 👇 THIS BLOCKS ALL PINGS
+                // 👇 Added SuppressNotifications here
+                flags: [MessageFlags.IsComponentsV2, MessageFlags.SuppressNotifications],
                 allowedMentions: { parse: [], repliedUser: false } 
             });
 
@@ -113,6 +113,7 @@ module.exports = {
             console.error(error);
             message.reply({ 
                 content: `<:No:1297814819105144862> Error: ${error.message}`,
+                flags: [MessageFlags.SuppressNotifications], // Silent Error
                 allowedMentions: { repliedUser: false }
             });
         }

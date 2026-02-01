@@ -176,7 +176,9 @@ async function generateDashboardPayload(client) {
                     `Total Tag Users : ${totalTagUsers}\`\`\``
                 )
         )
-        .setThumbnailAccessory(null);
+        .setThumbnailAccessory(
+           new ThumbnailBuilder().setURL(PERMANENT_IMAGE_URL)
+       );
 
     const container = new ContainerBuilder()
         .setSpoiler(false)

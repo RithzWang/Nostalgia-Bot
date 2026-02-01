@@ -166,11 +166,8 @@ async function generateDashboardPayload(client) {
     
     // Header
     const PERMANENT_IMAGE_URL = "https://cdn.discordapp.com/attachments/853503167706693632/1463227084817039558/A2-Q_20260121004151.png?ex=69710fea&is=696fbe6a&hm=77aab04999980ef14e5e3d51329b20f84a2fd3e01046bd93d16ac71be4410ef9&"; 
-        
 
-    const container = new ContainerBuilder()
-        .setSpoiler(false)
-        .addSectionComponents(new SectionBuilder()
+    const headerSection = new SectionBuilder()
         .addTextDisplayComponents(
             new TextDisplayBuilder()
                 .setContent(
@@ -178,7 +175,14 @@ async function generateDashboardPayload(client) {
                     `\`\`\`js\nTotal Members : ${totalNetworkMembers}\n` + 
                     `Total Tag Users : ${totalTagUsers}\`\`\``
                 )
-        ))
+        )
+        .setThumbnailAccessory(
+           new ThumbnailBuilder().setURL(PERMANENT_IMAGE_URL)
+       );
+
+    const container = new ContainerBuilder()
+        .setSpoiler(false)
+        .addSectionComponents(headerSection)
         .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true));
 
     for (let i = 0; i < serverSections.length; i++) {

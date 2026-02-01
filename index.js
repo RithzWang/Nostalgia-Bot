@@ -44,7 +44,7 @@ const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent, // 👈 CRITICAL for av/bn commands
+        GatewayIntentBits.MessageContent, 
         GatewayIntentBits.GuildMembers,
         GatewayIntentBits.GuildMessageReactions,
         GatewayIntentBits.GuildPresences,
@@ -57,12 +57,12 @@ client.prefixCommands = new Collection();
 client.slashCommands = new Collection();
 client.slashDatas = []; 
 
-// 👇 [NEW 1/3] Initialize Message Commands Collection
+// 1. Initialize Message Commands Collection
 client.messageCommands = new Collection();
 
 require('./handlers/commandHandler')(client);
 
-// 👇 [NEW 2/3] Load Normal Message Commands (av/bn)
+// 2. Load Normal Message Commands (av/bn)
 const normalCommandsPath = path.join(__dirname, 'commands/normal commands');
 if (fs.existsSync(normalCommandsPath)) {
     const commandFiles = fs.readdirSync(normalCommandsPath).filter(file => file.endsWith('.js'));
@@ -92,7 +92,7 @@ for (const file of eventFiles) {
     }
 }
 
-// 👇 [NEW 3/3] Message Create Event Listener (Triggers av/bn)
+// 3. Message Create Event Listener (UPDATED FOR ALIASES)
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
@@ -100,16 +100,22 @@ client.on('messageCreate', async (message) => {
     const args = message.content.trim().split(/\s+/);
     const commandName = args.shift().toLowerCase();
 
-    // Check if command exists (av or bn)
-    const command = client.messageCommands.get(commandName);
+    // Step A: Check exact name (e.g., "av")
+    let command = client.messageCommands.get(commandName);
+
+    // Step B: Check aliases (e.g., "avatar")
+    if (!command) {
+        command = client.messageCommands.find(cmd => 
+            cmd.aliases && cmd.aliases.includes(commandName)
+        );
+    }
+
     if (!command) return;
 
     try {
         await command.execute(message, args);
     } catch (error) {
         console.error(error);
-        // Optional: Error reply
-        // message.reply({ content: '<:No:1297814819105144862> An error occurred.' });
     }
 });
 
@@ -122,7 +128,7 @@ client.on('clientReady', async () => {
 
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
 
-    // 1. Separate Commands into two lists
+    // Separate Commands into two lists
     const globalDatas = [];
     const guildDatas = [];
 
@@ -193,8 +199,6 @@ client.on('clientReady', async () => {
     // 🌍 GLOBAL DASHBOARD CONTROLLER (1 MIN)
     // ====================================================
     async function updateAllDashboards() {
-        // console.log('[Dashboard] Starting Global Update Cycle...');
-
         // 1. Run Role Assignments
         await runRoleUpdates(client);
 

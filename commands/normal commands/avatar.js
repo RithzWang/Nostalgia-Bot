@@ -50,7 +50,7 @@ module.exports = {
 
                 if (isShowingGlobal) {
                     toggleButton.setLabel('Show Per-server Avatar');
-                    if (!hasServerAvatar) toggleButton.setDisabled(true).setLabel('No Pre-server Avatar');
+                    if (!hasServerAvatar) toggleButton.setDisabled(true).setLabel('No Per-server Avatar');
                 } else {
                     toggleButton.setLabel('Show Global Avatar');
                 }

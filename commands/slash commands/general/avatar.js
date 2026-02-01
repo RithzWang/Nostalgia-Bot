@@ -5,7 +5,12 @@ const {
     ButtonStyle, 
     MessageFlags, 
     ComponentType,
-    SeparatorSpacingSize 
+    SeparatorSpacingSize,
+    TextDisplayBuilder,      
+    SeparatorBuilder,        
+    MediaGalleryBuilder,     
+    MediaGalleryItemBuilder, 
+    ActionRowBuilder         
 } = require('discord.js');
 
 module.exports = {
@@ -20,115 +25,84 @@ module.exports = {
 
     async execute(interaction) {
         try {
-            // 1. Smart Fetch
             const targetUser = interaction.options.getUser('target') || interaction.user;
             const targetMember = interaction.options.getMember('target') || interaction.member;
 
             if (!targetUser) {
                 return interaction.reply({ 
-                    content: "❌ User not found.", 
+                    content: "<:No:1297814819105144862> User not found.", 
                     flags: [MessageFlags.Ephemeral] 
                 });
             }
 
-            // 2. Get URLs
-            // 👇 CHANGE: Removed "extension: 'png'" so GIFs work now!
             const globalAvatar = targetUser.displayAvatarURL({ size: 1024, forceStatic: false });
-            
             const displayAvatar = targetMember 
                 ? targetMember.displayAvatarURL({ size: 1024, forceStatic: false }) 
                 : globalAvatar;
 
-            // Check if they are actually different
             const hasServerAvatar = globalAvatar !== displayAvatar;
 
-            // 3. CAPTURE TIME ONCE
-            const now = new Date();
-            const timeOptions = { 
-                timeZone: 'Asia/Bangkok', 
-                day: '2-digit', month: '2-digit', year: 'numeric', 
-                hour: '2-digit', minute: '2-digit', hour12: false 
-            };
-            const staticTimeString = new Intl.DateTimeFormat('en-GB', timeOptions).format(now);
-
-            // 4. Helper Function
+            // --- Helper to Build Container ---
             const createAvatarContainer = (isShowingGlobal, disableToggle = false) => {
                 const currentImage = isShowingGlobal ? globalAvatar : displayAvatar;
                 
-                const titleText = isShowingGlobal 
-                    ? `## Avatar` 
-                    : `## Pre-server Avatar`;
-                
-                const bodyText = isShowingGlobal
-                    ? `-# Avatar of <@${targetUser.id}>`
+                const titleText = isShowingGlobal ? `## Avatar` : `## Pre-server Avatar`;
+                const bodyText = isShowingGlobal 
+                    ? `-# Avatar of <@${targetUser.id}>` 
                     : `-# Pre-server Avatar of <@${targetUser.id}>`;
 
-                // --- Buttons ---
+                // Button Logic
                 const toggleButton = new ButtonBuilder()
                     .setCustomId('toggle_avatar')
                     .setStyle(ButtonStyle.Secondary);
 
                 if (isShowingGlobal) {
                     toggleButton.setLabel('Show Pre-server Avatar');
-                    if (!hasServerAvatar) {
-                        toggleButton.setDisabled(true).setLabel('No Pre-server Avatar');
-                    }
+                    if (!hasServerAvatar) toggleButton.setDisabled(true).setLabel('No Pre-server Avatar');
                 } else {
                     toggleButton.setLabel('Show Global Avatar');
                 }
 
-                if (disableToggle) {
-                    toggleButton.setDisabled(true);
-                }
+                if (disableToggle) toggleButton.setDisabled(true);
 
-                const timeButton = new ButtonBuilder()
-                    .setCustomId('timestamp_btn')
-                    .setLabel(`${staticTimeString} (GMT+7)`)
-                    .setStyle(ButtonStyle.Secondary)
-                    .setDisabled(true);
-
-                const browserButton = new ButtonBuilder()
-                    .setLabel('Open in Browser')
-                    .setStyle(ButtonStyle.Link)
-                    .setURL(currentImage);
-
-                // --- Build Container ---
+                // Build Container using explicit classes
                 return new ContainerBuilder()
-                    .setAccentColor(0x888888) 
-                    
-                    .addSectionComponents((section) => 
-                        section
-                            .addTextDisplayComponents((text) => 
-                                text.setContent(`${titleText}\n${bodyText}`)
-                            )
-                            .setButtonAccessory(() => browserButton)
+                    .setAccentColor(0x888888)
+                    .addTextDisplayComponents(
+                        new TextDisplayBuilder().setContent(`${titleText}\n${bodyText}`)
                     )
-                    .addMediaGalleryComponents((gallery) => 
-                        gallery.addItems((item) => item.setURL(currentImage))
+                    .addSeparatorComponents(
+                        new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
                     )
-                    .addSeparatorComponents((sep) => 
-                        sep.setSpacing(SeparatorSpacingSize.Small)
+                    .addMediaGalleryComponents(
+                        new MediaGalleryBuilder().addItems(
+                            new MediaGalleryItemBuilder().setURL(currentImage)
+                        )
                     )
-                    .addActionRowComponents((row) => 
-                        row.setComponents(toggleButton, timeButton)
+                    .addSeparatorComponents(
+                        new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+                    )
+                    .addActionRowComponents(
+                        new ActionRowBuilder().addComponents(toggleButton)
                     );
             };
 
-            // 5. Send Initial Reply
+            // --- Send Initial Reply ---
             let isGlobalMode = true;
             const initialContainer = createAvatarContainer(true, false);
 
-            const response = await interaction.reply({ 
+            await interaction.reply({ 
                 components: [initialContainer], 
                 flags: [MessageFlags.IsComponentsV2], 
-                allowedMentions: { parse: [] }, 
-                fetchReply: true
+                allowedMentions: { parse: [] }
             });
 
-            // ⚡ OPTIMIZATION CHECK ⚡
+            // Fetch explicitly to avoid deprecation warning
+            const response = await interaction.fetchReply();
+
+            // --- Collector Logic ---
             if (!hasServerAvatar) return;
 
-            // 6. Collector
             const collector = response.createMessageComponentCollector({ 
                 componentType: ComponentType.Button, 
                 idle: 60_000 
@@ -137,18 +111,16 @@ module.exports = {
             collector.on('collect', async (i) => {
                 if (i.user.id !== interaction.user.id) {
                     return i.reply({ 
-                        content: `Only <@${interaction.user.id}> can use this button`, 
+                        content: `<:No:1297814819105144862> Only <@${interaction.user.id}> can use this button`, 
                         flags: [MessageFlags.Ephemeral] 
                     });
                 }
-
                 if (i.customId === 'toggle_avatar') {
                     isGlobalMode = !isGlobalMode;
                     const newContainer = createAvatarContainer(isGlobalMode, false);
-
-                    await i.update({
-                        components: [newContainer],
-                        flags: [MessageFlags.IsComponentsV2],
+                    await i.update({ 
+                        components: [newContainer], 
+                        flags: [MessageFlags.IsComponentsV2], 
                         allowedMentions: { parse: [] } 
                     });
                 }
@@ -157,22 +129,19 @@ module.exports = {
             collector.on('end', async () => {
                 try {
                     const disabledContainer = createAvatarContainer(isGlobalMode, true);
-                    
-                    await interaction.editReply({
-                        components: [disabledContainer],
-                        flags: [MessageFlags.IsComponentsV2],
+                    await interaction.editReply({ 
+                        components: [disabledContainer], 
+                        flags: [MessageFlags.IsComponentsV2], 
                         allowedMentions: { parse: [] } 
                     });
-                } catch (error) {
-                    // Ignore error
-                }
+                } catch (e) { /* Ignore */ }
             });
 
         } catch (error) {
             console.error("Avatar Command Error:", error);
             if (!interaction.replied) {
                 await interaction.reply({ 
-                    content: `❌ **Error:** ${error.message}`, 
+                    content: `<:No:1297814819105144862> Error: ${error.message}`, 
                     flags: [MessageFlags.Ephemeral] 
                 });
             }

@@ -78,7 +78,7 @@ module.exports = {
            // .setAccentColor(sub === 'disable' ? 0x888888 : 0x888888) // Red if disabled, Green if enabled
             .addTextDisplayComponents(headerText)
             .addTextDisplayComponents(descText)
-            .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small))
+            .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
             .addActionRowComponents(btnRow); // Buttons INSIDE container
 
         const payload = { 

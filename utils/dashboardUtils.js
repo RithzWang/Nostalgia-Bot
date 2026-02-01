@@ -2,7 +2,7 @@ const {
     ContainerBuilder, TextDisplayBuilder, SectionBuilder, 
     ButtonBuilder, ButtonStyle, SeparatorBuilder, SeparatorSpacingSize,
     MessageFlags 
-} = require('discord.js'); // 👈 Removed ThumbnailBuilder from imports since we don't use it
+} = require('discord.js');
 const TrackedServer = require('../src/models/TrackedServerSchema');
 const DashboardLocation = require('../src/models/DashboardLocationSchema');
 
@@ -133,18 +133,25 @@ async function generateDashboardPayload(client) {
             tagStatusLine = `<:no_tag:1463272172201050336> **Not Connected**`;
         }
 
+        // 🛑 FIX: SAFE BUTTON LOGIC
+        // We ensure the URL is always valid, even if data.inviteLink is missing.
+        const inviteButton = new ButtonBuilder()
+            .setStyle(ButtonStyle.Link)
+            .setLabel("Server Link");
+
+        if (data.inviteLink && data.inviteLink.startsWith('http')) {
+            inviteButton.setURL(data.inviteLink).setDisabled(false);
+        } else {
+            // Fallback to Discord home if link is missing (prevents crash)
+            inviteButton.setURL('https://discord.com').setDisabled(true);
+        }
+
         const section = new SectionBuilder()
-            .setButtonAccessory(
-                new ButtonBuilder()
-                    .setStyle(ButtonStyle.Link)
-                    .setLabel("Server Link")
-                    .setURL(data.inviteLink || "https://discord.gg/")
-                    .setDisabled(!data.inviteLink)
-            )
+            .setButtonAccessory(inviteButton)
             .addTextDisplayComponents(
                 new TextDisplayBuilder()
                     .setContent(
-                        `## [${data.displayName}](${data.inviteLink})\n` +
+                        `## [${data.displayName}](${data.inviteLink || "https://discord.com"})\n` +
                         `**<:sparkles:1462851309219872841> Server Tag:** ${displayTagText}\n` +
                         `**<:members:1462851249836654592> Members:** ${memberCount}\n` +
                         `${tagStatusLine}`
@@ -155,8 +162,7 @@ async function generateDashboardPayload(client) {
 
     const nextUpdateUnix = Math.floor((Date.now() + 60 * 1000) / 1000);
     
-    // ✅ HEADER (Without Thumbnail)
-    // I made sure this is syntactically perfect.
+    // Header (Cleaned up)
     const headerSection = new SectionBuilder()
         .addTextDisplayComponents(
             new TextDisplayBuilder()
@@ -214,8 +220,14 @@ async function updateAllDashboards(client) {
                 flags: [MessageFlags.IsComponentsV2]
             });
         } catch (e) {
-            // 👇 IMPROVED LOGGING: This will now show the REAL error in your console
-            console.error(`[Dashboard] 🛑 ERROR in Guild ${loc.guildId}:`, e);
+            // 🛑 DEEP ERROR LOGGING
+            // If it fails, this will now tell us EXACTLY why (e.g. "Invalid URL")
+            console.error(`[Dashboard] 🛑 ERROR in Guild ${loc.guildId}:`);
+            if (e.rawError && e.rawError.errors) {
+                console.error(JSON.stringify(e.rawError.errors, null, 2));
+            } else {
+                console.error(e);
+            }
         }
     }
     if (locations.length > 0) console.log(`[Dashboard] Updated ${locations.length} dashboards.`);

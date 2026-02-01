@@ -1,4 +1,3 @@
-```
 const { 
     ContainerBuilder, TextDisplayBuilder, ThumbnailBuilder, SectionBuilder, 
     ButtonBuilder, ButtonStyle, SeparatorBuilder, SeparatorSpacingSize,
@@ -239,4 +238,3 @@ async function updateAllDashboards(client) {
 }
 
 module.exports = { runRoleUpdates, generateDashboardPayload, updateAllDashboards, runGatekeeper };
-``` remove unnecessary );

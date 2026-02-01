@@ -13,38 +13,37 @@ const {
 } = require('discord.js');
 
 module.exports = {
-    name: 'avatar', // The command triggers on "av"
-    aliases: ['av'],
+    name: 'av',
+    aliases: ['avatar'],
     description: 'Shows user avatar',
+    // channels: ['CHANNEL_ID'], // Uncomment to restrict
+
     async execute(message, args) {
         try {
             // 1. Resolve User
             let targetUser = message.mentions.users.first();
-            
-            // Check ID if no mention
             if (!targetUser && args[0]) {
-                try {
-                    targetUser = await message.client.users.fetch(args[0]);
-                } catch (e) { targetUser = null; }
+                try { targetUser = await message.client.users.fetch(args[0]); } catch (e) { targetUser = null; }
             }
-            // Default to author
             if (!targetUser && !args[0]) targetUser = message.author;
 
             if (!targetUser) {
-                return message.reply({ content: "<:No:1297814819105144862> User not found.", flags: [MessageFlags.Ephemeral] });
+                return message.reply({ 
+                    content: "<:No:1297814819105144862> User not found.", 
+                    flags: [MessageFlags.Ephemeral],
+                    allowedMentions: { repliedUser: false }
+                });
             }
 
-            // 2. Fetch Member
+            // 2. Fetch Logic
             let targetMember = null;
-            try {
-                targetMember = await message.guild.members.fetch(targetUser.id);
-            } catch (err) { targetMember = null; }
+            try { targetMember = await message.guild.members.fetch(targetUser.id); } catch (err) { targetMember = null; }
 
-            // 3. Logic
             const globalAvatar = targetUser.displayAvatarURL({ size: 1024, forceStatic: false });
             const displayAvatar = targetMember ? targetMember.displayAvatarURL({ size: 1024, forceStatic: false }) : globalAvatar;
             const hasServerAvatar = globalAvatar !== displayAvatar;
 
+            // 3. Builder
             const createAvatarContainer = (isShowingGlobal, disableToggle = false) => {
                 const currentImage = isShowingGlobal ? globalAvatar : displayAvatar;
                 const titleText = isShowingGlobal ? `## Avatar` : `## Pre-server Avatar`;
@@ -72,29 +71,50 @@ module.exports = {
             };
 
             let isGlobalMode = true;
+
+            // 4. Send Reply (SILENT)
             const sentMessage = await message.reply({ 
                 components: [createAvatarContainer(true)], 
                 flags: [MessageFlags.IsComponentsV2],
-                allowedMentions: { parse: [] } 
+                // 👇 THIS BLOCKS ALL PINGS
+                allowedMentions: { parse: [], repliedUser: false } 
             });
 
             if (!hasServerAvatar) return;
 
+            // 5. Collector
             const collector = sentMessage.createMessageComponentCollector({ componentType: ComponentType.Button, idle: 60_000 });
 
             collector.on('collect', async (i) => {
-                if (i.user.id !== message.author.id) return i.reply({ content: `<:No:1297814819105144862> Only <@${message.author.id}> can use this button`, flags: [MessageFlags.Ephemeral] });
+                if (i.user.id !== message.author.id) {
+                    return i.reply({ 
+                        content: `<:No:1297814819105144862> Only <@${message.author.id}> can use this button`, 
+                        flags: [MessageFlags.Ephemeral],
+                        allowedMentions: { parse: [] }
+                    });
+                }
                 isGlobalMode = !isGlobalMode;
-                await i.update({ components: [createAvatarContainer(isGlobalMode)], flags: [MessageFlags.IsComponentsV2] });
+                await i.update({ 
+                    components: [createAvatarContainer(isGlobalMode)], 
+                    flags: [MessageFlags.IsComponentsV2],
+                    allowedMentions: { parse: [] }
+                });
             });
 
             collector.on('end', () => {
-                sentMessage.edit({ components: [createAvatarContainer(isGlobalMode, true)], flags: [MessageFlags.IsComponentsV2] }).catch(() => {});
+                sentMessage.edit({ 
+                    components: [createAvatarContainer(isGlobalMode, true)], 
+                    flags: [MessageFlags.IsComponentsV2],
+                    allowedMentions: { parse: [] }
+                }).catch(() => {});
             });
 
         } catch (error) {
             console.error(error);
-            message.reply(`<:No:1297814819105144862> Error: ${error.message}`);
+            message.reply({ 
+                content: `<:No:1297814819105144862> Error: ${error.message}`,
+                allowedMentions: { repliedUser: false }
+            });
         }
     }
 };

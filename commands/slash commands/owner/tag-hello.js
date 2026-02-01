@@ -15,16 +15,16 @@ const OWNER_ID = '837741275603009626';
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('tag-hello')
-        .setDescription('Configure welcome channel, warn channel, and the local tag role')
+        .setDescription('Configure welcome channel and local tag role (Disables Security Alerts)')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+        
+        // 1. Welcome Channel
         .addChannelOption(option => 
             option.setName('channel')
                 .setDescription('Where to welcome new members')
                 .setRequired(true))
-        .addChannelOption(option => 
-            option.setName('warn_channel')
-                .setDescription('Where to ping members who fail the security check')
-                .setRequired(true))
+        
+        // 2. Local Tag Role
         .addRoleOption(option => 
             option.setName('tag_user_role')
                 .setDescription('The role to give users who have the tag')
@@ -41,9 +41,7 @@ module.exports = {
 
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-        // Get Inputs
         const welcomeInput = interaction.options.getChannel('channel');
-        const warnInput = interaction.options.getChannel('warn_channel');
         const tagRole = interaction.options.getRole('tag_user_role');
 
         // 🛡️ ROLE HIERARCHY CHECK
@@ -61,8 +59,10 @@ module.exports = {
                     guildId: interaction.guild.id, 
                     displayName: interaction.guild.name, 
                     welcomeChannelId: welcomeInput.id,
-                    warnChannelId: warnInput.id,
-                    localRoleId: tagRole.id 
+                    localRoleId: tagRole.id,
+                    
+                    // 🚫 DISABLE ALERTS: We set this to null since you removed the input
+                    warnChannelId: null 
                 },
                 { upsert: true, new: true, setDefaultsOnInsert: true }
             );
@@ -78,12 +78,12 @@ module.exports = {
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
                         `**👋 Welcome Channel:** <#${welcomeInput.id}>\n` +
-                        `**⚠️ Warn Channel:** <#${warnInput.id}>\n` +
-                        `**🏷️ Local Tag Role:** <@&${tagRole.id}>`
+                        `**🏷️ Local Tag Role:** <@&${tagRole.id}>\n` +
+                        `**🛡️ Security Alerts:** Disabled (No channel set)`
                     )
                 );
 
-            // ✅ Send with V2 Flag (Vital!)
+            // ✅ Send with V2 Flag
             await interaction.editReply({ 
                 components: [container],
                 flags: [MessageFlags.IsComponentsV2] 

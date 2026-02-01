@@ -10,7 +10,7 @@ const TrackedServer = require('../src/models/TrackedServerSchema');
 
 // 🔒 CONFIGURATION
 const MAIN_GUILD_ID = '1456197054782111756';
-const MAIN_SERVER_INVITE = 'https://discord.gg/Sra726wPJs'; // 👈 REPLACE THIS
+const MAIN_SERVER_INVITE = 'https://discord.gg/Sra726wPJs'; 
 
 module.exports = {
     name: Events.GuildMemberAdd,
@@ -18,14 +18,14 @@ module.exports = {
         if (member.user.bot) return;
 
         try {
-            // 1. Check database settings
+            // 1. Check Database
             const serverConfig = await TrackedServer.findOne({ guildId: member.guild.id });
             if (!serverConfig || !serverConfig.welcomeChannelId) return;
 
             const welcomeChannel = member.guild.channels.cache.get(serverConfig.welcomeChannelId);
             if (!welcomeChannel) return;
 
-            // 2. Check if user is in Main Server
+            // 2. Check Main Hub Membership
             const mainGuild = member.client.guilds.cache.get(MAIN_GUILD_ID);
             let isInMain = false;
             
@@ -38,13 +38,14 @@ module.exports = {
                 }
             }
 
-            // 3. Build the Message
+            // 3. Build the Container
             const container = new ContainerBuilder();
 
-            // A. Standard Welcome Header
+            // Move the "Ping" inside the header text so it doesn't crash
             container.addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(`## 👋 Welcome to ${member.guild.name}`)
+                new TextDisplayBuilder().setContent(`## 👋 Welcome, ${member}!`)
             );
+            
             container.addSeparatorComponents(
                 new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
             );
@@ -53,16 +54,15 @@ module.exports = {
                 // ✅ SAFE USER
                 container.addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
-                        `Hello ${member}! We are glad to have you here.\n` +
+                        `We are glad to have you here in **${member.guild.name}**.\n` +
                         `You are verified as a member of our Main Hub.`
                     )
                 );
             } else {
-                // ⚠️ UNSAFE USER (Warn them here!)
+                // ⚠️ UNSAFE USER
                 container.addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
-                        `Hello ${member}.\n\n` +
-                        `### ⚠️ Security Check Failed\n` +
+                        `### ⚠️ Security Alert\n` +
                         `You are **not** in our Main Hub Server.\n` +
                         `**You have 10 minutes to join, or you will be kicked.**`
                     )
@@ -75,9 +75,8 @@ module.exports = {
                 );
             }
 
-            // 4. Send
+            // 4. Send Message (NO 'content' allowed!)
             await welcomeChannel.send({ 
-                content: `${member}`, // Pings them so they see it
                 components: [container], 
                 flags: [MessageFlags.IsComponentsV2] 
             });

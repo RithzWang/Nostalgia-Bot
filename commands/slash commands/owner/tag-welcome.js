@@ -7,10 +7,8 @@ const OWNER_ID = '837741275603009626';
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('welcome-user')
-        .setDescription('Configure the welcome system (with security check)')
+        .setDescription('Configure the welcome system')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-        
-        // 🟢 SUBCOMMAND: ENABLE
         .addSubcommand(subcommand =>
             subcommand
                 .setName('enable')
@@ -20,12 +18,10 @@ module.exports = {
                         .setDescription('Select the channel')
                         .setRequired(true))
         )
-        
-        // 🔴 SUBCOMMAND: DISABLE
         .addSubcommand(subcommand =>
             subcommand
                 .setName('disable')
-                .setDescription('Stop welcoming and security checks')
+                .setDescription('Stop welcoming users')
         ),
 
     async execute(interaction) {
@@ -41,32 +37,55 @@ module.exports = {
 
         if (subcommand === 'enable') {
             const channel = interaction.options.getChannel('channel');
+            
+            // 1. Check existing settings first
+            const existing = await TrackedServer.findOne({ guildId: interaction.guild.id });
 
-            // Save to Database
-            await TrackedServer.findOneAndUpdate(
-                { guildId: interaction.guild.id },
-                { 
-                    guildId: interaction.guild.id, 
-                    displayName: interaction.guild.name, 
-                    welcomeChannelId: channel.id
-                },
-                { upsert: true, new: true, setDefaultsOnInsert: true }
-            );
+            // 2. If it's ALREADY enabled in this exact channel, just tell them.
+            if (existing && existing.welcomeChannelId === channel.id) {
+                return interaction.reply({ 
+                    content: `ℹ️ **Already Enabled:** The welcome system is already active in ${channel}.`, 
+                    flags: MessageFlags.Ephemeral 
+                });
+            }
 
-            await interaction.reply({ 
-                content: `✅ **System Enabled!**\nNew members will be welcomed in: ${channel}\n*(Users not in Main Hub will be warned here)*`, 
-                flags: MessageFlags.Ephemeral 
-            });
+            try {
+                // 3. Otherwise, Save/Update it
+                await TrackedServer.findOneAndUpdate(
+                    { guildId: interaction.guild.id },
+                    { 
+                        guildId: interaction.guild.id, 
+                        displayName: interaction.guild.name, 
+                        welcomeChannelId: channel.id
+                    },
+                    { upsert: true, new: true, setDefaultsOnInsert: true }
+                );
+
+                await interaction.reply({ 
+                    content: `✅ **System Enabled!**\nNew members will be welcomed in: ${channel}`, 
+                    flags: MessageFlags.Ephemeral 
+                });
+
+            } catch (e) {
+                console.error(e);
+                // 4. Handle "Duplicate Key" errors cleanly
+                if (e.code === 11000) {
+                     return interaction.reply({ 
+                        content: `⚠️ **Database Conflict:** I cannot save this because another server entry might be conflicting. Please run the \`fix-database.js\` script I gave you to clean up old data rules.`, 
+                        flags: MessageFlags.Ephemeral 
+                    });
+                }
+                return interaction.reply({ content: `❌ **Error:** ${e.message}`, flags: MessageFlags.Ephemeral });
+            }
 
         } else if (subcommand === 'disable') {
-            // Remove from Database
             await TrackedServer.findOneAndUpdate(
                 { guildId: interaction.guild.id },
                 { welcomeChannelId: null }
             );
 
             await interaction.reply({ 
-                content: `🚫 **System Disabled.**\nI will no longer send welcomes or run security checks here.`, 
+                content: `🚫 **System Disabled.**\nI will no longer send welcome messages here.`, 
                 flags: MessageFlags.Ephemeral 
             });
         }

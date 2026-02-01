@@ -32,10 +32,9 @@ const { loadFonts } = require('./fontLoader');
 const config = require("./config.json");
 
 // ==========================================
-// 🆕 GLOBAL DASHBOARD IMPORTS
+// 🆕 DASHBOARD IMPORTS
 // ==========================================
 const DashboardLocation = require('./src/models/DashboardLocationSchema');
-// 👇 CHANGE THIS LINE (Added runGatekeeper)
 const { generateDashboardPayload, runRoleUpdates, runGatekeeper } = require('./utils/dashboardUtils');
 
 const { prefix, serverID, welcomeLog, roleupdateLog, roleforLog, colourEmbed } = config;
@@ -45,7 +44,7 @@ const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.MessageContent, // 👈 CRITICAL for av/bn commands
         GatewayIntentBits.GuildMembers,
         GatewayIntentBits.GuildMessageReactions,
         GatewayIntentBits.GuildPresences,
@@ -58,7 +57,26 @@ client.prefixCommands = new Collection();
 client.slashCommands = new Collection();
 client.slashDatas = []; 
 
+// 👇 [NEW 1/3] Initialize Message Commands Collection
+client.messageCommands = new Collection();
+
 require('./handlers/commandHandler')(client);
+
+// 👇 [NEW 2/3] Load Normal Message Commands (av/bn)
+const normalCommandsPath = path.join(__dirname, 'commands/normal commands');
+if (fs.existsSync(normalCommandsPath)) {
+    const commandFiles = fs.readdirSync(normalCommandsPath).filter(file => file.endsWith('.js'));
+    for (const file of commandFiles) {
+        const filePath = path.join(normalCommandsPath, file);
+        const command = require(filePath);
+        if ('name' in command && 'execute' in command) {
+            client.messageCommands.set(command.name, command);
+            console.log(`✅ Loaded Message Command: ${command.name}`);
+        }
+    }
+} else {
+    console.log(`⚠️ Folder not found: ${normalCommandsPath}`);
+}
 
 // EVENT LOADER
 const eventsPath = path.join(__dirname, 'events');
@@ -73,6 +91,28 @@ for (const file of eventFiles) {
         client.on(event.name, (...args) => event.execute(...args, client));
     }
 }
+
+// 👇 [NEW 3/3] Message Create Event Listener (Triggers av/bn)
+client.on('messageCreate', async (message) => {
+    if (message.author.bot) return;
+
+    // Split args: "av user" -> command="av", args=["user"]
+    const args = message.content.trim().split(/\s+/);
+    const commandName = args.shift().toLowerCase();
+
+    // Check if command exists (av or bn)
+    const command = client.messageCommands.get(commandName);
+    if (!command) return;
+
+    try {
+        await command.execute(message, args);
+    } catch (error) {
+        console.error(error);
+        // Optional: Error reply
+        // message.reply({ content: '<:No:1297814819105144862> An error occurred.' });
+    }
+});
+
 
 const invitesCache = new Collection();
 
@@ -153,18 +193,18 @@ client.on('clientReady', async () => {
     // 🌍 GLOBAL DASHBOARD CONTROLLER (1 MIN)
     // ====================================================
     async function updateAllDashboards() {
-        console.log('[Dashboard] Starting Global Update Cycle...');
+        // console.log('[Dashboard] Starting Global Update Cycle...');
 
         // 1. Run Role Assignments
         await runRoleUpdates(client);
 
-        // 👇 NEW: Run Gatekeeper (Scans & Kicks users not in Main Server)
+        // 2. Run Gatekeeper
         await runGatekeeper(client);
 
-        // 2. Generate Fresh UI
+        // 3. Generate Fresh UI
         const payload = await generateDashboardPayload(client);
 
-        // 3. Update all messages
+        // 4. Update all messages
         const locations = await DashboardLocation.find();
         
         for (const loc of locations) {
@@ -178,18 +218,12 @@ client.on('clientReady', async () => {
                     flags: [MessageFlags.IsComponentsV2]
                 });
             } catch (e) {
-                console.log(`[Dashboard] Failed to update in Guild ${loc.guildId}: ${e.message}`);
+                // console.log(`[Dashboard] Failed to update in Guild ${loc.guildId}: ${e.message}`);
             }
-        }
-        if (locations.length > 0) {
-            console.log(`[Dashboard] Updated ${locations.length} dashboards.`);
         }
     }
 
-    // A. Run immediately on startup
     updateAllDashboards();
-
-    // B. Run every 1 minute (to ensure Gatekeeper checks frequently)
     setInterval(updateAllDashboards, 60 * 1000);
 });
 

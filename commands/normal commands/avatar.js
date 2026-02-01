@@ -41,15 +41,15 @@ module.exports = {
             // 3. Builder
             const createAvatarContainer = (isShowingGlobal, disableToggle = false) => {
                 const currentImage = isShowingGlobal ? globalAvatar : displayAvatar;
-                const titleText = isShowingGlobal ? `## Avatar Picture` : `## Pre-server Avatar Picture`;
-                const bodyText = isShowingGlobal ? `Avatar for <@${targetUser.id}>` : `Pre-server Avatar for <@${targetUser.id}>`;
+                const titleText = isShowingGlobal ? `## Avatar Picture` : `## Per-server Avatar Picture`;
+                const bodyText = isShowingGlobal ? `Avatar for <@${targetUser.id}>` : `Per-server Avatar for <@${targetUser.id}>`;
 
                 const toggleButton = new ButtonBuilder()
                     .setCustomId('toggle_av_msg')
                     .setStyle(ButtonStyle.Secondary);
 
                 if (isShowingGlobal) {
-                    toggleButton.setLabel('Show Pre-server Avatar');
+                    toggleButton.setLabel('Show Per-server Avatar');
                     if (!hasServerAvatar) toggleButton.setDisabled(true).setLabel('No Pre-server Avatar');
                 } else {
                     toggleButton.setLabel('Show Global Avatar');

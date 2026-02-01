@@ -13,10 +13,10 @@ const {
 } = require('discord.js');
 
 module.exports = {
-    name: 'bn',
-    aliases: ['banner'],
+    name: 'banner',
+    aliases: ['bn'],
     description: 'Shows user banner',
-    channels: ['1456197056510165026', '1456197056510165029', '1456197056988319870'], // Uncomment to restrict
+    channels: ['1456197056510165026', '1456197056510165029', '1456197056988319870'],
 
     async execute(message, args) {
         try {
@@ -30,7 +30,7 @@ module.exports = {
             if (!targetUser) {
                 return message.reply({ 
                     content: "<:No:1297814819105144862> User not found.", 
-                    flags: [MessageFlags.Ephemeral],
+                    flags: [MessageFlags.Ephemeral, MessageFlags.SuppressNotifications], // Silent Error
                     allowedMentions: { repliedUser: false }
                 });
             }
@@ -46,7 +46,7 @@ module.exports = {
             if (!globalBanner && !displayBanner) {
                 return message.reply({ 
                     content: `<:No:1297814819105144862> **${targetUser.username}** has no global or pre-server banner set.`, 
-                    flags: [MessageFlags.Ephemeral],
+                    flags: [MessageFlags.Ephemeral, MessageFlags.SuppressNotifications], // Silent Error
                     allowedMentions: { parse: [], repliedUser: false }
                 });
             }
@@ -86,11 +86,11 @@ module.exports = {
 
             let isGlobalMode = !!globalBanner;
 
-            // 4. Send Reply (SILENT)
+            // 4. Send Reply (SILENT & NO PING)
             const sentMessage = await message.reply({ 
                 components: [createBannerContainer(isGlobalMode)], 
-                flags: [MessageFlags.IsComponentsV2],
-                // 👇 THIS BLOCKS ALL PINGS
+                // 👇 Added SuppressNotifications here
+                flags: [MessageFlags.IsComponentsV2, MessageFlags.SuppressNotifications],
                 allowedMentions: { parse: [], repliedUser: false } 
             });
 
@@ -127,6 +127,7 @@ module.exports = {
             console.error(error);
             message.reply({ 
                 content: `<:No:1297814819105144862> Error: ${error.message}`,
+                flags: [MessageFlags.SuppressNotifications], // Silent Error
                 allowedMentions: { repliedUser: false }
             });
         }

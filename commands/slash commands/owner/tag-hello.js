@@ -31,7 +31,7 @@ module.exports = {
                 .setRequired(true)),
 
     async execute(interaction) {
-        // 🛑 LOCK TO OWNER
+        // 🛑 SECURITY: LOCK TO OWNER
         if (interaction.user.id !== OWNER_ID) {
             return interaction.reply({ 
                 content: '⛔ **Access Denied:** Only the Bot Owner can run this setup command.', 
@@ -41,36 +41,33 @@ module.exports = {
 
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-        const welcomeChannel = interaction.options.getChannel('channel');
-        const warnChannel = interaction.options.getChannel('warn_channel');
+        // Get Inputs
+        const welcomeInput = interaction.options.getChannel('channel');
+        const warnInput = interaction.options.getChannel('warn_channel');
         const tagRole = interaction.options.getRole('tag_user_role');
 
-        // 🛡️ SAFETY CHECKS
-        if (!welcomeChannel || !warnChannel) {
-            return interaction.editReply({ content: "❌ Error: One of the channels could not be accessed. Please ensure I have 'View Channel' permissions." });
-        }
-
-        // Check Permissions
+        // 🛡️ ROLE HIERARCHY CHECK
         if (tagRole.position >= interaction.guild.members.me.roles.highest.position) {
             return interaction.editReply({ 
-                content: `❌ **Error:** I cannot manage the role ${tagRole} because it is higher than my highest role. Please move my bot role above it.` 
+                content: `❌ **Role Error:** I cannot manage the role ${tagRole} because it is higher than my highest role. Please drag my bot role above it in Server Settings.` 
             });
         }
 
         try {
+            // ✅ Update Database
             await TrackedServer.findOneAndUpdate(
                 { guildId: interaction.guild.id },
                 { 
                     guildId: interaction.guild.id, 
                     displayName: interaction.guild.name, 
-                    welcomeChannelId: welcomeChannel.id,
-                    warnChannelId: warnChannel.id,
+                    welcomeChannelId: welcomeInput.id,
+                    warnChannelId: warnInput.id,
                     localRoleId: tagRole.id 
                 },
                 { upsert: true, new: true, setDefaultsOnInsert: true }
             );
 
-            // Success Container
+            // ✅ Create Success Container
             const container = new ContainerBuilder()
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(`## ✅ Setup Complete`)
@@ -80,15 +77,16 @@ module.exports = {
                 )
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
-                        `**👋 Welcome Channel:** <#${welcomeChannel.id}>\n` +
-                        `**⚠️ Warn Channel:** <#${warnChannel.id}>\n` +
+                        `**👋 Welcome Channel:** <#${welcomeInput.id}>\n` +
+                        `**⚠️ Warn Channel:** <#${warnInput.id}>\n` +
                         `**🏷️ Local Tag Role:** <@&${tagRole.id}>`
                     )
                 );
 
+            // ✅ Send with V2 Flag (Vital!)
             await interaction.editReply({ 
                 components: [container],
-                flags: [MessageFlags.IsComponentsV2] // 👈 Vital for Containers
+                flags: [MessageFlags.IsComponentsV2] 
             });
 
         } catch (e) {

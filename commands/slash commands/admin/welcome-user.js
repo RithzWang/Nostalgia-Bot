@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
-const TrackedServer = require('../../src/models/TrackedServerSchema');
+const TrackedServer = require('../../../src/models/TrackedServerSchema');
 
 module.exports = {
     data: new SlashCommandBuilder()

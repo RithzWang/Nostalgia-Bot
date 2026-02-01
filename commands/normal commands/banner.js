@@ -49,8 +49,8 @@ module.exports = {
             // 3. Builder
             const createBannerContainer = (isShowingGlobal, disableToggle = false) => {
                 const currentImage = isShowingGlobal ? globalBanner : displayBanner;
-                const titleText = isShowingGlobal ? `## Banner Picture` : `## Pre-server Banner Picture`;
-                const bodyText = isShowingGlobal ? `-# Banner for <@${targetUser.id}>` : `-# Pre-server Banner for <@${targetUser.id}>`;
+                const titleText = isShowingGlobal ? `# Banner Picture` : `# Pre-server Banner Picture`;
+                const bodyText = isShowingGlobal ? `Banner for <@${targetUser.id}>` : `Pre-server Banner for <@${targetUser.id}>`;
 
                 const toggleButton = new ButtonBuilder()
                     .setCustomId('toggle_bn_msg')

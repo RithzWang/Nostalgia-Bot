@@ -27,16 +27,20 @@ module.exports = {
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral });
                 const guildId = interaction.values[0];
                 
-                // Fetch name for the log before deleting
                 const sData = await TrackedServer.findOne({ guildId });
                 const name = sData ? sData.displayName : "Unknown Server";
 
                 await TrackedServer.deleteOne({ guildId });
                 await updateAllDashboards(client);
                 
-                // ✅ Container Response
                 const container = createSuccessContainer('🗑️ Server Removed', `**Name:** ${name}\n**ID:** \`${guildId}\`\n\nDashboards refreshed.`);
-                await interaction.editReply({ content: '', components: [container] });
+                
+                // ✅ FIX: Added V2 Flag
+                await interaction.editReply({ 
+                    content: '', 
+                    components: [container],
+                    flags: [MessageFlags.IsComponentsV2]
+                });
             }
 
             // B. EDIT SERVER (Populate Modal)
@@ -88,9 +92,14 @@ module.exports = {
 
                 await updateAllDashboards(client);
 
-                // ✅ Container Response
                 const container = createSuccessContainer('✅ Server Added', `**Name:** ${displayName}\n**Role:** ${roleId ? `<@&${roleId}>` : 'None'}\n**Status:** Dashboard updated.`);
-                await interaction.editReply({ content: '', components: [container] });
+                
+                // ✅ FIX: Added V2 Flag
+                await interaction.editReply({ 
+                    content: '', 
+                    components: [container],
+                    flags: [MessageFlags.IsComponentsV2]
+                });
             }
 
             // B. EDIT SERVER SUBMIT
@@ -112,9 +121,14 @@ module.exports = {
 
                 await updateAllDashboards(client);
 
-                // ✅ Container Response
                 const container = createSuccessContainer('✅ Updates Saved', `**Server:** ${displayName}\n**Status:** Dashboard refreshed.`);
-                await interaction.editReply({ content: '', components: [container] });
+                
+                // ✅ FIX: Added V2 Flag
+                await interaction.editReply({ 
+                    content: '', 
+                    components: [container],
+                    flags: [MessageFlags.IsComponentsV2]
+                });
             }
         }
     }

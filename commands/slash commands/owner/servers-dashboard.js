@@ -37,18 +37,18 @@ module.exports = {
             // 1. Server ID
             const serverId = new TextInputBuilder().setCustomId('server_id').setLabel("Server ID").setStyle(TextInputStyle.Short).setRequired(true);
             
-            // 2. Display Name (We have space for it now!)
+            // 2. Display Name
             const nameInput = new TextInputBuilder().setCustomId('display_name').setLabel("Display Name").setStyle(TextInputStyle.Short).setPlaceholder("e.g. My Server").setRequired(true);
 
             // 3. Tag Text
             const tagInput = new TextInputBuilder().setCustomId('tag_text').setLabel("Tag Text").setStyle(TextInputStyle.Short).setPlaceholder("e.g. ABC").setRequired(false);
 
-            // 4. ROLES (COMBINED) 👈
+            // 4. ROLES (COMBINED)
             const rolesInput = new TextInputBuilder()
                 .setCustomId('role_ids')
                 .setLabel("Tag Roles (Main ID, Local ID)")
                 .setStyle(TextInputStyle.Short)
-                .setPlaceholder("e.g. 111111, 222222") // User types both here separated by comma
+                .setPlaceholder("e.g. 111111, 222222")
                 .setRequired(false);
 
             // 5. Invite Link
@@ -68,7 +68,8 @@ module.exports = {
         // ====================================================
         // 🟢 OTHER COMMANDS
         // ====================================================
-        await interaction.deferReply({ ephemeral: true });
+        // 👇 UPDATED: Using MessageFlags.Ephemeral instead of { ephemeral: true }
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         if (sub === 'edit') {
             const servers = await TrackedServer.find();

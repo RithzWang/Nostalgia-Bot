@@ -16,7 +16,7 @@ module.exports = {
     name: 'av',
     aliases: ['avatar'],
     description: 'Shows user avatar',
-    // channels: ['CHANNEL_ID'], // Uncomment to restrict
+    channels: ['1456197056510165026', '1456197056510165029', '1456197056988319870'], // Uncomment to restrict
 
     async execute(message, args) {
         try {

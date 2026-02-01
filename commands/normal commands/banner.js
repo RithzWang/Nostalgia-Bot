@@ -13,9 +13,11 @@ const {
 } = require('discord.js');
 
 module.exports = {
-    name: 'banner', // The command triggers on "bn"
-    aliases: ['bn'],
+    name: 'bn',
+    aliases: ['banner'],
     description: 'Shows user banner',
+    // channels: ['CHANNEL_ID'], // Uncomment to restrict
+
     async execute(message, args) {
         try {
             // 1. Resolve User
@@ -26,21 +28,30 @@ module.exports = {
             if (!targetUser && !args[0]) targetUser = message.author;
 
             if (!targetUser) {
-                return message.reply({ content: "<:No:1297814819105144862> User not found.", flags: [MessageFlags.Ephemeral] });
+                return message.reply({ 
+                    content: "<:No:1297814819105144862> User not found.", 
+                    flags: [MessageFlags.Ephemeral],
+                    allowedMentions: { repliedUser: false }
+                });
             }
 
+            // 2. Fetch Banner
             let targetMember = null;
             try { targetMember = await message.guild.members.fetch(targetUser.id); } catch (err) { targetMember = null; }
 
-            // 2. Fetch Banner
             const fetchedUser = await message.client.users.fetch(targetUser.id, { force: true });
             const globalBanner = fetchedUser.bannerURL({ size: 4096, forceStatic: false });
             const displayBanner = targetMember ? targetMember.bannerURL({ size: 4096, forceStatic: false }) : null;
 
             if (!globalBanner && !displayBanner) {
-                return message.reply({ content: `<:No:1297814819105144862> **${targetUser.username}** has no global or pre-server banner set.`, flags: [MessageFlags.Ephemeral] });
+                return message.reply({ 
+                    content: `<:No:1297814819105144862> **${targetUser.username}** has no global or pre-server banner set.`, 
+                    flags: [MessageFlags.Ephemeral],
+                    allowedMentions: { parse: [], repliedUser: false }
+                });
             }
 
+            // 3. Builder
             const createBannerContainer = (isShowingGlobal, disableToggle = false) => {
                 const currentImage = isShowingGlobal ? globalBanner : displayBanner;
                 const titleText = isShowingGlobal ? `## Banner` : `## Pre-server Banner`;
@@ -74,29 +85,50 @@ module.exports = {
             };
 
             let isGlobalMode = !!globalBanner;
+
+            // 4. Send Reply (SILENT)
             const sentMessage = await message.reply({ 
                 components: [createBannerContainer(isGlobalMode)], 
                 flags: [MessageFlags.IsComponentsV2],
-                allowedMentions: { parse: [] } 
+                // 👇 THIS BLOCKS ALL PINGS
+                allowedMentions: { parse: [], repliedUser: false } 
             });
 
             if (!(globalBanner && displayBanner)) return;
 
+            // 5. Collector
             const collector = sentMessage.createMessageComponentCollector({ componentType: ComponentType.Button, idle: 60_000 });
 
             collector.on('collect', async (i) => {
-                if (i.user.id !== message.author.id) return i.reply({ content: `<:No:1297814819105144862> Only <@${message.author.id}> can use this button`, flags: [MessageFlags.Ephemeral] });
+                if (i.user.id !== message.author.id) {
+                    return i.reply({ 
+                        content: `<:No:1297814819105144862> Only <@${message.author.id}> can use this button`, 
+                        flags: [MessageFlags.Ephemeral],
+                        allowedMentions: { parse: [] }
+                    });
+                }
                 isGlobalMode = !isGlobalMode;
-                await i.update({ components: [createBannerContainer(isGlobalMode)], flags: [MessageFlags.IsComponentsV2] });
+                await i.update({ 
+                    components: [createBannerContainer(isGlobalMode)], 
+                    flags: [MessageFlags.IsComponentsV2],
+                    allowedMentions: { parse: [] }
+                });
             });
 
             collector.on('end', () => {
-                sentMessage.edit({ components: [createBannerContainer(isGlobalMode, true)], flags: [MessageFlags.IsComponentsV2] }).catch(() => {});
+                sentMessage.edit({ 
+                    components: [createBannerContainer(isGlobalMode, true)], 
+                    flags: [MessageFlags.IsComponentsV2],
+                    allowedMentions: { parse: [] }
+                }).catch(() => {});
             });
 
         } catch (error) {
             console.error(error);
-            message.reply(`<:No:1297814819105144862> Error: ${error.message}`);
+            message.reply({ 
+                content: `<:No:1297814819105144862> Error: ${error.message}`,
+                allowedMentions: { repliedUser: false }
+            });
         }
     }
 };

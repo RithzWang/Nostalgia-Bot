@@ -20,7 +20,7 @@ module.exports = {
 
     async execute(interaction) {
         try {
-            // 1. Resolve User
+            // 1. Smart Fetch
             const targetUser = interaction.options.getUser('target') || interaction.user;
             const targetMember = interaction.options.getMember('target') || interaction.member;
 
@@ -32,69 +32,103 @@ module.exports = {
             }
 
             // 2. Get URLs
+            // 👇 CHANGE: Removed "extension: 'png'" so GIFs work now!
             const globalAvatar = targetUser.displayAvatarURL({ size: 1024, forceStatic: false });
+            
             const displayAvatar = targetMember 
                 ? targetMember.displayAvatarURL({ size: 1024, forceStatic: false }) 
                 : globalAvatar;
 
+            // Check if they are actually different
             const hasServerAvatar = globalAvatar !== displayAvatar;
 
-            // 3. Container Helper
+            // 3. CAPTURE TIME ONCE
+            const now = new Date();
+            const timeOptions = { 
+                timeZone: 'Asia/Bangkok', 
+                day: '2-digit', month: '2-digit', year: 'numeric', 
+                hour: '2-digit', minute: '2-digit', hour12: false 
+            };
+            const staticTimeString = new Intl.DateTimeFormat('en-GB', timeOptions).format(now);
+
+            // 4. Helper Function
             const createAvatarContainer = (isShowingGlobal, disableToggle = false) => {
                 const currentImage = isShowingGlobal ? globalAvatar : displayAvatar;
-                const titleText = isShowingGlobal ? `## Avatar` : `## Pre-server Avatar`;
+                
+                const titleText = isShowingGlobal 
+                    ? `## Avatar` 
+                    : `## Pre-server Avatar`;
+                
                 const bodyText = isShowingGlobal
                     ? `-# Avatar of <@${targetUser.id}>`
                     : `-# Pre-server Avatar of <@${targetUser.id}>`;
 
+                // --- Buttons ---
                 const toggleButton = new ButtonBuilder()
                     .setCustomId('toggle_avatar')
                     .setStyle(ButtonStyle.Secondary);
 
                 if (isShowingGlobal) {
                     toggleButton.setLabel('Show Pre-server Avatar');
-                    if (!hasServerAvatar) toggleButton.setDisabled(true).setLabel('No Pre-server Avatar');
+                    if (!hasServerAvatar) {
+                        toggleButton.setDisabled(true).setLabel('No Pre-server Avatar');
+                    }
                 } else {
                     toggleButton.setLabel('Show Global Avatar');
                 }
 
-                if (disableToggle) toggleButton.setDisabled(true);
-
-                const container = new ContainerBuilder().setAccentColor(0x888888);
-
-                container.addSectionComponents((section) => 
-                    section.addTextDisplayComponents((text) => text.setContent(`${titleText}\n${bodyText}`))
-                );
-
-                if (currentImage) {
-                    container.addMediaGalleryComponents((gallery) => 
-                        gallery.addItems((item) => item.setURL(currentImage))
-                    );
+                if (disableToggle) {
+                    toggleButton.setDisabled(true);
                 }
 
-                container.addSeparatorComponents((sep) => sep.setSpacing(SeparatorSpacingSize.Small));
-                container.addActionRowComponents((row) => row.setComponents(toggleButton));
+                const timeButton = new ButtonBuilder()
+                    .setCustomId('timestamp_btn')
+                    .setLabel(`${staticTimeString} (GMT+7)`)
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(true);
 
-                return container;
+                const browserButton = new ButtonBuilder()
+                    .setLabel('Open in Browser')
+                    .setStyle(ButtonStyle.Link)
+                    .setURL(currentImage);
+
+                // --- Build Container ---
+                return new ContainerBuilder()
+                    .setAccentColor(0x888888) 
+                    
+                    .addSectionComponents((section) => 
+                        section
+                            .addTextDisplayComponents((text) => 
+                                text.setContent(`${titleText}\n${bodyText}`)
+                            )
+                            .setButtonAccessory(() => browserButton)
+                    )
+                    .addMediaGalleryComponents((gallery) => 
+                        gallery.addItems((item) => item.setURL(currentImage))
+                    )
+                    .addSeparatorComponents((sep) => 
+                        sep.setSpacing(SeparatorSpacingSize.Small)
+                    )
+                    .addActionRowComponents((row) => 
+                        row.setComponents(toggleButton, timeButton)
+                    );
             };
 
-            // 4. Send Initial Reply
+            // 5. Send Initial Reply
             let isGlobalMode = true;
             const initialContainer = createAvatarContainer(true, false);
 
-            // ⬇️ FIX: Removed fetchReply: true
-            await interaction.reply({ 
+            const response = await interaction.reply({ 
                 components: [initialContainer], 
                 flags: [MessageFlags.IsComponentsV2], 
-                allowedMentions: { parse: [] }
+                allowedMentions: { parse: [] }, 
+                fetchReply: true
             });
 
-            // ⬇️ FIX: Explicitly fetch the response here
-            const response = await interaction.fetchReply();
-
-            // 5. Collector
+            // ⚡ OPTIMIZATION CHECK ⚡
             if (!hasServerAvatar) return;
 
+            // 6. Collector
             const collector = response.createMessageComponentCollector({ 
                 componentType: ComponentType.Button, 
                 idle: 60_000 
@@ -102,15 +136,19 @@ module.exports = {
 
             collector.on('collect', async (i) => {
                 if (i.user.id !== interaction.user.id) {
-                    return i.reply({ content: `Only <@${interaction.user.id}> can use this button`, flags: [MessageFlags.Ephemeral] });
+                    return i.reply({ 
+                        content: `Only <@${interaction.user.id}> can use this button`, 
+                        flags: [MessageFlags.Ephemeral] 
+                    });
                 }
 
                 if (i.customId === 'toggle_avatar') {
                     isGlobalMode = !isGlobalMode;
                     const newContainer = createAvatarContainer(isGlobalMode, false);
-                    await i.update({ 
-                        components: [newContainer], 
-                        flags: [MessageFlags.IsComponentsV2], 
+
+                    await i.update({
+                        components: [newContainer],
+                        flags: [MessageFlags.IsComponentsV2],
                         allowedMentions: { parse: [] } 
                     });
                 }
@@ -119,17 +157,25 @@ module.exports = {
             collector.on('end', async () => {
                 try {
                     const disabledContainer = createAvatarContainer(isGlobalMode, true);
-                    await interaction.editReply({ 
-                        components: [disabledContainer], 
-                        flags: [MessageFlags.IsComponentsV2], 
+                    
+                    await interaction.editReply({
+                        components: [disabledContainer],
+                        flags: [MessageFlags.IsComponentsV2],
                         allowedMentions: { parse: [] } 
                     });
-                } catch (e) { /* Ignore */ }
+                } catch (error) {
+                    // Ignore error
+                }
             });
 
         } catch (error) {
             console.error("Avatar Command Error:", error);
-            if (!interaction.replied) await interaction.reply({ content: `❌ **Error:** ${error.message}`, flags: [MessageFlags.Ephemeral] });
+            if (!interaction.replied) {
+                await interaction.reply({ 
+                    content: `❌ **Error:** ${error.message}`, 
+                    flags: [MessageFlags.Ephemeral] 
+                });
+            }
         }
     }
 };

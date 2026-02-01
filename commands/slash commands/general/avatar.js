@@ -31,75 +31,49 @@ module.exports = {
                 });
             }
 
-            // 2. Get URLs (Allowing GIFs)
-            // Note: forceStatic: false ensures we get the animated version if available
+            // 2. Get URLs
             const globalAvatar = targetUser.displayAvatarURL({ size: 1024, forceStatic: false });
-            
             const displayAvatar = targetMember 
                 ? targetMember.displayAvatarURL({ size: 1024, forceStatic: false }) 
                 : globalAvatar;
 
-            // Check if server avatar is different from global
             const hasServerAvatar = globalAvatar !== displayAvatar;
 
-            // 3. Container Builder Helper
+            // 3. Container Helper
             const createAvatarContainer = (isShowingGlobal, disableToggle = false) => {
                 const currentImage = isShowingGlobal ? globalAvatar : displayAvatar;
-                
                 const titleText = isShowingGlobal ? `## Avatar` : `## Pre-server Avatar`;
                 const bodyText = isShowingGlobal
                     ? `-# Avatar of <@${targetUser.id}>`
                     : `-# Pre-server Avatar of <@${targetUser.id}>`;
 
-                // --- Button Logic ---
                 const toggleButton = new ButtonBuilder()
                     .setCustomId('toggle_avatar')
                     .setStyle(ButtonStyle.Secondary);
 
                 if (isShowingGlobal) {
                     toggleButton.setLabel('Show Pre-server Avatar');
-                    // If they don't have a unique server avatar, disable the button
-                    if (!hasServerAvatar) {
-                        toggleButton.setDisabled(true).setLabel('No Pre-server Avatar');
-                    }
+                    if (!hasServerAvatar) toggleButton.setDisabled(true).setLabel('No Pre-server Avatar');
                 } else {
                     toggleButton.setLabel('Show Global Avatar');
                 }
 
-                // Fully disable if collector ended
-                if (disableToggle) {
-                    toggleButton.setDisabled(true);
-                }
+                if (disableToggle) toggleButton.setDisabled(true);
 
-                // --- Build Container ---
-                // We build strictly to ensure no undefined components are passed
-                const container = new ContainerBuilder()
-                    .setAccentColor(0x888888);
+                const container = new ContainerBuilder().setAccentColor(0x888888);
 
-                // Section (Text)
                 container.addSectionComponents((section) => 
-                    section.addTextDisplayComponents((text) => 
-                        text.setContent(`${titleText}\n${bodyText}`)
-                    )
+                    section.addTextDisplayComponents((text) => text.setContent(`${titleText}\n${bodyText}`))
                 );
 
-                // Media (Image)
                 if (currentImage) {
                     container.addMediaGalleryComponents((gallery) => 
                         gallery.addItems((item) => item.setURL(currentImage))
                     );
                 }
 
-                // Separator
-                container.addSeparatorComponents((sep) => 
-                    sep.setSpacing(SeparatorSpacingSize.Small)
-                );
-
-                // Action Row (Button)
-                // Even if disabled, the button must be added to the row
-                container.addActionRowComponents((row) => 
-                    row.setComponents(toggleButton)
-                );
+                container.addSeparatorComponents((sep) => sep.setSpacing(SeparatorSpacingSize.Small));
+                container.addActionRowComponents((row) => row.setComponents(toggleButton));
 
                 return container;
             };
@@ -108,17 +82,19 @@ module.exports = {
             let isGlobalMode = true;
             const initialContainer = createAvatarContainer(true, false);
 
-            const response = await interaction.reply({ 
+            // ⬇️ FIX: Removed fetchReply: true
+            await interaction.reply({ 
                 components: [initialContainer], 
                 flags: [MessageFlags.IsComponentsV2], 
-                allowedMentions: { parse: [] }, 
-                fetchReply: true
+                allowedMentions: { parse: [] }
             });
 
-            // ⚡ Optimization: If no server avatar, no need for collector
-            if (!hasServerAvatar) return;
+            // ⬇️ FIX: Explicitly fetch the response here
+            const response = await interaction.fetchReply();
 
             // 5. Collector
+            if (!hasServerAvatar) return;
+
             const collector = response.createMessageComponentCollector({ 
                 componentType: ComponentType.Button, 
                 idle: 60_000 
@@ -126,19 +102,15 @@ module.exports = {
 
             collector.on('collect', async (i) => {
                 if (i.user.id !== interaction.user.id) {
-                    return i.reply({ 
-                        content: `Only <@${interaction.user.id}> can use this button`, 
-                        flags: [MessageFlags.Ephemeral] 
-                    });
+                    return i.reply({ content: `Only <@${interaction.user.id}> can use this button`, flags: [MessageFlags.Ephemeral] });
                 }
 
                 if (i.customId === 'toggle_avatar') {
                     isGlobalMode = !isGlobalMode;
                     const newContainer = createAvatarContainer(isGlobalMode, false);
-
-                    await i.update({
-                        components: [newContainer],
-                        flags: [MessageFlags.IsComponentsV2],
+                    await i.update({ 
+                        components: [newContainer], 
+                        flags: [MessageFlags.IsComponentsV2], 
                         allowedMentions: { parse: [] } 
                     });
                 }
@@ -147,24 +119,17 @@ module.exports = {
             collector.on('end', async () => {
                 try {
                     const disabledContainer = createAvatarContainer(isGlobalMode, true);
-                    await interaction.editReply({
-                        components: [disabledContainer],
-                        flags: [MessageFlags.IsComponentsV2],
+                    await interaction.editReply({ 
+                        components: [disabledContainer], 
+                        flags: [MessageFlags.IsComponentsV2], 
                         allowedMentions: { parse: [] } 
                     });
-                } catch (e) {
-                    // Message might have been deleted
-                }
+                } catch (e) { /* Ignore */ }
             });
 
         } catch (error) {
-            console.error("❌ Avatar Command Error:", error);
-            if (!interaction.replied && !interaction.deferred) {
-                await interaction.reply({ 
-                    content: `❌ **Error:** ${error.message}`, 
-                    flags: [MessageFlags.Ephemeral] 
-                });
-            }
+            console.error("Avatar Command Error:", error);
+            if (!interaction.replied) await interaction.reply({ content: `❌ **Error:** ${error.message}`, flags: [MessageFlags.Ephemeral] });
         }
     }
 };

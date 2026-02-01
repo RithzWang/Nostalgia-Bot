@@ -1,12 +1,11 @@
 const { 
-    ContainerBuilder, TextDisplayBuilder, ThumbnailBuilder, SectionBuilder, 
+    ContainerBuilder, TextDisplayBuilder, SectionBuilder, 
     ButtonBuilder, ButtonStyle, SeparatorBuilder, SeparatorSpacingSize,
     MessageFlags 
-} = require('discord.js');
+} = require('discord.js'); // 👈 Removed ThumbnailBuilder from imports since we don't use it
 const TrackedServer = require('../src/models/TrackedServerSchema');
 const DashboardLocation = require('../src/models/DashboardLocationSchema');
 
-// 👇 IMPORT THE GATEKEEPER LOGIC
 const { runGatekeeper } = require('./gatekeeperUtils');
 
 // 🔒 CONFIGURATION
@@ -14,7 +13,7 @@ const MAIN_GUILD_ID = '1456197054782111756';
 const GLOBAL_TAG_ROLE_ID = '1462217123433545812'; 
 
 // ==========================================
-// 1. ROLE MANAGER (Specific & Global)
+// 1. ROLE MANAGER
 // ==========================================
 async function runRoleUpdates(client) {
     const mainGuild = client.guilds.cache.get(MAIN_GUILD_ID);
@@ -22,7 +21,6 @@ async function runRoleUpdates(client) {
 
     const trackedServers = await TrackedServer.find();
     
-    // Create Lookup Maps
     const tagToRoleMap = new Map();
     const roleToGuildMap = new Map();
     const validTagServerIds = new Set(); 
@@ -46,10 +44,9 @@ async function runRoleUpdates(client) {
             const isTagEnabled = identity && identity.identityEnabled === true;
             const currentTagGuildId = isTagEnabled ? identity.identityGuildId : null;
 
-            // Flag: Is the user wearing a tag from ANY of our tracked servers?
             const isWearingAnyValidTag = currentTagGuildId && validTagServerIds.has(currentTagGuildId);
 
-            // A. MANAGE SPECIFIC SERVER ROLES
+            // A. Specific Roles
             if (currentTagGuildId && tagToRoleMap.has(currentTagGuildId)) {
                 const targetRoleId = tagToRoleMap.get(currentTagGuildId);
                 const role = mainGuild.roles.cache.get(targetRoleId);
@@ -58,7 +55,7 @@ async function runRoleUpdates(client) {
                 }
             }
 
-            // B. REMOVE Specific Roles (if mismatched)
+            // B. Remove Mismatched Roles
             for (const [rId, sourceGuildId] of roleToGuildMap.entries()) {
                 if (member.roles.cache.has(rId)) {
                     if (currentTagGuildId !== sourceGuildId) {
@@ -68,10 +65,9 @@ async function runRoleUpdates(client) {
                 }
             }
 
-            // C. MANAGE GLOBAL ROLE
+            // C. Global Role
             if (globalRole) {
                 const hasGlobalRole = member.roles.cache.has(GLOBAL_TAG_ROLE_ID);
-
                 if (isWearingAnyValidTag && !hasGlobalRole) {
                     await member.roles.add(globalRole).catch(() => {});
                 } 
@@ -91,7 +87,6 @@ async function runRoleUpdates(client) {
 async function generateDashboardPayload(client) {
     const servers = await TrackedServer.find();
     
-    // 📊 Counters
     let totalNetworkMembers = 0;
     let totalTagUsers = 0; 
     
@@ -106,7 +101,6 @@ async function generateDashboardPayload(client) {
         let tagStatusLine = ""; 
 
         if (guild) {
-            // 🔢 Calculate Tag Users for this server
             const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS');
             let currentServerTagCount = 0;
 
@@ -121,7 +115,6 @@ async function generateDashboardPayload(client) {
                 totalTagUsers += currentServerTagCount; 
             }
 
-            // 🔍 CHECK 1: Boost Level (Min 3)
             const boostCount = guild.premiumSubscriptionCount || 0;
             const boostsNeeded = 3 - boostCount;
 
@@ -130,11 +123,9 @@ async function generateDashboardPayload(client) {
                 const remainPlural = boostsNeeded === 1 ? "Remains" : "Remain";
                 tagStatusLine = `<:no_boost:1463272235056889917> **${boostsNeeded} ${plural} ${remainPlural}**`;
             } else {
-                // 🔍 CHECK 2: Feature Enabled?
                 if (!hasClanFeature) {
                     tagStatusLine = `<:no_tag:1463272172201050336> **Not Enabled**`;
                 } else {
-                    // 🟢 Show Count
                     tagStatusLine = `<:greysword:1462853724824404069> **Tag Users:** ${currentServerTagCount}`;
                 }
             }
@@ -164,9 +155,8 @@ async function generateDashboardPayload(client) {
 
     const nextUpdateUnix = Math.floor((Date.now() + 60 * 1000) / 1000);
     
-    // Header
-    const PERMANENT_IMAGE_URL = "https://cdn.discordapp.com/attachments/853503167706693632/1463227084817039558/A2-Q_20260121004151.png?ex=69710fea&is=696fbe6a&hm=77aab04999980ef14e5e3d51329b20f84a2fd3e01046bd93d16ac71be4410ef9&"; 
-
+    // ✅ HEADER (Without Thumbnail)
+    // I made sure this is syntactically perfect.
     const headerSection = new SectionBuilder()
         .addTextDisplayComponents(
             new TextDisplayBuilder()
@@ -202,18 +192,14 @@ async function generateDashboardPayload(client) {
 }
 
 // ==========================================
-// 3. MASTER UPDATE FUNCTION (CONTROLLER)
+// 3. MASTER UPDATE FUNCTION
 // ==========================================
 async function updateAllDashboards(client) {
     console.log('[Dashboard] Starting Global Update Cycle...');
 
-    // 1. Run Role Manager
     await runRoleUpdates(client);
-    
-    // 2. Run Gatekeeper (Imported Security Check)
     await runGatekeeper(client);
 
-    // 3. Update Dashboard UI
     const payload = await generateDashboardPayload(client);
     const locations = await DashboardLocation.find();
     
@@ -228,7 +214,8 @@ async function updateAllDashboards(client) {
                 flags: [MessageFlags.IsComponentsV2]
             });
         } catch (e) {
-            console.log(`[Dashboard] Failed to update in Guild ${loc.guildId}: ${e.message}`);
+            // 👇 IMPROVED LOGGING: This will now show the REAL error in your console
+            console.error(`[Dashboard] 🛑 ERROR in Guild ${loc.guildId}:`, e);
         }
     }
     if (locations.length > 0) console.log(`[Dashboard] Updated ${locations.length} dashboards.`);

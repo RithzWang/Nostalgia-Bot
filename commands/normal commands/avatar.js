@@ -42,7 +42,7 @@ module.exports = {
             const createAvatarContainer = (isShowingGlobal, disableToggle = false) => {
                 const currentImage = isShowingGlobal ? globalAvatar : displayAvatar;
                 const titleText = isShowingGlobal ? `## Avatar Picture` : `## Pre-server Avatar Picture`;
-                const bodyText = isShowingGlobal ? `-# Avatar of <@${targetUser.id}>` : `-# Pre-server Avatar of <@${targetUser.id}>`;
+                const bodyText = isShowingGlobal ? `-# Avatar for <@${targetUser.id}>` : `-# Pre-server Avatar for <@${targetUser.id}>`;
 
                 const toggleButton = new ButtonBuilder()
                     .setCustomId('toggle_av_msg')

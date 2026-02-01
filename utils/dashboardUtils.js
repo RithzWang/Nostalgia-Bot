@@ -1,6 +1,6 @@
 const { 
     ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize,
-    MessageFlags 
+    SectionBuilder, ButtonBuilder, ButtonStyle, MessageFlags 
 } = require('discord.js');
 const TrackedServer = require('../src/models/TrackedServerSchema');
 const DashboardLocation = require('../src/models/DashboardLocationSchema');
@@ -42,8 +42,6 @@ async function runRoleUpdates(client) {
             const identity = member.user.primaryGuild; 
             const isTagEnabled = identity && identity.identityEnabled === true;
             const currentTagGuildId = isTagEnabled ? identity.identityGuildId : null;
-
-            // Flag: Is the user wearing a tag from ANY of our tracked servers?
             const isWearingAnyValidTag = currentTagGuildId && validTagServerIds.has(currentTagGuildId);
 
             // A. MANAGE SPECIFIC SERVER ROLES
@@ -68,7 +66,6 @@ async function runRoleUpdates(client) {
             // C. MANAGE GLOBAL ROLE
             if (globalRole) {
                 const hasGlobalRole = member.roles.cache.has(GLOBAL_TAG_ROLE_ID);
-
                 if (isWearingAnyValidTag && !hasGlobalRole) {
                     await member.roles.add(globalRole).catch(() => {});
                 } 
@@ -83,7 +80,7 @@ async function runRoleUpdates(client) {
 }
 
 // ==========================================
-// 2. DASHBOARD UI GENERATOR (UPDATED LAYOUT)
+// 2. DASHBOARD UI GENERATOR (EXACT REQUESTED LAYOUT)
 // ==========================================
 async function generateDashboardPayload(client) {
     const servers = await TrackedServer.find();
@@ -92,7 +89,8 @@ async function generateDashboardPayload(client) {
     let totalNetworkMembers = 0;
     let totalTagUsers = 0; 
     
-    const serverItems = [];
+    // We will build components dynamically
+    const serverComponents = [];
 
     for (const data of servers) {
         const guild = client.guilds.cache.get(data.guildId);
@@ -103,7 +101,7 @@ async function generateDashboardPayload(client) {
         let tagStatusLine = ""; 
 
         if (guild) {
-            // 🔢 Calculate Tag Users for this server
+            // 🔢 Calculate Tag Users
             const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS');
             let currentServerTagCount = 0;
 
@@ -118,7 +116,7 @@ async function generateDashboardPayload(client) {
                 totalTagUsers += currentServerTagCount; 
             }
 
-            // 🔍 CHECK 1: Boost Level (Min 3)
+            // 🔍 CHECK 1: Boost Level
             const boostCount = guild.premiumSubscriptionCount || 0;
             const boostsNeeded = 3 - boostCount;
 
@@ -131,7 +129,6 @@ async function generateDashboardPayload(client) {
                 if (!hasClanFeature) {
                     tagStatusLine = `<:no_tag:1463272172201050336> **Not Enabled**`;
                 } else {
-                    // 🟢 Show Count
                     tagStatusLine = `<:greysword:1462853724824404069> **Tag Users:** ${currentServerTagCount}`;
                 }
             }
@@ -139,13 +136,31 @@ async function generateDashboardPayload(client) {
             tagStatusLine = `<:no_tag:1463272172201050336> **Not Connected**`;
         }
 
-        // Store formatting for this server
-        serverItems.push(
-            `## [${data.displayName}](${data.inviteLink || "https://discord.com"})\n` +
-            `**<:sparkles:1462851309219872841> Server Tag:** ${displayTagText}\n` +
-            `**<:members:1462851249836654592> Members:** ${memberCount}\n` +
-            `${tagStatusLine}`
-        );
+        // 🔘 SAFE BUTTON LOGIC
+        const inviteButton = new ButtonBuilder()
+            .setStyle(ButtonStyle.Link)
+            .setLabel("Server Link");
+
+        if (data.inviteLink && data.inviteLink.startsWith('http')) {
+            inviteButton.setURL(data.inviteLink).setDisabled(false);
+        } else {
+            inviteButton.setURL('https://discord.com').setDisabled(true);
+        }
+
+        // 🏗️ Create the Section for this Server
+        const section = new SectionBuilder()
+            .setButtonAccessory(inviteButton)
+            .addTextDisplayComponents(
+                new TextDisplayBuilder()
+                    .setContent(
+                        `## [${data.displayName}](${data.inviteLink || "https://discord.com"})\n` +
+                        `**<:sparkles:1462851309219872841> Server Tag:** ${displayTagText}\n` +
+                        `**<:members:1462851249836654592> Members:** ${memberCount}\n` +
+                        `${tagStatusLine}`
+                    )
+            );
+        
+        serverComponents.push(section);
     }
 
     const nextUpdateUnix = Math.floor((Date.now() + 60 * 1000) / 1000);
@@ -156,29 +171,28 @@ async function generateDashboardPayload(client) {
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent("# <:A2Q_1:1466981218758426634><:A2Q_2:1466981281060360232> » Servers")
         )
-        // 2. Small Gap
+        // 2. Small Invisible Divider
         .addSeparatorComponents(
             new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
         )
         // 3. Stats Header
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
-                `Total Members: ${totalNetworkMembers}\nTotal Tag Users: ${totalTagUsers}`
+                `-# Total Members : ${totalNetworkMembers}\n-# Total Tag Users : ${totalTagUsers}`
             )
         )
-        // 4. Large Divider
+        // 4. Large Visible Divider
         .addSeparatorComponents(
             new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
         );
 
-    // 5. Loop through Servers
-    for (let i = 0; i < serverItems.length; i++) {
-        container.addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(serverItems[i])
-        );
+    // 5. Loop through Servers & Add Sections
+    for (let i = 0; i < serverComponents.length; i++) {
+        container.addSectionComponents(serverComponents[i]);
 
-        // Add separator (Small invisible for items in between, Large visible for the very end of list)
-        const isLastItem = i === serverItems.length - 1;
+        // Add separator (Small invisible for items in between)
+        // We do NOT add a separator after the very last item, because the "Footer Divider" comes next.
+        const isLastItem = i === serverComponents.length - 1;
         
         if (!isLastItem) {
             container.addSeparatorComponents(
@@ -187,7 +201,7 @@ async function generateDashboardPayload(client) {
         }
     }
 
-    // 6. Bottom Divider & Footer
+    // 6. Bottom Divider (Large/True) & Footer
     container
         .addSeparatorComponents(
             new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)

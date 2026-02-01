@@ -1,12 +1,7 @@
 const { 
-    Events, 
-    ModalBuilder, 
-    TextInputBuilder, 
-    TextInputStyle, 
-    ActionRowBuilder, 
-    MessageFlags 
+    Events, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, MessageFlags,
+    ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize
 } = require('discord.js');
-
 const TrackedServer = require('../src/models/TrackedServerSchema');
 const { updateAllDashboards } = require('../utils/dashboardUtils');
 
@@ -14,8 +9,16 @@ module.exports = {
     name: Events.InteractionCreate,
     async execute(interaction, client) {
 
+        // 🎨 Helper to create a Success Container
+        const createSuccessContainer = (title, content) => {
+            return new ContainerBuilder()
+                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${title}`))
+                .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
+                .addTextDisplayComponents(new TextDisplayBuilder().setContent(content));
+        };
+
         // ===============================================
-        // 1. SELECT MENU HANDLERS (Dashboard Only)
+        // 1. SELECT MENU HANDLERS
         // ===============================================
         if (interaction.isStringSelectMenu()) {
             
@@ -24,55 +27,45 @@ module.exports = {
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral });
                 const guildId = interaction.values[0];
                 
+                // Get name before deleting for the log
+                const sData = await TrackedServer.findOne({ guildId });
+                const name = sData ? sData.displayName : "Unknown Server";
+
                 await TrackedServer.deleteOne({ guildId });
                 await updateAllDashboards(client);
                 
-                await interaction.editReply({ content: `🗑️ **Removed Server!**\nID: \`${guildId}\`\nDashboards updated.` });
+                // ✅ CONTAINER RESPONSE
+                const container = createSuccessContainer(
+                    '🗑️ Server Removed',
+                    `**Name:** ${name}\n**ID:** \`${guildId}\`\n\nDashboards have been refreshed.`
+                );
+
+                await interaction.editReply({ content: '', components: [container] });
             }
 
             // B. EDIT SERVER (Populate Modal)
             if (interaction.customId === 'dashboard_edit_select') {
-                try {
-                    const guildId = interaction.values[0];
-                    const serverData = await TrackedServer.findOne({ guildId });
+                const guildId = interaction.values[0];
+                const sData = await TrackedServer.findOne({ guildId });
+                if (!sData) return interaction.reply({ content: "❌ Not found.", flags: MessageFlags.Ephemeral });
 
-                    if (!serverData) {
-                        return interaction.reply({ content: "❌ Server data not found.", flags: MessageFlags.Ephemeral });
-                    }
+                const modal = new ModalBuilder().setCustomId(`dashboard_edit_modal_${guildId}`).setTitle(`Edit: ${sData.displayName}`);
 
-                    // Create Modal with Existing Data
-                    const modal = new ModalBuilder().setCustomId('dashboard_edit_modal').setTitle('Edit Server Details');
+                // Combine roles for display: "111, 222"
+                const combinedRoles = [sData.roleId, sData.localRoleId].filter(Boolean).join(', ');
 
-                    const inputID = new TextInputBuilder()
-                        .setCustomId('server_id')
-                        .setLabel("Server ID (DO NOT CHANGE)") 
-                        .setStyle(TextInputStyle.Short)
-                        .setValue(String(serverData.guildId))
-                        .setRequired(true);
-
-                    const inputName = new TextInputBuilder().setCustomId('display_name').setLabel("Display Name").setStyle(TextInputStyle.Short).setValue(String(serverData.displayName || "")).setRequired(true);
-                    const inputTag = new TextInputBuilder().setCustomId('tag_text').setLabel("Tag Text").setStyle(TextInputStyle.Short).setValue(String(serverData.tagText || "")).setRequired(false);
-                    const inputRole = new TextInputBuilder().setCustomId('role_id').setLabel("Tag User Role ID").setStyle(TextInputStyle.Short).setValue(String(serverData.roleId || "")).setRequired(false);
-                    const inputInvite = new TextInputBuilder().setCustomId('invite_link').setLabel("Invite Link").setStyle(TextInputStyle.Short).setValue(String(serverData.inviteLink || "")).setRequired(true);
-
-                    modal.addComponents(
-                        new ActionRowBuilder().addComponents(inputID),
-                        new ActionRowBuilder().addComponents(inputName),
-                        new ActionRowBuilder().addComponents(inputTag),
-                        new ActionRowBuilder().addComponents(inputRole),
-                        new ActionRowBuilder().addComponents(inputInvite)
-                    );
-
-                    await interaction.showModal(modal);
-                } catch (err) {
-                    console.error("[Edit Select Error]", err);
-                    if (!interaction.replied) await interaction.reply({ content: `❌ Error: ${err.message}`, flags: MessageFlags.Ephemeral });
-                }
+                modal.addComponents(
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_name').setLabel("Display Name").setStyle(TextInputStyle.Short).setValue(sData.displayName).setRequired(true)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_tag').setLabel("Tag Text").setStyle(TextInputStyle.Short).setValue(sData.tagText || '').setRequired(false)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_roles').setLabel("Roles (Main ID, Local ID)").setStyle(TextInputStyle.Short).setValue(combinedRoles).setRequired(false)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_invite').setLabel("Invite Link").setStyle(TextInputStyle.Short).setValue(sData.inviteLink || '').setRequired(true))
+                );
+                await interaction.showModal(modal);
             }
         }
 
         // ===============================================
-        // 2. MODAL SUBMITS (Dashboard Only)
+        // 2. MODAL SUBMITS
         // ===============================================
         if (interaction.isModalSubmit()) {
 
@@ -83,15 +76,21 @@ module.exports = {
                 const guildId = interaction.fields.getTextInputValue('server_id');
                 const displayName = interaction.fields.getTextInputValue('display_name');
                 const tagText = interaction.fields.getTextInputValue('tag_text');
-                const roleId = interaction.fields.getTextInputValue('role_id');
                 const inviteLink = interaction.fields.getTextInputValue('invite_link');
+                
+                // Parse Roles
+                const rawRoles = interaction.fields.getTextInputValue('role_ids');
+                const roleParts = rawRoles ? rawRoles.split(',').map(s => s.trim()) : [];
+                const mainRoleId = roleParts[0] || null;
+                const localRoleId = roleParts[1] || null;
 
                 await TrackedServer.findOneAndUpdate(
                     { guildId },
                     { 
                         displayName, 
                         tagText: tagText || null, 
-                        roleId: roleId || null, 
+                        roleId: mainRoleId, 
+                        localRoleId: localRoleId, 
                         inviteLink, 
                         addedBy: interaction.user.id 
                     },
@@ -99,32 +98,55 @@ module.exports = {
                 );
 
                 await updateAllDashboards(client);
-                await interaction.editReply({ content: `✅ **Added ${displayName}!**\nRole: ${roleId ? `<@&${roleId}>` : 'None'}\nDashboards updated.` });
+
+                // ✅ CONTAINER RESPONSE
+                const container = createSuccessContainer(
+                    '✅ Server Added',
+                    `**Name:** ${displayName}\n` +
+                    `**Main Role:** ${mainRoleId ? `<@&${mainRoleId}>` : 'None'}\n` +
+                    `**Local Role:** ${localRoleId ? `<@&${localRoleId}>` : 'None'}\n` +
+                    `**Status:** Dashboard updated.`
+                );
+
+                await interaction.editReply({ content: '', components: [container] });
             }
 
             // B. EDIT SERVER SUBMIT
-            if (interaction.customId === 'dashboard_edit_modal') {
+            if (interaction.customId.startsWith('dashboard_edit_modal_')) {
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+                const guildId = interaction.customId.replace('dashboard_edit_modal_', '');
 
-                const guildId = interaction.fields.getTextInputValue('server_id'); 
-                const displayName = interaction.fields.getTextInputValue('display_name');
-                const tagText = interaction.fields.getTextInputValue('tag_text');
-                const roleId = interaction.fields.getTextInputValue('role_id');
-                const inviteLink = interaction.fields.getTextInputValue('invite_link');
+                // Parse Roles
+                const rawRoles = interaction.fields.getTextInputValue('edit_roles');
+                const roleParts = rawRoles ? rawRoles.split(',').map(s => s.trim()) : [];
+                const mainRoleId = roleParts[0] || null;
+                const localRoleId = roleParts[1] || null;
+
+                const displayName = interaction.fields.getTextInputValue('edit_name');
 
                 await TrackedServer.findOneAndUpdate(
                     { guildId },
                     { 
-                        displayName, 
-                        tagText: tagText || null, 
-                        roleId: roleId || null, 
-                        inviteLink 
+                        displayName: displayName,
+                        tagText: interaction.fields.getTextInputValue('edit_tag'),
+                        roleId: mainRoleId,
+                        localRoleId: localRoleId,
+                        inviteLink: interaction.fields.getTextInputValue('edit_invite')
                     },
                     { new: true }
                 );
 
                 await updateAllDashboards(client);
-                await interaction.editReply({ content: `✅ **Updated ${displayName}!**\nRole ID: ${roleId || 'None'}\nDashboards refreshed.` });
+
+                // ✅ CONTAINER RESPONSE
+                const container = createSuccessContainer(
+                    '✅ Updates Saved',
+                    `**Server:** ${displayName}\n` +
+                    `**Roles:** Updated successfully.\n` +
+                    `**Status:** Dashboard refreshed.`
+                );
+
+                await interaction.editReply({ content: '', components: [container] });
             }
         }
     }

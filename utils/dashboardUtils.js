@@ -175,10 +175,7 @@ async function generateDashboardPayload(client) {
                     `\`\`\`js\nTotal Members : ${totalNetworkMembers}\n` + 
                     `Total Tag Users : ${totalTagUsers}\`\`\``
                 )
-        )
-        .setThumbnailAccessory(
-           new ThumbnailBuilder().setURL(PERMANENT_IMAGE_URL)
-       );
+        );
 
     const container = new ContainerBuilder()
         .setSpoiler(false)

@@ -1,126 +1,103 @@
 const { 
     SlashCommandBuilder, 
     PermissionFlagsBits, 
-    AttachmentBuilder, 
-    ContainerBuilder, 
-    ButtonBuilder, 
-    ButtonStyle, 
-    MessageFlags, 
+    MessageFlags,
+    ContainerBuilder,
+    TextDisplayBuilder,
+    SeparatorBuilder,
     SeparatorSpacingSize 
 } = require('discord.js');
+const TrackedServer = require('../../../src/models/TrackedServerSchema');
 
-// ⚠️ PATH CHECK: Verify this relative path is correct
-const { createWelcomeImage } = require('../../../welcomeCanvas7.js'); 
+// 🔒 OWNER CONFIGURATION
+const OWNER_ID = '837741275603009626';
 
 module.exports = {
-    guildOnly: true,
     data: new SlashCommandBuilder()
-        .setName('test-welcome')
-        .setDescription('Simulate the welcome message with optional Nitro Theme testing')
+        .setName('tag-hello')
+        .setDescription('Configure welcome channel, warn channel, and the local tag role')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-        .addUserOption(option => 
-            option.setName('target')
-            .setDescription('The user to generate the welcome for (defaults to you)')
-        )
-        // 1. Add Options for Mocking Nitro Colors
-        .addStringOption(option => 
-            option.setName('mock_primary')
-            .setDescription('Hex Color for Top Gradient (e.g. #FF0000) - Simulates Nitro')
-        )
-        .addStringOption(option => 
-            option.setName('mock_accent')
-            .setDescription('Hex Color for Bottom Gradient (e.g. #0000FF) - Simulates Nitro')
-        ),
+        
+        // 1. Welcome Channel
+        .addChannelOption(option => 
+            option.setName('channel')
+                .setDescription('Where to welcome new members')
+                .setRequired(true))
+        
+        // 2. Warn Channel
+        .addChannelOption(option => 
+            option.setName('warn_channel')
+                .setDescription('Where to ping members who fail the security check')
+                .setRequired(true))
+
+        // 3. Local Tag Role
+        .addRoleOption(option => 
+            option.setName('tag_user_role')
+                .setDescription('The role to give users who have the tag')
+                .setRequired(true)),
 
     async execute(interaction) {
-        await interaction.deferReply();
+        // 🛑 SECURITY: LOCK TO OWNER ONLY
+        if (interaction.user.id !== OWNER_ID) {
+            return interaction.reply({ 
+                content: '⛔ **Access Denied:** Only the Bot Owner can run this setup command.', 
+                flags: MessageFlags.Ephemeral 
+            });
+        }
+
+        // Deferring needs ephemeral flag if you want it hidden
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+        const welcomeChannel = interaction.options.getChannel('channel');
+        const warnChannel = interaction.options.getChannel('warn_channel');
+        const tagRole = interaction.options.getRole('tag_user_role');
+
+        // Check if Bot has permission to manage the role
+        if (tagRole.position >= interaction.guild.members.me.roles.highest.position) {
+            return interaction.editReply({ 
+                content: `❌ **Error:** I cannot manage the role ${tagRole} because it is higher than my highest role. Please move my bot role above it.` 
+            });
+        }
 
         try {
-            const member = interaction.options.getMember('target') || interaction.member;
+            // Find and Update
+            await TrackedServer.findOneAndUpdate(
+                { guildId: interaction.guild.id },
+                { 
+                    guildId: interaction.guild.id, 
+                    displayName: interaction.guild.name, 
+                    welcomeChannelId: welcomeChannel.id,
+                    warnChannelId: warnChannel.id,
+                    localRoleId: tagRole.id 
+                },
+                { upsert: true, new: true, setDefaultsOnInsert: true }
+            );
 
-            const displayName = member.user.globalName || member.user.username;
-            
-            // 2. Retrieve Mock Colors
-            const mockPrimary = interaction.options.getString('mock_primary');
-            const mockAccent = interaction.options.getString('mock_accent');
-            
-            let themeColors = null;
-
-            // 3. Process Mock Data (Convert Hex String -> Integer)
-            if (mockPrimary && mockAccent) {
-                // Remove '#' if present and parse to Integer
-                const pInt = parseInt(mockPrimary.replace(/^#/, ''), 16);
-                const aInt = parseInt(mockAccent.replace(/^#/, ''), 16);
-
-                if (!isNaN(pInt) && !isNaN(aInt)) {
-                    themeColors = [pInt, aInt];
-                }
-            } else if (mockPrimary || mockAccent) {
-                // Fallback if they only provided one color (Just for testing convenience)
-                // We'll use the provided color for both to make a solid block
-                const colorStr = mockPrimary || mockAccent;
-                const cInt = parseInt(colorStr.replace(/^#/, ''), 16);
-                themeColors = [cInt, cInt];
-            }
-
-            // 4. Generate Image with Mock Data
-            // We pass the themeColors array (or null) as the second argument
-            const buffer = await createWelcomeImage(member, themeColors);
-            
-            const attachment = new AttachmentBuilder(buffer, { name: 'welcome-image.png' });
-
-            // 5. Mock Text Data
-            const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
-            const memberCount = interaction.guild.memberCount;
-            const inviterName = interaction.user.username; 
-            const inviterId = interaction.user.id;
-            const inviteCode = 'TEST-CODE';
-
-            const mainContainer = new ContainerBuilder()
-                .setAccentColor(0x888888)
-                .addSectionComponents((section) => 
-                    section
-                        .addTextDisplayComponents(
-                            (header) => header.setContent('### Welcome to A2-Q Realm'),
-                            (body) => body.setContent(
-                                `-# <@${member.user.id}> \`(${member.user.username})\`\n` +
-                                `-# <:calendar:1456242387243499613> Account Created: ${accountCreated}\n` +
-                                `-# <:users:1456242343303971009> Member Count: \`${memberCount}\`\n` +
-                                `-# <:chain:1456242418717556776> Invited by <@${inviterId}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`
-                            )
-                        )
-                        .setThumbnailAccessory((thumb) => 
-                            thumb.setURL(member.user.displayAvatarURL())
-                        )
+            // Create Success Container
+            const container = new ContainerBuilder()
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(`## ✅ Setup Complete`)
                 )
-                .addActionRowComponents((row) => 
-                    row.setComponents(
-                        new ButtonBuilder()
-                            .setLabel('Register Here')
-                            .setEmoji('1447143542643490848')
-                            .setStyle(ButtonStyle.Link)
-                            .setURL('https://discord.com/channels/1456197054782111756/1456197056250122352')
-                    )
+                .addSeparatorComponents(
+                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
                 )
-                .addSeparatorComponents((sep) => 
-                    sep.setSpacing(SeparatorSpacingSize.Small)
-                )
-                .addMediaGalleryComponents((gallery) => 
-                    gallery.addItems((item) => 
-                        item.setURL("attachment://welcome-image.png").setDescription(`${displayName} is here!`)
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        `**👋 Welcome Channel:** ${welcomeChannel}\n` +
+                        `**⚠️ Warn Channel:** ${warnChannel}\n` +
+                        `**🏷️ Local Tag Role:** ${tagRole}`
                     )
                 );
 
+            // 🟢 FIX IS HERE: Added the V2 Flag
             await interaction.editReply({ 
-                flags: [MessageFlags.IsComponentsV2], 
-                files: [attachment], 
-                components: [mainContainer],
-                allowedMentions: { users: [member.user.id] } 
+                components: [container],
+                flags: [MessageFlags.IsComponentsV2] 
             });
 
-        } catch (error) {
-            console.error("❌ Test Welcome Error:", error);
-            await interaction.editReply({ content: `❌ Error generating welcome: \`${error.message}\`` });
+        } catch (e) {
+            console.error(e);
+            await interaction.editReply(`❌ **Database Error:** ${e.message}`);
         }
     }
 };

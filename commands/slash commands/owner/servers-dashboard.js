@@ -43,12 +43,12 @@ module.exports = {
             // 3. Tag Text
             const tagInput = new TextInputBuilder().setCustomId('tag_text').setLabel("Tag Text").setStyle(TextInputStyle.Short).setPlaceholder("e.g. ABC").setRequired(false);
 
-            // 4. ROLES (COMBINED)
-            const rolesInput = new TextInputBuilder()
-                .setCustomId('role_ids')
-                .setLabel("Tag Roles (Main ID, Local ID)")
+            // 4. Role ID (Single Field Again) 👈
+            const roleInput = new TextInputBuilder()
+                .setCustomId('role_id')
+                .setLabel("Tag User Role ID")
                 .setStyle(TextInputStyle.Short)
-                .setPlaceholder("e.g. 111111, 222222")
+                .setPlaceholder("Role ID in Main Server")
                 .setRequired(false);
 
             // 5. Invite Link
@@ -58,7 +58,7 @@ module.exports = {
                 new ActionRowBuilder().addComponents(serverId),
                 new ActionRowBuilder().addComponents(nameInput),
                 new ActionRowBuilder().addComponents(tagInput),
-                new ActionRowBuilder().addComponents(rolesInput),
+                new ActionRowBuilder().addComponents(roleInput),
                 new ActionRowBuilder().addComponents(inviteInput)
             );
 
@@ -68,7 +68,6 @@ module.exports = {
         // ====================================================
         // 🟢 OTHER COMMANDS
         // ====================================================
-        // 👇 UPDATED: Using MessageFlags.Ephemeral instead of { ephemeral: true }
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         if (sub === 'edit') {

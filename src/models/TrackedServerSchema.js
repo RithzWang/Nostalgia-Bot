@@ -5,10 +5,7 @@ const TrackedServerSchema = new mongoose.Schema({
     displayName: { type: String, required: true },
     inviteLink: { type: String, default: null },
     tagText: { type: String, default: null },
-    
-    // 👇 TWO ROLES NOW
-    roleId: { type: String, default: null },       // Role in MAIN Server
-    localRoleId: { type: String, default: null },  // Role in TARGET (ID) Server
+    roleId: { type: String, default: null }, // 👈 Just one role now
     
     welcomeChannelId: { type: String, default: null },
     warnChannelId: { type: String, default: null },

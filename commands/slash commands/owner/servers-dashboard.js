@@ -23,7 +23,7 @@ module.exports = {
                 .addStringOption(opt => opt.setName('message_id').setDescription('Optional: Convert existing text message'))
                 .addChannelOption(opt => opt.setName('channel').setDescription('Optional: Target channel')))
         
-        // 2. ADD SERVER (Triggers Modal)
+        // 2. ADD SERVER
         .addSubcommand(sub => 
             sub.setName('addserver')
                 .setDescription('Add a new server to the global list'))
@@ -44,8 +44,12 @@ module.exports = {
                 .setDescription('Force update all dashboards immediately')),
 
     async execute(interaction) {
+        // 🔒 RESTRICT TO OWNER ONLY
         if (interaction.user.id !== OWNER_ID) {
-            return interaction.reply({ content: '⛔ **Access Denied**', flags: MessageFlags.Ephemeral });
+            return interaction.reply({ 
+                content: '⛔ **Access Denied:** This command is restricted to the bot owner.', 
+                flags: MessageFlags.Ephemeral 
+            });
         }
 
         const sub = interaction.options.getSubcommand();
@@ -82,7 +86,7 @@ module.exports = {
                 .setPlaceholder("e.g. ABC")
                 .setRequired(false);
 
-            // 4. Tag User Role ID (THE NEW FIELD)
+            // 4. Tag User Role ID (THE NEW FIELD) 👈
             const roleInput = new TextInputBuilder()
                 .setCustomId('role_id')
                 .setLabel("Tag User Role ID")
@@ -114,34 +118,78 @@ module.exports = {
         // ====================================================
         await interaction.deferReply({ ephemeral: true });
 
+        // --- EDIT SERVER (Selection Menu) ---
         if (sub === 'edit') {
             const servers = await TrackedServer.find();
-            if (servers.length === 0) return interaction.editReply("❌ No servers found.");
+            if (servers.length === 0) return interaction.editReply("❌ No servers found to edit.");
 
-            const options = servers.map(s => new StringSelectMenuOptionBuilder().setLabel(s.displayName).setDescription(`ID: ${s.guildId}`).setValue(s.guildId));
-            const select = new StringSelectMenuBuilder().setCustomId('dashboard_edit_select').setPlaceholder('Pick a server...').addOptions(options);
-            return interaction.editReply({ content: "📋 **Select server to edit:**", components: [new ActionRowBuilder().addComponents(select)] });
+            // Create Dropdown
+            const options = servers.map(s => 
+                new StringSelectMenuOptionBuilder()
+                    .setLabel(s.displayName)
+                    .setDescription(`ID: ${s.guildId}`)
+                    .setValue(s.guildId)
+            );
+
+            const select = new StringSelectMenuBuilder()
+                .setCustomId('dashboard_edit_select')
+                .setPlaceholder('Pick a server to edit...')
+                .addOptions(options);
+            
+            return interaction.editReply({ 
+                content: "📋 **Select the server you want to edit:**", 
+                components: [new ActionRowBuilder().addComponents(select)] 
+            });
         }
 
+        // --- REMOVE SERVER ---
         if (sub === 'removeserver') {
             const servers = await TrackedServer.find();
             if (servers.length === 0) return interaction.editReply("❌ No servers found.");
-            const options = servers.map(s => new StringSelectMenuOptionBuilder().setLabel(s.displayName).setValue(s.guildId));
+
+            const options = servers.map(s => new StringSelectMenuOptionBuilder().setLabel(s.displayName).setDescription(s.guildId).setValue(s.guildId));
             const select = new StringSelectMenuBuilder().setCustomId('dashboard_remove_server').setPlaceholder('Select to remove').addOptions(options);
-            return interaction.editReply({ content: "🗑️ **Select server to remove:**", components: [new ActionRowBuilder().addComponents(select)] });
+            return interaction.editReply({ content: "Select server to remove:", components: [new ActionRowBuilder().addComponents(select)] });
         }
 
+        // --- ENABLE ---
         if (sub === 'enable') {
-            // ... (Same logic as before for enable) ...
-            // Keeping it brief here, use previous enable logic
-             const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
-             await DashboardLocation.findOneAndUpdate({ guildId: interaction.guild.id }, { channelId: targetChannel.id }, { upsert: true });
-             interaction.editReply(`✅ **Dashboard Enabled** in ${targetChannel}`);
+            const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
+            const msgId = interaction.options.getString('message_id');
+
+            try {
+                const payload = await generateDashboardPayload(interaction.client);
+                let message;
+
+                if (msgId) {
+                    try {
+                        message = await targetChannel.messages.fetch(msgId);
+                        const loading = new ContainerBuilder().addTextDisplayComponents(
+                            new TextDisplayBuilder().setContent('### 🔄 Syncing Dashboard...')
+                        );
+                        await message.edit({ content: '', embeds: [], components: [loading], flags: MessageFlags.IsComponentsV2 });
+                        await message.edit({ components: payload, flags: MessageFlags.IsComponentsV2 });
+                    } catch (e) {
+                        return interaction.editReply(`❌ Failed to convert: ${e.message}`);
+                    }
+                } else {
+                    message = await targetChannel.send({ components: payload, flags: MessageFlags.IsComponentsV2 });
+                }
+
+                await DashboardLocation.findOneAndUpdate(
+                    { guildId: interaction.guild.id },
+                    { guildId: interaction.guild.id, channelId: targetChannel.id, messageId: message.id },
+                    { upsert: true, new: true }
+                );
+                interaction.editReply(`✅ **Dashboard Enabled!** Saved to ${targetChannel}.`);
+
+            } catch (e) { interaction.editReply(`❌ Error: ${e.message}`); }
         }
 
+        // --- MANUAL UPDATE ---
         if (sub === 'update') {
             await updateAllDashboards(interaction.client);
-            return interaction.editReply("✅ **Dashboards Updated!**");
+            return interaction.editReply("✅ **Force Update Complete!** All dashboards have been refreshed.");
         }
     }
 };

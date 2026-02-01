@@ -15,20 +15,15 @@ async function runGatekeeper(client) {
     const mainGuild = client.guilds.cache.get(MAIN_GUILD_ID);
     if (!mainGuild) return console.log('[Gatekeeper] ❌ Bot is not in the Main Server!');
 
-    // 🎨 Admin Log Helper (Sends to Main Server Log)
+    // 🎨 Admin Log Helper
     const logToDiscord = async (title, content) => {
         const channel = mainGuild.channels.cache.get(LOG_CHANNEL_ID);
         if (!channel) return;
-
         const logContainer = new ContainerBuilder()
             .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${title}`))
             .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
             .addTextDisplayComponents(new TextDisplayBuilder().setContent(content));
-
-        await channel.send({ 
-            components: [logContainer], 
-            flags: [MessageFlags.IsComponentsV2] 
-        }).catch(() => {});
+        await channel.send({ components: [logContainer], flags: [MessageFlags.IsComponentsV2] }).catch(() => {});
     };
 
     if (mainGuild.members.cache.size < mainGuild.memberCount) {
@@ -39,6 +34,10 @@ async function runGatekeeper(client) {
 
     for (const serverData of trackedServers) {
         if (serverData.guildId === MAIN_GUILD_ID) continue;
+
+        // 🛑 SKIP IF ALERTS ARE DISABLED
+        // If there is no Warn Channel set (because of /tag-hello), we do nothing.
+        if (!serverData.warnChannelId) continue;
 
         const satelliteGuild = client.guilds.cache.get(serverData.guildId);
         if (!satelliteGuild) continue;
@@ -67,45 +66,30 @@ async function runGatekeeper(client) {
                     if (!pendingKicks.has(kickKey)) {
                         pendingKicks.set(kickKey, Date.now());
 
-                        // 1. Log to Admin Channel (Main Server)
                         await logToDiscord('⚠️ Security Check Triggered', `**User:** ${member.user.tag}\n**Server:** ${satelliteGuild.name}\n**Action:** Warned in local channel.`);
 
-                        // 2. 🔔 PING USER IN SATELLITE WARN CHANNEL
-                        if (serverData.warnChannelId) {
-                            const warnChannel = satelliteGuild.channels.cache.get(serverData.warnChannelId);
-                            if (warnChannel) {
-                                try {
-                                    // 🏗️ BUILD THE WARNING CONTAINER
-                                    const warningContainer = new ContainerBuilder()
-                                        .addTextDisplayComponents(
-                                            new TextDisplayBuilder().setContent(`## ⚠️ Security Alert`)
-                                        )
-                                        .addSeparatorComponents(
-                                            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
-                                        )
-                                        .addTextDisplayComponents(
-                                            new TextDisplayBuilder().setContent(
-                                                `### You are not in the Main Hub Server!\n` +
-                                                `To stay in **${satelliteGuild.name}**, you must be a member of our Main Hub.\n\n` +
-                                                `**⏱️ Time Remaining:** 10 Minutes`
-                                            )
-                                        )
-                                        .addSeparatorComponents(
-                                            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
-                                        )
-                                        .addTextDisplayComponents(
-                                            new TextDisplayBuilder().setContent(`🔗 **[Click here to Join Main Server](${MAIN_SERVER_INVITE})**`)
-                                        );
+                        // 🔔 PING USER IN SATELLITE WARN CHANNEL
+                        const warnChannel = satelliteGuild.channels.cache.get(serverData.warnChannelId);
+                        if (warnChannel) {
+                            try {
+                                const warningContainer = new ContainerBuilder()
+                                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ⚠️ Security Alert`))
+                                    .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
+                                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(
+                                        `### You are not in the Main Hub Server!\n` +
+                                        `To stay in **${satelliteGuild.name}**, you must be a member of our Main Hub.\n\n` +
+                                        `**⏱️ Time Remaining:** 10 Minutes`
+                                    ))
+                                    .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
+                                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(`🔗 **[Click here to Join Main Server](${MAIN_SERVER_INVITE})**`));
 
-                                    // SEND: Content (Ping) + Component (Container)
-                                    await warnChannel.send({
-                                        content: `${member}`, // 🔔 Pings the user
-                                        components: [warningContainer],
-                                        flags: [MessageFlags.IsComponentsV2]
-                                    });
-                                } catch (e) {
-                                    console.error(`Failed to send warning in ${satelliteGuild.name}:`, e.message);
-                                }
+                                await warnChannel.send({
+                                    content: `${member}`,
+                                    components: [warningContainer],
+                                    flags: [MessageFlags.IsComponentsV2]
+                                });
+                            } catch (e) {
+                                console.error(`Failed to send warning in ${satelliteGuild.name}:`, e.message);
                             }
                         }
 
@@ -119,7 +103,6 @@ async function runGatekeeper(client) {
                             try {
                                 await member.kick("Gatekeeper: Left Main Hub Server and did not return in 10m.");
                                 pendingKicks.delete(kickKey);
-                                
                                 await logToDiscord('🥾 User Kicked', `**User:** ${member.user.tag}\n**Server:** ${satelliteGuild.name}\n**Reason:** 10m Timer Expired.`);
                             } catch (e) {
                                 console.error(`[Gatekeeper] Failed to kick ${member.user.tag}: ${e.message}`);

@@ -9,7 +9,7 @@ module.exports = {
     name: Events.InteractionCreate,
     async execute(interaction, client) {
 
-        // 🎨 Helper to create a Success Container
+        // 🎨 HELPER: Create a Stylish Success Container
         const createSuccessContainer = (title, content) => {
             return new ContainerBuilder()
                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${title}`))
@@ -27,12 +27,14 @@ module.exports = {
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral });
                 const guildId = interaction.values[0];
                 
+                // Fetch name for the log before deleting
                 const sData = await TrackedServer.findOne({ guildId });
                 const name = sData ? sData.displayName : "Unknown Server";
 
                 await TrackedServer.deleteOne({ guildId });
                 await updateAllDashboards(client);
                 
+                // ✅ Container Response
                 const container = createSuccessContainer('🗑️ Server Removed', `**Name:** ${name}\n**ID:** \`${guildId}\`\n\nDashboards refreshed.`);
                 await interaction.editReply({ content: '', components: [container] });
             }
@@ -43,7 +45,9 @@ module.exports = {
                 const sData = await TrackedServer.findOne({ guildId });
                 if (!sData) return interaction.reply({ content: "❌ Not found.", flags: MessageFlags.Ephemeral });
 
-                const modal = new ModalBuilder().setCustomId(`dashboard_edit_modal_${guildId}`).setTitle(`Edit: ${sData.displayName}`);
+                const modal = new ModalBuilder()
+                    .setCustomId(`dashboard_edit_modal_${guildId}`)
+                    .setTitle(`Edit: ${sData.displayName}`);
 
                 modal.addComponents(
                     new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_name').setLabel("Display Name").setStyle(TextInputStyle.Short).setValue(sData.displayName).setRequired(true)),
@@ -84,6 +88,7 @@ module.exports = {
 
                 await updateAllDashboards(client);
 
+                // ✅ Container Response
                 const container = createSuccessContainer('✅ Server Added', `**Name:** ${displayName}\n**Role:** ${roleId ? `<@&${roleId}>` : 'None'}\n**Status:** Dashboard updated.`);
                 await interaction.editReply({ content: '', components: [container] });
             }
@@ -107,6 +112,7 @@ module.exports = {
 
                 await updateAllDashboards(client);
 
+                // ✅ Container Response
                 const container = createSuccessContainer('✅ Updates Saved', `**Server:** ${displayName}\n**Status:** Dashboard refreshed.`);
                 await interaction.editReply({ content: '', components: [container] });
             }

@@ -52,7 +52,7 @@ module.exports = {
                     new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
                 )
                 .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent("```\nA2-Q came from the word Al-Qabīlatān (القبيلتان) which means The Two Tribes in Arabic.\n```"),
+                    new TextDisplayBuilder().setContent("```ansi\n\u001b[2;32m\u001b[2;37m\u001b[2;33m\u001b[2;31m\u001b[2;32m\u001b[2;34mA2-Q came from the word Al-Qabīlatān (القبيلتان) which means The Two Tribes in Arabic.\u001b[0m\u001b[2;32m\u001b[0m\u001b[2;31m\u001b[0m\u001b[2;33m\u001b[0m\u001b[2;37m\u001b[0m\u001b[2;32m\u001b[0m\n```"),
                 )
                 .addSeparatorComponents(
                     new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),

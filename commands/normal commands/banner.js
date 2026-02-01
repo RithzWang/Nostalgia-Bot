@@ -45,7 +45,7 @@ module.exports = {
 
             if (!globalBanner && !displayBanner) {
                 return message.reply({ 
-                    content: `<:No:1297814819105144862> **${targetUser.username}** has no global or pre-server banner set.`, 
+                    content: `<:No:1297814819105144862> <@${targetUser.id}> has no banner set.`, 
                     flags: [MessageFlags.Ephemeral, MessageFlags.SuppressNotifications], // Silent Error
                     allowedMentions: { parse: [], repliedUser: false }
                 });

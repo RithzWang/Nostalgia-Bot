@@ -6,50 +6,24 @@ const {
 
 const TrackedServer = require('../../../src/models/TrackedServerSchema');
 const DashboardLocation = require('../../../src/models/DashboardLocationSchema');
-const { generateDashboardPayload, updateAllDashboards } = require('../../../utils/dashboardUtils');
+const { updateAllDashboards } = require('../../../utils/dashboardUtils');
 
-const OWNER_ID = '837741275603009626'; // 🔒 Bot Owner ID
+const OWNER_ID = '837741275603009626';
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('our-servers')
         .setDescription('Manage the A2-Q Server Dashboard')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-        
-        // 1. ENABLE
-        .addSubcommand(sub => 
-            sub.setName('enable')
-                .setDescription('Create or link a dashboard message here')
-                .addStringOption(opt => opt.setName('message_id').setDescription('Optional: Convert existing text message'))
-                .addChannelOption(opt => opt.setName('channel').setDescription('Optional: Target channel')))
-        
-        // 2. ADD SERVER
-        .addSubcommand(sub => 
-            sub.setName('addserver')
-                .setDescription('Add a new server to the global list'))
-        
-        // 3. REMOVE SERVER
-        .addSubcommand(sub => 
-            sub.setName('removeserver')
-                .setDescription('Remove a server from the global list'))
-
-        // 4. EDIT SERVER
-        .addSubcommand(sub => 
-            sub.setName('edit')
-                .setDescription('Edit details of an existing server'))
-
-        // 5. MANUAL UPDATE
-        .addSubcommand(sub => 
-            sub.setName('update')
-                .setDescription('Force update all dashboards immediately')),
+        .addSubcommand(sub => sub.setName('enable').setDescription('Enable dashboard').addStringOption(o=>o.setName('message_id').setDescription('Msg ID')).addChannelOption(o=>o.setName('channel').setDescription('Channel')))
+        .addSubcommand(sub => sub.setName('addserver').setDescription('Add a new server'))
+        .addSubcommand(sub => sub.setName('removeserver').setDescription('Remove a server'))
+        .addSubcommand(sub => sub.setName('edit').setDescription('Edit a server'))
+        .addSubcommand(sub => sub.setName('update').setDescription('Force update')),
 
     async execute(interaction) {
-        // 🔒 RESTRICT TO OWNER ONLY
         if (interaction.user.id !== OWNER_ID) {
-            return interaction.reply({ 
-                content: '⛔ **Access Denied:** This command is restricted to the bot owner.', 
-                flags: MessageFlags.Ephemeral 
-            });
+            return interaction.reply({ content: '⛔ **Owner Only**', flags: MessageFlags.Ephemeral });
         }
 
         const sub = interaction.options.getSubcommand();
@@ -58,55 +32,33 @@ module.exports = {
         // 📝 ADD SERVER (MODAL)
         // ====================================================
         if (sub === 'addserver') {
-            const modal = new ModalBuilder()
-                .setCustomId('dashboard_add_server')
-                .setTitle('Add New Server');
+            const modal = new ModalBuilder().setCustomId('dashboard_add_server').setTitle('Add New Server');
 
             // 1. Server ID
-            const serverIdInput = new TextInputBuilder()
-                .setCustomId('server_id')
-                .setLabel("Server ID")
-                .setStyle(TextInputStyle.Short)
-                .setPlaceholder("e.g. 123456789...")
-                .setRequired(true);
-
-            // 2. Display Name
-            const nameInput = new TextInputBuilder()
-                .setCustomId('display_name')
-                .setLabel("Display Name")
-                .setStyle(TextInputStyle.Short)
-                .setPlaceholder("e.g. My Awesome Server")
-                .setRequired(true);
+            const serverId = new TextInputBuilder().setCustomId('server_id').setLabel("Server ID").setStyle(TextInputStyle.Short).setRequired(true);
+            
+            // 2. Display Name (We have space for it now!)
+            const nameInput = new TextInputBuilder().setCustomId('display_name').setLabel("Display Name").setStyle(TextInputStyle.Short).setPlaceholder("e.g. My Server").setRequired(true);
 
             // 3. Tag Text
-            const tagInput = new TextInputBuilder()
-                .setCustomId('tag_text')
-                .setLabel("Tag Text (Display Only)")
-                .setStyle(TextInputStyle.Short)
-                .setPlaceholder("e.g. ABC")
-                .setRequired(false);
+            const tagInput = new TextInputBuilder().setCustomId('tag_text').setLabel("Tag Text").setStyle(TextInputStyle.Short).setPlaceholder("e.g. ABC").setRequired(false);
 
-            // 4. Tag User Role ID (THE NEW FIELD) 👈
-            const roleInput = new TextInputBuilder()
-                .setCustomId('role_id')
-                .setLabel("Tag User Role ID")
+            // 4. ROLES (COMBINED) 👈
+            const rolesInput = new TextInputBuilder()
+                .setCustomId('role_ids')
+                .setLabel("Tag Roles (Main ID, Local ID)")
                 .setStyle(TextInputStyle.Short)
-                .setPlaceholder("Paste Role ID Here (Main Server Role)")
+                .setPlaceholder("e.g. 111111, 222222") // User types both here separated by comma
                 .setRequired(false);
 
             // 5. Invite Link
-            const inviteInput = new TextInputBuilder()
-                .setCustomId('invite_link')
-                .setLabel("Invite Link")
-                .setStyle(TextInputStyle.Short)
-                .setPlaceholder("https://discord.gg/...")
-                .setRequired(true);
+            const inviteInput = new TextInputBuilder().setCustomId('invite_link').setLabel("Invite Link").setStyle(TextInputStyle.Short).setRequired(true);
 
             modal.addComponents(
-                new ActionRowBuilder().addComponents(serverIdInput),
+                new ActionRowBuilder().addComponents(serverId),
                 new ActionRowBuilder().addComponents(nameInput),
                 new ActionRowBuilder().addComponents(tagInput),
-                new ActionRowBuilder().addComponents(roleInput),
+                new ActionRowBuilder().addComponents(rolesInput),
                 new ActionRowBuilder().addComponents(inviteInput)
             );
 
@@ -118,78 +70,31 @@ module.exports = {
         // ====================================================
         await interaction.deferReply({ ephemeral: true });
 
-        // --- EDIT SERVER (Selection Menu) ---
         if (sub === 'edit') {
             const servers = await TrackedServer.find();
-            if (servers.length === 0) return interaction.editReply("❌ No servers found to edit.");
-
-            // Create Dropdown
-            const options = servers.map(s => 
-                new StringSelectMenuOptionBuilder()
-                    .setLabel(s.displayName)
-                    .setDescription(`ID: ${s.guildId}`)
-                    .setValue(s.guildId)
-            );
-
-            const select = new StringSelectMenuBuilder()
-                .setCustomId('dashboard_edit_select')
-                .setPlaceholder('Pick a server to edit...')
-                .addOptions(options);
-            
-            return interaction.editReply({ 
-                content: "📋 **Select the server you want to edit:**", 
-                components: [new ActionRowBuilder().addComponents(select)] 
-            });
+            if (servers.length === 0) return interaction.editReply("❌ No servers found.");
+            const options = servers.map(s => new StringSelectMenuOptionBuilder().setLabel(s.displayName).setDescription(s.guildId).setValue(s.guildId));
+            const select = new StringSelectMenuBuilder().setCustomId('dashboard_edit_select').setPlaceholder('Select server to edit...').addOptions(options);
+            return interaction.editReply({ content: "📋 **Edit Server:**", components: [new ActionRowBuilder().addComponents(select)] });
         }
 
-        // --- REMOVE SERVER ---
         if (sub === 'removeserver') {
             const servers = await TrackedServer.find();
             if (servers.length === 0) return interaction.editReply("❌ No servers found.");
-
-            const options = servers.map(s => new StringSelectMenuOptionBuilder().setLabel(s.displayName).setDescription(s.guildId).setValue(s.guildId));
+            const options = servers.map(s => new StringSelectMenuOptionBuilder().setLabel(s.displayName).setValue(s.guildId));
             const select = new StringSelectMenuBuilder().setCustomId('dashboard_remove_server').setPlaceholder('Select to remove').addOptions(options);
-            return interaction.editReply({ content: "Select server to remove:", components: [new ActionRowBuilder().addComponents(select)] });
+            return interaction.editReply({ content: "🗑️ **Remove Server:**", components: [new ActionRowBuilder().addComponents(select)] });
         }
 
-        // --- ENABLE ---
-        if (sub === 'enable') {
-            const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
-            const msgId = interaction.options.getString('message_id');
-
-            try {
-                const payload = await generateDashboardPayload(interaction.client);
-                let message;
-
-                if (msgId) {
-                    try {
-                        message = await targetChannel.messages.fetch(msgId);
-                        const loading = new ContainerBuilder().addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent('### 🔄 Syncing Dashboard...')
-                        );
-                        await message.edit({ content: '', embeds: [], components: [loading], flags: MessageFlags.IsComponentsV2 });
-                        await message.edit({ components: payload, flags: MessageFlags.IsComponentsV2 });
-                    } catch (e) {
-                        return interaction.editReply(`❌ Failed to convert: ${e.message}`);
-                    }
-                } else {
-                    message = await targetChannel.send({ components: payload, flags: MessageFlags.IsComponentsV2 });
-                }
-
-                await DashboardLocation.findOneAndUpdate(
-                    { guildId: interaction.guild.id },
-                    { guildId: interaction.guild.id, channelId: targetChannel.id, messageId: message.id },
-                    { upsert: true, new: true }
-                );
-                interaction.editReply(`✅ **Dashboard Enabled!** Saved to ${targetChannel}.`);
-
-            } catch (e) { interaction.editReply(`❌ Error: ${e.message}`); }
-        }
-
-        // --- MANUAL UPDATE ---
         if (sub === 'update') {
             await updateAllDashboards(interaction.client);
-            return interaction.editReply("✅ **Force Update Complete!** All dashboards have been refreshed.");
+            return interaction.editReply("✅ **Dashboards Updated!**");
+        }
+
+        if (sub === 'enable') {
+             const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
+             await DashboardLocation.findOneAndUpdate({ guildId: interaction.guild.id }, { channelId: targetChannel.id }, { upsert: true });
+             interaction.editReply(`✅ **Dashboard Enabled** in ${targetChannel}`);
         }
     }
 };

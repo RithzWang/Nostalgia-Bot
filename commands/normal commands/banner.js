@@ -13,7 +13,8 @@ const {
 } = require('discord.js');
 
 module.exports = {
-    name: 'bn', // The command triggers on "bn"
+    name: 'banner', // The command triggers on "bn"
+    aliases: ['bn'],
     description: 'Shows user banner',
     async execute(message, args) {
         try {

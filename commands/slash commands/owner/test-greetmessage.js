@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize } = require('discord.js');
-const TrackedServer = require('../../src/models/TrackedServerSchema');
+const TrackedServer = require('../../../src/models/TrackedServerSchema');
 
 // 🔒 OWNER CONFIGURATION
 const OWNER_ID = '837741275603009626';

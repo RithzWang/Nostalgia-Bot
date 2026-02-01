@@ -177,7 +177,7 @@ async function generateDashboardPayload(client) {
                 )
         )
        // .setThumbnailAccessory(
-            new ThumbnailBuilder().setURL(PERMANENT_IMAGE_URL)
+          //  new ThumbnailBuilder().setURL(PERMANENT_IMAGE_URL)
      //   );
 
     const container = new ContainerBuilder()

@@ -1,12 +1,9 @@
 const { 
-    ContainerBuilder, TextDisplayBuilder, ThumbnailBuilder, SectionBuilder, 
-    ButtonBuilder, ButtonStyle, SeparatorBuilder, SeparatorSpacingSize,
+    ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize,
     MessageFlags 
 } = require('discord.js');
 const TrackedServer = require('../src/models/TrackedServerSchema');
 const DashboardLocation = require('../src/models/DashboardLocationSchema');
-
-// 👇 IMPORT THE GATEKEEPER LOGIC
 const { runGatekeeper } = require('./gatekeeperUtils');
 
 // 🔒 CONFIGURATION
@@ -14,7 +11,7 @@ const MAIN_GUILD_ID = '1456197054782111756';
 const GLOBAL_TAG_ROLE_ID = '1462217123433545812'; 
 
 // ==========================================
-// 1. ROLE MANAGER (Specific & Global)
+// 1. ROLE MANAGER
 // ==========================================
 async function runRoleUpdates(client) {
     const mainGuild = client.guilds.cache.get(MAIN_GUILD_ID);
@@ -86,7 +83,7 @@ async function runRoleUpdates(client) {
 }
 
 // ==========================================
-// 2. DASHBOARD UI GENERATOR
+// 2. DASHBOARD UI GENERATOR (UPDATED LAYOUT)
 // ==========================================
 async function generateDashboardPayload(client) {
     const servers = await TrackedServer.find();
@@ -95,7 +92,7 @@ async function generateDashboardPayload(client) {
     let totalNetworkMembers = 0;
     let totalTagUsers = 0; 
     
-    const serverSections = [];
+    const serverItems = [];
 
     for (const data of servers) {
         const guild = client.guilds.cache.get(data.guildId);
@@ -142,64 +139,62 @@ async function generateDashboardPayload(client) {
             tagStatusLine = `<:no_tag:1463272172201050336> **Not Connected**`;
         }
 
-        const section = new SectionBuilder()
-            .setButtonAccessory(
-                new ButtonBuilder()
-                    .setStyle(ButtonStyle.Link)
-                    .setLabel("Server Link")
-                    .setURL(data.inviteLink || "https://discord.gg/")
-                    .setDisabled(!data.inviteLink)
-            )
-            .addTextDisplayComponents(
-                new TextDisplayBuilder()
-                    .setContent(
-                        `## [${data.displayName}](${data.inviteLink})\n` +
-                        `**<:sparkles:1462851309219872841> Server Tag:** ${displayTagText}\n` +
-                        `**<:members:1462851249836654592> Members:** ${memberCount}\n` +
-                        `${tagStatusLine}`
-                    )
-            );
-        serverSections.push(section);
+        // Store formatting for this server
+        serverItems.push(
+            `## [${data.displayName}](${data.inviteLink || "https://discord.com"})\n` +
+            `**<:sparkles:1462851309219872841> Server Tag:** ${displayTagText}\n` +
+            `**<:members:1462851249836654592> Members:** ${memberCount}\n` +
+            `${tagStatusLine}`
+        );
     }
 
     const nextUpdateUnix = Math.floor((Date.now() + 60 * 1000) / 1000);
     
-    // Header
-    const PERMANENT_IMAGE_URL = "https://cdn.discordapp.com/attachments/"; 
-
-    const headerSection = new SectionBuilder()
-        .addTextDisplayComponents(
-            new TextDisplayBuilder()
-                .setContent(
-                    `# <:A2Q_1:1466981218758426634><:A2Q_2:1466981281060360232> » Servers\n` +
-                    `\`\`\`js\nTotal Members : ${totalNetworkMembers}\n` + 
-                    `Total Tag Users : ${totalTagUsers}\`\`\``
-                )
-        )
-        .setThumbnailAccessory(
-           new ThumbnailBuilder().setURL(PERMANENT_IMAGE_URL)
-       );
-
+    // 🏗️ BUILD THE CONTAINER
     const container = new ContainerBuilder()
-        .setSpoiler(false)
-        .addSectionComponents(headerSection)
-        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true));
-
-    for (let i = 0; i < serverSections.length; i++) {
-        container.addSectionComponents(serverSections[i]);
-        
-        const isLastItem = i === serverSections.length - 1;
-        const spacingSize = isLastItem ? SeparatorSpacingSize.Large : SeparatorSpacingSize.Small;
-        const visibleType = isLastItem ? true : false;
-
-        container.addSeparatorComponents(
-            new SeparatorBuilder().setSpacing(spacingSize).setDivider(visibleType)
+        // 1. Title Header
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent("# <:A2Q_1:1466981218758426634><:A2Q_2:1466981281060360232> » Servers")
+        )
+        // 2. Small Gap
+        .addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+        )
+        // 3. Stats Header
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `Total Members: ${totalNetworkMembers}\nTotal Tag Users: ${totalTagUsers}`
+            )
+        )
+        // 4. Large Divider
+        .addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
         );
+
+    // 5. Loop through Servers
+    for (let i = 0; i < serverItems.length; i++) {
+        container.addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(serverItems[i])
+        );
+
+        // Add separator (Small invisible for items in between, Large visible for the very end of list)
+        const isLastItem = i === serverItems.length - 1;
+        
+        if (!isLastItem) {
+            container.addSeparatorComponents(
+                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+            );
+        }
     }
 
-    container.addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(`-# <a:loading:1447184742934909032> Next Update: <t:${nextUpdateUnix}:R>`)
-    );
+    // 6. Bottom Divider & Footer
+    container
+        .addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
+        )
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(`-# <a:loading:1447184742934909032> Next Update: <t:${nextUpdateUnix}:R>`)
+        );
 
     return [container];
 }
@@ -231,7 +226,13 @@ async function updateAllDashboards(client) {
                 flags: [MessageFlags.IsComponentsV2]
             });
         } catch (e) {
-            console.log(`[Dashboard] Failed to update in Guild ${loc.guildId}: ${e.message}`);
+            // 🛑 DEEP ERROR LOGGING
+            console.error(`[Dashboard] 🛑 ERROR in Guild ${loc.guildId}:`);
+            if (e.rawError && e.rawError.errors) {
+                console.error(JSON.stringify(e.rawError.errors, null, 2));
+            } else {
+                console.error(e);
+            }
         }
     }
     if (locations.length > 0) console.log(`[Dashboard] Updated ${locations.length} dashboards.`);

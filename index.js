@@ -92,7 +92,7 @@ for (const file of eventFiles) {
     }
 }
 
-// 3. Message Create Event Listener (UPDATED FOR ALIASES)
+// 3. Message Create Event Listener (ALIASES + CHANNEL LOCK)
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
@@ -111,6 +111,12 @@ client.on('messageCreate', async (message) => {
     }
 
     if (!command) return;
+
+    // Step C: Channel Restriction Check
+    // If 'channels' exists AND has IDs AND current channel is NOT in that list...
+    if (command.channels && command.channels.length > 0 && !command.channels.includes(message.channel.id)) {
+        return; // Ignore the command silently
+    }
 
     try {
         await command.execute(message, args);

@@ -6,7 +6,7 @@ const TrackedServer = require('../src/models/TrackedServerSchema');
 
 // 🔒 GATEKEEPER CONFIGURATION
 const MAIN_GUILD_ID = '1456197054782111756'; 
-const LOG_CHANNEL_ID = '1456197056988319869'; // Where to log kicks (in Main Server)
+const LOG_CHANNEL_ID = '1456197056988319869'; // Admin Log Channel
 
 const pendingKicks = new Map();
 
@@ -14,14 +14,16 @@ async function runGatekeeper(client) {
     const mainGuild = client.guilds.cache.get(MAIN_GUILD_ID);
     if (!mainGuild) return;
 
-    // Helper: Log kicks to Main Server Admin Channel
-    const logToDiscord = async (title, content) => {
+    // 🎨 Helper: Log with Color
+    const logToDiscord = async (title, content, colorHex) => {
         const channel = mainGuild.channels.cache.get(LOG_CHANNEL_ID);
         if (channel) {
             const c = new ContainerBuilder()
                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${title}`))
                 .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
-                .addTextDisplayComponents(new TextDisplayBuilder().setContent(content));
+                .addTextDisplayComponents(new TextDisplayBuilder().setContent(content))
+                .setAccentColor(colorHex); // 👈 Adds the color strip
+            
             await channel.send({ components: [c], flags: [MessageFlags.IsComponentsV2] }).catch(() => {});
         }
     };
@@ -34,8 +36,6 @@ async function runGatekeeper(client) {
 
     for (const serverData of trackedServers) {
         if (serverData.guildId === MAIN_GUILD_ID) continue;
-        
-        // Only run if this server has a Welcome Channel set up
         if (!serverData.welcomeChannelId) continue;
 
         const satelliteGuild = client.guilds.cache.get(serverData.guildId);
@@ -49,7 +49,7 @@ async function runGatekeeper(client) {
             for (const [memberId, member] of satelliteGuild.members.cache) {
                 if (member.user.bot) continue;           
                 if (memberId === satelliteGuild.ownerId) continue; 
-                if (member.premiumSince !== null) continue; // Skip Boosters
+                if (member.premiumSince !== null) continue; 
 
                 const isInMain = mainGuild.members.cache.has(memberId);
                 const kickKey = `${serverData.guildId}-${memberId}`;
@@ -58,12 +58,26 @@ async function runGatekeeper(client) {
                     // ✅ User is safe
                     if (pendingKicks.has(kickKey)) {
                         pendingKicks.delete(kickKey);
+                        
+                        // 🟢 GREEN LOG: Timer Cancelled
+                        await logToDiscord(
+                            '✅ Timer Cancelled', 
+                            `**User:** ${member.user.tag}\n**Server:** ${satelliteGuild.name}\n**Status:** Rejoined Main Hub. User is safe.`,
+                            0x57F287 // Green
+                        );
                     }
                 } else {
                     // ❌ User is NOT in Main Server
                     if (!pendingKicks.has(kickKey)) {
-                        // Start Timer (Silent, because welcome message already warned them)
                         pendingKicks.set(kickKey, Date.now());
+
+                        // 🟡 YELLOW LOG: Timer Started
+                        await logToDiscord(
+                            '⏳ Timer Started', 
+                            `**User:** ${member.user.tag}\n**Server:** ${satelliteGuild.name}\n**Status:** Not in Main Hub. 10m countdown started.`,
+                            0xFEE75C // Yellow
+                        );
+
                     } else {
                         // Check Timer
                         const startTime = pendingKicks.get(kickKey);
@@ -72,9 +86,16 @@ async function runGatekeeper(client) {
 
                         if (timeDiff > TEN_MINUTES) {
                             try {
-                                await member.kick("Gatekeeper: Did not join Main Hub within 10m.");
+                                await member.kick("Gatekeeper: Left Main Hub and did not return.");
                                 pendingKicks.delete(kickKey);
-                                await logToDiscord('🥾 User Kicked', `**User:** ${member.user.tag}\n**Server:** ${satelliteGuild.name}\n**Reason:** 10m Timer Expired.`);
+                                
+                                // 🔴 RED LOG: User Kicked
+                                await logToDiscord(
+                                    '🥾 User Kicked', 
+                                    `**User:** ${member.user.tag}\n**Server:** ${satelliteGuild.name}\n**Reason:** 10m Timer Expired.`,
+                                    0xED4245 // Red
+                                );
+                                
                             } catch (e) {
                                 console.error(`[Gatekeeper] Failed to kick ${member.user.tag}: ${e.message}`);
                             }

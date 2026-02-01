@@ -13,7 +13,8 @@ const {
 } = require('discord.js');
 
 module.exports = {
-    name: 'av', // The command triggers on "av"
+    name: 'avatar', // The command triggers on "av"
+    aliases: ['av'],
     description: 'Shows user avatar',
     async execute(message, args) {
         try {

@@ -27,13 +27,8 @@ module.exports = {
             }
             if (!targetUser && !args[0]) targetUser = message.author;
 
-            if (!targetUser) {
-                return message.reply({ 
-                    content: "<:No:1297814819105144862> User not found.", 
-                    flags: [MessageFlags.Ephemeral, MessageFlags.SuppressNotifications], // Silent Error
-                    allowedMentions: { repliedUser: false }
-                });
-            }
+            // 👇 CHANGE: If user not found, do nothing (return silently)
+            if (!targetUser) return;
 
             // 2. Fetch Banner
             let targetMember = null;
@@ -46,7 +41,7 @@ module.exports = {
             if (!globalBanner && !displayBanner) {
                 return message.reply({ 
                     content: `<:No:1297814819105144862> <@${targetUser.id}> has no banner set.`, 
-                    flags: [MessageFlags.Ephemeral, MessageFlags.SuppressNotifications], // Silent Error
+                    flags: [MessageFlags.Ephemeral, MessageFlags.SuppressNotifications],
                     allowedMentions: { parse: [], repliedUser: false }
                 });
             }
@@ -89,7 +84,6 @@ module.exports = {
             // 4. Send Reply (SILENT & NO PING)
             const sentMessage = await message.reply({ 
                 components: [createBannerContainer(isGlobalMode)], 
-                // 👇 Added SuppressNotifications here
                 flags: [MessageFlags.IsComponentsV2, MessageFlags.SuppressNotifications],
                 allowedMentions: { parse: [], repliedUser: false } 
             });
@@ -125,11 +119,6 @@ module.exports = {
 
         } catch (error) {
             console.error(error);
-            message.reply({ 
-                content: `<:No:1297814819105144862> Error: ${error.message}`,
-                flags: [MessageFlags.SuppressNotifications], // Silent Error
-                allowedMentions: { repliedUser: false }
-            });
         }
     }
 };

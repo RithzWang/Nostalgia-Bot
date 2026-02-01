@@ -5,11 +5,14 @@ const TrackedServerSchema = new mongoose.Schema({
     displayName: { type: String, required: true },
     inviteLink: { type: String, default: null },
     tagText: { type: String, default: null },
-    roleId: { type: String, default: null },
     
-    // 👇 NEW FIELDS
+    // 👇 TWO ROLES NOW
+    roleId: { type: String, default: null },       // Role in MAIN Server
+    localRoleId: { type: String, default: null },  // Role in TARGET (ID) Server
+    
     welcomeChannelId: { type: String, default: null },
-    warnChannelId: { type: String, default: null } // Stores the specific warn channel
+    warnChannelId: { type: String, default: null },
+    addedBy: { type: String, default: null }
 });
 
 module.exports = mongoose.model('TrackedServer', TrackedServerSchema);

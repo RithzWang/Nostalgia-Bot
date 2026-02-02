@@ -3,7 +3,7 @@ const {
     SeparatorSpacingSize, SectionBuilder, ButtonBuilder, 
     ButtonStyle 
 } = require('discord.js');
-const { Panel, ServerList } = require('../models/Qabilatan'); 
+const { Panel, ServerList } = require('../src/models/Qabilatan'); 
 
 // --- CONFIGURATION ---
 const MAIN_SERVER_ID = "1456197054782111756"; 

@@ -1,12 +1,21 @@
 const { 
-    SlashCommandBuilder, PermissionFlagsBits, ModalBuilder, 
-    TextInputBuilder, TextInputStyle, ActionRowBuilder, 
-    StringSelectMenuBuilder, StringSelectMenuOptionBuilder,
-    ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, 
-    SeparatorSpacingSize 
+    SlashCommandBuilder, 
+    PermissionFlagsBits, 
+    ModalBuilder, 
+    TextInputBuilder, 
+    TextInputStyle, 
+    ActionRowBuilder, 
+    StringSelectMenuBuilder, 
+    StringSelectMenuOptionBuilder,
+    ContainerBuilder, 
+    TextDisplayBuilder, 
+    SeparatorBuilder, 
+    SeparatorSpacingSize,
+    MessageFlags // Import MessageFlags
 } = require('discord.js');
 
-// ⚠️ MAKE SURE THESE PATHS POINT TO YOUR ACTUAL FILES
+// ⚠️ ADJUST THESE PATHS IF YOUR FOLDER STRUCTURE IS DIFFERENT
+// Current assumption: commands/slash commands/owner/qabilatan.js
 const { Panel, ServerList, GreetConfig } = require('../../../src/models/Qabilatan'); 
 const { buildDashboard, updateAllPanels } = require('../../../utils/qabilatanManager'); 
 
@@ -16,8 +25,6 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('qabilatan')
         .setDescription('Manage the A2-Q Server Network')
-        // We keep Administrator here so random members don't see it, 
-        // but we double-check the ID in execute() just to be safe.
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addSubcommand(sub => 
             sub.setName('enable')
@@ -41,143 +48,177 @@ module.exports = {
         if (interaction.user.id !== ALLOWED_USER_ID) {
             return interaction.reply({ 
                 content: "❌ **Access Denied.** Only the Bot Owner can use this command.", 
-                ephemeral: true 
+                flags: [MessageFlags.Ephemeral] 
             });
         }
 
         const subcommand = interaction.options.getSubcommand();
 
-        // --- ENABLE ---
-        if (subcommand === 'enable') {
-            const messageId = interaction.options.getString('message_id');
-            const channel = interaction.options.getChannel('channel') || interaction.channel;
+        try {
+            // --- ENABLE ---
+            if (subcommand === 'enable') {
+                const messageId = interaction.options.getString('message_id');
+                const channel = interaction.options.getChannel('channel') || interaction.channel;
 
-            const components = await buildDashboard(client);
-            let msg;
+                // Defer because building the dashboard might take a second
+                await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
-            if (messageId) {
-                try {
-                    msg = await channel.messages.fetch(messageId);
-                    await msg.edit({ components });
-                } catch (e) {
-                    return interaction.reply({ content: "❌ Message not found or invalid ID.", ephemeral: true });
+                const components = await buildDashboard(client);
+                let msg;
+
+                if (messageId) {
+                    try {
+                        msg = await channel.messages.fetch(messageId);
+                        await msg.edit({ components, flags: [MessageFlags.IsComponentsV2] });
+                    } catch (e) {
+                        return interaction.editReply({ content: "❌ Message not found or invalid ID." });
+                    }
+                } else {
+                    msg = await channel.send({ components, flags: [MessageFlags.IsComponentsV2] });
                 }
-            } else {
-                msg = await channel.send({ components });
+
+                // Save to DB
+                await Panel.findOneAndUpdate(
+                    { guildId: interaction.guild.id },
+                    { 
+                        guildId: interaction.guild.id, 
+                        channelId: channel.id, 
+                        messageId: msg.id 
+                    },
+                    { upsert: true, new: true }
+                );
+
+                return interaction.editReply({ content: "✅ Statistics Panel Enabled/Updated!" });
             }
 
-            // Save to DB
-            await Panel.findOneAndUpdate(
-                { guildId: interaction.guild.id },
-                { 
-                    guildId: interaction.guild.id, 
-                    channelId: channel.id, 
-                    messageId: msg.id 
-                },
-                { upsert: true, new: true }
-            );
+            // --- REFRESH ---
+            if (subcommand === 'refresh') {
+                await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+                await updateAllPanels(client);
+                return interaction.editReply("✅ All panels have been refreshed.");
+            }
 
-            return interaction.reply({ content: "✅ Statistics Panel Enabled/Updated!", ephemeral: true });
-        }
+            // --- ADD ---
+            if (subcommand === 'add') {
+                const modal = new ModalBuilder()
+                    .setCustomId('qabilatan_add_modal')
+                    .setTitle('Add Server to Qabilatan');
 
-        // --- REFRESH ---
-        if (subcommand === 'refresh') {
-            await interaction.deferReply({ ephemeral: true });
-            await updateAllPanels(client);
-            return interaction.editReply("✅ All panels have been refreshed.");
-        }
+                modal.addComponents(
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('srv_id').setLabel("Server ID").setStyle(TextInputStyle.Short).setRequired(true)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('srv_invite').setLabel("Invite Link").setStyle(TextInputStyle.Short).setRequired(true)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('srv_tag').setLabel("Tag Text (Optional)").setStyle(TextInputStyle.Short).setRequired(false)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('srv_role').setLabel("Tag Role ID (Optional)").setStyle(TextInputStyle.Short).setRequired(false)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('srv_name').setLabel("Server Name Override (Optional)").setStyle(TextInputStyle.Short).setRequired(false))
+                );
 
-        // --- ADD ---
-        if (subcommand === 'add') {
-            const modal = new ModalBuilder()
-                .setCustomId('qabilatan_add_modal')
-                .setTitle('Add Server to Qabilatan');
+                return interaction.showModal(modal);
+            }
 
-            modal.addComponents(
-                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('srv_id').setLabel("Server ID").setStyle(TextInputStyle.Short).setRequired(true)),
-                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('srv_invite').setLabel("Invite Link").setStyle(TextInputStyle.Short).setRequired(true)),
-                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('srv_tag').setLabel("Tag Text (Optional)").setStyle(TextInputStyle.Short).setRequired(false)),
-                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('srv_role').setLabel("Tag Role ID (Optional)").setStyle(TextInputStyle.Short).setRequired(false)),
-                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('srv_name').setLabel("Server Name Override (Optional)").setStyle(TextInputStyle.Short).setRequired(false))
-            );
+            // --- EDIT ---
+            if (subcommand === 'edit') {
+                const servers = await ServerList.find();
+                
+                if (servers.length === 0) {
+                    return interaction.reply({ 
+                        content: "No servers found in database.", 
+                        flags: [MessageFlags.Ephemeral] 
+                    });
+                }
 
-            return interaction.showModal(modal);
-        }
+                const options = servers.map(s => 
+                    new StringSelectMenuOptionBuilder()
+                        .setLabel(s.name ? s.name.substring(0, 25) : s.serverId)
+                        .setValue(s.serverId) 
+                        .setDescription(`ID: ${s.serverId}`)
+                );
 
-        // --- EDIT ---
-        if (subcommand === 'edit') {
-            const servers = await ServerList.find();
-            if (servers.length === 0) return interaction.reply({ content: "No servers found.", ephemeral: true });
-
-            const options = servers.map(s => 
-                new StringSelectMenuOptionBuilder()
-                    .setLabel(s.name || s.serverId)
-                    .setValue(s.serverId) // Passing ID as value
-                    .setDescription(`ID: ${s.serverId}`)
-            );
-
-            const components = [
-                new ContainerBuilder()
-                    .addTextDisplayComponents(new TextDisplayBuilder().setContent("## A2-Q Statistics Edit"))
-                    .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small))
-                    .addActionRowComponents(
-                        new ActionRowBuilder().addComponents(
-                            new StringSelectMenuBuilder()
-                                .setCustomId("qabilatan_edit_select")
-                                .setPlaceholder("Select a server to edit")
-                                .addOptions(options)
+                const components = [
+                    new ContainerBuilder()
+                        .addTextDisplayComponents(new TextDisplayBuilder().setContent("## A2-Q Statistics Edit"))
+                        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small))
+                        .addActionRowComponents(
+                            new ActionRowBuilder().addComponents(
+                                new StringSelectMenuBuilder()
+                                    .setCustomId("qabilatan_edit_select")
+                                    .setPlaceholder("Select a server to edit")
+                                    .addOptions(options)
+                            )
                         )
-                    )
-            ];
+                ];
 
-            return interaction.reply({ components, ephemeral: true });
-        }
+                return interaction.reply({ components, flags: [MessageFlags.Ephemeral] });
+            }
 
-        // --- DELETE ---
-        if (subcommand === 'delete') {
-            const servers = await ServerList.find();
-            if (servers.length === 0) return interaction.reply({ content: "No servers found.", ephemeral: true });
+            // --- DELETE ---
+            if (subcommand === 'delete') {
+                const servers = await ServerList.find();
 
-            const options = servers.map(s => 
-                new StringSelectMenuOptionBuilder()
-                    .setLabel(s.name || s.serverId)
-                    .setValue(s.serverId)
-                    .setDescription(`ID: ${s.serverId}`)
-            );
+                if (servers.length === 0) {
+                    return interaction.reply({ 
+                        content: "No servers found to delete.", 
+                        flags: [MessageFlags.Ephemeral] 
+                    });
+                }
 
-            const components = [
-                new ContainerBuilder()
-                    .addTextDisplayComponents(new TextDisplayBuilder().setContent("## A2-Q Statistics Remove Server"))
-                    .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small))
-                    .addActionRowComponents(
-                        new ActionRowBuilder().addComponents(
-                            new StringSelectMenuBuilder()
-                                .setCustomId("qabilatan_delete_select")
-                                .setPlaceholder("Select a server to remove")
-                                .addOptions(options)
+                const options = servers.map(s => 
+                    new StringSelectMenuOptionBuilder()
+                        .setLabel(s.name ? s.name.substring(0, 25) : s.serverId)
+                        .setValue(s.serverId)
+                        .setDescription(`ID: ${s.serverId}`)
+                );
+
+                const components = [
+                    new ContainerBuilder()
+                        .addTextDisplayComponents(new TextDisplayBuilder().setContent("## A2-Q Statistics Remove Server"))
+                        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small))
+                        .addActionRowComponents(
+                            new ActionRowBuilder().addComponents(
+                                new StringSelectMenuBuilder()
+                                    .setCustomId("qabilatan_delete_select")
+                                    .setPlaceholder("Select a server to remove")
+                                    .addOptions(options)
+                            )
                         )
-                    )
-            ];
+                ];
 
-            return interaction.reply({ components, ephemeral: true });
-        }
+                return interaction.reply({ components, flags: [MessageFlags.Ephemeral] });
+            }
 
-        // --- GREET MESSAGE ---
-        if (subcommand === 'greet-message') {
-            const channel = interaction.options.getChannel('channel');
-            const srvId = interaction.options.getString('server_id');
+            // --- GREET MESSAGE ---
+            if (subcommand === 'greet-message') {
+                const channel = interaction.options.getChannel('channel');
+                const srvId = interaction.options.getString('server_id');
 
-            // Verify server is in list
-            const exists = await ServerList.findOne({ serverId: srvId });
-            if (!exists) return interaction.reply({ content: `❌ Server ID \`${srvId}\` is not in the Qabilatan list. Please add it first.`, ephemeral: true });
+                const exists = await ServerList.findOne({ serverId: srvId });
+                if (!exists) {
+                    return interaction.reply({ 
+                        content: `❌ Server ID \`${srvId}\` is not in the Qabilatan list. Please add it first.`, 
+                        flags: [MessageFlags.Ephemeral] 
+                    });
+                }
 
-            await GreetConfig.findOneAndUpdate(
-                { guildId: interaction.guild.id },
-                { guildId: interaction.guild.id, channelId: channel.id },
-                { upsert: true, new: true }
-            );
+                await GreetConfig.findOneAndUpdate(
+                    { guildId: interaction.guild.id },
+                    { guildId: interaction.guild.id, channelId: channel.id },
+                    { upsert: true, new: true }
+                );
 
-            return interaction.reply({ content: `✅ Greet/Kick system enabled for <#${channel.id}>. Members not in Main Server will be warned and kicked after 10m (unless boosting).`, ephemeral: true });
+                return interaction.reply({ 
+                    content: `✅ Greet/Kick system enabled for <#${channel.id}>.`, 
+                    flags: [MessageFlags.Ephemeral] 
+                });
+            }
+
+        } catch (error) {
+            console.error("❌ Qabilatan Command Error:", error);
+            const errMsg = `❌ Error: ${error.message}`;
+            
+            if (interaction.deferred || interaction.replied) {
+                await interaction.followUp({ content: errMsg, flags: [MessageFlags.Ephemeral] }).catch(() => {});
+            } else {
+                await interaction.reply({ content: errMsg, flags: [MessageFlags.Ephemeral] }).catch(() => {});
+            }
         }
     }
 };

@@ -1,5 +1,5 @@
 // events/qabilatanGreet.js
-const { GreetConfig, ServerList } = require('../models/Qabilatan'); // Make sure path is correct relative to events/
+const { GreetConfig, ServerList } = require('../src/models/Qabilatan'); // Make sure path is correct relative to events/
 const { serverID } = require('../config.json'); // Main server ID from config
 
 const MAIN_SERVER_ID = serverID; 

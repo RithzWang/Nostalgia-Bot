@@ -91,7 +91,7 @@ client.on('messageCreate', async (message) => {
 
 
 // --- MAIN SERVER WELCOME LOGIC (Kept in index.js as requested) ---
-const { createWelcomeImage } = require('./welcomeCanvas6.js');
+const { createWelcomeImage } = require('./welcomeCanvas7.js');
 
 client.on('guildMemberAdd', async (member) => {
     if (member.user.bot) return;

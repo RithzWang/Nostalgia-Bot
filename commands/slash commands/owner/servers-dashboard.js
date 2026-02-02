@@ -25,7 +25,7 @@ module.exports = {
         .addSubcommand(sub => sub.setName('removeserver').setDescription('Remove a server from database'))
         .addSubcommand(sub => sub.setName('edit').setDescription('Edit a server details'))
         
-        // 💥 RESET COMMAND (New!)
+        // 💥 RESET COMMAND (Wipe Memory)
         .addSubcommand(sub => sub.setName('reset').setDescription('⚠ HARD RESET: Delete ALL dashboard locations from memory'))
 
         // 2. GREET MESSAGE
@@ -145,27 +145,39 @@ module.exports = {
         }
 
         // ====================================================
-        // ✅ 4. ENABLE (WITH INSTANT UPDATE)
+        // ✅ 4. ENABLE (FIXED: INSTANT UPDATE)
         // ====================================================
         if (sub === 'enable') {
              const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
              
-             // 1. Save Location
+             // 1. Tell you we are working
+             await interaction.editReply(`⚙️ **Saving configuration...**`);
+
+             // 2. Save Location
              await DashboardLocation.findOneAndUpdate(
                  { guildId: interaction.guild.id }, 
                  { channelId: targetChannel.id }, 
                  { upsert: true }
              );
 
-             // 2. TRIGGER IMMEDIATE UPDATE
-             await interaction.editReply(`✅ **Dashboard Enabled** in ${targetChannel}. Spawning message now...`);
+             // 3. Confirm Save
+             await interaction.editReply(`✅ **Saved!** Dashboard location set to ${targetChannel}.\n⏳ **Attempting to spawn dashboard message...**`);
              
+             // 4. TRIGGER THE UPDATE IMMEDIATELY
              try {
                  await updateAllDashboards(interaction.client);
-                 await interaction.followUp({ content: "✅ Dashboard Spawned!", flags: MessageFlags.Ephemeral });
+                 
+                 // 5. Success
+                 await interaction.followUp({ 
+                     content: "✅ **Success!** The dashboard should be visible now.", 
+                     flags: MessageFlags.Ephemeral 
+                 });
              } catch (e) {
                  console.error(e);
-                 await interaction.followUp({ content: `⚠️ Saved, but failed to spawn: ${e.message}`, flags: MessageFlags.Ephemeral });
+                 await interaction.followUp({ 
+                     content: `⚠️ **Saved, but spawn failed:** ${e.message}\nCheck your console logs.`, 
+                     flags: MessageFlags.Ephemeral 
+                 });
              }
         }
     }

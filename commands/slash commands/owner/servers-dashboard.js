@@ -24,6 +24,9 @@ module.exports = {
         .addSubcommand(sub => sub.setName('addserver').setDescription('Add a new server to database'))
         .addSubcommand(sub => sub.setName('removeserver').setDescription('Remove a server from database'))
         .addSubcommand(sub => sub.setName('edit').setDescription('Edit a server details'))
+        
+        // 💥 RESET COMMAND (New!)
+        .addSubcommand(sub => sub.setName('reset').setDescription('⚠ HARD RESET: Delete ALL dashboard locations from memory'))
 
         // 2. GREET MESSAGE
         .addSubcommand(sub => 
@@ -41,6 +44,18 @@ module.exports = {
         }
 
         const sub = interaction.options.getSubcommand();
+
+        // ====================================================
+        // 💥 HARD RESET (WIPE MEMORY)
+        // ====================================================
+        if (sub === 'reset') {
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+            
+            // This deletes every single "remembered" dashboard location
+            const deleted = await DashboardLocation.deleteMany({});
+            
+            return interaction.editReply(`💥 **BOOM!** I have wiped **${deleted.deletedCount}** dashboard locations from my memory.\n\nThe errors should stop now. Please go to your main channel and run \`/our-servers enable\` to start fresh.`);
+        }
 
         // ====================================================
         // 📝 1. ADD SERVER (MODAL)

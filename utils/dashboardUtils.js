@@ -120,7 +120,7 @@ async function generateDashboardPayload(client) {
                 if (!hasClanFeature) {
                     tagStatusLine = `<:no_tag:1463272172201050336> **Not Enabled**`;
                 } else {
-                    tagStatusLine = `<:greysword:1462853724824404069> **Tag Users:** ${currentServerTagCount}`;
+                    tagStatusLine = `<:greysword:1462853724824404069> **Tag Adopters:** ${currentServerTagCount}`;
                 }
             }
         } else {
@@ -153,7 +153,7 @@ async function generateDashboardPayload(client) {
     const container = new ContainerBuilder()
         .addTextDisplayComponents(new TextDisplayBuilder().setContent("# <:A2Q_1:1466981218758426634><:A2Q_2:1466981281060360232> » Servers"))
         .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
-        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# Total Members: ${totalNetworkMembers}\n-# Total Tag Users: ${totalTagUsers}`))
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# Total Members: ${totalNetworkMembers}\n-# Total Tag Adopters: ${totalTagUsers}`))
         .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true));
 
     for (let i = 0; i < serverComponents.length; i++) {

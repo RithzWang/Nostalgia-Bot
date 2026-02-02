@@ -3,7 +3,7 @@ const {
     ButtonBuilder, ButtonStyle, SeparatorBuilder, SeparatorSpacingSize,
     MessageFlags 
 } = require('discord.js');
-const { Panel, ServerList } = require('../models/Qabilatan'); // Using the models we created
+const { Panel, ServerList } = require('../src/models/Qabilatan'); // Using the models we created
 
 // 🔒 CONFIGURATION
 const MAIN_GUILD_ID = '1456197054782111756'; 

@@ -7,7 +7,7 @@ const {
     SeparatorSpacingSize, 
     MessageFlags 
 } = require('discord.js');
-const { ServerList } = require('../models/Qabilatan');
+const { ServerList } = require('../src/models/Qabilatan');
 
 // 🔒 CONFIGURATION
 const MAIN_SERVER_ID = '1456197054782111756';

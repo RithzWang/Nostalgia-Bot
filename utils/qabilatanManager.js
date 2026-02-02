@@ -9,23 +9,21 @@ const { Panel, ServerList } = require('../src/models/Qabilatan');
 const MAIN_GUILD_ID = '1456197054782111756'; 
 const GLOBAL_TAG_ROLE_ID = '1462217123433545812'; 
 
-// 🕒 HELPER: Pause execution to prevent Rate Limits
+// 🕒 HELPER
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // ==========================================
-// 1. ROLE MANAGER
+// 1. ROLE MANAGER & STATS CALCULATOR
 // ==========================================
 async function runRoleUpdates(client) {
     const servers = await ServerList.find();
     const mainGuild = client.guilds.cache.get(MAIN_GUILD_ID);
 
-    if (!mainGuild) return;
+    if (!mainGuild) return new Map(); // Return empty map if main guild fails
 
-    // Map Server IDs to their Role IDs
+    // Prepare Config for fast lookup
     const serverConfig = new Map(); 
     const allManagedRoles = new Set();
-    
-    // Always manage the Global Role
     allManagedRoles.add(GLOBAL_TAG_ROLE_ID);
 
     servers.forEach(s => {
@@ -33,8 +31,11 @@ async function runRoleUpdates(client) {
         if (s.tagRoleID) allManagedRoles.add(s.tagRoleID);
     });
 
+    // We will use this map to store the counts and return it to the dashboard generator
+    const adopterCounts = new Map(); // Map<ServerID, Count>
+
     try {
-        // ⚠️ FORCE FETCH: Ensures we see the latest tags instantly
+        // ⚠️ FORCE FETCH: Crucial to get the latest "Primary Guild" data
         const members = await mainGuild.members.fetch({ force: true });
 
         for (const [memberId, member] of members) {
@@ -42,28 +43,33 @@ async function runRoleUpdates(client) {
 
             const user = member.user;
             const rolesToKeep = new Set();
+            let isAdopter = false;
 
-            // --- CHECK: Official Discord "Primary Guild" (Clan Tag) ---
+            // --- THE CORE LOGIC YOU REQUESTED ---
+            // iterate through cached members -> check Identity settings
             if (user.primaryGuild && user.primaryGuild.identityEnabled && user.primaryGuild.identityGuildId) {
                 const targetId = user.primaryGuild.identityGuildId;
-                const config = serverConfig.get(targetId);
                 
-                // If they are representing one of our valid servers
-                if (config) {
+                // If the user's tag points to a server we are tracking
+                if (serverConfig.has(targetId)) {
+                    isAdopter = true;
+
+                    // 1. Increment Count for that specific server
+                    const currentCount = adopterCounts.get(targetId) || 0;
+                    adopterCounts.set(targetId, currentCount + 1);
+
+                    // 2. Queue Roles
                     rolesToKeep.add(GLOBAL_TAG_ROLE_ID);
+                    const config = serverConfig.get(targetId);
                     if (config.roleId) rolesToKeep.add(config.roleId);
                 }
             }
 
             // --- SYNC ROLES ---
-            // 1. ADD missing roles
             for (const roleId of rolesToKeep) {
-                if (!member.roles.cache.has(roleId)) {
-                    await member.roles.add(roleId).catch(() => {});
-                }
+                if (!member.roles.cache.has(roleId)) await member.roles.add(roleId).catch(() => {});
             }
 
-            // 2. REMOVE old roles
             for (const managedRoleId of allManagedRoles) {
                 if (member.roles.cache.has(managedRoleId) && !rolesToKeep.has(managedRoleId)) {
                     await member.roles.remove(managedRoleId).catch(() => {});
@@ -73,36 +79,18 @@ async function runRoleUpdates(client) {
     } catch (e) { 
         console.error(`[Role Manager] Error: ${e.message}`); 
     }
+
+    return adopterCounts; // Return the counts so we don't have to calc them again
 }
 
 // ==========================================
 // 2. DASHBOARD UI GENERATOR
 // ==========================================
-async function generateDashboardPayload(client) {
+async function generateDashboardPayload(client, preCalcCounts) {
     const servers = await ServerList.find();
-    const mainGuild = client.guilds.cache.get(MAIN_GUILD_ID);
-
-    // 1. Calculate Adopters Count
-    const adoptersMap = new Map(); // serverId -> count
-
-    if (mainGuild) {
-        // ⚠️ FORCE FETCH: Get real-time data for the dashboard
-        const members = await mainGuild.members.fetch({ force: true }).catch(() => new Map());
-        
-        members.forEach(m => {
-            const u = m.user;
-
-            // Check: Official Clan Tag Only
-            if (u.primaryGuild && u.primaryGuild.identityEnabled && u.primaryGuild.identityGuildId) {
-                const tId = u.primaryGuild.identityGuildId;
-                // Only count if this server is in our list
-                const srv = servers.find(s => s.serverId === tId);
-                if (srv) {
-                    adoptersMap.set(tId, (adoptersMap.get(tId) || 0) + 1);
-                }
-            }
-        });
-    }
+    
+    // If we didn't get pre-calculated counts (e.g. run standalone), use empty map
+    const adoptersMap = preCalcCounts || new Map();
 
     let totalNetworkMembers = 0;
     let totalTagUsers = 0; 
@@ -116,12 +104,12 @@ async function generateDashboardPayload(client) {
         let displayTagText = data.tagText || "None";
         let tagStatusLine = ""; 
 
-        // Get count from our map
+        // USE THE COUNT FROM THE LOGIC ABOVE
         const currentServerTagCount = adoptersMap.get(data.serverId) || 0;
         totalTagUsers += currentServerTagCount;
 
         if (guild) {
-            // Check for official feature flags
+            // Check feature flags just to be safe about "Enabled" status
             const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS') || guild.features.includes('MEMBER_VERIFICATION_GATE_ENABLED'); 
             const hasActiveAdopters = currentServerTagCount > 0; 
 
@@ -133,7 +121,6 @@ async function generateDashboardPayload(client) {
                  tagStatusLine = `<:no_boost:1463272235056889917> **${boostsNeeded} Boost${s} Remain**`; 
                  if(boostsNeeded === 1) tagStatusLine = `<:no_boost:1463272235056889917> **1 Boost Remains**`;
             } 
-            // If they have users representing them OR the feature is strictly on
             else if (!hasClanFeature && !hasActiveAdopters) {
                  tagStatusLine = `<:no_tag:1463272172201050336> **Not Enabled**`;
             } else {
@@ -152,7 +139,7 @@ async function generateDashboardPayload(client) {
                 .setButtonAccessory(inviteButton)
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
-                        `### [${data.name || "Unknown"}](${data.inviteLink || "https://discord.com"})\n` +
+                        `## [${data.name || "Unknown"}](${data.inviteLink || "https://discord.com"})\n` +
                         `**<:sparkles:1462851309219872841> Server Tag:** ${displayTagText}\n` +
                         `**<:members:1462851249836654592> Members:** ${memberCount}\n` +
                         `${tagStatusLine}`
@@ -174,7 +161,7 @@ async function generateDashboardPayload(client) {
     });
 
     container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
-        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# Next Update: <t:${nextUpdateUnix}:R>`));
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# <a:loading:1447184742934909032> Next Update: <t:${nextUpdateUnix}:R>`));
 
     return [container];
 }
@@ -184,9 +171,12 @@ async function generateDashboardPayload(client) {
 // ==========================================
 async function updateAllPanels(client) {
     try {
-        await runRoleUpdates(client).catch(e => console.error(e));
+        // Run Logic FIRST to get the counts
+        const counts = await runRoleUpdates(client);
 
-        const payload = await generateDashboardPayload(client);
+        // Pass counts to the dashboard generator
+        const payload = await generateDashboardPayload(client, counts);
+        
         const locations = await Panel.find(); 
         
         for (const loc of locations) {

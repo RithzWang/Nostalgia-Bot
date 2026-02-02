@@ -24,11 +24,8 @@ module.exports = {
         .addSubcommand(sub => sub.setName('addserver').setDescription('Add a new server to database'))
         .addSubcommand(sub => sub.setName('removeserver').setDescription('Remove a server from database'))
         .addSubcommand(sub => sub.setName('edit').setDescription('Edit a server details'))
-        
-        // 💥 RESET COMMAND (Wipe Memory)
-        .addSubcommand(sub => sub.setName('reset').setDescription('⚠ HARD RESET: Delete ALL dashboard locations from memory'))
 
-        // 2. GREET MESSAGE
+        // 2. GREET MESSAGE (New!)
         .addSubcommand(sub => 
             sub.setName('greetmessage')
                 .setDescription('Configure welcome message for a server')
@@ -44,18 +41,6 @@ module.exports = {
         }
 
         const sub = interaction.options.getSubcommand();
-
-        // ====================================================
-        // 💥 HARD RESET (WIPE MEMORY)
-        // ====================================================
-        if (sub === 'reset') {
-            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-            
-            // This deletes every single "remembered" dashboard location
-            const deleted = await DashboardLocation.deleteMany({});
-            
-            return interaction.editReply(`💥 **BOOM!** I have wiped **${deleted.deletedCount}** dashboard locations from my memory.\n\nThe errors should stop now. Please go to your main channel and run \`/our-servers enable\` to start fresh.`);
-        }
 
         // ====================================================
         // 📝 1. ADD SERVER (MODAL)
@@ -75,31 +60,38 @@ module.exports = {
         }
 
         // ====================================================
-        // 👋 2. GREET MESSAGE
+        // 👋 2. GREET MESSAGE (NEW LOGIC)
         // ====================================================
         if (sub === 'greetmessage') {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
             const isEnabled = interaction.options.getBoolean('enable');
             const targetChannel = interaction.options.getChannel('channel');
-            const targetServerId = interaction.options.getString('server_id') || interaction.guild.id; 
+            const targetServerId = interaction.options.getString('server_id') || interaction.guild.id; // Default to current server if empty
 
+            // Validate Input
             if (isEnabled && !targetChannel) {
                 return interaction.editReply("❌ **Error:** You must select a `channel` when enabling the system.");
             }
 
             try {
-                const updateData = isEnabled ? { welcomeChannelId: targetChannel.id } : { welcomeChannelId: null };            
+                // Determine update data
+                const updateData = isEnabled 
+                    ? { welcomeChannelId: targetChannel.id } // Save Channel
+                    : { welcomeChannelId: null };            // Clear Channel (Disable)
+
+                // Update Database
                 const updatedServer = await TrackedServer.findOneAndUpdate(
                     { guildId: targetServerId },
                     updateData,
-                    { new: true }
+                    { new: true } // Return updated doc
                 );
 
                 if (!updatedServer) {
-                    return interaction.editReply(`❌ **Error:** Server ID \`${targetServerId}\` is not in your database yet.`);
+                    return interaction.editReply(`❌ **Error:** Server ID \`${targetServerId}\` is not in your database yet. Use \`/our-servers addserver\` first.`);
                 }
 
+                // Success Message
                 const container = new ContainerBuilder()
                     .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 👋 Welcome Configuration`))
                     .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
@@ -109,7 +101,10 @@ module.exports = {
                         (isEnabled ? `**Channel:** <#${targetChannel.id}>` : '')
                     ));
 
-                return interaction.editReply({ components: [container], flags: [MessageFlags.IsComponentsV2] });
+                return interaction.editReply({ 
+                    components: [container],
+                    flags: [MessageFlags.IsComponentsV2]
+                });
 
             } catch (e) {
                 console.error(e);
@@ -120,6 +115,7 @@ module.exports = {
         // ====================================================
         // 🟢 3. OTHER DASHBOARD COMMANDS
         // ====================================================
+        // (Existing Logic for enable, edit, remove, update)
         
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
@@ -144,41 +140,10 @@ module.exports = {
             return interaction.editReply("✅ **Dashboards Updated!**");
         }
 
-        // ====================================================
-        // ✅ 4. ENABLE (FIXED: INSTANT UPDATE)
-        // ====================================================
         if (sub === 'enable') {
              const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
-             
-             // 1. Tell you we are working
-             await interaction.editReply(`⚙️ **Saving configuration...**`);
-
-             // 2. Save Location
-             await DashboardLocation.findOneAndUpdate(
-                 { guildId: interaction.guild.id }, 
-                 { channelId: targetChannel.id }, 
-                 { upsert: true }
-             );
-
-             // 3. Confirm Save
-             await interaction.editReply(`✅ **Saved!** Dashboard location set to ${targetChannel}.\n⏳ **Attempting to spawn dashboard message...**`);
-             
-             // 4. TRIGGER THE UPDATE IMMEDIATELY
-             try {
-                 await updateAllDashboards(interaction.client);
-                 
-                 // 5. Success
-                 await interaction.followUp({ 
-                     content: "✅ **Success!** The dashboard should be visible now.", 
-                     flags: MessageFlags.Ephemeral 
-                 });
-             } catch (e) {
-                 console.error(e);
-                 await interaction.followUp({ 
-                     content: `⚠️ **Saved, but spawn failed:** ${e.message}\nCheck your console logs.`, 
-                     flags: MessageFlags.Ephemeral 
-                 });
-             }
+             await DashboardLocation.findOneAndUpdate({ guildId: interaction.guild.id }, { channelId: targetChannel.id }, { upsert: true });
+             interaction.editReply(`✅ **Dashboard Enabled** in ${targetChannel}`);
         }
     }
 };

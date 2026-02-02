@@ -212,7 +212,7 @@ module.exports = {
                 );
 
                 return interaction.reply({ 
-                    content: `✅ Greet/Kick system enabled for <#${channel.id}>.`, 
+                    content: `✅ Greet system enabled for <#${channel.id}>.`, 
                     flags: [MessageFlags.Ephemeral] 
                 });
             }

@@ -1,5 +1,5 @@
 const { Events, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
-const { ServerList } = require('../models/Qabilatan'); // ⚠️ Check this path
+const { ServerList } = require('../src/models/Qabilatan'); // ⚠️ Check this path
 const { updateAllPanels } = require('../utils/qabilatanManager'); // ⚠️ Check this path
 
 const ALLOWED_USER_ID = '837741275603009626';

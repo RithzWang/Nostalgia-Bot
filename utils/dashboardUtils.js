@@ -11,16 +11,17 @@ const { runGatekeeper } = require('./gatekeeperUtils');
 const MAIN_GUILD_ID = '1456197054782111756'; 
 const GLOBAL_TAG_ROLE_ID = '1462217123433545812'; 
 
-// 🕒 HELPER: Prevents API spam by pausing execution
+// 🕒 HELPER: Pause function to prevent Rate Limits
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // ==========================================
-// 1. ROLE MANAGER (Rate-Limit Safe)
+// 1. ROLE MANAGER (Optimized for Performance)
 // ==========================================
 async function runRoleUpdates(client) {
     const trackedServers = await TrackedServer.find();
     const mainGuild = client.guilds.cache.get(MAIN_GUILD_ID);
 
+    // A. Main Hub Logic
     if (mainGuild) {
         const tagToRoleMap = new Map();
         const roleToGuildMap = new Map();
@@ -35,31 +36,31 @@ async function runRoleUpdates(client) {
         }
 
         try {
-            // Use cache only to avoid Opcode 8 Rate Limits
+            // Using Cache Iteration to avoid API blocks
             const globalRole = mainGuild.roles.cache.get(GLOBAL_TAG_ROLE_ID);
 
             for (const [memberId, member] of mainGuild.members.cache) {
                 if (member.user.bot) continue;
 
                 const identity = member.user?.primaryGuild || null; 
-                const isTagEnabled = identity && identity.identityEnabled === true;
+                const isTagEnabled = identity?.identityEnabled === true;
                 const currentTagGuildId = isTagEnabled ? identity.identityGuildId : null;
                 const isWearingAnyValidTag = currentTagGuildId && validTagServerIds.has(currentTagGuildId);
 
-                // Specific Main Roles
+                // 1. Give Specific Server Role
                 if (currentTagGuildId && tagToRoleMap.has(currentTagGuildId)) {
                     const targetRoleId = tagToRoleMap.get(currentTagGuildId);
                     if (!member.roles.cache.has(targetRoleId)) await member.roles.add(targetRoleId).catch(() => {});
                 }
 
-                // Remove Mismatched Main Roles
+                // 2. Remove Wrong Server Roles
                 for (const [rId, sourceGuildId] of roleToGuildMap.entries()) {
                     if (member.roles.cache.has(rId) && currentTagGuildId !== sourceGuildId) {
                         await member.roles.remove(rId).catch(() => {});
                     }
                 }
 
-                // Global Hub Role
+                // 3. Manage Global Tag Role
                 if (globalRole) {
                     if (isWearingAnyValidTag && !member.roles.cache.has(GLOBAL_TAG_ROLE_ID)) {
                         await member.roles.add(GLOBAL_TAG_ROLE_ID).catch(() => {});
@@ -68,10 +69,10 @@ async function runRoleUpdates(client) {
                     }
                 }
             }
-        } catch (e) { console.error(`[Role Manager] Hub Error:`, e.message); }
+        } catch (e) { console.error(`[Role Manager] Hub Error: ${e.message}`); }
     }
 
-    // Local Satellite Logic
+    // B. Local Satellite Logic
     for (const server of trackedServers) {
         if (!server.localRoleId) continue;
         const guild = client.guilds.cache.get(server.guildId);
@@ -80,7 +81,7 @@ async function runRoleUpdates(client) {
         try {
             for (const [mId, member] of guild.members.cache) {
                 if (member.user.bot) continue;
-                const identity = member.user?.primaryGuild || null;
+                const identity = member.user?.primaryGuild;
                 const wearsCorrectTag = identity && identity.identityGuildId === server.guildId && identity.identityEnabled === true;
 
                 if (wearsCorrectTag && !member.roles.cache.has(server.localRoleId)) {
@@ -89,12 +90,12 @@ async function runRoleUpdates(client) {
                     await member.roles.remove(server.localRoleId).catch(() => {});
                 }
             }
-        } catch (e) { console.error(`[Role Manager] Local Error in ${server.displayName}:`, e.message); }
+        } catch (e) { console.error(`[Role Manager] Local Error: ${e.message}`); }
     }
 }
 
 // ==========================================
-// 2. DASHBOARD UI GENERATOR
+// 2. DASHBOARD UI GENERATOR (V2 Components)
 // ==========================================
 async function generateDashboardPayload(client) {
     const servers = await TrackedServer.find();
@@ -126,36 +127,31 @@ async function generateDashboardPayload(client) {
             const boostCount = guild.premiumSubscriptionCount || 0;
             const boostsNeeded = 3 - boostCount;
 
-            if (boostsNeeded > 0) {
-                tagStatusLine = `<:no_boost:1463272235056889917> **${boostsNeeded} Boosts Remain**`;
-            } else {
-                tagStatusLine = !hasClanFeature 
+            tagStatusLine = (boostsNeeded > 0)
+                ? `<:no_boost:1463272235056889917> **${boostsNeeded} Boosts Remain**`
+                : (!hasClanFeature 
                     ? `<:no_tag:1463272172201050336> **Not Enabled**` 
-                    : `<:greysword:1462853724824404069> **Tag Adopters:** ${currentServerTagCount}`;
-            }
+                    : `<:greysword:1462853724824404069> **Tag Adopters:** ${currentServerTagCount}`);
         } else {
             tagStatusLine = `<:no_tag:1463272172201050336> **Not Connected**`;
         }
 
         const inviteButton = new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel("Server Link");
-        if (data.inviteLink && data.inviteLink.startsWith('http')) {
-            inviteButton.setURL(data.inviteLink);
-        } else {
-            inviteButton.setURL('https://discord.com').setDisabled(true);
-        }
+        inviteButton.setURL((data.inviteLink && data.inviteLink.startsWith('http')) ? data.inviteLink : 'https://discord.com');
+        if (!data.inviteLink) inviteButton.setDisabled(true);
 
-        const section = new SectionBuilder()
-            .setButtonAccessory(inviteButton)
-            .addTextDisplayComponents(
-                new TextDisplayBuilder()
-                    .setContent(
+        serverComponents.push(
+            new SectionBuilder()
+                .setButtonAccessory(inviteButton)
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
                         `## [${data.displayName}](${data.inviteLink || "https://discord.com"})\n` +
                         `**<:sparkles:1462851309219872841> Server Tag:** ${displayTagText}\n` +
                         `**<:members:1462851249836654592> Members:** ${memberCount}\n` +
                         `${tagStatusLine}`
                     )
-            );
-        serverComponents.push(section);
+                )
+        );
     }
 
     const nextUpdateUnix = Math.floor((Date.now() + 60 * 1000) / 1000);
@@ -165,12 +161,12 @@ async function generateDashboardPayload(client) {
         .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# Total Members: ${totalNetworkMembers}\n-# Total Tags Adopters: ${totalTagUsers}`))
         .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true));
 
-    for (let i = 0; i < serverComponents.length; i++) {
-        container.addSectionComponents(serverComponents[i]);
+    serverComponents.forEach((section, i) => {
+        container.addSectionComponents(section);
         if (i !== serverComponents.length - 1) {
             container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false));
         }
-    }
+    });
 
     container
         .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
@@ -180,7 +176,7 @@ async function generateDashboardPayload(client) {
 }
 
 // ==========================================
-// 3. MASTER UPDATE FUNCTION (Clean-Sync)
+// 3. MASTER UPDATE (The Fix)
 // ==========================================
 async function updateAllDashboards(client) {
     console.log('--- 🚀 STARTING CLEAN-SYNC UPDATE ---');
@@ -192,49 +188,54 @@ async function updateAllDashboards(client) {
         const payload = await generateDashboardPayload(client);
         const locations = await DashboardLocation.find();
         
-        console.log(`📍 DB contains ${locations.length} dashboard locations. Syncing...`);
+        console.log(`📍 Database has ${locations.length} locations. Syncing...`);
 
         for (const loc of locations) {
+            // STEP 1: Find the Channel. If missing, DELETE from DB.
             const channel = client.channels.cache.get(loc.channelId) || await client.channels.fetch(loc.channelId).catch(() => null);
             
             if (!channel) {
-                console.log(`🗑️ Channel ${loc.channelId} missing. Deleting from DB.`);
+                console.log(`🗑️ Channel ${loc.channelId} is gone. Removing ghost entry.`);
                 await DashboardLocation.deleteOne({ _id: loc._id });
-                continue;
+                continue; 
             }
 
             try {
-                // 🕒 Staggered Update to avoid rate limits
-                await sleep(2000);
+                // STEP 2: Wait (Prevents Rate Limit Crash)
+                await sleep(2000); 
 
-                if (!loc.messageId) {
+                // STEP 3: Check the Message
+                let msg = null;
+                if (loc.messageId) {
+                    msg = await channel.messages.fetch(loc.messageId).catch(() => null);
+                }
+
+                // STEP 4: Decide - Edit or Spawn New?
+                if (msg && typeof msg.edit === 'function') {
+                    // SAFE: We confirmed 'msg' is a valid object
+                    await msg.edit({ components: payload, flags: [MessageFlags.IsComponentsV2] });
+                    console.log(`📝 Updated dashboard in ${channel.guild.name}`);
+                } else {
+                    // RECOVERY: Message was deleted or invalid. Send a new one.
+                    console.log(`🔄 Message missing in ${channel.guild.name}. Spawning new one.`);
                     const newMsg = await channel.send({ components: payload, flags: [MessageFlags.IsComponentsV2] });
+                    
+                    // Update DB with new ID
                     loc.messageId = newMsg.id;
                     await loc.save();
-                } else {
-                    const msg = await channel.messages.fetch(loc.messageId).catch(() => null);
-                    
-                    // FIXED: Safer check to avoid "edit is not a function"
-                    if (msg && typeof msg.edit === 'function') {
-                        await msg.edit({ components: payload, flags: [MessageFlags.IsComponentsV2] });
-                        console.log(`📝 Edited dashboard in #${channel.name}`);
-                    } else {
-                        console.log(`🔄 Message lost or invalid in #${channel.name}. Re-spawning...`);
-                        const freshMsg = await channel.send({ components: payload, flags: [MessageFlags.IsComponentsV2] });
-                        loc.messageId = freshMsg.id;
-                        await loc.save();
-                    }
                 }
+
             } catch (err) {
-                console.error(`🛑 API Error in #${channel.name}:`, err.message);
+                console.error(`🛑 Failed to update ${channel.guild.name}: ${err.message}`);
             }
         }
     } catch (error) {
-        console.error('🛑 MASTER CYCLE CRASHED:', error);
+        console.error('🛑 MASTER LOOP CRASHED:', error);
     }
     
-    const finalCount = await DashboardLocation.countDocuments();
-    console.log(`--- 🏁 FINISHED. Active Dashboards: ${finalCount} ---`);
+    // Log final count to confirm cleanup
+    const count = await DashboardLocation.countDocuments();
+    console.log(`--- 🏁 DONE. Active Dashboards: ${count} ---`);
 }
 
 module.exports = { runRoleUpdates, generateDashboardPayload, updateAllDashboards, runGatekeeper };

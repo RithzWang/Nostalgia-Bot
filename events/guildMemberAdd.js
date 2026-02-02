@@ -68,7 +68,7 @@ module.exports = {
                         .addTextDisplayComponents(
                             new TextDisplayBuilder().setContent(
                                 `It seems like you are **__not__** in our main **[A2-Q](<${MAIN_SERVER_INVITE}>)** server yet.\n` +
-                                `You have **10 minutes** to join, otherwise you will be **kicked**.`
+                                `You have **10** minutes to join, otherwise you will be **kicked**.`
                             )
                         )
                 ];

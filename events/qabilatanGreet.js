@@ -1,6 +1,6 @@
 // events/qabilatanGreet.js
-const { GreetConfig, ServerList } = require('../src/models/Qabilatan'); // Make sure path is correct relative to events/
-const { serverID } = require('../config.json'); // Main server ID from config
+const { GreetConfig, ServerList } = require('../models/Qabilatan'); // Adjust path if needed
+const { serverID } = require('../config.json'); 
 
 const MAIN_SERVER_ID = serverID; 
 const MAIN_SERVER_INVITE = "https://discord.gg/Sra726wPJs";
@@ -10,15 +10,15 @@ module.exports = {
     async execute(member, client) {
         if (member.user.bot) return;
 
-        // Skip if this is the Main Server (Main server is handled in index.js)
+        // Skip if this is the Main Server
         if (member.guild.id === MAIN_SERVER_ID) return;
 
         // 1. Check DB if this specific guild has Greet enabled
         const qabilatanConfig = await GreetConfig.findOne({ guildId: member.guild.id });
-        if (!qabilatanConfig) return; // Feature not enabled here
+        if (!qabilatanConfig) return; 
 
         try {
-            // 2. Fetch Server Name from DB (for consistent naming)
+            // 2. Fetch Server Name
             const serverInfo = await ServerList.findOne({ serverId: member.guild.id });
             const serverName = serverInfo ? serverInfo.name : member.guild.name;
 
@@ -43,7 +43,7 @@ module.exports = {
                 // ✅ User is Safe
                 channel.send(`${member}, Welcome to **${serverName}** server!`);
             } else {
-                // ⚠️ User is Not in Main Server -> Warn & Kick Timer
+                // ⚠️ Warn user they need to join Main Server
                 channel.send(
                     `${member}, Welcome to **${serverName}** server!\n\n` +
                     `It seems like you are **__not__** in our **[A2-Q](<${MAIN_SERVER_INVITE}>)** Main Server yet.\n` +
@@ -52,7 +52,6 @@ module.exports = {
 
                 // ⏳ 10 Minute Kick Timer
                 setTimeout(async () => {
-                    // Check if member is still in THIS server
                     const target = await member.guild.members.fetch(member.id).catch(() => null);
                     if (!target) return; // They already left
 
@@ -67,7 +66,7 @@ module.exports = {
 
                     try {
                         await target.kick("Automatic Kick: Did not join A2-Q Main Server.");
-                        channel.send(`**${target.user.tag}** has been kicked for not joining the main server.`);
+                        // ❌ DELETED: The line that announces the kick
                     } catch (err) {
                         console.error(`Failed to kick user in ${member.guild.name}:`, err);
                     }

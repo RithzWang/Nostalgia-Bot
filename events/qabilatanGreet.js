@@ -46,7 +46,7 @@ module.exports = {
                 // ⚠️ User is Not in Main Server -> Warn & Kick Timer
                 channel.send(
                     `${member}, Welcome to **${serverName}** server!\n\n` +
-                    `It seems like you are **__not__** in our main **[A2-Q](<${MAIN_SERVER_INVITE}>)** server yet.\n` +
+                    `It seems like you are **__not__** in our **[A2-Q](<${MAIN_SERVER_INVITE}>)** Main Server yet.\n` +
                     `You have **10 minutes** to join, otherwise you will be **kicked**.`
                 );
 

@@ -44,7 +44,7 @@ async function buildDashboard(client) {
         if (boosts < 3) {
             statusLine = `<:no_boost:1463272235056889917> ${boosts}/3 Boosts Remaining`;
         } else if (!srv.tagText) {
-             statusLine = `<:no_tag:1463272172201050336> Not Enabled*`;
+             statusLine = `<:no_tag:1463272172201050336> Not Enabled`;
         } else {
              statusLine = `<:greysword:1462853724824404069> Tag Adopters: ${adopters}`;
         }
@@ -89,7 +89,7 @@ async function buildDashboard(client) {
                             .setURL(s.invite)
                     )
                     .addTextDisplayComponents(
-                        new TextDisplayBuilder().setContent(`### [${s.name}](${s.invite})`),
+                        new TextDisplayBuilder().setContent(`## [${s.name}](${s.invite})`),
                         new TextDisplayBuilder().setContent(`**<:sparkles:1462851309219872841> Server Tag: ${s.tag}\n<:members:1462851249836654592> Members: ${s.members}\n${s.statusLine}**`)
                     )
             )
@@ -106,7 +106,7 @@ async function buildDashboard(client) {
             new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
         )
         .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(`-# Next Update: <t:${nextUpdate}:R>`)
+            new TextDisplayBuilder().setContent(`<a:loading:1447184742934909032> -# Next Update: <t:${nextUpdate}:R>`)
         );
 
     return [container];

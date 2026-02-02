@@ -11,13 +11,15 @@ const { runGatekeeper } = require('./gatekeeperUtils');
 const MAIN_GUILD_ID = '1456197054782111756'; 
 const GLOBAL_TAG_ROLE_ID = '1462217123433545812'; 
 
+// 🕒 HELPER: Simple delay function to prevent API spam
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 // ==========================================
 // 1. ROLE MANAGER (Rate-Limit Safe)
 // ==========================================
 async function runRoleUpdates(client) {
     const trackedServers = await TrackedServer.find();
 
-    // --- A. MAIN SERVER LOGIC ---
     const mainGuild = client.guilds.cache.get(MAIN_GUILD_ID);
     if (mainGuild) {
         const tagToRoleMap = new Map();
@@ -33,9 +35,7 @@ async function runRoleUpdates(client) {
         }
 
         try {
-            // Use cache to avoid Opcode 8 Rate Limits
             const globalRole = mainGuild.roles.cache.get(GLOBAL_TAG_ROLE_ID);
-
             for (const [memberId, member] of mainGuild.members.cache) {
                 if (member.user.bot) continue;
 
@@ -44,20 +44,17 @@ async function runRoleUpdates(client) {
                 const currentTagGuildId = isTagEnabled ? identity.identityGuildId : null;
                 const isWearingAnyValidTag = currentTagGuildId && validTagServerIds.has(currentTagGuildId);
 
-                // 1. Specific Main Roles
                 if (currentTagGuildId && tagToRoleMap.has(currentTagGuildId)) {
                     const targetRoleId = tagToRoleMap.get(currentTagGuildId);
                     if (!member.roles.cache.has(targetRoleId)) await member.roles.add(targetRoleId).catch(() => {});
                 }
 
-                // 2. Remove Mismatched Main Roles
                 for (const [rId, sourceGuildId] of roleToGuildMap.entries()) {
                     if (member.roles.cache.has(rId) && currentTagGuildId !== sourceGuildId) {
                         await member.roles.remove(rId).catch(() => {});
                     }
                 }
 
-                // 3. Global Hub Role
                 if (globalRole) {
                     if (isWearingAnyValidTag && !member.roles.cache.has(GLOBAL_TAG_ROLE_ID)) {
                         await member.roles.add(GLOBAL_TAG_ROLE_ID).catch(() => {});
@@ -69,18 +66,14 @@ async function runRoleUpdates(client) {
         } catch (e) { console.error(`[Role Manager] Hub Error:`, e.message); }
     }
 
-    // --- B. LOCAL SATELLITE ROLE LOGIC ---
     for (const server of trackedServers) {
         if (!server.localRoleId) continue;
-
         const guild = client.guilds.cache.get(server.guildId);
         if (!guild || server.guildId === MAIN_GUILD_ID) continue;
 
         try {
-            // Using cache only to prevent further rate limits
             for (const [mId, member] of guild.members.cache) {
                 if (member.user.bot) continue;
-
                 const identity = member.user.primaryGuild;
                 const wearsCorrectTag = identity && identity.identityGuildId === server.guildId && identity.identityEnabled === true;
 
@@ -181,11 +174,12 @@ async function generateDashboardPayload(client) {
 }
 
 // ==========================================
-// 3. MASTER UPDATE FUNCTION
+// 3. MASTER UPDATE FUNCTION (Optimized)
 // ==========================================
 async function updateAllDashboards(client) {
     console.log('[Dashboard] Starting Global Update Cycle...');
 
+    // Runs roles and kicks first
     await runRoleUpdates(client).catch(e => console.error("[Role Update Error]:", e.message));
     await runGatekeeper(client).catch(e => console.error("[Gatekeeper Error]:", e.message)); 
 
@@ -197,6 +191,9 @@ async function updateAllDashboards(client) {
         if (!channel) continue;
 
         try {
+            // 🕒 Staggered Update: Wait 1.5s between servers to avoid rate limits
+            await sleep(1500);
+
             if (!loc.messageId) {
                 const newMsg = await channel.send({ components: payload, flags: [MessageFlags.IsComponentsV2] });
                 loc.messageId = newMsg.id;
@@ -206,7 +203,6 @@ async function updateAllDashboards(client) {
 
             const msg = await channel.messages.fetch(loc.messageId);
             
-            // Check if msg object is valid before editing
             if (msg && typeof msg.edit === 'function') {
                 await msg.edit({ components: payload, flags: [MessageFlags.IsComponentsV2] });
             } else {
@@ -214,17 +210,17 @@ async function updateAllDashboards(client) {
             }
 
         } catch (e) {
-            // Send new if fetch or edit fails
+            // Re-send if edit fails
             try {
                 const newMsg = await channel.send({ components: payload, flags: [MessageFlags.IsComponentsV2] });
                 loc.messageId = newMsg.id;
                 await loc.save();
-            } catch (sendError) {
-                console.error(`[Dashboard] Failed to send to ${loc.guildId}:`, sendError.message);
+            } catch (err) {
+                console.error(`[Dashboard] Failure in ${loc.guildId}:`, err.message);
             }
         }
     }
-    if (locations.length > 0) console.log(`[Dashboard] Updated ${locations.length} dashboards.`);
+    if (locations.length > 0) console.log(`[Dashboard] Cycle complete for ${locations.length} servers.`);
 }
 
 module.exports = { runRoleUpdates, generateDashboardPayload, updateAllDashboards, runGatekeeper };

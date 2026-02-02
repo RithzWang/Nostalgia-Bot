@@ -15,13 +15,13 @@ const GLOBAL_TAG_ROLE_ID = '1462217123433545812';
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // ==========================================
-// 1. ROLE MANAGER (Rate-Limit Safe)
+// 1. ROLE MANAGER (CACHE ONLY - NO FETCHING)
 // ==========================================
 async function runRoleUpdates(client) {
-    // ... (This part works fine, keeping it optimized) ...
     const trackedServers = await TrackedServer.find();
     const mainGuild = client.guilds.cache.get(MAIN_GUILD_ID);
 
+    // A. Main Hub Logic
     if (mainGuild) {
         const tagToRoleMap = new Map();
         const roleToGuildMap = new Map();
@@ -36,24 +36,33 @@ async function runRoleUpdates(client) {
         }
 
         try {
+            // 🛑 CRITICAL FIX: Removed await mainGuild.members.fetch(); 
+            // We now ONLY iterate the cache to stop Opcode 8 errors.
             const globalRole = mainGuild.roles.cache.get(GLOBAL_TAG_ROLE_ID);
+
             for (const [memberId, member] of mainGuild.members.cache) {
                 if (member.user.bot) continue;
-                const identity = member.user?.primaryGuild; 
+
+                const identity = member.user?.primaryGuild || null; 
                 const isTagEnabled = identity?.identityEnabled === true;
                 const currentTagGuildId = isTagEnabled ? identity.identityGuildId : null;
-                
+                const isWearingAnyValidTag = currentTagGuildId && validTagServerIds.has(currentTagGuildId);
+
+                // 1. Specific Server Role
                 if (currentTagGuildId && tagToRoleMap.has(currentTagGuildId)) {
                     const targetRoleId = tagToRoleMap.get(currentTagGuildId);
                     if (!member.roles.cache.has(targetRoleId)) await member.roles.add(targetRoleId).catch(() => {});
                 }
+
+                // 2. Remove Wrong Server Roles
                 for (const [rId, sourceGuildId] of roleToGuildMap.entries()) {
                     if (member.roles.cache.has(rId) && currentTagGuildId !== sourceGuildId) {
                         await member.roles.remove(rId).catch(() => {});
                     }
                 }
+
+                // 3. Global Tag Role
                 if (globalRole) {
-                    const isWearingAnyValidTag = currentTagGuildId && validTagServerIds.has(currentTagGuildId);
                     if (isWearingAnyValidTag && !member.roles.cache.has(GLOBAL_TAG_ROLE_ID)) {
                         await member.roles.add(GLOBAL_TAG_ROLE_ID).catch(() => {});
                     } else if (!isWearingAnyValidTag && member.roles.cache.has(GLOBAL_TAG_ROLE_ID)) {
@@ -64,15 +73,19 @@ async function runRoleUpdates(client) {
         } catch (e) { console.error(`[Role Manager] Hub Error: ${e.message}`); }
     }
 
+    // B. Local Satellite Logic
     for (const server of trackedServers) {
         if (!server.localRoleId) continue;
         const guild = client.guilds.cache.get(server.guildId);
         if (!guild || server.guildId === MAIN_GUILD_ID) continue;
+
         try {
+            // 🛑 CRITICAL FIX: Removed guild.members.fetch();
             for (const [mId, member] of guild.members.cache) {
                 if (member.user.bot) continue;
                 const identity = member.user?.primaryGuild;
                 const wearsCorrectTag = identity && identity.identityGuildId === server.guildId && identity.identityEnabled === true;
+
                 if (wearsCorrectTag && !member.roles.cache.has(server.localRoleId)) {
                     await member.roles.add(server.localRoleId).catch(() => {});
                 } else if (!wearsCorrectTag && member.roles.cache.has(server.localRoleId)) {
@@ -84,7 +97,7 @@ async function runRoleUpdates(client) {
 }
 
 // ==========================================
-// 2. DASHBOARD UI GENERATOR (V2)
+// 2. DASHBOARD UI GENERATOR (Standard V2)
 // ==========================================
 async function generateDashboardPayload(client) {
     const servers = await TrackedServer.find();
@@ -103,6 +116,7 @@ async function generateDashboardPayload(client) {
         if (guild) {
             const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS');
             let currentServerTagCount = 0;
+
             if (hasClanFeature) {
                 const tagWearers = guild.members.cache.filter(member => {
                     const identity = member.user?.primaryGuild;
@@ -111,11 +125,15 @@ async function generateDashboardPayload(client) {
                 currentServerTagCount = tagWearers.size;
                 totalTagUsers += currentServerTagCount; 
             }
+
             const boostCount = guild.premiumSubscriptionCount || 0;
             const boostsNeeded = 3 - boostCount;
+
             tagStatusLine = (boostsNeeded > 0)
                 ? `<:no_boost:1463272235056889917> **${boostsNeeded} Boosts Remain**`
-                : (!hasClanFeature ? `<:no_tag:1463272172201050336> **Not Enabled**` : `<:greysword:1462853724824404069> **Tag Adopters:** ${currentServerTagCount}`);
+                : (!hasClanFeature 
+                    ? `<:no_tag:1463272172201050336> **Not Enabled**` 
+                    : `<:greysword:1462853724824404069> **Tag Adopters:** ${currentServerTagCount}`);
         } else {
             tagStatusLine = `<:no_tag:1463272172201050336> **Not Connected**`;
         }
@@ -150,72 +168,91 @@ async function generateDashboardPayload(client) {
         if (i !== serverComponents.length - 1) container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false));
     });
 
-    container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
+    container
+        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
         .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# <a:loading:1447184742934909032> Next Update: <t:${nextUpdateUnix}:R>`));
 
     return [container];
 }
 
 // ==========================================
-// 3. MASTER UPDATE (The Crash Fix)
+// 3. MASTER UPDATE (NUCLEAR FIX)
 // ==========================================
 async function updateAllDashboards(client) {
     console.log('--- 🚀 STARTING ROBUST UPDATE ---');
 
     try {
-        await runRoleUpdates(client).catch(e => console.error("[Role Error]", e));
-        await runGatekeeper(client).catch(e => console.error("[Gatekeeper Error]", e)); 
+        await runRoleUpdates(client).catch(e => console.error("[Role Error]", e.message));
+        await runGatekeeper(client).catch(e => console.error("[Gatekeeper Error]", e.message)); 
 
         const payload = await generateDashboardPayload(client);
         const locations = await DashboardLocation.find();
         
-        console.log(`📍 Found ${locations.length} dashboard locations in DB.`);
+        console.log(`📍 Processing ${locations.length} dashboard locations...`);
 
         for (const loc of locations) {
-            // STEP 1: Strict Channel Fetch. If fails, DELETE from DB.
-            let channel = null;
+            // STEP 1: Stagger Updates (Slow down to prevent crashes)
+            await sleep(2000);
+
+            // STEP 2: Find Channel. If gone, DESTROY DB ENTRY.
+            let channel;
             try {
                 channel = await client.channels.fetch(loc.channelId);
             } catch (e) {
-                console.log(`🗑️ Channel ${loc.channelId} inaccessible. DELETING from DB.`);
+                console.log(`🗑️ Channel ${loc.channelId} invalid. DELETING from DB.`);
                 await DashboardLocation.deleteOne({ _id: loc._id });
                 continue;
             }
 
-            // STEP 2: Stagger to prevent rate limits
-            await sleep(2500);
+            if (!channel) {
+                console.log(`🗑️ Channel ${loc.channelId} not found. DELETING from DB.`);
+                await DashboardLocation.deleteOne({ _id: loc._id });
+                continue;
+            }
 
-            // STEP 3: Safe Edit or Spawn
+            // STEP 3: Handle Message (Fail-Forward Strategy)
             try {
                 let msg = null;
+                
+                // If we have an ID, try to fetch the specific message
                 if (loc.messageId) {
-                    // Try to fetch existing message
-                    msg = await channel.messages.fetch(loc.messageId).catch(() => null);
+                    try {
+                        msg = await channel.messages.fetch(loc.messageId);
+                    } catch (e) {
+                        msg = null; // Message deleted or ID invalid
+                    }
                 }
 
-                if (msg && msg.editable) {
+                // If msg is valid AND matches the Discord Message class, edit it.
+                // Otherwise, treat it as dead and spawn a new one.
+                if (msg && typeof msg.edit === 'function') {
                     await msg.edit({ components: payload, flags: [MessageFlags.IsComponentsV2] });
                     console.log(`✅ Updated: ${channel.guild.name}`);
                 } else {
-                    console.log(`⚠️ Message missing/invalid in ${channel.guild.name}. Spawning NEW.`);
+                    console.log(`⚠️ Invalid Message in ${channel.guild.name}. Spawning FRESH one.`);
                     const newMsg = await channel.send({ components: payload, flags: [MessageFlags.IsComponentsV2] });
                     
-                    // Save new ID to DB so next time it edits instead of spams
+                    // Save new ID to DB immediately
                     loc.messageId = newMsg.id;
                     await loc.save();
                 }
 
             } catch (err) {
-                // If even the spawn fails, log it but don't crash
                 console.error(`🛑 Failed update in ${channel.guild.name}: ${err.message}`);
+                // If we encounter a hard error (like "Missing Access"), delete the dashboard
+                if (err.message.includes("Missing Access") || err.message.includes("Unknown Channel")) {
+                    console.log(`🗑️ Permissions lost in ${channel.guild.name}. Removing dashboard.`);
+                    await DashboardLocation.deleteOne({ _id: loc._id });
+                }
             }
         }
     } catch (error) {
         console.error('🛑 MASTER LOOP CRASHED:', error);
     }
     
+    // Final check
     const count = await DashboardLocation.countDocuments();
-    console.log(`--- 🏁 FINISHED. Active Dashboards: ${count} ---`);
+    console.log(`--- 🏁 FINISHED. Active Dashboards in DB: ${count} ---`);
 }
 
 module.exports = { runRoleUpdates, generateDashboardPayload, updateAllDashboards, runGatekeeper };

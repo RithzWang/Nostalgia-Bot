@@ -1,30 +1,44 @@
-const { Events, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
-const { ServerList } = require('../src/models/Qabilatan'); // ⚠️ Check this path
-const { updateAllPanels } = require('../utils/qabilatanManager'); // ⚠️ Check this path
+const { 
+    Events, 
+    ModalBuilder, 
+    TextInputBuilder, 
+    TextInputStyle, 
+    ActionRowBuilder,
+    MessageFlags // Import MessageFlags
+} = require('discord.js');
+const { ServerList } = require('../src/models/Qabilatan'); 
+const { updateAllPanels } = require('../utils/qabilatanManager'); 
 
 const ALLOWED_USER_ID = '837741275603009626';
 
 module.exports = {
-    name: Events.InteractionCreate, // This listens to 'interactionCreate' just like your other file
+    name: Events.InteractionCreate,
     async execute(interaction, client) {
-        // 1. Filter: Ignore if it's not a Qabilatan interaction
+        // 1. Filter: Only handle Qabilatan interactions
         if (!interaction.customId || !interaction.customId.startsWith('qabilatan_')) return;
 
-        // 2. Security: Double-check the user ID
+        // 2. Security Check
         if (interaction.user.id !== ALLOWED_USER_ID) {
-            return interaction.reply({ content: "❌ Unauthorized.", ephemeral: true });
+            return interaction.reply({ 
+                content: "❌ Unauthorized.", 
+                flags: [MessageFlags.Ephemeral] // Used Flag
+            });
         }
 
         try {
-            // --- MODAL SUBMIT: ADD SERVER ---
+            // ====================================================
+            // 1. ADD SERVER (Modal Submit)
+            // ====================================================
             if (interaction.isModalSubmit() && interaction.customId === 'qabilatan_add_modal') {
+                // ⏳ DEFER using Flag
+                await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+
                 const serverId = interaction.fields.getTextInputValue('srv_id');
                 const inviteLink = interaction.fields.getTextInputValue('srv_invite');
                 const tagText = interaction.fields.getTextInputValue('srv_tag');
                 const tagRoleID = interaction.fields.getTextInputValue('srv_role');
                 const nameOverride = interaction.fields.getTextInputValue('srv_name');
 
-                // Fetch guild name if possible
                 const guildObj = client.guilds.cache.get(serverId);
                 const finalName = nameOverride || (guildObj ? guildObj.name : "Unknown Server");
 
@@ -34,16 +48,25 @@ module.exports = {
                     { upsert: true }
                 );
 
-                await updateAllPanels(client);
-                return interaction.reply({ content: `✅ Added **${finalName}** to the network. Updating stats...`, ephemeral: true });
+                await updateAllPanels(client); 
+                return interaction.editReply({ content: `✅ Added **${finalName}** to the network. Stats updated.` });
             }
 
-            // --- SELECT MENU: EDIT ---
+            // ====================================================
+            // 2. EDIT SERVER (Select Menu -> Show Modal)
+            // ====================================================
             if (interaction.isStringSelectMenu() && interaction.customId === 'qabilatan_edit_select') {
                 const selectedId = interaction.values[0];
                 const serverData = await ServerList.findOne({ serverId: selectedId });
-                if (!serverData) return interaction.reply({ content: "Server data not found in database.", ephemeral: true });
+                
+                if (!serverData) {
+                    return interaction.reply({ 
+                        content: "❌ Server data not found in DB.", 
+                        flags: [MessageFlags.Ephemeral] 
+                    });
+                }
 
+                // Show Modal (Cannot use ephemeral flag here, modals are always user-specific)
                 const modal = new ModalBuilder()
                     .setCustomId(`qabilatan_edit_modal_${selectedId}`)
                     .setTitle(`Edit ${serverData.name ? serverData.name.substring(0, 20) : 'Server'}`);
@@ -58,8 +81,13 @@ module.exports = {
                 return interaction.showModal(modal);
             }
 
-            // --- MODAL SUBMIT: EDIT SERVER ---
+            // ====================================================
+            // 3. EDIT SERVER (Modal Submit)
+            // ====================================================
             if (interaction.isModalSubmit() && interaction.customId.startsWith('qabilatan_edit_modal_')) {
+                // ⏳ DEFER using Flag
+                await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+
                 const serverId = interaction.customId.split('_').pop();
                 
                 await ServerList.findOneAndUpdate(
@@ -73,21 +101,36 @@ module.exports = {
                 );
 
                 await updateAllPanels(client);
-                return interaction.reply({ content: "✅ Server updated. refreshing panels...", ephemeral: true });
+                return interaction.editReply({ content: "✅ Server updated. Panels refreshed." });
             }
 
-            // --- SELECT MENU: DELETE ---
+            // ====================================================
+            // 4. DELETE SERVER (Select Menu)
+            // ====================================================
             if (interaction.isStringSelectMenu() && interaction.customId === 'qabilatan_delete_select') {
+                // ⏳ DEFER using Flag
+                await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+
                 const selectedId = interaction.values[0];
                 await ServerList.deleteOne({ serverId: selectedId });
+                
                 await updateAllPanels(client);
-                return interaction.reply({ content: `✅ Server removed. Stats updated.`, ephemeral: true });
+                return interaction.editReply({ content: `✅ Server removed. Stats updated.` });
             }
 
         } catch (error) {
             console.error("Qabilatan Interaction Error:", error);
-            if (!interaction.replied) {
-                await interaction.reply({ content: "❌ An error occurred processing this request.", ephemeral: true });
+            // Handle error safely
+            if (interaction.deferred || interaction.replied) {
+                await interaction.followUp({ 
+                    content: "❌ Error processing request. Check logs.", 
+                    flags: [MessageFlags.Ephemeral] 
+                }).catch(() => {});
+            } else {
+                await interaction.reply({ 
+                    content: "❌ Error processing request. Check logs.", 
+                    flags: [MessageFlags.Ephemeral] 
+                }).catch(() => {});
             }
         }
     }

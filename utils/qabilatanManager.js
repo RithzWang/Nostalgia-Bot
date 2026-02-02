@@ -5,111 +5,119 @@ const {
 } = require('discord.js');
 const { Panel, ServerList } = require('../models/Qabilatan'); 
 
-// The Main Server ID (A2-Q)
+// --- CONFIGURATION ---
 const MAIN_SERVER_ID = "1456197054782111756"; 
+const GLOBAL_REWARD_ROLE = "1462217123433545812"; // Given to ALL adopters
 
 async function buildDashboard(client) {
     const servers = await ServerList.find();
     
-    // 1. Create Lookup Maps for faster processing
-    // serverMap: Maps 'Server ID' -> 'Role ID in Main Server'
-    const serverToRoleMap = new Map();
-    // allTrackedRoles: A list of all roles managed by this system (to know what to remove)
-    const allTrackedRoles = new Set();
+    // 1. Prepare Data Structures
+    const validServerIds = new Set();        // To check if a tag is valid
+    const serverToSpecificRole = new Map();  // Map ServerID -> Specific Role ID
+    const allManagedRoles = new Set();       // All roles we need to manage (Global + Specifics)
+
+    // Add Global Role to the "Managed" list so we can remove it if they stop wearing a tag
+    allManagedRoles.add(GLOBAL_REWARD_ROLE);
 
     servers.forEach(s => {
+        validServerIds.add(s.serverId);
         if (s.tagRoleID) {
-            serverToRoleMap.set(s.serverId, s.tagRoleID);
-            allTrackedRoles.add(s.tagRoleID);
+            serverToSpecificRole.set(s.serverId, s.tagRoleID);
+            allManagedRoles.add(s.tagRoleID);
         }
     });
 
     const mainGuild = client.guilds.cache.get(MAIN_SERVER_ID);
-    const adoptersMap = new Map(); // Stores { serverId: count }
+    const adoptersMap = new Map(); // For statistics
 
     // ====================================================
-    // 2. CALCULATE ADOPTERS & SYNC ROLES
+    // 2. LOGIC: CALCULATE ROLES & SYNC
     // ====================================================
-    
     if (mainGuild) {
         try {
-            // Force fetch to ensure we see the 'Primary Guild' data
             const members = await mainGuild.members.fetch(); 
 
             for (const [memberId, member] of members) {
                 const user = member.user;
                 if (user.bot) continue;
 
-                let targetRoleId = null; // The role they SHOULD have
+                // --- Step A: Determine what they SHOULD have ---
+                const rolesToKeep = new Set();
                 let adoptedServerId = null;
 
-                // A. Check what tag they are wearing
+                // Check if they are wearing a valid tag
                 if (user.primaryGuild && user.primaryGuild.identityEnabled && user.primaryGuild.identityGuildId) {
-                    adoptedServerId = user.primaryGuild.identityGuildId;
-                    
-                    // Count stats for dashboard
-                    // We count it even if they don't have a role set up, just for stats
-                    const currentCount = adoptersMap.get(adoptedServerId) || 0;
-                    adoptersMap.set(adoptedServerId, currentCount + 1);
+                    const targetId = user.primaryGuild.identityGuildId;
 
-                    // Determine the specific role for this server
-                    if (serverToRoleMap.has(adoptedServerId)) {
-                        targetRoleId = serverToRoleMap.get(adoptedServerId);
+                    if (validServerIds.has(targetId)) {
+                        adoptedServerId = targetId;
+                        
+                        // 1. Give Global Role
+                        rolesToKeep.add(GLOBAL_REWARD_ROLE);
+
+                        // 2. Give Specific Role (if it exists)
+                        const specificRole = serverToSpecificRole.get(targetId);
+                        if (specificRole) {
+                            rolesToKeep.add(specificRole);
+                        }
+
+                        // Count for stats
+                        const count = adoptersMap.get(targetId) || 0;
+                        adoptersMap.set(targetId, count + 1);
                     }
                 }
 
-                // B. Role Sync Logic
-                // 1. GRANT: If they should have a role but don't, give it.
-                if (targetRoleId && !member.roles.cache.has(targetRoleId)) {
-                    await member.roles.add(targetRoleId).catch(e => console.error(`Failed to add role to ${user.tag}:`, e));
+                // --- Step B: Sync Roles (Add missing, Remove old) ---
+                
+                // 1. ADD: Loop through roles they SHOULD have
+                for (const roleId of rolesToKeep) {
+                    if (!member.roles.cache.has(roleId)) {
+                        await member.roles.add(roleId).catch(e => console.error(`Failed to add role ${roleId}:`, e));
+                    }
                 }
 
-                // 2. REVOKE: Check all other "Qabilatan Roles". 
-                // If they have a role that isn't their current target role, remove it.
-                // (This handles switching tags or disabling tags completely)
-                for (const trackedRole of allTrackedRoles) {
-                    if (trackedRole !== targetRoleId && member.roles.cache.has(trackedRole)) {
-                        await member.roles.remove(trackedRole).catch(e => console.error(`Failed to remove old role from ${user.tag}:`, e));
+                // 2. REMOVE: Loop through ALL managed roles
+                // If they have a managed role that is NOT in the "Keep" list, remove it.
+                // (This handles disabling tags OR switching servers)
+                for (const managedRoleId of allManagedRoles) {
+                    if (member.roles.cache.has(managedRoleId) && !rolesToKeep.has(managedRoleId)) {
+                        await member.roles.remove(managedRoleId).catch(e => console.error(`Failed to remove role ${managedRoleId}:`, e));
                     }
                 }
             }
         } catch (e) {
-            console.error("Error syncing roles/stats:", e);
+            console.error("Error syncing roles:", e);
         }
     }
 
     // ====================================================
-    // 3. PREPARE DATA FOR DASHBOARD
+    // 3. BUILD DASHBOARD UI
     // ====================================================
     let totalMembers = 0;
     let totalAdopters = 0;
     const serverSectionData = [];
-
-    // Filter to ensure we only show stats for servers in our DB
-    const validServerIds = new Set(servers.map(s => s.serverId));
 
     for (const srv of servers) {
         const guildObj = client.guilds.cache.get(srv.serverId);
         
         const memberCount = guildObj ? guildObj.memberCount : 0;
         const boosts = guildObj ? (guildObj.premiumSubscriptionCount || 0) : 0;
-        
-        // Only count adopters if the server is actually in our list
         const adopters = adoptersMap.get(srv.serverId) || 0;
 
         totalMembers += memberCount;
         totalAdopters += adopters;
 
-        // --- STATUS LINE LOGIC ---
+        // Status Line Logic
         let statusLine = "";
         
         if (boosts < 3) {
             const needed = 3 - boosts;
-            const s = needed === 1 ? '' : 's';
-            statusLine = `<:no_boost:1463272235056889917> ${needed} Boost${s} Remain`;
-            // Grammar fix: "1 Boost Remain" -> "1 Boost Remains" handled implicitly or simply:
-            if(needed === 1) statusLine = `<:no_boost:1463272235056889917> 1 Boost Remains`;
-
+            if (needed === 1) {
+                statusLine = `<:no_boost:1463272235056889917> 1 Boost Remains`;
+            } else {
+                statusLine = `<:no_boost:1463272235056889917> ${needed} Boosts Remain`;
+            }
         } else if (!srv.tagText) {
             statusLine = `<:no_tag:1463272172201050336> Not Enabled`;
         } else {
@@ -125,9 +133,6 @@ async function buildDashboard(client) {
         });
     }
 
-    // ====================================================
-    // 4. BUILD COMPONENTS (V2)
-    // ====================================================
     const container = new ContainerBuilder()
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent("# <:A2Q_1:1466981218758426634><:A2Q_2:1466981281060360232> » Servers")
@@ -167,7 +172,6 @@ async function buildDashboard(client) {
         });
     }
 
-    // Footer
     const nextUpdate = Math.floor((Date.now() + 60000) / 1000); 
     container
         .addSeparatorComponents(

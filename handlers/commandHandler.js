@@ -2,9 +2,10 @@ const fs = require('fs');
 const path = require('path');
 
 module.exports = (client) => {
-    // 1. Setup Collections
-    // We reuse 'slashCommands' for BOTH Slash and Context menus because Discord treats them similarly.
-    client.slashCommands = new Map(); 
+    // ❌ DELETE OR COMMENT OUT THIS LINE
+    // client.slashCommands = new Map(); <--- CAUSES THE CRASH
+
+    // We can keep this if you want a separate array, but ready.js doesn't strictly need it
     client.slashDatas = []; 
 
     // --- HELPER: Recursive File Loader ---
@@ -30,7 +31,7 @@ module.exports = (client) => {
 
                     // Check if it's a valid command file
                     if (command.data && command.data.name) {
-                        // Store the command in the client
+                        // ✅ Stores command in the Collection created in index.js
                         client.slashCommands.set(command.data.name, command);
                         
                         // Push JSON data for the deploy script
@@ -55,7 +56,7 @@ module.exports = (client) => {
     const slashFolder = path.join(__dirname, '..', 'commands', 'slash commands');
     loadCommands(slashFolder);
 
-    // B. Load Context Menu Commands (Where 'jumbo.js' lives)
+    // B. Load Context Menu Commands
     const contextFolder = path.join(__dirname, '..', 'commands', 'context');
     loadCommands(contextFolder);
 };

@@ -1,8 +1,4 @@
-const { 
-    SlashCommandBuilder, PermissionFlagsBits, MessageFlags,
-    TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, 
-    SectionBuilder, ButtonBuilder, ButtonStyle 
-} = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const TrackedServer = require('../../../src/models/TrackedServerSchema');
 
 // 🔒 OWNER CONFIGURATION
@@ -12,7 +8,7 @@ const MAIN_SERVER_INVITE = 'https://discord.gg/Sra726wPJs';
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('test-greet')
-        .setDescription('Simulate the V2 welcome message (No Container)')
+        .setDescription('Simulate the text-based welcome message')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
@@ -27,33 +23,14 @@ module.exports = {
             const channel = interaction.guild.channels.cache.get(config.welcomeChannelId);
             if (!channel) return interaction.editReply("❌ Channel not found.");
 
-            // 🧪 SIMULATE UNSAFE MEMBER COMPONENTS
-            const components = [
-                new TextDisplayBuilder().setContent(`${interaction.user}, Welcome to **${interaction.guild.name}** server!`),
-                
-                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
-
-                new SectionBuilder()
-                    .setButtonAccessory(
-                        new ButtonBuilder()
-                            .setStyle(ButtonStyle.Link)
-                            .setLabel("A2-Q Server Link")
-                            .setURL(MAIN_SERVER_INVITE)
-                    )
-                    .addTextDisplayComponents(
-                        new TextDisplayBuilder().setContent(
-                            `It seems like you are **__not__** in our main **[A2-Q](<${MAIN_SERVER_INVITE}>)** server yet.\n` +
-                            `You have **10** minutes to join, otherwise you will be **kicked**.`
-                        )
-                    )
-            ];
-
-            await channel.send({ 
-                components: components, 
-                flags: [MessageFlags.IsComponentsV2] 
+            // 🧪 SIMULATE UNSAFE MEMBER (The Warning Message)
+            await channel.send({
+                content: `${interaction.user}, Welcome to **${interaction.guild.name}** server!\n\n` +
+                         `It seems like you are **__not__** in our main **[A2-Q](<${MAIN_SERVER_INVITE}>)** server yet.\n` +
+                         `You have **10** minutes to join, otherwise you will be **kicked**.`
             });
 
-            await interaction.editReply("✅ Sent V2 Test Message (No Container).");
+            await interaction.editReply(`✅ **Sent!** Check ${channel} to see the text format.`);
 
         } catch (e) {
             console.error(e);

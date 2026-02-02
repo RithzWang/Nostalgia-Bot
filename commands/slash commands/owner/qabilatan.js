@@ -16,7 +16,7 @@ const {
 
 // ⚠️ ADJUST PATHS IF NEEDED
 const { Panel, ServerList, GreetConfig } = require('../../../src/models/Qabilatan'); 
-const { generateDashboardPayload, updateAllPanels } = require('../../../../utils/qabilatanManager'); 
+const { generateDashboardPayload, updateAllPanels } = require('../../../utils/qabilatanManager'); 
 
 const ALLOWED_USER_ID = '837741275603009626';
 

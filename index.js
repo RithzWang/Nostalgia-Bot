@@ -5,38 +5,28 @@ const {
     GatewayIntentBits, 
     Partials, 
     Collection, 
-    EmbedBuilder,
-    ActivityType, 
     AttachmentBuilder, 
-    ActionRowBuilder, 
     ButtonBuilder, 
     ButtonStyle, 
     REST, 
     Routes,
     MessageFlags,
     ContainerBuilder,
-    TextDisplayBuilder,
-    SectionBuilder,
-    MediaGalleryBuilder,
-    SeparatorBuilder,
-    SeparatorSpacingSize,
-    ThumbnailBuilder 
+    ActivityType,
+    SeparatorSpacingSize 
 } = require('discord.js');
 
 const mongoose = require('mongoose');
 const moment = require('moment-timezone');
-const keep_alive = require('./keep_alive.js');
 const { loadFonts } = require('./fontLoader');
+
+// --- NEW IMPORTS FOR QABILATAN DASHBOARD ---
+const { updateAllPanels } = require('./utils/qabilatanManager');
+// Note: We removed GreetConfig/ServerList from here because logic is moved to events/
 
 // --- CONFIGURATION ---
 const config = require("./config.json");
-
-// ==========================================
-// 🆕 DASHBOARD IMPORTS
-// ==========================================
-
-const { prefix, serverID, welcomeLog, roleupdateLog, roleforLog, colourEmbed } = config;
-let roleupdateMessageID = config.roleupdateMessageID || null;
+const { serverID, welcomeLog } = config;
 
 const client = new Client({
     intents: [
@@ -50,17 +40,15 @@ const client = new Client({
     partials: [ Partials.Channel, Partials.Message, Partials.Reaction, Partials.GuildMember, Partials.User ],
 });
 
-// --- DYNAMIC LOADERS ---
-client.prefixCommands = new Collection(); 
-client.slashCommands = new Collection();
-client.slashDatas = []; 
-
-// 1. Initialize Message Commands Collection
+// --- COLLECTIONS ---
 client.messageCommands = new Collection();
+client.slashCommands = new Collection();
+client.invitesCache = new Collection(); 
 
+// --- 1. LOAD HANDLERS ---
 require('./handlers/commandHandler')(client);
 
-// 2. Load Normal Message Commands (av/bn)
+// --- 2. LOAD LEGACY COMMANDS ---
 const normalCommandsPath = path.join(__dirname, 'commands/normal commands');
 if (fs.existsSync(normalCommandsPath)) {
     const commandFiles = fs.readdirSync(normalCommandsPath).filter(file => file.endsWith('.js'));
@@ -76,7 +64,8 @@ if (fs.existsSync(normalCommandsPath)) {
     console.log(`⚠️ Folder not found: ${normalCommandsPath}`);
 }
 
-// EVENT LOADER
+// --- 3. LOAD EVENTS ---
+// This will now load 'qabilatanGreet.js' automatically!
 const eventsPath = path.join(__dirname, 'events');
 const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
 
@@ -90,149 +79,85 @@ for (const file of eventFiles) {
     }
 }
 
-// 3. Message Create Event Listener (ALIASES + CHANNEL LOCK)
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
-
-    // Split args: "av user" -> command="av", args=["user"]
     const args = message.content.trim().split(/\s+/);
     const commandName = args.shift().toLowerCase();
-
-    // Step A: Check exact name (e.g., "av")
     let command = client.messageCommands.get(commandName);
-
-    // Step B: Check aliases (e.g., "avatar")
-    if (!command) {
-        command = client.messageCommands.find(cmd => 
-            cmd.aliases && cmd.aliases.includes(commandName)
-        );
-    }
-
+    if (!command) command = client.messageCommands.find(cmd => cmd.aliases && cmd.aliases.includes(commandName));
     if (!command) return;
-
-    // Step C: Channel Restriction Check
-    // If 'channels' exists AND has IDs AND current channel is NOT in that list...
-    if (command.channels && command.channels.length > 0 && !command.channels.includes(message.channel.id)) {
-        return; // Ignore the command silently
-    }
-
-    try {
-        await command.execute(message, args);
-    } catch (error) {
-        console.error(error);
-    }
+    if (command.channels && command.channels.length > 0 && !command.channels.includes(message.channel.id)) return;
+    try { await command.execute(message, args); } catch (error) { console.error(error); }
 });
-
-
-const invitesCache = new Collection();
 
 // --- READY EVENT ---
 client.on('clientReady', async () => {
     console.log(`Logged in as ${client.user.tag}`);
 
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
-
-    // Separate Commands into two lists
-    const globalDatas = [];
-    const guildDatas = [];
-
-    client.slashCommands.forEach(cmd => {
-        if (cmd.guildOnly) {
-            guildDatas.push(cmd.data.toJSON());
-        } else {
-            globalDatas.push(cmd.data.toJSON());
-        }
-    });
+    const globalDatas = client.slashCommands.filter(c => !c.guildOnly).map(c => c.data.toJSON());
+    const guildDatas = client.slashCommands.filter(c => c.guildOnly).map(c => c.data.toJSON());
 
     try {
-        console.log(`Started refreshing ${globalDatas.length} global and ${guildDatas.length} guild commands.`);
-
-        if (guildDatas.length > 0) {
-            await rest.put(
-                Routes.applicationGuildCommands(client.user.id, serverID),
-                { body: guildDatas }
-            );
-            console.log('✅ Guild-only commands registered.');
-        }
-
-        if (globalDatas.length > 0) {
-            await rest.put(
-                Routes.applicationCommands(client.user.id),
-                { body: globalDatas }
-            );
-            console.log('✅ Global commands registered.');
-        }
-
+        if (guildDatas.length > 0) await rest.put(Routes.applicationGuildCommands(client.user.id, serverID), { body: guildDatas });
+        if (globalDatas.length > 0) await rest.put(Routes.applicationCommands(client.user.id), { body: globalDatas });
     } catch (e) { console.error(e); }
-
 
     const guild = client.guilds.cache.get(serverID);
     if(guild) {
         const currentInvites = await guild.invites.fetch().catch(() => new Collection());
-        currentInvites.each(invite => invitesCache.set(invite.code, invite.uses));
+        currentInvites.each(invite => client.invitesCache.set(invite.code, invite.uses));
     }
 
-    // Presence Interval
+    // --- TIMERS ---
     setInterval(() => {
         const now = moment().tz('Asia/Bangkok');
         const formattedTime = now.format('HH:mm');
         const currentHour = now.hour();
-
-        let timeEmoji = '🌙'; 
-
-        if (currentHour >= 6 && currentHour < 9) {
-            timeEmoji = '🌄'; 
-        } else if (currentHour >= 9 && currentHour < 16) {
-            timeEmoji = '☀️'; 
-        } else if (currentHour >= 16 && currentHour < 18) {
-            timeEmoji = '🌇'; 
-        }
+        let timeEmoji = (currentHour >= 6 && currentHour < 9) ? '🌄' : (currentHour >= 9 && currentHour < 16) ? '☀️' : (currentHour >= 16 && currentHour < 18) ? '🌇' : '🌙';
 
         client.user.setPresence({
-            activities: [{ 
-                name: 'customstatus', 
-                type: ActivityType.Custom, 
-                state: `${timeEmoji} ${formattedTime} (GMT+7)` 
-            }],
+            activities: [{ name: 'customstatus', type: ActivityType.Custom, state: `${timeEmoji} ${formattedTime} (GMT+7)` }],
             status: 'dnd'
         });
 
-    }, 5000); 
+        // Auto-update stats panels
+        if (now.seconds() < 5) updateAllPanels(client);
+    }, 5000);
+});
 
-
+// --- MAIN SERVER WELCOME LOGIC (Kept in index.js as requested) ---
 const { createWelcomeImage } = require('./welcomeCanvas6.js');
 
 client.on('guildMemberAdd', async (member) => {
-    if (member.user.bot || member.guild.id !== serverID) return;
+    if (member.user.bot) return;
 
-   const displayName = member.user.globalName || member.user.username;
+    // ONLY RUNS FOR MAIN SERVER
+    if (member.guild.id === serverID) {
+        const rolesToAdd = ['1456238105345527932', '1456197055092625573'];
+        try { 
+            await member.roles.add(rolesToAdd); 
+            setTimeout(() => member.setNickname(`🌱 • ${member.displayName}`.substring(0, 32)), 5000);
+        } catch (e) {}
 
-    const rolesToAdd = ['1456238105345527932', '1456197055092625573'];
-    try { 
-        await member.roles.add(rolesToAdd); 
-        setTimeout(() => member.setNickname(`🌱 • ${member.displayName}`.substring(0, 32)), 5000);
-    } catch (e) {}
+        try {
+            const newInvites = await member.guild.invites.fetch().catch(() => new Collection());
+            let usedInvite = newInvites.find(inv => inv.uses > (client.invitesCache.get(inv.code) || 0));
+            newInvites.each(inv => client.invitesCache.set(inv.code, inv.uses));
 
-    try {
-        const newInvites = await member.guild.invites.fetch().catch(() => new Collection());
-        let usedInvite = newInvites.find(inv => inv.uses > (invitesCache.get(inv.code) || 0));
-        newInvites.each(inv => invitesCache.set(inv.code, inv.uses));
+            const displayName = member.user.globalName || member.user.username;
+            const inviterName = usedInvite?.inviter ? usedInvite.inviter.username : 'Unknown';
+            const inviterId = usedInvite?.inviter ? usedInvite.inviter.id : null;
+            const inviteCode = usedInvite ? usedInvite.code : 'Unknown';
 
-        const displayName = member.user.globalName || member.user.username;
-
-        const inviterName = usedInvite?.inviter ? usedInvite.inviter.username : 'Unknown';
-        const inviterId = usedInvite?.inviter ? usedInvite.inviter.id : null;
-        const inviteCode = usedInvite ? usedInvite.code : 'Unknown';
-
-        const buffer = await createWelcomeImage(member);
-        const attachment = new AttachmentBuilder(buffer, { name: 'welcome-image.png' });
-        const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
-        
-        const mainContainer = new ContainerBuilder()
-            .setAccentColor(0x888888)
-            .addSectionComponents((section) => 
-                section
-                    .addTextDisplayComponents(
+            const buffer = await createWelcomeImage(member);
+            const attachment = new AttachmentBuilder(buffer, { name: 'welcome-image.png' });
+            const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
+            
+            const mainContainer = new ContainerBuilder()
+                .setAccentColor(0x888888)
+                .addSectionComponents((section) => 
+                    section.addTextDisplayComponents(
                         (header) => header.setContent('### Welcome to A2-Q Server'),
                         (body) => body.setContent(
                             `-# <@${member.user.id}> \`(${member.user.username})\`\n` +
@@ -240,40 +165,25 @@ client.on('guildMemberAdd', async (member) => {
                             `-# <:users:1456242343303971009> Member Count: \`${member.guild.memberCount}\`\n` +
                             `-# <:chain:1456242418717556776> Invited by <@${inviterId || '0'}> \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`
                         )
-                    )
-                    .setThumbnailAccessory((thumb) => 
-                        thumb.setURL(member.user.displayAvatarURL())
-                    )
-            )
-            .addActionRowComponents((row) => 
-                row.setComponents(
-                    new ButtonBuilder()
-                        .setLabel('Register Here')
-                        .setEmoji('1447143542643490848')
-                        .setStyle(ButtonStyle.Link)
-                        .setURL('https://discord.com/channels/1456197054782111756/1456197056250122352')
+                    ).setThumbnailAccessory((thumb) => thumb.setURL(member.user.displayAvatarURL()))
                 )
-            )
-            .addSeparatorComponents((sep) => 
-                sep.setSpacing(SeparatorSpacingSize.Small)
-            )
-            .addMediaGalleryComponents((gallery) => 
-                gallery.addItems((item) => 
-                    item.setURL("attachment://welcome-image.png").setDescription(`${displayName} is here!`)
+                .addActionRowComponents((row) => 
+                    row.setComponents(new ButtonBuilder().setLabel('Register Here').setEmoji('1447143542643490848').setStyle(ButtonStyle.Link).setURL('https://discord.com/channels/1456197054782111756/1456197056250122352'))
                 )
-            );
+                .addSeparatorComponents((sep) => sep.setSpacing(SeparatorSpacingSize.Small))
+                .addMediaGalleryComponents((gallery) => gallery.addItems((item) => item.setURL("attachment://welcome-image.png").setDescription(`${displayName} is here!`)));
 
-        const channel = client.channels.cache.get(welcomeLog);
-        if (channel) {
-            await channel.send({ 
-                flags: [MessageFlags.IsComponentsV2],
-                files: [attachment],
-                components: [mainContainer],
-                allowedMentions: { users: [member.user.id] } 
-            });
-        }
-
-    } catch (e) { console.error("Welcome Error:", e); }
+            const channel = client.channels.cache.get(welcomeLog);
+            if (channel) {
+                await channel.send({ 
+                    flags: [MessageFlags.IsComponentsV2],
+                    files: [attachment],
+                    components: [mainContainer],
+                    allowedMentions: { users: [member.user.id] } 
+                });
+            }
+        } catch (e) { console.error("Welcome Error:", e); }
+    }
 });
 
 (async () => {

@@ -90,41 +90,6 @@ client.on('messageCreate', async (message) => {
     try { await command.execute(message, args); } catch (error) { console.error(error); }
 });
 
-// --- READY EVENT ---
-client.on('clientReady', async () => {
-    console.log(`Logged in as ${client.user.tag}`);
-
-    const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
-    const globalDatas = client.slashCommands.filter(c => !c.guildOnly).map(c => c.data.toJSON());
-    const guildDatas = client.slashCommands.filter(c => c.guildOnly).map(c => c.data.toJSON());
-
-    try {
-        if (guildDatas.length > 0) await rest.put(Routes.applicationGuildCommands(client.user.id, serverID), { body: guildDatas });
-        if (globalDatas.length > 0) await rest.put(Routes.applicationCommands(client.user.id), { body: globalDatas });
-    } catch (e) { console.error(e); }
-
-    const guild = client.guilds.cache.get(serverID);
-    if(guild) {
-        const currentInvites = await guild.invites.fetch().catch(() => new Collection());
-        currentInvites.each(invite => client.invitesCache.set(invite.code, invite.uses));
-    }
-
-    // --- TIMERS ---
-    setInterval(() => {
-        const now = moment().tz('Asia/Bangkok');
-        const formattedTime = now.format('HH:mm');
-        const currentHour = now.hour();
-        let timeEmoji = (currentHour >= 6 && currentHour < 9) ? '🌄' : (currentHour >= 9 && currentHour < 16) ? '☀️' : (currentHour >= 16 && currentHour < 18) ? '🌇' : '🌙';
-
-        client.user.setPresence({
-            activities: [{ name: 'customstatus', type: ActivityType.Custom, state: `${timeEmoji} ${formattedTime} (GMT+7)` }],
-            status: 'dnd'
-        });
-
-        // Auto-update stats panels
-        if (now.seconds() < 5) updateAllPanels(client);
-    }, 5000);
-});
 
 // --- MAIN SERVER WELCOME LOGIC (Kept in index.js as requested) ---
 const { createWelcomeImage } = require('./welcomeCanvas6.js');

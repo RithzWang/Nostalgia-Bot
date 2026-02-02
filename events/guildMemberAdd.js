@@ -1,18 +1,9 @@
-const { 
-    Events, 
-    TextDisplayBuilder, 
-    SeparatorBuilder, 
-    SeparatorSpacingSize, 
-    SectionBuilder, 
-    ButtonBuilder, 
-    ButtonStyle, 
-    MessageFlags 
-} = require('discord.js');
+const { Events } = require('discord.js');
 const TrackedServer = require('../src/models/TrackedServerSchema');
 
 // 🔒 CONFIGURATION
 const MAIN_GUILD_ID = '1456197054782111756';
-const MAIN_SERVER_INVITE = 'https://discord.gg/Sra726wPJs'; // 👈 Replace with real link
+const MAIN_SERVER_INVITE = 'https://discord.gg/Sra726wPJs'; // 👈 Your Link
 
 module.exports = {
     name: Events.GuildMemberAdd,
@@ -40,45 +31,20 @@ module.exports = {
                 }
             }
 
-            // 3. Define the Component Array
-            let components = [];
-
+            // 3. Send Message (Standard Text)
             if (isInMain) {
-                // ✅ SCENARIO A: Safe User (Text Display Only)
-                components = [
-                    new TextDisplayBuilder().setContent(`${member}, Welcome to **${member.guild.name}** server!`)
-                ];
+                // ✅ SCENARIO A: Member IS in Main Server
+                await welcomeChannel.send({
+                    content: `${member}, Welcome to **${member.guild.name}** server!`
+                });
             } else {
-                // ⚠️ SCENARIO B: Unsafe User (Text + Separator + Section with Button)
-                components = [
-                    // 1. Welcome Text
-                    new TextDisplayBuilder().setContent(`${member}, Welcome to **${member.guild.name}** server!`),
-                    
-                    // 2. Divider
-                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
-
-                    // 3. Warning Section with Link Button
-                    new SectionBuilder()
-                        .setButtonAccessory(
-                            new ButtonBuilder()
-                                .setStyle(ButtonStyle.Link)
-                                .setLabel("A2-Q Server Link")
-                                .setURL(MAIN_SERVER_INVITE)
-                        )
-                        .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent(
-                                `It seems like you are **__not__** in our main **[A2-Q](<${MAIN_SERVER_INVITE}>)** server yet.\n` +
-                                `You have **10** minutes to join, otherwise you will be **kicked**.`
-                            )
-                        )
-                ];
+                // ⚠️ SCENARIO B: Member is NOT in Main Server
+                await welcomeChannel.send({
+                    content: `${member}, Welcome to **${member.guild.name}** server!\n\n` +
+                             `It seems like you are **__not__** in our main **[A2-Q](<${MAIN_SERVER_INVITE}>)** server yet.\n` +
+                             `You have **10** minutes to join, otherwise you will be **kicked**.`
+                });
             }
-
-            // 4. Send Components Directly
-            await welcomeChannel.send({ 
-                components: components, 
-                flags: [MessageFlags.IsComponentsV2] 
-            });
 
         } catch (error) {
             console.error(`[Welcome Error] ${error.message}`);

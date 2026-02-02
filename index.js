@@ -20,9 +20,6 @@ const mongoose = require('mongoose');
 const moment = require('moment-timezone');
 const { loadFonts } = require('./fontLoader');
 
-// --- NEW IMPORTS FOR QABILATAN DASHBOARD ---
-const { updateAllPanels } = require('./utils/qabilatanManager');
-// Note: We removed GreetConfig/ServerList from here because logic is moved to events/
 
 // --- CONFIGURATION ---
 const config = require("./config.json");

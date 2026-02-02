@@ -25,21 +25,13 @@ module.exports = {
         .addSubcommand(sub => sub.setName('removeserver').setDescription('Remove a server from database'))
         .addSubcommand(sub => sub.setName('edit').setDescription('Edit a server details'))
 
-        // 2. GREET MESSAGE
+        // 2. GREET MESSAGE (New!)
         .addSubcommand(sub => 
             sub.setName('greetmessage')
                 .setDescription('Configure welcome message for a server')
                 .addBooleanOption(o => o.setName('enable').setDescription('Turn welcome ON or OFF').setRequired(true))
                 .addChannelOption(o => o.setName('channel').setDescription('Which channel to send welcomes in?').setRequired(false))
                 .addStringOption(o => o.setName('server_id').setDescription('(Optional) Target a specific Server ID remotely').setRequired(false))
-        )
-        
-        // 3. TAG USER ROLE (LOCAL)
-        .addSubcommand(sub => 
-            sub.setName('tag_user_role')
-                .setDescription('Set the LOCAL role given to users who wear the tag in this server')
-                .addRoleOption(o => o.setName('role').setDescription('The role to give inside this server').setRequired(true))
-                .addStringOption(o => o.setName('server_id').setDescription('(Optional) Target Server ID').setRequired(false))
         ),
 
     async execute(interaction) {
@@ -49,38 +41,6 @@ module.exports = {
         }
 
         const sub = interaction.options.getSubcommand();
-
-        // ====================================================
-        // 🏷️ 3. TAG USER ROLE
-        // ====================================================
-        if (sub === 'tag_user_role') {
-            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
-            const role = interaction.options.getRole('role');
-            const targetServerId = interaction.options.getString('server_id') || interaction.guild.id;
-
-            try {
-                const updatedServer = await TrackedServer.findOneAndUpdate(
-                    { guildId: targetServerId },
-                    { localRoleId: role.id },
-                    { new: true }
-                );
-
-                if (!updatedServer) return interaction.editReply(`❌ **Error:** Server ID \`${targetServerId}\` not found.`);
-
-                const container = new ContainerBuilder()
-                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🏷️ Local Tag Role Configured`))
-                    .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
-                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(
-                        `**Server:** ${updatedServer.displayName}\n` +
-                        `**Local Role:** ${role} (\`${role.id}\`)\n`
-                    ));
-
-                return interaction.editReply({ components: [container], flags: [MessageFlags.IsComponentsV2] });
-            } catch (e) {
-                return interaction.editReply(`❌ **Database Error:** ${e.message}`);
-            }
-        }
 
         // ====================================================
         // 📝 1. ADD SERVER (MODAL)
@@ -100,25 +60,38 @@ module.exports = {
         }
 
         // ====================================================
-        // 👋 2. GREET MESSAGE
+        // 👋 2. GREET MESSAGE (NEW LOGIC)
         // ====================================================
         if (sub === 'greetmessage') {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
             const isEnabled = interaction.options.getBoolean('enable');
             const targetChannel = interaction.options.getChannel('channel');
-            const targetServerId = interaction.options.getString('server_id') || interaction.guild.id;
+            const targetServerId = interaction.options.getString('server_id') || interaction.guild.id; // Default to current server if empty
 
+            // Validate Input
             if (isEnabled && !targetChannel) {
                 return interaction.editReply("❌ **Error:** You must select a `channel` when enabling the system.");
             }
 
             try {
-                const updateData = isEnabled ? { welcomeChannelId: targetChannel.id } : { welcomeChannelId: null };            
-                const updatedServer = await TrackedServer.findOneAndUpdate({ guildId: targetServerId }, updateData, { new: true });
+                // Determine update data
+                const updateData = isEnabled 
+                    ? { welcomeChannelId: targetChannel.id } // Save Channel
+                    : { welcomeChannelId: null };            // Clear Channel (Disable)
 
-                if (!updatedServer) return interaction.editReply(`❌ **Error:** Server ID \`${targetServerId}\` not found.`);
+                // Update Database
+                const updatedServer = await TrackedServer.findOneAndUpdate(
+                    { guildId: targetServerId },
+                    updateData,
+                    { new: true } // Return updated doc
+                );
 
+                if (!updatedServer) {
+                    return interaction.editReply(`❌ **Error:** Server ID \`${targetServerId}\` is not in your database yet. Use \`/our-servers addserver\` first.`);
+                }
+
+                // Success Message
                 const container = new ContainerBuilder()
                     .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 👋 Welcome Configuration`))
                     .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
@@ -128,8 +101,13 @@ module.exports = {
                         (isEnabled ? `**Channel:** <#${targetChannel.id}>` : '')
                     ));
 
-                return interaction.editReply({ components: [container], flags: [MessageFlags.IsComponentsV2] });
+                return interaction.editReply({ 
+                    components: [container],
+                    flags: [MessageFlags.IsComponentsV2]
+                });
+
             } catch (e) {
+                console.error(e);
                 return interaction.editReply(`❌ **Database Error:** ${e.message}`);
             }
         }
@@ -137,6 +115,7 @@ module.exports = {
         // ====================================================
         // 🟢 3. OTHER DASHBOARD COMMANDS
         // ====================================================
+        // (Existing Logic for enable, edit, remove, update)
         
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
@@ -161,27 +140,10 @@ module.exports = {
             return interaction.editReply("✅ **Dashboards Updated!**");
         }
 
-        // 👇 THIS IS THE FIXED BLOCK YOU ASKED FOR 👇
         if (sub === 'enable') {
              const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
-             
-             // 1. Save to Database
-             await DashboardLocation.findOneAndUpdate(
-                 { guildId: interaction.guild.id }, 
-                 { channelId: targetChannel.id }, 
-                 { upsert: true }
-             );
-
-             // 2. TRIGGER THE UPDATE IMMEDIATELY
-             await interaction.editReply(`✅ **Dashboard Enabled** in ${targetChannel}. Spawning message now...`);
-             
-             try {
-                 await updateAllDashboards(interaction.client);
-                 await interaction.followUp({ content: "✅ Dashboard Spawned!", flags: MessageFlags.Ephemeral });
-             } catch (e) {
-                 console.error(e);
-                 await interaction.followUp({ content: `⚠️ Saved, but failed to spawn: ${e.message}`, flags: MessageFlags.Ephemeral });
-             }
+             await DashboardLocation.findOneAndUpdate({ guildId: interaction.guild.id }, { channelId: targetChannel.id }, { upsert: true });
+             interaction.editReply(`✅ **Dashboard Enabled** in ${targetChannel}`);
         }
     }
 };

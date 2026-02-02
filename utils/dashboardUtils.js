@@ -1,194 +1,199 @@
 const { 
-    SlashCommandBuilder, PermissionFlagsBits, MessageFlags, 
-    ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder,
-    StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ContainerBuilder, TextDisplayBuilder,
-    SeparatorBuilder, SeparatorSpacingSize
+    ContainerBuilder, TextDisplayBuilder, SectionBuilder, 
+    ButtonBuilder, ButtonStyle, SeparatorBuilder, SeparatorSpacingSize,
+    MessageFlags 
 } = require('discord.js');
+const TrackedServer = require('../src/models/TrackedServerSchema');
+const DashboardLocation = require('../src/models/DashboardLocationSchema');
+const { runGatekeeper } = require('./gatekeeperUtils');
 
-const TrackedServer = require('../../../src/models/TrackedServerSchema');
-const DashboardLocation = require('../../../src/models/DashboardLocationSchema');
-const { updateAllDashboards } = require('../../../utils/dashboardUtils');
+// 🔒 CONFIGURATION
+const MAIN_GUILD_ID = '1456197054782111756'; 
+const GLOBAL_TAG_ROLE_ID = '1462217123433545812'; 
 
-// 🔒 OWNER CONFIGURATION
-const OWNER_ID = '837741275603009626';
+// ==========================================
+// 1. ROLE MANAGER (Main Server ONLY)
+// ==========================================
+async function runRoleUpdates(client) {
+    const trackedServers = await TrackedServer.find();
 
-module.exports = {
-    data: new SlashCommandBuilder()
-        .setName('our-servers')
-        .setDescription('Manage the A2-Q Server Network')
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-        
-        // 1. DASHBOARD CONTROLS
-        .addSubcommand(sub => sub.setName('enable').setDescription('Enable dashboard here').addStringOption(o=>o.setName('message_id').setDescription('Msg ID')).addChannelOption(o=>o.setName('channel').setDescription('Channel')))
-        .addSubcommand(sub => sub.setName('update').setDescription('Force update all dashboards'))
-        .addSubcommand(sub => sub.setName('addserver').setDescription('Add a new server to database'))
-        .addSubcommand(sub => sub.setName('removeserver').setDescription('Remove a server from database'))
-        .addSubcommand(sub => sub.setName('edit').setDescription('Edit a server details'))
+    // -----------------------------------------------------------
+    // UPDATE MAIN SERVER (Global Role & Main Roles)
+    // -----------------------------------------------------------
+    const mainGuild = client.guilds.cache.get(MAIN_GUILD_ID);
+    if (mainGuild) {
+        const tagToRoleMap = new Map();
+        const roleToGuildMap = new Map();
+        const validTagServerIds = new Set(); 
 
-        // 2. GREET MESSAGE
-        .addSubcommand(sub => 
-            sub.setName('greetmessage')
-                .setDescription('Configure welcome message for a server')
-                .addBooleanOption(o => o.setName('enable').setDescription('Turn welcome ON or OFF').setRequired(true))
-                .addChannelOption(o => o.setName('channel').setDescription('Which channel to send welcomes in?').setRequired(false))
-                .addStringOption(o => o.setName('server_id').setDescription('(Optional) Target a specific Server ID remotely').setRequired(false))
-        )
-
-        // 3. TAG USER ROLE (MISSING IN YOUR CODE)
-        .addSubcommand(sub => 
-            sub.setName('tag_user_role')
-                .setDescription('Set the LOCAL role given to users who wear the tag in this server')
-                .addRoleOption(o => o.setName('role').setDescription('The role to give inside this server').setRequired(true))
-                .addStringOption(o => o.setName('server_id').setDescription('(Optional) Target Server ID').setRequired(false))
-        ),
-
-    async execute(interaction) {
-        // 🛑 SECURITY: LOCK TO OWNER
-        if (interaction.user.id !== OWNER_ID) {
-            return interaction.reply({ content: '⛔ **Owner Only**', flags: MessageFlags.Ephemeral });
-        }
-
-        const sub = interaction.options.getSubcommand();
-
-        // ====================================================
-        // 📝 1. ADD SERVER (MODAL)
-        // ====================================================
-        if (sub === 'addserver') {
-            const modal = new ModalBuilder().setCustomId('dashboard_add_server').setTitle('Add New Server');
-            modal.addComponents(
-                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('server_id').setLabel("Server ID").setStyle(TextInputStyle.Short).setRequired(true)),
-                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('display_name').setLabel("Display Name").setStyle(TextInputStyle.Short).setPlaceholder("e.g. My Server").setRequired(true)),
-                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('tag_text').setLabel("Tag Text").setStyle(TextInputStyle.Short).setPlaceholder("e.g. ABC").setRequired(false)),
-                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('role_id').setLabel("Tag User Role ID (Main)").setStyle(TextInputStyle.Short).setRequired(false)),
-                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('invite_link').setLabel("Invite Link").setStyle(TextInputStyle.Short).setRequired(true))
-            );
-            return interaction.showModal(modal);
-        }
-
-        // ====================================================
-        // 🏷️ 3. TAG USER ROLE (MISSING LOGIC RESTORED)
-        // ====================================================
-        if (sub === 'tag_user_role') {
-            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-            const role = interaction.options.getRole('role');
-            const targetServerId = interaction.options.getString('server_id') || interaction.guild.id;
-
-            try {
-                const updatedServer = await TrackedServer.findOneAndUpdate(
-                    { guildId: targetServerId },
-                    { localRoleId: role.id },
-                    { new: true }
-                );
-
-                if (!updatedServer) return interaction.editReply(`❌ **Error:** Server ID \`${targetServerId}\` not found.`);
-
-                const container = new ContainerBuilder()
-                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🏷️ Local Tag Role Configured`))
-                    .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
-                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(
-                        `**Server:** ${updatedServer.displayName}\n` +
-                        `**Local Role:** ${role} (\`${role.id}\`)\n`
-                    ));
-
-                return interaction.editReply({ components: [container], flags: [MessageFlags.IsComponentsV2] });
-            } catch (e) {
-                return interaction.editReply(`❌ **Database Error:** ${e.message}`);
+        for (const server of trackedServers) {
+            validTagServerIds.add(server.guildId); 
+            // We still track the Main Server Role (roleId) for the hub
+            if (server.roleId) {
+                tagToRoleMap.set(server.guildId, server.roleId);
+                roleToGuildMap.set(server.roleId, server.guildId);
             }
         }
 
-        // ====================================================
-        // 👋 2. GREET MESSAGE
-        // ====================================================
-        if (sub === 'greetmessage') {
-            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        try {
+            await mainGuild.members.fetch();
+            const globalRole = mainGuild.roles.cache.get(GLOBAL_TAG_ROLE_ID);
 
-            const isEnabled = interaction.options.getBoolean('enable');
-            const targetChannel = interaction.options.getChannel('channel');
-            const targetServerId = interaction.options.getString('server_id') || interaction.guild.id; 
+            for (const [memberId, member] of mainGuild.members.cache) {
+                if (member.user.bot) continue;
 
-            if (isEnabled && !targetChannel) {
-                return interaction.editReply("❌ **Error:** You must select a `channel` when enabling the system.");
-            }
+                const identity = member.user.primaryGuild; 
+                const isTagEnabled = identity && identity.identityEnabled === true;
+                const currentTagGuildId = isTagEnabled ? identity.identityGuildId : null;
+                const isWearingAnyValidTag = currentTagGuildId && validTagServerIds.has(currentTagGuildId);
 
-            try {
-                const updateData = isEnabled ? { welcomeChannelId: targetChannel.id } : { welcomeChannelId: null };            
-                const updatedServer = await TrackedServer.findOneAndUpdate(
-                    { guildId: targetServerId },
-                    updateData,
-                    { new: true } 
-                );
-
-                if (!updatedServer) {
-                    return interaction.editReply(`❌ **Error:** Server ID \`${targetServerId}\` is not in your database yet.`);
+                // 1. Specific Main Roles
+                if (currentTagGuildId && tagToRoleMap.has(currentTagGuildId)) {
+                    const targetRoleId = tagToRoleMap.get(currentTagGuildId);
+                    const role = mainGuild.roles.cache.get(targetRoleId);
+                    if (role && !member.roles.cache.has(targetRoleId)) {
+                        await member.roles.add(role).catch(() => {});
+                    }
                 }
 
-                const container = new ContainerBuilder()
-                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 👋 Welcome Configuration`))
-                    .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
-                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(
-                        `**Server:** ${updatedServer.displayName}\n` +
-                        `**Status:** ${isEnabled ? '✅ Enabled' : '🚫 Disabled'}\n` +
-                        (isEnabled ? `**Channel:** <#${targetChannel.id}>` : '')
-                    ));
+                // 2. Remove Mismatched Main Roles
+                for (const [rId, sourceGuildId] of roleToGuildMap.entries()) {
+                    if (member.roles.cache.has(rId) && currentTagGuildId !== sourceGuildId) {
+                        const roleToRemove = mainGuild.roles.cache.get(rId);
+                        if (roleToRemove) await member.roles.remove(roleToRemove).catch(() => {});
+                    }
+                }
 
-                return interaction.editReply({ components: [container], flags: [MessageFlags.IsComponentsV2] });
-
-            } catch (e) {
-                console.error(e);
-                return interaction.editReply(`❌ **Database Error:** ${e.message}`);
+                // 3. Global Role (The "Tag User" role)
+                if (globalRole) {
+                    if (isWearingAnyValidTag && !member.roles.cache.has(GLOBAL_TAG_ROLE_ID)) {
+                        await member.roles.add(globalRole).catch(() => {});
+                    } else if (!isWearingAnyValidTag && member.roles.cache.has(GLOBAL_TAG_ROLE_ID)) {
+                        await member.roles.remove(globalRole).catch(() => {});
+                    }
+                }
             }
-        }
-
-        // ====================================================
-        // 🟢 3. OTHER DASHBOARD COMMANDS
-        // ====================================================
-        
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
-        if (sub === 'edit') {
-            const servers = await TrackedServer.find();
-            if (servers.length === 0) return interaction.editReply("❌ No servers found.");
-            const options = servers.map(s => new StringSelectMenuOptionBuilder().setLabel(s.displayName).setDescription(s.guildId).setValue(s.guildId));
-            const select = new StringSelectMenuBuilder().setCustomId('dashboard_edit_select').setPlaceholder('Select server to edit...').addOptions(options);
-            return interaction.editReply({ content: "📋 **Edit Server:**", components: [new ActionRowBuilder().addComponents(select)] });
-        }
-
-        if (sub === 'removeserver') {
-            const servers = await TrackedServer.find();
-            if (servers.length === 0) return interaction.editReply("❌ No servers found.");
-            const options = servers.map(s => new StringSelectMenuOptionBuilder().setLabel(s.displayName).setValue(s.guildId));
-            const select = new StringSelectMenuBuilder().setCustomId('dashboard_remove_server').setPlaceholder('Select to remove').addOptions(options);
-            return interaction.editReply({ content: "🗑️ **Remove Server:**", components: [new ActionRowBuilder().addComponents(select)] });
-        }
-
-        if (sub === 'update') {
-            await updateAllDashboards(interaction.client);
-            return interaction.editReply("✅ **Dashboards Updated!**");
-        }
-
-        // ====================================================
-        // ✅ 4. ENABLE (FIXED WITH IMMEDIATE UPDATE)
-        // ====================================================
-        if (sub === 'enable') {
-             const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
-             
-             // 1. Save Location
-             await DashboardLocation.findOneAndUpdate(
-                 { guildId: interaction.guild.id }, 
-                 { channelId: targetChannel.id }, 
-                 { upsert: true }
-             );
-
-             // 2. TRIGGER IMMEDIATE UPDATE (This was missing!)
-             await interaction.editReply(`✅ **Dashboard Enabled** in ${targetChannel}. Spawning message now...`);
-             
-             try {
-                 await updateAllDashboards(interaction.client);
-                 await interaction.followUp({ content: "✅ Dashboard Spawned!", flags: MessageFlags.Ephemeral });
-             } catch (e) {
-                 console.error(e);
-                 await interaction.followUp({ content: `⚠️ Saved, but failed to spawn: ${e.message}`, flags: MessageFlags.Ephemeral });
-             }
+        } catch (e) {
+            console.error(`[Role Manager] Main Hub Error:`, e.message);
         }
     }
-};
+}
+
+// ==========================================
+// 2. DASHBOARD UI GENERATOR
+// ==========================================
+async function generateDashboardPayload(client) {
+    const servers = await TrackedServer.find();
+    let totalNetworkMembers = 0;
+    let totalTagUsers = 0; 
+    const serverComponents = [];
+
+    for (const data of servers) {
+        const guild = client.guilds.cache.get(data.guildId);
+        const memberCount = guild ? guild.memberCount : 0;
+        totalNetworkMembers += memberCount;
+        
+        let displayTagText = data.tagText || "None";
+        let tagStatusLine = ""; 
+
+        if (guild) {
+            const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS');
+            let currentServerTagCount = 0;
+
+            if (hasClanFeature) {
+                const tagWearers = guild.members.cache.filter(member => {
+                    const identity = member.user.primaryGuild;
+                    return identity && identity.identityGuildId === data.guildId && identity.identityEnabled === true;
+                });
+                currentServerTagCount = tagWearers.size;
+                totalTagUsers += currentServerTagCount; 
+            }
+
+            const boostCount = guild.premiumSubscriptionCount || 0;
+            const boostsNeeded = 3 - boostCount;
+
+            if (boostsNeeded > 0) {
+                const plural = boostsNeeded === 1 ? "Boost" : "Boosts";
+                const remainPlural = boostsNeeded === 1 ? "Remains" : "Remain";
+                tagStatusLine = `<:no_boost:1463272235056889917> **${boostsNeeded} ${plural} ${remainPlural}**`;
+            } else {
+                if (!hasClanFeature) {
+                    tagStatusLine = `<:no_tag:1463272172201050336> **Not Enabled**`;
+                } else {
+                    tagStatusLine = `<:greysword:1462853724824404069> **Tag Adopters:** ${currentServerTagCount}`;
+                }
+            }
+        } else {
+            tagStatusLine = `<:no_tag:1463272172201050336> **Not Connected**`;
+        }
+
+        const inviteButton = new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel("Server Link");
+        if (data.inviteLink && data.inviteLink.startsWith('http')) {
+            inviteButton.setURL(data.inviteLink).setDisabled(false);
+        } else {
+            inviteButton.setURL('https://discord.com').setDisabled(true);
+        }
+
+        const section = new SectionBuilder()
+            .setButtonAccessory(inviteButton)
+            .addTextDisplayComponents(
+                new TextDisplayBuilder()
+                    .setContent(
+                        `## [${data.displayName}](${data.inviteLink || "https://discord.com"})\n` +
+                        `**<:sparkles:1462851309219872841> Server Tag:** ${displayTagText}\n` +
+                        `**<:members:1462851249836654592> Members:** ${memberCount}\n` +
+                        `${tagStatusLine}`
+                    )
+            );
+        serverComponents.push(section);
+    }
+
+    const nextUpdateUnix = Math.floor((Date.now() + 60 * 1000) / 1000);
+    
+    const container = new ContainerBuilder()
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent("# <:A2Q_1:1466981218758426634><:A2Q_2:1466981281060360232> » Servers"))
+        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# Total Members: ${totalNetworkMembers}\n-# Total Tags Adopters: ${totalTagUsers}`))
+        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true));
+
+    for (let i = 0; i < serverComponents.length; i++) {
+        container.addSectionComponents(serverComponents[i]);
+        if (i !== serverComponents.length - 1) {
+            container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false));
+        }
+    }
+
+    container
+        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# <a:loading:1447184742934909032> Next Update: <t:${nextUpdateUnix}:R>`));
+
+    return [container];
+}
+
+// ==========================================
+// 3. MASTER UPDATE FUNCTION
+// ==========================================
+async function updateAllDashboards(client) {
+    console.log('[Dashboard] Starting Global Update Cycle...');
+
+    await runRoleUpdates(client);
+    await runGatekeeper(client); // Ensure gatekeeper logic runs (even if mostly disabled)
+
+    const payload = await generateDashboardPayload(client);
+    const locations = await DashboardLocation.find();
+    
+    for (const loc of locations) {
+        const channel = client.channels.cache.get(loc.channelId);
+        if (!channel) continue;
+
+        try {
+            const msg = await channel.messages.fetch(loc.messageId);
+            await msg.edit({ components: payload, flags: [MessageFlags.IsComponentsV2] });
+        } catch (e) {
+            console.error(`[Dashboard] 🛑 ERROR in Guild ${loc.guildId}:`, e.message);
+        }
+    }
+    if (locations.length > 0) console.log(`[Dashboard] Updated ${locations.length} dashboards.`);
+}
+
+module.exports = { runRoleUpdates, generateDashboardPayload, updateAllDashboards, runGatekeeper };

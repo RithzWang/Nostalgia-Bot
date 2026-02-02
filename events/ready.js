@@ -4,7 +4,7 @@ const { serverID } = require('../config.json');
 const { updateAllPanels } = require('../utils/qabilatanManager'); 
 
 module.exports = {
-    name: 'ready',
+    name: 'clientReady',
     once: true,
     async execute(client) {
         console.log(`Logged in as ${client.user.tag}`);

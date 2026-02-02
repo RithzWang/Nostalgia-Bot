@@ -12,14 +12,12 @@ const MAIN_GUILD_ID = '1456197054782111756';
 const GLOBAL_TAG_ROLE_ID = '1462217123433545812'; 
 
 // ==========================================
-// 1. ROLE MANAGER (Main Server ONLY)
+// 1. ROLE MANAGER (Main Hub & Local Servers)
 // ==========================================
 async function runRoleUpdates(client) {
     const trackedServers = await TrackedServer.find();
 
-    // -----------------------------------------------------------
-    // UPDATE MAIN SERVER (Global Role & Main Roles)
-    // -----------------------------------------------------------
+    // --- A. MAIN SERVER LOGIC (Global & Specific Hub Roles) ---
     const mainGuild = client.guilds.cache.get(MAIN_GUILD_ID);
     if (mainGuild) {
         const tagToRoleMap = new Map();
@@ -28,7 +26,6 @@ async function runRoleUpdates(client) {
 
         for (const server of trackedServers) {
             validTagServerIds.add(server.guildId); 
-            // We still track the Main Server Role (roleId) for the hub
             if (server.roleId) {
                 tagToRoleMap.set(server.guildId, server.roleId);
                 roleToGuildMap.set(server.roleId, server.guildId);
@@ -50,21 +47,17 @@ async function runRoleUpdates(client) {
                 // 1. Specific Main Roles
                 if (currentTagGuildId && tagToRoleMap.has(currentTagGuildId)) {
                     const targetRoleId = tagToRoleMap.get(currentTagGuildId);
-                    const role = mainGuild.roles.cache.get(targetRoleId);
-                    if (role && !member.roles.cache.has(targetRoleId)) {
-                        await member.roles.add(role).catch(() => {});
-                    }
+                    if (!member.roles.cache.has(targetRoleId)) await member.roles.add(targetRoleId).catch(() => {});
                 }
 
                 // 2. Remove Mismatched Main Roles
                 for (const [rId, sourceGuildId] of roleToGuildMap.entries()) {
                     if (member.roles.cache.has(rId) && currentTagGuildId !== sourceGuildId) {
-                        const roleToRemove = mainGuild.roles.cache.get(rId);
-                        if (roleToRemove) await member.roles.remove(roleToRemove).catch(() => {});
+                        await member.roles.remove(rId).catch(() => {});
                     }
                 }
 
-                // 3. Global Role (The "Tag User" role)
+                // 3. Global Hub Role
                 if (globalRole) {
                     if (isWearingAnyValidTag && !member.roles.cache.has(GLOBAL_TAG_ROLE_ID)) {
                         await member.roles.add(globalRole).catch(() => {});
@@ -73,9 +66,31 @@ async function runRoleUpdates(client) {
                     }
                 }
             }
-        } catch (e) {
-            console.error(`[Role Manager] Main Hub Error:`, e.message);
-        }
+        } catch (e) { console.error(`[Role Manager] Hub Error:`, e.message); }
+    }
+
+    // --- B. LOCAL SATELLITE ROLE LOGIC (NEW) ---
+    for (const server of trackedServers) {
+        if (!server.localRoleId) continue; // Skip if no local role set
+
+        const guild = client.guilds.cache.get(server.guildId);
+        if (!guild || server.guildId === MAIN_GUILD_ID) continue;
+
+        try {
+            await guild.members.fetch();
+            for (const [mId, member] of guild.members.cache) {
+                if (member.user.bot) continue;
+
+                const identity = member.user.primaryGuild;
+                const wearsCorrectTag = identity && identity.identityGuildId === server.guildId && identity.identityEnabled === true;
+
+                if (wearsCorrectTag && !member.roles.cache.has(server.localRoleId)) {
+                    await member.roles.add(server.localRoleId).catch(() => {});
+                } else if (!wearsCorrectTag && member.roles.cache.has(server.localRoleId)) {
+                    await member.roles.remove(server.localRoleId).catch(() => {});
+                }
+            }
+        } catch (e) { console.error(`[Role Manager] Local Error in ${server.displayName}:`, e.message); }
     }
 }
 
@@ -129,7 +144,7 @@ async function generateDashboardPayload(client) {
 
         const inviteButton = new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel("Server Link");
         if (data.inviteLink && data.inviteLink.startsWith('http')) {
-            inviteButton.setURL(data.inviteLink).setDisabled(false);
+            inviteButton.setURL(data.inviteLink);
         } else {
             inviteButton.setURL('https://discord.com').setDisabled(true);
         }
@@ -177,7 +192,7 @@ async function updateAllDashboards(client) {
     console.log('[Dashboard] Starting Global Update Cycle...');
 
     await runRoleUpdates(client);
-    await runGatekeeper(client); // Ensure gatekeeper logic runs (even if mostly disabled)
+    await runGatekeeper(client); 
 
     const payload = await generateDashboardPayload(client);
     const locations = await DashboardLocation.find();
@@ -187,10 +202,21 @@ async function updateAllDashboards(client) {
         if (!channel) continue;
 
         try {
+            // Check if messageId exists, if not, send a fresh one
+            if (!loc.messageId) {
+                const newMsg = await channel.send({ components: payload, flags: [MessageFlags.IsComponentsV2] });
+                loc.messageId = newMsg.id;
+                await loc.save();
+                continue;
+            }
+
             const msg = await channel.messages.fetch(loc.messageId);
             await msg.edit({ components: payload, flags: [MessageFlags.IsComponentsV2] });
         } catch (e) {
-            console.error(`[Dashboard] 🛑 ERROR in Guild ${loc.guildId}:`, e.message);
+            // If fetch fails (message deleted), send a new one
+            const newMsg = await channel.send({ components: payload, flags: [MessageFlags.IsComponentsV2] });
+            loc.messageId = newMsg.id;
+            await loc.save();
         }
     }
     if (locations.length > 0) console.log(`[Dashboard] Updated ${locations.length} dashboards.`);

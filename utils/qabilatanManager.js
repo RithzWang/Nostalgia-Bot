@@ -156,7 +156,7 @@ async function generateDashboardPayload(client) {
                 .setButtonAccessory(inviteButton)
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
-                        `### [${data.name || "Unknown"}](${data.inviteLink || "https://discord.com"})\n` +
+                        `## [${data.name || "Unknown"}](${data.inviteLink || "https://discord.com"})\n` +
                         `**<:sparkles:1462851309219872841> Server Tag:** ${displayTagText}\n` +
                         `**<:members:1462851249836654592> Members:** ${memberCount}\n` +
                         `${tagStatusLine}`
@@ -178,7 +178,7 @@ async function generateDashboardPayload(client) {
     });
 
     container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
-        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# Next Update: <t:${nextUpdateUnix}:R>`));
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# <a:loading:1447184742934909032> Next Update: <t:${nextUpdateUnix}:R>`));
 
     return [container];
 }

@@ -15,13 +15,12 @@ const GLOBAL_TAG_ROLE_ID = '1462217123433545812';
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // ==========================================
-// 1. ROLE MANAGER (Main Hub & Local)
+// 1. ROLE MANAGER (Rate-Limit Safe)
 // ==========================================
 async function runRoleUpdates(client) {
     const trackedServers = await TrackedServer.find();
-
-    // --- A. MAIN SERVER LOGIC ---
     const mainGuild = client.guilds.cache.get(MAIN_GUILD_ID);
+
     if (mainGuild) {
         const tagToRoleMap = new Map();
         const roleToGuildMap = new Map();
@@ -36,7 +35,7 @@ async function runRoleUpdates(client) {
         }
 
         try {
-            // Use cache only to avoid Opcode 8 (Gateway) Rate Limits
+            // Use cache only to avoid Opcode 8 Rate Limits
             const globalRole = mainGuild.roles.cache.get(GLOBAL_TAG_ROLE_ID);
 
             for (const [memberId, member] of mainGuild.members.cache) {
@@ -47,20 +46,20 @@ async function runRoleUpdates(client) {
                 const currentTagGuildId = isTagEnabled ? identity.identityGuildId : null;
                 const isWearingAnyValidTag = currentTagGuildId && validTagServerIds.has(currentTagGuildId);
 
-                // 1. Specific Main Roles
+                // Specific Main Roles
                 if (currentTagGuildId && tagToRoleMap.has(currentTagGuildId)) {
                     const targetRoleId = tagToRoleMap.get(currentTagGuildId);
                     if (!member.roles.cache.has(targetRoleId)) await member.roles.add(targetRoleId).catch(() => {});
                 }
 
-                // 2. Remove Mismatched Main Roles
+                // Remove Mismatched Main Roles
                 for (const [rId, sourceGuildId] of roleToGuildMap.entries()) {
                     if (member.roles.cache.has(rId) && currentTagGuildId !== sourceGuildId) {
                         await member.roles.remove(rId).catch(() => {});
                     }
                 }
 
-                // 3. Global Hub Role
+                // Global Hub Role
                 if (globalRole) {
                     if (isWearingAnyValidTag && !member.roles.cache.has(GLOBAL_TAG_ROLE_ID)) {
                         await member.roles.add(GLOBAL_TAG_ROLE_ID).catch(() => {});
@@ -72,7 +71,7 @@ async function runRoleUpdates(client) {
         } catch (e) { console.error(`[Role Manager] Hub Error:`, e.message); }
     }
 
-    // --- B. LOCAL SATELLITE ROLE LOGIC ---
+    // Local Satellite Logic
     for (const server of trackedServers) {
         if (!server.localRoleId) continue;
         const guild = client.guilds.cache.get(server.guildId);
@@ -196,35 +195,34 @@ async function updateAllDashboards(client) {
         console.log(`📍 DB contains ${locations.length} dashboard locations. Syncing...`);
 
         for (const loc of locations) {
-            // Attempt to find channel in cache or fetch it
             const channel = client.channels.cache.get(loc.channelId) || await client.channels.fetch(loc.channelId).catch(() => null);
             
             if (!channel) {
-                console.log(`🗑️ Channel ${loc.channelId} missing/inaccessible. Deleting from DB.`);
+                console.log(`🗑️ Channel ${loc.channelId} missing. Deleting from DB.`);
                 await DashboardLocation.deleteOne({ _id: loc._id });
                 continue;
             }
 
             try {
-                // 🕒 Staggered Update: 2s delay between servers
+                // 🕒 Staggered Update to avoid rate limits
                 await sleep(2000);
 
                 if (!loc.messageId) {
-                    console.log(`🆕 Sending NEW dashboard to #${channel.name}`);
                     const newMsg = await channel.send({ components: payload, flags: [MessageFlags.IsComponentsV2] });
                     loc.messageId = newMsg.id;
                     await loc.save();
                 } else {
                     const msg = await channel.messages.fetch(loc.messageId).catch(() => null);
                     
-                    if (!msg || typeof msg.edit !== 'function') {
-                        console.log(`🔄 Message lost in #${channel.name}. Re-spawning...`);
+                    // FIXED: Safer check to avoid "edit is not a function"
+                    if (msg && typeof msg.edit === 'function') {
+                        await msg.edit({ components: payload, flags: [MessageFlags.IsComponentsV2] });
+                        console.log(`📝 Edited dashboard in #${channel.name}`);
+                    } else {
+                        console.log(`🔄 Message lost or invalid in #${channel.name}. Re-spawning...`);
                         const freshMsg = await channel.send({ components: payload, flags: [MessageFlags.IsComponentsV2] });
                         loc.messageId = freshMsg.id;
                         await loc.save();
-                    } else {
-                        await msg.edit({ components: payload, flags: [MessageFlags.IsComponentsV2] });
-                        console.log(`📝 Edited dashboard in #${channel.name}`);
                     }
                 }
             } catch (err) {

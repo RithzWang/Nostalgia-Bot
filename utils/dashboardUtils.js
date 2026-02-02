@@ -12,12 +12,12 @@ const MAIN_GUILD_ID = '1456197054782111756';
 const GLOBAL_TAG_ROLE_ID = '1462217123433545812'; 
 
 // ==========================================
-// 1. ROLE MANAGER (Main Hub & Local Servers)
+// 1. ROLE MANAGER (Rate-Limit Safe)
 // ==========================================
 async function runRoleUpdates(client) {
     const trackedServers = await TrackedServer.find();
 
-    // --- A. MAIN SERVER LOGIC (Global & Specific Hub Roles) ---
+    // --- A. MAIN SERVER LOGIC ---
     const mainGuild = client.guilds.cache.get(MAIN_GUILD_ID);
     if (mainGuild) {
         const tagToRoleMap = new Map();
@@ -33,7 +33,7 @@ async function runRoleUpdates(client) {
         }
 
         try {
-            await mainGuild.members.fetch();
+            // Use cache to avoid Opcode 8 Rate Limits
             const globalRole = mainGuild.roles.cache.get(GLOBAL_TAG_ROLE_ID);
 
             for (const [memberId, member] of mainGuild.members.cache) {
@@ -60,24 +60,24 @@ async function runRoleUpdates(client) {
                 // 3. Global Hub Role
                 if (globalRole) {
                     if (isWearingAnyValidTag && !member.roles.cache.has(GLOBAL_TAG_ROLE_ID)) {
-                        await member.roles.add(globalRole).catch(() => {});
+                        await member.roles.add(GLOBAL_TAG_ROLE_ID).catch(() => {});
                     } else if (!isWearingAnyValidTag && member.roles.cache.has(GLOBAL_TAG_ROLE_ID)) {
-                        await member.roles.remove(globalRole).catch(() => {});
+                        await member.roles.remove(GLOBAL_TAG_ROLE_ID).catch(() => {});
                     }
                 }
             }
         } catch (e) { console.error(`[Role Manager] Hub Error:`, e.message); }
     }
 
-    // --- B. LOCAL SATELLITE ROLE LOGIC (NEW) ---
+    // --- B. LOCAL SATELLITE ROLE LOGIC ---
     for (const server of trackedServers) {
-        if (!server.localRoleId) continue; // Skip if no local role set
+        if (!server.localRoleId) continue;
 
         const guild = client.guilds.cache.get(server.guildId);
         if (!guild || server.guildId === MAIN_GUILD_ID) continue;
 
         try {
-            await guild.members.fetch();
+            // Using cache only to prevent further rate limits
             for (const [mId, member] of guild.members.cache) {
                 if (member.user.bot) continue;
 
@@ -128,15 +128,11 @@ async function generateDashboardPayload(client) {
             const boostsNeeded = 3 - boostCount;
 
             if (boostsNeeded > 0) {
-                const plural = boostsNeeded === 1 ? "Boost" : "Boosts";
-                const remainPlural = boostsNeeded === 1 ? "Remains" : "Remain";
-                tagStatusLine = `<:no_boost:1463272235056889917> **${boostsNeeded} ${plural} ${remainPlural}**`;
+                tagStatusLine = `<:no_boost:1463272235056889917> **${boostsNeeded} Boosts Remain**`;
             } else {
-                if (!hasClanFeature) {
-                    tagStatusLine = `<:no_tag:1463272172201050336> **Not Enabled**`;
-                } else {
-                    tagStatusLine = `<:greysword:1462853724824404069> **Tag Adopters:** ${currentServerTagCount}`;
-                }
+                tagStatusLine = !hasClanFeature 
+                    ? `<:no_tag:1463272172201050336> **Not Enabled**` 
+                    : `<:greysword:1462853724824404069> **Tag Adopters:** ${currentServerTagCount}`;
             }
         } else {
             tagStatusLine = `<:no_tag:1463272172201050336> **Not Connected**`;
@@ -164,7 +160,6 @@ async function generateDashboardPayload(client) {
     }
 
     const nextUpdateUnix = Math.floor((Date.now() + 60 * 1000) / 1000);
-    
     const container = new ContainerBuilder()
         .addTextDisplayComponents(new TextDisplayBuilder().setContent("# <:A2Q_1:1466981218758426634><:A2Q_2:1466981281060360232> » Servers"))
         .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
@@ -191,8 +186,8 @@ async function generateDashboardPayload(client) {
 async function updateAllDashboards(client) {
     console.log('[Dashboard] Starting Global Update Cycle...');
 
-    await runRoleUpdates(client);
-    await runGatekeeper(client); 
+    await runRoleUpdates(client).catch(e => console.error("[Role Update Error]:", e.message));
+    await runGatekeeper(client).catch(e => console.error("[Gatekeeper Error]:", e.message)); 
 
     const payload = await generateDashboardPayload(client);
     const locations = await DashboardLocation.find();
@@ -202,7 +197,6 @@ async function updateAllDashboards(client) {
         if (!channel) continue;
 
         try {
-            // Check if messageId exists, if not, send a fresh one
             if (!loc.messageId) {
                 const newMsg = await channel.send({ components: payload, flags: [MessageFlags.IsComponentsV2] });
                 loc.messageId = newMsg.id;
@@ -211,12 +205,23 @@ async function updateAllDashboards(client) {
             }
 
             const msg = await channel.messages.fetch(loc.messageId);
-            await msg.edit({ components: payload, flags: [MessageFlags.IsComponentsV2] });
+            
+            // Check if msg object is valid before editing
+            if (msg && typeof msg.edit === 'function') {
+                await msg.edit({ components: payload, flags: [MessageFlags.IsComponentsV2] });
+            } else {
+                throw new Error("Message object invalid");
+            }
+
         } catch (e) {
-            // If fetch fails (message deleted), send a new one
-            const newMsg = await channel.send({ components: payload, flags: [MessageFlags.IsComponentsV2] });
-            loc.messageId = newMsg.id;
-            await loc.save();
+            // Send new if fetch or edit fails
+            try {
+                const newMsg = await channel.send({ components: payload, flags: [MessageFlags.IsComponentsV2] });
+                loc.messageId = newMsg.id;
+                await loc.save();
+            } catch (sendError) {
+                console.error(`[Dashboard] Failed to send to ${loc.guildId}:`, sendError.message);
+            }
         }
     }
     if (locations.length > 0) console.log(`[Dashboard] Updated ${locations.length} dashboards.`);

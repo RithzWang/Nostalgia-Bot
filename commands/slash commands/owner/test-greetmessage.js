@@ -1,13 +1,14 @@
-const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const TrackedServer = require('../../../src/models/TrackedServerSchema');
 
 // 🔒 OWNER CONFIGURATION
 const OWNER_ID = '837741275603009626';
+const MAIN_SERVER_INVITE = 'https://discord.gg/Sra726wPJs'; // 👈 Make sure this matches your main file
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('test-greet')
-        .setDescription('Simulate a welcome message to test if it works')
+        .setDescription('Simulate the new text-based welcome message')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
@@ -39,19 +40,13 @@ module.exports = {
                 return interaction.editReply(`❌ **Permission Error:** I do not have permission to View or Send Messages in ${channel}. Check my role settings.`);
             }
 
-            // 🔍 STEP 3: ATTEMPT TO SEND
-            const container = new ContainerBuilder()
-                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🧪 Test Successful`))
-                .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
-                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`If you can see this, the **Welcome System** is working!\n\n**Channel:** ${channel}`));
-
+            // 🔍 STEP 3: SEND TEST (Simulation of "Unsafe" User)
+            // We simulate the "Unsafe" message because that is the most important one to check (formatting & links).
             await channel.send({ 
-                content: `👋 **Test Welcome for ${interaction.user}**`, 
-                components: [container],
-                flags: [MessageFlags.IsComponentsV2]
+                content: `${interaction.user}, Welcome to **${interaction.guild.name}** server\n\nIt seems like you are **__not__** in our **[Main A2-Q](${MAIN_SERVER_INVITE})** server yet.\nYou have **10 minutes** to join, or you will be **kicked**.`
             });
 
-            await interaction.editReply(`✅ **Sent!** Check ${channel}. If the message appeared there, your Logic/DB is fine.`);
+            await interaction.editReply(`✅ **Sent!** Check ${channel}. I sent the "Warning" version so you can check if the formatting and Invite Link are correct.`);
 
         } catch (e) {
             console.error(e);

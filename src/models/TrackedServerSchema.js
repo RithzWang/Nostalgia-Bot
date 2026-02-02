@@ -7,9 +7,14 @@ const TrackedServerSchema = new mongoose.Schema({
     // Stats & Dashboard Info
     inviteLink: { type: String, default: null },
     tagText: { type: String, default: null },
+    
+    // 1. MAIN SERVER REWARD ROLE (Given in Main Hub)
     roleId: { type: String, default: null }, 
     
-    // 👇 The Only Setting You Need Now
+    // 2. LOCAL SERVER REWARD ROLE (Given in Satellite Server) 👈 NEW!
+    localRoleId: { type: String, default: null },
+
+    // Welcome System
     welcomeChannelId: { type: String, default: null },
     
     addedBy: { type: String, default: null }

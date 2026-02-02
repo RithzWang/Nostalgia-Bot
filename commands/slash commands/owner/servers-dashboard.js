@@ -1,8 +1,17 @@
 const { 
-    SlashCommandBuilder, PermissionFlagsBits, MessageFlags, 
-    ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder,
-    StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ContainerBuilder, TextDisplayBuilder,
-    SeparatorBuilder, SeparatorSpacingSize
+    SlashCommandBuilder, 
+    PermissionFlagsBits, 
+    MessageFlags, 
+    ModalBuilder, 
+    TextInputBuilder, 
+    TextInputStyle, 
+    ActionRowBuilder,
+    StringSelectMenuBuilder, 
+    StringSelectMenuOptionBuilder, 
+    ContainerBuilder, 
+    TextDisplayBuilder,
+    SeparatorBuilder, 
+    SeparatorSpacingSize
 } = require('discord.js');
 
 const TrackedServer = require('../../../src/models/TrackedServerSchema');
@@ -18,31 +27,55 @@ module.exports = {
         .setDescription('Manage the A2-Q Server Network')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         
-        // 1. DASHBOARD CONTROLS
-        .addSubcommand(sub => sub.setName('enable').setDescription('Enable dashboard here').addStringOption(o=>o.setName('message_id').setDescription('Msg ID')).addChannelOption(o=>o.setName('channel').setDescription('Channel')))
-        .addSubcommand(sub => sub.setName('update').setDescription('Force update all dashboards'))
-        .addSubcommand(sub => sub.setName('addserver').setDescription('Add a new server to database'))
-        .addSubcommand(sub => sub.setName('removeserver').setDescription('Remove a server from database'))
-        .addSubcommand(sub => sub.setName('edit').setDescription('Edit a server details'))
-
-        // 2. WELCOME / GREET MESSAGE
+        // =========================================
+        // 📊 DASHBOARD & SERVER MANAGEMENT
+        // =========================================
         .addSubcommand(sub => 
-            sub.setName('greetmessage')
-                .setDescription('Configure welcome message')
-                .addBooleanOption(o => o.setName('enable').setDescription('Turn welcome ON or OFF').setRequired(true))
-                .addChannelOption(o => o.setName('channel').setDescription('Channel').setRequired(false))
-                .addStringOption(o => o.setName('server_id').setDescription('(Optional) Target Server ID').setRequired(false))
+            sub.setName('enable')
+                .setDescription('Enable dashboard here')
+                .addStringOption(o => o.setName('message_id').setDescription('Msg ID (if restoring)'))
+                .addChannelOption(o => o.setName('channel').setDescription('Channel'))
+        )
+        .addSubcommand(sub => 
+            sub.setName('update')
+                .setDescription('Force update all dashboards')
+        )
+        .addSubcommand(sub => 
+            sub.setName('addserver')
+                .setDescription('Add a new server to database')
+        )
+        .addSubcommand(sub => 
+            sub.setName('removeserver')
+                .setDescription('Remove a server from database')
+        )
+        .addSubcommand(sub => 
+            sub.setName('edit')
+                .setDescription('Edit a server details')
         )
 
-        // 3. TAG USER ROLE (LOCAL) 👈 UPDATED LOGIC
+        // =========================================
+        // 👋 WELCOME / GREET MESSAGE
+        // =========================================
+        .addSubcommand(sub => 
+            sub.setName('greetmessage')
+                .setDescription('Configure welcome message for a server')
+                .addBooleanOption(o => o.setName('enable').setDescription('Turn welcome ON or OFF').setRequired(true))
+                .addChannelOption(o => o.setName('channel').setDescription('Which channel to send welcomes in?').setRequired(false))
+                .addStringOption(o => o.setName('server_id').setDescription('(Optional) Target a specific Server ID remotely').setRequired(false))
+        )
+
+        // =========================================
+        // 🏷️ TAG USER ROLE (LOCAL REWARD)
+        // =========================================
         .addSubcommand(sub => 
             sub.setName('tag_user_role')
-                .setDescription('Set the LOCAL role given inside THIS server')
+                .setDescription('Set the LOCAL role given to users who wear the tag in this server')
                 .addRoleOption(o => o.setName('role').setDescription('The role to give inside this server').setRequired(true))
                 .addStringOption(o => o.setName('server_id').setDescription('(Optional) Target Server ID').setRequired(false))
         ),
 
     async execute(interaction) {
+        // 🛑 SECURITY: LOCK TO OWNER
         if (interaction.user.id !== OWNER_ID) {
             return interaction.reply({ content: '⛔ **Owner Only**', flags: MessageFlags.Ephemeral });
         }
@@ -50,25 +83,25 @@ module.exports = {
         const sub = interaction.options.getSubcommand();
 
         // ====================================================
-        // 🏷️ 3. TAG USER ROLE (SAVES TO localRoleId)
+        // 🏷️ 1. TAG USER ROLE (SAVES TO localRoleId)
         // ====================================================
         if (sub === 'tag_user_role') {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
             const role = interaction.options.getRole('role');
-            // Default to current guild ID if not specified
+            // Default to current guild ID if not specified remotely
             const targetServerId = interaction.options.getString('server_id') || interaction.guild.id;
 
             try {
                 // Save to localRoleId (NOT roleId)
                 const updatedServer = await TrackedServer.findOneAndUpdate(
                     { guildId: targetServerId },
-                    { localRoleId: role.id }, // 👈 Saving to the new field
+                    { localRoleId: role.id }, 
                     { new: true }
                 );
 
                 if (!updatedServer) {
-                    return interaction.editReply(`❌ **Error:** Server ID \`${targetServerId}\` is not in your database yet.`);
+                    return interaction.editReply(`❌ **Error:** Server ID \`${targetServerId}\` is not in your database yet. Use \`/our-servers addserver\` first.`);
                 }
 
                 const container = new ContainerBuilder()
@@ -76,8 +109,9 @@ module.exports = {
                     .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
                     .addTextDisplayComponents(new TextDisplayBuilder().setContent(
                         `**Server:** ${updatedServer.displayName}\n` +
-                        `**Local Role:** ${role} (\`${role.id}\`)\n` +
-                        `Users in **${updatedServer.displayName}** who wear the tag will get this role.`
+                        `**Required Tag:** \`${updatedServer.tagText || "None Set"}\`\n` +
+                        `**Local Role:** ${role} (\`${role.id}\`)\n\n` +
+                        `*Users in this server who add "${updatedServer.tagText}" to their name will get this role.*`
                     ));
 
                 return interaction.editReply({ components: [container], flags: [MessageFlags.IsComponentsV2] });
@@ -88,50 +122,90 @@ module.exports = {
             }
         }
 
-        // ... (The rest of your command: greetmessage, addserver, etc. stays exactly the same) ...
-        // I've omitted the rest for brevity, but keep your existing code for other subcommands.
-        
         // ====================================================
         // 👋 2. GREET MESSAGE
         // ====================================================
         if (sub === 'greetmessage') {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
             const isEnabled = interaction.options.getBoolean('enable');
             const targetChannel = interaction.options.getChannel('channel');
             const targetServerId = interaction.options.getString('server_id') || interaction.guild.id; 
 
-            if (isEnabled && !targetChannel) return interaction.editReply("❌ **Error:** Select a channel.");
+            if (isEnabled && !targetChannel) {
+                return interaction.editReply("❌ **Error:** You must select a `channel` when enabling the system.");
+            }
 
             try {
                 const updateData = isEnabled ? { welcomeChannelId: targetChannel.id } : { welcomeChannelId: null };            
                 const updatedServer = await TrackedServer.findOneAndUpdate({ guildId: targetServerId }, updateData, { new: true });
-                if (!updatedServer) return interaction.editReply(`❌ **Error:** Server ID not found.`);
 
-                return interaction.editReply({ content: `✅ **Welcome Config Updated:** ${updatedServer.displayName}`, flags: MessageFlags.Ephemeral });
+                if (!updatedServer) return interaction.editReply(`❌ **Error:** Server ID \`${targetServerId}\` not found.`);
+
+                const container = new ContainerBuilder()
+                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 👋 Welcome Configuration`))
+                    .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
+                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(
+                        `**Server:** ${updatedServer.displayName}\n` +
+                        `**Status:** ${isEnabled ? '✅ Enabled' : '🚫 Disabled'}\n` +
+                        (isEnabled ? `**Channel:** <#${targetChannel.id}>` : '')
+                    ));
+
+                return interaction.editReply({ components: [container], flags: [MessageFlags.IsComponentsV2] });
+
             } catch (e) {
-                return interaction.editReply(`❌ Error: ${e.message}`);
+                return interaction.editReply(`❌ **Database Error:** ${e.message}`);
             }
         }
 
         // ====================================================
-        // 📝 1. ADD SERVER & DASHBOARD (Standard Logic)
+        // 📝 3. ADD SERVER (MODAL)
         // ====================================================
         if (sub === 'addserver') {
             const modal = new ModalBuilder().setCustomId('dashboard_add_server').setTitle('Add New Server');
+            
             modal.addComponents(
                 new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('server_id').setLabel("Server ID").setStyle(TextInputStyle.Short).setRequired(true)),
                 new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('display_name').setLabel("Display Name").setStyle(TextInputStyle.Short).setPlaceholder("e.g. My Server").setRequired(true)),
-                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('tag_text').setLabel("Tag Text").setStyle(TextInputStyle.Short).setPlaceholder("e.g. ABC").setRequired(false)),
-                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('role_id').setLabel("Tag User Role ID (Main)").setStyle(TextInputStyle.Short).setRequired(false)),
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('tag_text').setLabel("Tag Text").setStyle(TextInputStyle.Short).setPlaceholder("e.g. A2-Q").setRequired(false)),
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('role_id').setLabel("Main Hub Reward Role ID").setStyle(TextInputStyle.Short).setPlaceholder("Given in Main Server (Optional)").setRequired(false)),
                 new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('invite_link').setLabel("Invite Link").setStyle(TextInputStyle.Short).setRequired(true))
             );
+
             return interaction.showModal(modal);
         }
 
-        // (Include existing edit/remove/enable logic here...)
-        if (sub === 'edit') { /* ... */ }
-        if (sub === 'removeserver') { /* ... */ }
-        if (sub === 'update') { updateAllDashboards(interaction.client); return interaction.reply({ content: "✅ Updated", flags: MessageFlags.Ephemeral }); }
-        if (sub === 'enable') { /* ... */ }
+        // ====================================================
+        // 🟢 4. OTHER DASHBOARD COMMANDS
+        // ====================================================
+        
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+        if (sub === 'edit') {
+            const servers = await TrackedServer.find();
+            if (servers.length === 0) return interaction.editReply("❌ No servers found.");
+            const options = servers.map(s => new StringSelectMenuOptionBuilder().setLabel(s.displayName).setDescription(s.guildId).setValue(s.guildId));
+            const select = new StringSelectMenuBuilder().setCustomId('dashboard_edit_select').setPlaceholder('Select server to edit...').addOptions(options);
+            return interaction.editReply({ content: "📋 **Edit Server:**", components: [new ActionRowBuilder().addComponents(select)] });
+        }
+
+        if (sub === 'removeserver') {
+            const servers = await TrackedServer.find();
+            if (servers.length === 0) return interaction.editReply("❌ No servers found.");
+            const options = servers.map(s => new StringSelectMenuOptionBuilder().setLabel(s.displayName).setValue(s.guildId));
+            const select = new StringSelectMenuBuilder().setCustomId('dashboard_remove_server').setPlaceholder('Select to remove').addOptions(options);
+            return interaction.editReply({ content: "🗑️ **Remove Server:**", components: [new ActionRowBuilder().addComponents(select)] });
+        }
+
+        if (sub === 'update') {
+            await updateAllDashboards(interaction.client);
+            return interaction.editReply("✅ **Dashboards Updated!**");
+        }
+
+        if (sub === 'enable') {
+             const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
+             await DashboardLocation.findOneAndUpdate({ guildId: interaction.guild.id }, { channelId: targetChannel.id }, { upsert: true });
+             interaction.editReply(`✅ **Dashboard Enabled** in ${targetChannel}`);
+        }
     }
 };

@@ -20,6 +20,8 @@ const mongoose = require('mongoose');
 const moment = require('moment-timezone');
 const { loadFonts } = require('./fontLoader');
 
+require('./keep_alive.js');
+
 
 // --- CONFIGURATION ---
 const config = require("./config.json");

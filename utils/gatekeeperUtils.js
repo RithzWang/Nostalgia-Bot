@@ -62,7 +62,7 @@ async function runGatekeeper(client) {
                         // 🟢 GREEN LOG: Timer Cancelled
                         await logToDiscord(
                             '✅ Timer Cancelled', 
-                            `**User:** ${member.user.tag}\n**Server:** ${satelliteGuild.name}\n**Status:** Rejoined Main Hub. User is safe.`,
+                            `**User:** ${member.user.tag}\n**Server:** ${satelliteGuild.name}\n**Status:** Rejoined Main **A2-Q** server. User is safe.`,
                             0x57F287 // Green
                         );
                     }
@@ -74,7 +74,7 @@ async function runGatekeeper(client) {
                         // 🟡 YELLOW LOG: Timer Started
                         await logToDiscord(
                             '⏳ Timer Started', 
-                            `**User:** ${member.user.tag}\n**Server:** ${satelliteGuild.name}\n**Status:** Not in Main Hub. 10m countdown started.`,
+                            `**User:** ${member.user.tag}\n**Server:** ${satelliteGuild.name}\n**Status:** Not in Main **A2-Q** server. 10m countdown started.`,
                             0xFEE75C // Yellow
                         );
 
@@ -86,7 +86,7 @@ async function runGatekeeper(client) {
 
                         if (timeDiff > TEN_MINUTES) {
                             try {
-                                await member.kick("Gatekeeper: Left Main Hub and did not return.");
+                                await member.kick("Gatekeeper: Left Main A2-Q server and did not return.");
                                 pendingKicks.delete(kickKey);
                                 
                                 // 🔴 RED LOG: User Kicked

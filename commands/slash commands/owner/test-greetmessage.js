@@ -31,13 +31,13 @@ module.exports = {
             const components = [
                 new TextDisplayBuilder().setContent(`${interaction.user}, Welcome to **${interaction.guild.name}** server!`),
                 
-                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true),
+                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
 
                 new SectionBuilder()
                     .setButtonAccessory(
                         new ButtonBuilder()
                             .setStyle(ButtonStyle.Link)
-                            .setLabel("A2-Q Server")
+                            .setLabel("A2-Q Server Link")
                             .setURL(MAIN_SERVER_INVITE)
                     )
                     .addTextDisplayComponents(

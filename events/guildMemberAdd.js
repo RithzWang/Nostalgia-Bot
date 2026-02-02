@@ -55,14 +55,14 @@ module.exports = {
                     new TextDisplayBuilder().setContent(`${member}, Welcome to **${member.guild.name}** server!`),
                     
                     // 2. Divider
-                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true),
+                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
 
                     // 3. Warning Section with Link Button
                     new SectionBuilder()
                         .setButtonAccessory(
                             new ButtonBuilder()
                                 .setStyle(ButtonStyle.Link)
-                                .setLabel("A2-Q Server")
+                                .setLabel("A2-Q Server Link")
                                 .setURL(MAIN_SERVER_INVITE)
                         )
                         .addTextDisplayComponents(

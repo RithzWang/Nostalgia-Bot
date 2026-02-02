@@ -1,12 +1,11 @@
 const { 
     Events, 
-    ContainerBuilder, 
     TextDisplayBuilder, 
     SeparatorBuilder, 
     SeparatorSpacingSize, 
-    SectionBuilder,
-    ButtonBuilder,
-    ButtonStyle,
+    SectionBuilder, 
+    ButtonBuilder, 
+    ButtonStyle, 
     MessageFlags 
 } = require('discord.js');
 const TrackedServer = require('../src/models/TrackedServerSchema');
@@ -41,31 +40,26 @@ module.exports = {
                 }
             }
 
-            // 3. Build the V2 Components
-            const container = new ContainerBuilder();
+            // 3. Define the Component Array
+            let components = [];
 
             if (isInMain) {
-                // ✅ SCENARIO A: Already in Main Server
-                container.addTextDisplayComponents(
+                // ✅ SCENARIO A: Safe User (Text Display Only)
+                components = [
                     new TextDisplayBuilder().setContent(`${member}, Welcome to **${member.guild.name}** server!`)
-                );
+                ];
             } else {
-                // ⚠️ SCENARIO B: Not in Main Server (Warning + Button)
-                
-                // 1. The Welcome Text
-                container.addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent(`${member}, Welcome to **${member.guild.name}** server!`)
-                );
+                // ⚠️ SCENARIO B: Unsafe User (Text + Separator + Section with Button)
+                components = [
+                    // 1. Welcome Text
+                    new TextDisplayBuilder().setContent(`${member}, Welcome to **${member.guild.name}** server!`),
+                    
+                    // 2. Divider
+                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true),
 
-                // 2. The Divider
-                container.addSeparatorComponents(
-                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
-                );
-
-                // 3. The Section (Warning Text + Button)
-                container.addSectionComponents(
+                    // 3. Warning Section with Link Button
                     new SectionBuilder()
-                        .setAccessory(
+                        .setButtonAccessory(
                             new ButtonBuilder()
                                 .setStyle(ButtonStyle.Link)
                                 .setLabel("A2-Q Server")
@@ -77,12 +71,12 @@ module.exports = {
                                 `You have **10 minutes** to join, otherwise you will be **kicked**.`
                             )
                         )
-                );
+                ];
             }
 
-            // 4. Send with V2 Flag
+            // 4. Send Components Directly
             await welcomeChannel.send({ 
-                components: [container], 
+                components: components, 
                 flags: [MessageFlags.IsComponentsV2] 
             });
 

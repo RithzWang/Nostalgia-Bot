@@ -11,13 +11,12 @@ const {
     TextDisplayBuilder, 
     SeparatorBuilder, 
     SeparatorSpacingSize,
-    MessageFlags // Import MessageFlags
+    MessageFlags 
 } = require('discord.js');
 
-// ⚠️ ADJUST THESE PATHS IF YOUR FOLDER STRUCTURE IS DIFFERENT
-// Current assumption: commands/slash commands/owner/qabilatan.js
+// ⚠️ ADJUST PATHS IF NEEDED
 const { Panel, ServerList, GreetConfig } = require('../../../src/models/Qabilatan'); 
-const { buildDashboard, updateAllPanels } = require('../../../utils/qabilatanManager'); 
+const { generateDashboardPayload, updateAllPanels } = require('../../../../utils/qabilatanManager'); 
 
 const ALLOWED_USER_ID = '837741275603009626';
 
@@ -60,10 +59,9 @@ module.exports = {
                 const messageId = interaction.options.getString('message_id');
                 const channel = interaction.options.getChannel('channel') || interaction.channel;
 
-                // Defer because building the dashboard might take a second
                 await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
-                const components = await buildDashboard(client);
+                const components = await generateDashboardPayload(client);
                 let msg;
 
                 if (messageId) {
@@ -77,7 +75,6 @@ module.exports = {
                     msg = await channel.send({ components, flags: [MessageFlags.IsComponentsV2] });
                 }
 
-                // Save to DB
                 await Panel.findOneAndUpdate(
                     { guildId: interaction.guild.id },
                     { 
@@ -126,7 +123,8 @@ module.exports = {
                     });
                 }
 
-                const options = servers.map(s => 
+                // ⚠️ Discord limits select menus to 25 items max
+                const options = servers.slice(0, 25).map(s => 
                     new StringSelectMenuOptionBuilder()
                         .setLabel(s.name ? s.name.substring(0, 25) : s.serverId)
                         .setValue(s.serverId) 
@@ -147,7 +145,11 @@ module.exports = {
                         )
                 ];
 
-                return interaction.reply({ components, flags: [MessageFlags.Ephemeral] });
+                // ✅ FIX: Added MessageFlags.IsComponentsV2
+                return interaction.reply({ 
+                    components, 
+                    flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2] 
+                });
             }
 
             // --- DELETE ---
@@ -161,7 +163,8 @@ module.exports = {
                     });
                 }
 
-                const options = servers.map(s => 
+                // ⚠️ Discord limits select menus to 25 items max
+                const options = servers.slice(0, 25).map(s => 
                     new StringSelectMenuOptionBuilder()
                         .setLabel(s.name ? s.name.substring(0, 25) : s.serverId)
                         .setValue(s.serverId)
@@ -182,7 +185,11 @@ module.exports = {
                         )
                 ];
 
-                return interaction.reply({ components, flags: [MessageFlags.Ephemeral] });
+                // ✅ FIX: Added MessageFlags.IsComponentsV2
+                return interaction.reply({ 
+                    components, 
+                    flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2] 
+                });
             }
 
             // --- GREET MESSAGE ---

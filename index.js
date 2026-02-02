@@ -34,8 +34,6 @@ const config = require("./config.json");
 // ==========================================
 // 🆕 DASHBOARD IMPORTS
 // ==========================================
-const DashboardLocation = require('./src/models/DashboardLocationSchema');
-const { generateDashboardPayload, runRoleUpdates, runGatekeeper } = require('./utils/dashboardUtils');
 
 const { prefix, serverID, welcomeLog, roleupdateLog, roleforLog, colourEmbed } = config;
 let roleupdateMessageID = config.roleupdateMessageID || null;
@@ -200,42 +198,6 @@ client.on('clientReady', async () => {
         });
 
     }, 5000); 
-
-    // ====================================================
-    // 🌍 GLOBAL DASHBOARD CONTROLLER (1 MIN)
-    // ====================================================
-    async function updateAllDashboards() {
-        // 1. Run Role Assignments
-        await runRoleUpdates(client);
-
-        // 2. Run Gatekeeper
-        await runGatekeeper(client);
-
-        // 3. Generate Fresh UI
-        const payload = await generateDashboardPayload(client);
-
-        // 4. Update all messages
-        const locations = await DashboardLocation.find();
-        
-        for (const loc of locations) {
-            const channel = client.channels.cache.get(loc.channelId);
-            if (!channel) continue;
-
-            try {
-                const msg = await channel.messages.fetch(loc.messageId);
-                await msg.edit({ 
-                    components: payload,
-                    flags: [MessageFlags.IsComponentsV2]
-                });
-            } catch (e) {
-                // console.log(`[Dashboard] Failed to update in Guild ${loc.guildId}: ${e.message}`);
-            }
-        }
-    }
-
-    updateAllDashboards();
-    setInterval(updateAllDashboards, 60 * 1000);
-});
 
 
 const { createWelcomeImage } = require('./welcomeCanvas6.js');

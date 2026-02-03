@@ -84,7 +84,7 @@ module.exports = {
 
                         // ⏳ LOG TIMER (Keep this log for leaving Main Server)
                         await sendLog(client, 
-                            "⏳ Timer Started (Left Main)", 
+                            "Timer Started (Left Main)", 
                             `**User:** **${displayName}** (${user.username})\n**Server:** ${guild.name}\n**Action:** Will kick in **10** mins if they don't return.`, 
                             0xFFA500, // Orange
                             user

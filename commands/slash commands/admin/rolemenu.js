@@ -140,14 +140,11 @@ module.exports = {
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(`### ${title}`)
                 )
-                .addSeparatorComponents(
-                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
-                )
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(descriptionLines.join('\n'))
                 )
                 .addSeparatorComponents(
-                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
                 )
                 .addActionRowComponents(
                     new ActionRowBuilder().addComponents(menu)
@@ -247,14 +244,11 @@ module.exports = {
                 const newContainer = new ContainerBuilder()
                     .setAccentColor(oldContainer.accentColor || 0x888888)
                     .addTextDisplayComponents(titleText)
-                    .addSeparatorComponents(
-                        new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
-                    )
                     .addTextDisplayComponents(
                         new TextDisplayBuilder().setContent(currentBodyLines.join('\n').trim())
                     )
                     .addSeparatorComponents(
-                        new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+                        new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
                     )
                     .addActionRowComponents(
                         new ActionRowBuilder().addComponents(newMenu)
@@ -311,14 +305,11 @@ module.exports = {
                 const newContainer = new ContainerBuilder()
                     .setAccentColor(oldContainer.accentColor || 0x888888)
                     .addTextDisplayComponents(titleText)
-                    .addSeparatorComponents(
-                        new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
-                    )
                     .addTextDisplayComponents(
                         new TextDisplayBuilder().setContent(newBodyLines.join('\n'))
                     )
                     .addSeparatorComponents(
-                        new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+                        new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
                     )
                     .addActionRowComponents(
                         new ActionRowBuilder().addComponents(menu)

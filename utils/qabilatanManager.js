@@ -126,8 +126,8 @@ async function generateDashboardPayload(client, preCalcCounts) {
 
             if (boostsNeeded > 0) {
                  const s = boostsNeeded === 1 ? '' : 's';
-                 tagStatusLine = `<:no_boost:1463272235056889917> ${boostsNeeded} **Boost${s} Remain**`; 
-                 if(boostsNeeded === 1) tagStatusLine = `<:no_boost:1463272235056889917> 1 **Boost Remains**`;
+                 tagStatusLine = `<:no_boost:1463272235056889917> **${boostsNeeded} Boost${s} Remain**`; 
+                 if(boostsNeeded === 1) tagStatusLine = `<:no_boost:1463272235056889917> **1 Boost Remains**`;
             } 
             else if (!hasClanFeature && !hasActiveAdopters) {
                  tagStatusLine = `<:no_tag:1463272172201050336> **Not Enabled**`;

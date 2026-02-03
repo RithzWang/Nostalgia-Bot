@@ -48,7 +48,6 @@ module.exports = {
                 .addChannelOption(opt => opt.setName('channel').setDescription('Where to post?').addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
                 .addStringOption(opt => opt.setName('message_id').setDescription('Reuse a bot message ID'));
 
-            // Reduced to Role 5
             for (let i = 2; i <= 5; i++) {
                 sub.addRoleOption(opt => opt.setName(`role${i}`).setDescription(`Role ${i}`))
                    .addStringOption(opt => opt.setName(`emoji${i}`).setDescription(`Emoji ${i}`));
@@ -89,9 +88,11 @@ module.exports = {
         // --- REFRESH COMMAND ---
         .addSubcommand(sub => 
             sub.setName('refresh')
-                .setDescription('Update button labels and text list if you renamed roles')
+                .setDescription('Update button labels and optionally the title')
                 .addStringOption(opt => opt.setName('message_id').setDescription('The Message ID').setRequired(true))
                 .addChannelOption(opt => opt.setName('channel').setDescription('Channel where the menu is'))
+                // NEW OPTION
+                .addStringOption(opt => opt.setName('new_title').setDescription('Change the menu title (Optional)'))
         ),
 
     async execute(interaction) {
@@ -142,7 +143,6 @@ module.exports = {
 
             const buttonRows = packButtons(buttons);
 
-            // Structure: Title -> Text Body -> Separator -> Buttons
             const container = new ContainerBuilder()
                 .setAccentColor(0x888888)
                 .addTextDisplayComponents(
@@ -189,14 +189,8 @@ module.exports = {
                 const container = message.components[0];
                 
                 // --- 1. Extract Text Safely ---
-                // We filter for components that are of type 7 (TextDisplay).
                 const textComponents = container.components.filter(c => c.type === 7);
-                
-                // Title is the 1st text component
-                const titleText = textComponents[0]?.content || "### Menu";
-                
-                // Body is the 2nd text component (if it exists)
-                // (Previous bug was looking at index 2, which was undefined)
+                let titleText = textComponents[0]?.content || "### Menu";
                 const existingBody = textComponents[1]?.content || ""; 
                 
                 let currentBodyLines = existingBody ? existingBody.split('\n') : [];
@@ -204,7 +198,7 @@ module.exports = {
                 // --- 2. Extract Buttons ---
                 let allButtons = [];
                 container.components.forEach(comp => {
-                    if (comp.type === 1) { // Action Row
+                    if (comp.type === 1) { 
                         comp.components.forEach(btnData => allButtons.push(ButtonBuilder.from(btnData)));
                     }
                 });
@@ -257,9 +251,15 @@ module.exports = {
 
                 // --- REFRESH ---
                 else if (sub === 'refresh') {
+                    const newTitle = interaction.options.getString('new_title');
+                    
+                    // Update Title if provided
+                    if (newTitle) {
+                        titleText = `### ${newTitle}`;
+                    }
+
                     const updatedButtons = [];
                     const newDescriptionLines = [];
-                    // Keep custom header text if any (lines that don't start with >)
                     const headerLines = currentBodyLines.filter(l => !l.startsWith('>'));
                     if (headerLines.length > 0) newDescriptionLines.push(...headerLines);
 

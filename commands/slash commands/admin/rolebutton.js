@@ -44,15 +44,15 @@ module.exports = {
                 .addBooleanOption(opt => opt.setName('multi_select').setDescription('Allow multiple roles? (True = Toggle, False = 1 Only)').setRequired(true))
                 .addRoleOption(opt => opt.setName('role1').setDescription('Role 1 (Required)').setRequired(true))
                 
-                // NEW: Required Role Option
+                // Required Role Option
                 .addRoleOption(opt => opt.setName('required_role').setDescription('Only users with this role can click buttons (Optional)'))
                 
                 .addStringOption(opt => opt.setName('emoji1').setDescription('Emoji for Role 1'))
                 .addChannelOption(opt => opt.setName('channel').setDescription('Where to post?').addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
-                .addStringOption(opt => opt.setName('description').setDescription('Extra text description (Optional)'))
                 .addStringOption(opt => opt.setName('message_id').setDescription('Reuse a bot message ID'));
 
-            for (let i = 2; i <= 10; i++) {
+            // Reduced to Role 5
+            for (let i = 2; i <= 5; i++) {
                 sub.addRoleOption(opt => opt.setName(`role${i}`).setDescription(`Role ${i}`))
                    .addStringOption(opt => opt.setName(`emoji${i}`).setDescription(`Emoji ${i}`));
             }
@@ -108,13 +108,10 @@ module.exports = {
         if (sub === 'setup') {
             const title = interaction.options.getString('title');
             const multiSelect = interaction.options.getBoolean('multi_select');
-            const desc = interaction.options.getString('description');
             const reuseMessageId = interaction.options.getString('message_id');
             const requiredRole = interaction.options.getRole('required_role');
 
             // ID Generation Strategy:
-            // 1. Standard: btn_role_[RoleID] OR btn_single_[RoleID]
-            // 2. Restricted: btn_r_[ReqRoleID]_[RoleID] (Multi) OR btn_rs_[ReqRoleID]_[RoleID] (Single)
             let idPrefix = "";
             if (requiredRole) {
                 idPrefix = multiSelect ? `btn_r_${requiredRole.id}_` : `btn_rs_${requiredRole.id}_`;
@@ -124,9 +121,9 @@ module.exports = {
 
             const buttons = [];
             const descriptionLines = []; 
-            if (desc) descriptionLines.push(desc + '\n');
 
-            for (let i = 1; i <= 10; i++) {
+            // Loop 1 to 5
+            for (let i = 1; i <= 5; i++) {
                 const role = interaction.options.getRole(`role${i}`);
                 const emoji = interaction.options.getString(`emoji${i}`);
                 
@@ -222,19 +219,15 @@ module.exports = {
                 if (firstId.startsWith('btn_role_')) currentPrefix = 'btn_role_';
                 else if (firstId.startsWith('btn_single_')) currentPrefix = 'btn_single_';
                 else if (firstId.startsWith('btn_r_')) {
-                    // "btn_r_[ReqID]_[RoleID]"
                     const parts = firstId.split('_');
-                    // parts[0]=btn, parts[1]=r, parts[2]=ReqID
                     currentPrefix = `btn_r_${parts[2]}_`;
                 }
                 else if (firstId.startsWith('btn_rs_')) {
-                    // "btn_rs_[ReqID]_[RoleID]"
                     const parts = firstId.split('_');
                     currentPrefix = `btn_rs_${parts[2]}_`;
                 }
 
                 if (!currentPrefix && sub !== 'remove') {
-                     // Default if adding to empty container (unlikely)
                      currentPrefix = 'btn_role_'; 
                 }
 

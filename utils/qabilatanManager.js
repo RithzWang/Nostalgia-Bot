@@ -9,6 +9,9 @@ const { Panel, ServerList } = require('../src/models/Qabilatan');
 const MAIN_GUILD_ID = '1456197054782111756'; 
 const GLOBAL_TAG_ROLE_ID = '1462217123433545812'; 
 
+// 💾 MEMORY CACHE (Prevents "0" glitch on errors/restarts)
+let lastKnownCounts = new Map();
+
 // 🕒 HELPER
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -19,7 +22,8 @@ async function runRoleUpdates(client) {
     const servers = await ServerList.find();
     const mainGuild = client.guilds.cache.get(MAIN_GUILD_ID);
 
-    if (!mainGuild) return new Map(); // Return empty map if main guild fails
+    // If main guild is unreachable, return the cached data instead of empty map
+    if (!mainGuild) return lastKnownCounts; 
 
     // Prepare Config for fast lookup
     const serverConfig = new Map(); 
@@ -31,8 +35,7 @@ async function runRoleUpdates(client) {
         if (s.tagRoleID) allManagedRoles.add(s.tagRoleID);
     });
 
-    // We will use this map to store the counts and return it to the dashboard generator
-    const adopterCounts = new Map(); // Map<ServerID, Count>
+    const currentCounts = new Map(); // Temp map for this run
 
     try {
         // ⚠️ FORCE FETCH: Crucial to get the latest "Primary Guild" data
@@ -43,8 +46,7 @@ async function runRoleUpdates(client) {
 
             const user = member.user;
             const rolesToKeep = new Set();
-            let isAdopter = false;
-
+            
             // --- THE CORE LOGIC YOU REQUESTED ---
             // iterate through cached members -> check Identity settings
             if (user.primaryGuild && user.primaryGuild.identityEnabled && user.primaryGuild.identityGuildId) {
@@ -52,11 +54,10 @@ async function runRoleUpdates(client) {
                 
                 // If the user's tag points to a server we are tracking
                 if (serverConfig.has(targetId)) {
-                    isAdopter = true;
-
+                    
                     // 1. Increment Count for that specific server
-                    const currentCount = adopterCounts.get(targetId) || 0;
-                    adopterCounts.set(targetId, currentCount + 1);
+                    const val = currentCounts.get(targetId) || 0;
+                    currentCounts.set(targetId, val + 1);
 
                     // 2. Queue Roles
                     rolesToKeep.add(GLOBAL_TAG_ROLE_ID);
@@ -76,11 +77,18 @@ async function runRoleUpdates(client) {
                 }
             }
         }
+
+        // ✅ Success! Update the global cache if we found data
+        if (currentCounts.size > 0) {
+            lastKnownCounts = currentCounts;
+        }
+
     } catch (e) { 
-        console.error(`[Role Manager] Error: ${e.message}`); 
+        console.error(`[Role Manager] Update failed (Using Cache): ${e.message}`); 
     }
 
-    return adopterCounts; // Return the counts so we don't have to calc them again
+    // Return current counts if successful, otherwise fallback to cache
+    return currentCounts.size > 0 ? currentCounts : lastKnownCounts; 
 }
 
 // ==========================================
@@ -89,8 +97,8 @@ async function runRoleUpdates(client) {
 async function generateDashboardPayload(client, preCalcCounts) {
     const servers = await ServerList.find();
     
-    // If we didn't get pre-calculated counts (e.g. run standalone), use empty map
-    const adoptersMap = preCalcCounts || new Map();
+    // Logic: Use passed counts -> If missing, use Cache -> If missing, Empty Map
+    const adoptersMap = preCalcCounts || lastKnownCounts || new Map();
 
     let totalNetworkMembers = 0;
     let totalTagUsers = 0; 
@@ -119,7 +127,7 @@ async function generateDashboardPayload(client, preCalcCounts) {
             if (boostsNeeded > 0) {
                  const s = boostsNeeded === 1 ? '' : 's';
                  tagStatusLine = `<:no_boost:1463272235056889917> ${boostsNeeded} **Boost${s} Remain**`; 
-                 if(boostsNeeded === 1) tagStatusLine = `<:no_boost:1463272235056889917> **1 Boost Remains**`;
+                 if(boostsNeeded === 1) tagStatusLine = `<:no_boost:1463272235056889917> 1 **Boost Remains**`;
             } 
             else if (!hasClanFeature && !hasActiveAdopters) {
                  tagStatusLine = `<:no_tag:1463272172201050336> **Not Enabled**`;
@@ -171,7 +179,7 @@ async function generateDashboardPayload(client, preCalcCounts) {
 // ==========================================
 async function updateAllPanels(client) {
     try {
-        // Run Logic FIRST to get the counts
+        // Run Logic FIRST to get the counts (now includes caching logic)
         const counts = await runRoleUpdates(client);
 
         // Pass counts to the dashboard generator

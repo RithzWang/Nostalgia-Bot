@@ -25,6 +25,12 @@ module.exports = {
         .setName('qabilatan')
         .setDescription('Manage the A2-Q Server Network')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+        // --- NEW: DISABLE COMMAND ---
+        .addSubcommand(sub => 
+            sub.setName('disable')
+               .setDescription('Stop updating a specific statistics panel')
+               .addStringOption(opt => opt.setName('message_id').setDescription('The Message ID to stop updating').setRequired(true))
+        )
         .addSubcommand(sub => 
             sub.setName('enable')
                .setDescription('Enable statistics panel here or update an existing message')
@@ -54,7 +60,31 @@ module.exports = {
         const subcommand = interaction.options.getSubcommand();
 
         try {
-            // --- ENABLE ---
+            // ====================================================
+            // 🛑 DISABLE
+            // ====================================================
+            if (subcommand === 'disable') {
+                const targetMsgId = interaction.options.getString('message_id');
+                
+                // Find and remove from database
+                const result = await Panel.deleteOne({ messageId: targetMsgId });
+
+                if (result.deletedCount === 0) {
+                    return interaction.reply({ 
+                        content: `❌ No active panel found with ID \`${targetMsgId}\`.`, 
+                        flags: [MessageFlags.Ephemeral] 
+                    });
+                }
+
+                return interaction.reply({ 
+                    content: `✅ Panel disabled. The message \`${targetMsgId}\` will no longer be updated.`, 
+                    flags: [MessageFlags.Ephemeral] 
+                });
+            }
+
+            // ====================================================
+            // ✅ ENABLE
+            // ====================================================
             if (subcommand === 'enable') {
                 const messageId = interaction.options.getString('message_id');
                 const channel = interaction.options.getChannel('channel') || interaction.channel;
@@ -88,14 +118,18 @@ module.exports = {
                 return interaction.editReply({ content: "✅ Statistics Panel Enabled/Updated!" });
             }
 
-            // --- REFRESH ---
+            // ====================================================
+            // 🔄 REFRESH
+            // ====================================================
             if (subcommand === 'refresh') {
                 await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
                 await updateAllPanels(client);
                 return interaction.editReply("✅ All panels have been refreshed.");
             }
 
-            // --- ADD ---
+            // ====================================================
+            // ➕ ADD SERVER
+            // ====================================================
             if (subcommand === 'add') {
                 const modal = new ModalBuilder()
                     .setCustomId('qabilatan_add_modal')
@@ -112,7 +146,9 @@ module.exports = {
                 return interaction.showModal(modal);
             }
 
-            // --- EDIT ---
+            // ====================================================
+            // ✏️ EDIT SERVER
+            // ====================================================
             if (subcommand === 'edit') {
                 const servers = await ServerList.find();
                 
@@ -123,7 +159,6 @@ module.exports = {
                     });
                 }
 
-                // ⚠️ Discord limits select menus to 25 items max
                 const options = servers.slice(0, 25).map(s => 
                     new StringSelectMenuOptionBuilder()
                         .setLabel(s.name ? s.name.substring(0, 25) : s.serverId)
@@ -145,14 +180,15 @@ module.exports = {
                         )
                 ];
 
-                // ✅ FIX: Added MessageFlags.IsComponentsV2
                 return interaction.reply({ 
                     components, 
                     flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2] 
                 });
             }
 
-            // --- DELETE ---
+            // ====================================================
+            // 🗑️ DELETE SERVER
+            // ====================================================
             if (subcommand === 'delete') {
                 const servers = await ServerList.find();
 
@@ -163,7 +199,6 @@ module.exports = {
                     });
                 }
 
-                // ⚠️ Discord limits select menus to 25 items max
                 const options = servers.slice(0, 25).map(s => 
                     new StringSelectMenuOptionBuilder()
                         .setLabel(s.name ? s.name.substring(0, 25) : s.serverId)
@@ -185,14 +220,15 @@ module.exports = {
                         )
                 ];
 
-                // ✅ FIX: Added MessageFlags.IsComponentsV2
                 return interaction.reply({ 
                     components, 
                     flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2] 
                 });
             }
 
-            // --- GREET MESSAGE ---
+            // ====================================================
+            // 👋 GREET MESSAGE
+            // ====================================================
             if (subcommand === 'greet-message') {
                 const channel = interaction.options.getChannel('channel');
                 const srvId = interaction.options.getString('server_id');

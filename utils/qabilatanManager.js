@@ -36,6 +36,7 @@ async function runRoleUpdates(client) {
     const currentCounts = new Map();
 
     try {
+        // ✅ FIXED: Removed { force: true } to prevent "0" bug
         await mainGuild.members.fetch(); 
         const members = mainGuild.members.cache; 
 
@@ -111,7 +112,7 @@ async function generateDashboardPayload(client, preCalcCounts) {
 
             if (boostsNeeded > 0) {
                  const s = boostsNeeded === 1 ? '' : 's';
-                 // ✅ FIXED: Moved the number inside the bold asterisks
+                 // ✅ FIXED: Number inside bolding
                  tagStatusLine = `<:no_boost:1463272235056889917> **${boostsNeeded} Boost${s} Remain**`; 
                  if(boostsNeeded === 1) tagStatusLine = `<:no_boost:1463272235056889917> **1 Boost Remains**`;
             } 

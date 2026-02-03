@@ -279,7 +279,7 @@ module.exports = {
                                     new ThumbnailBuilder().setURL(member.user.displayAvatarURL({ size: 128 }))
                                 )
                                 .addTextDisplayComponents(
-                                    new TextDisplayBuilder().setContent("### New Registration"),
+                                    new TextDisplayBuilder().setContent("## New Registration"),
                                     new TextDisplayBuilder().setContent(`**User:** ${member} \`(${member.user.username})\`\n**ID:** \`${member.id}\`\n**Name:** ${name}\n**Country:** ${countryInput}`),
                                 ),
                         )

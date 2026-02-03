@@ -70,41 +70,92 @@ module.exports = {
                 }
             }
 
-            // B. BUTTON ROLE HANDLER (btn_role_ / btn_single_)
-            if (interaction.customId.startsWith('btn_role_') || interaction.customId.startsWith('btn_single_')) {
-                const isSingleMode = interaction.customId.startsWith('btn_single_');
-                const roleId = interaction.customId.replace('btn_role_', '').replace('btn_single_', '');
-                const role = interaction.guild.roles.cache.get(roleId);
+            // B. BUTTON ROLE HANDLER (Standard & Restricted)
+            const isStdMulti = interaction.customId.startsWith('btn_role_');
+            const isStdSingle = interaction.customId.startsWith('btn_single_');
+            const isRestrictedMulti = interaction.customId.startsWith('btn_r_');
+            const isRestrictedSingle = interaction.customId.startsWith('btn_rs_');
 
+            if (isStdMulti || isStdSingle || isRestrictedMulti || isRestrictedSingle) {
+                let roleId, reqRoleId;
+                let isSingleMode = false;
+
+                // --- 1. PARSE IDs ---
+                if (isStdMulti) {
+                    roleId = interaction.customId.replace('btn_role_', '');
+                } else if (isStdSingle) {
+                    roleId = interaction.customId.replace('btn_single_', '');
+                    isSingleMode = true;
+                } else if (isRestrictedMulti) {
+                    // ID Format: btn_r_[ReqID]_[RoleID]
+                    const parts = interaction.customId.split('_');
+                    reqRoleId = parts[2];
+                    roleId = parts[3];
+                } else if (isRestrictedSingle) {
+                    // ID Format: btn_rs_[ReqID]_[RoleID]
+                    const parts = interaction.customId.split('_');
+                    reqRoleId = parts[2];
+                    roleId = parts[3];
+                    isSingleMode = true;
+                }
+
+                // --- 2. CHECK REQUIREMENT ---
+                if (reqRoleId) {
+                    if (!interaction.member.roles.cache.has(reqRoleId)) {
+                        return interaction.reply({ 
+                            content: `<:no:1297814819105144862> You need <@&${reqRoleId}> role to complete your request.`, 
+                            flags: MessageFlags.Ephemeral 
+                        });
+                    }
+                }
+
+                // --- 3. VALIDATE TARGET ROLE ---
+                const role = interaction.guild.roles.cache.get(roleId);
                 if (!role) return interaction.reply({ content: '<:no:1297814819105144862> Role not found.', flags: MessageFlags.Ephemeral });
-                if (role.position >= interaction.guild.members.me.roles.highest.position) return interaction.reply({ content: '<:no:1297814819105144862> Role too high.', flags: MessageFlags.Ephemeral });
+                if (role.position >= interaction.guild.members.me.roles.highest.position) {
+                    return interaction.reply({ content: '<:no:1297814819105144862> Role too high.', flags: MessageFlags.Ephemeral });
+                }
 
                 try {
+                    // --- 4. EXECUTE LOGIC ---
                     if (isSingleMode) {
+                        // If they already have it, remove it (toggle off)
                         if (interaction.member.roles.cache.has(roleId)) {
                              await interaction.member.roles.remove(role);
                              return interaction.reply({ content: `<:no:1297814819105144862> **Removed:** ${role.name}`, flags: MessageFlags.Ephemeral });
                         }
+
+                        // Remove other roles in the same group (Standard OR Restricted)
                         const rolesToRemove = [];
                         const removedNames = [];
                         const container = interaction.message.components[0]; 
+
                         if (container) {
-                            const findButtons = (components) => {
-                                components.forEach(comp => {
-                                    if (comp.type === 1) { 
-                                        comp.components.forEach(btn => {
-                                            if (btn.customId && btn.customId.startsWith('btn_single_')) {
-                                                const otherId = btn.customId.replace('btn_single_', '');
-                                                if (otherId !== roleId && interaction.member.roles.cache.has(otherId)) {
-                                                    rolesToRemove.push(otherId);
-                                                }
-                                            }
-                                        });
-                                    }
-                                });
-                            };
-                            if (container.components) findButtons(container.components);
+                            container.components.forEach(row => {
+                                if (row.type === 1) { // Action Row
+                                    row.components.forEach(btn => {
+                                        if (!btn.customId) return;
+                                        
+                                        let otherId = null;
+                                        // check standard single
+                                        if (btn.customId.startsWith('btn_single_')) {
+                                            otherId = btn.customId.replace('btn_single_', '');
+                                        } 
+                                        // check restricted single (btn_rs_ReqID_RoleID)
+                                        else if (btn.customId.startsWith('btn_rs_')) {
+                                            const p = btn.customId.split('_');
+                                            otherId = p[3];
+                                        }
+
+                                        // If valid other ID found, schedule removal
+                                        if (otherId && otherId !== roleId && interaction.member.roles.cache.has(otherId)) {
+                                            rolesToRemove.push(otherId);
+                                        }
+                                    });
+                                }
+                            });
                         }
+
                         for (const rID of rolesToRemove) {
                             const r = interaction.guild.roles.cache.get(rID);
                             if (r) {
@@ -112,11 +163,14 @@ module.exports = {
                                 removedNames.push(r.name);
                             }
                         }
+
                         await interaction.member.roles.add(role);
                         let msg = `<:yes:1297814648417943565> **Added:** ${role.name}`;
                         if (removedNames.length > 0) msg += `\n<:no:1297814819105144862> **Removed:** ${removedNames.join(', ')}`;
                         return interaction.reply({ content: msg, flags: MessageFlags.Ephemeral });
+
                     } else {
+                        // Multi Select Logic (Simple Toggle)
                         if (interaction.member.roles.cache.has(roleId)) {
                             await interaction.member.roles.remove(role);
                             return interaction.reply({ content: `<:no:1297814819105144862> **Removed:** ${role.name}`, flags: MessageFlags.Ephemeral });
@@ -156,7 +210,7 @@ module.exports = {
                 if (restrictionId !== 'public' && restrictionId !== 'menu') {
                     if (!interaction.member.roles.cache.has(restrictionId)) {
                         return interaction.reply({ 
-                            content: `<:no:1297814819105144862> You need the <@&${restrictionId}> role to use this menu`, 
+                            content: `<:no:1297814819105144862> You need the <@&${restrictionId}> role to complete the request.`, 
                             flags: MessageFlags.Ephemeral 
                         });
                     }

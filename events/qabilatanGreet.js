@@ -47,7 +47,7 @@ module.exports = {
                 channel.send(
                     `${member}, Welcome to **${serverName}** server!\n\n` +
                     `It seems like you are **__not__** in our **[A2-Q](<${MAIN_SERVER_INVITE}>)** Main Server yet.\n` +
-                    `You have **10 minutes** to join, otherwise you will be **kicked**.`
+                    `You have **__10 minutes__** to join, otherwise you will be **__kicked__**.`
                 );
 
                 // ⏳ 10 Minute Kick Timer

@@ -43,10 +43,7 @@ module.exports = {
                 .addStringOption(opt => opt.setName('title').setDescription('Menu Title').setRequired(true))
                 .addBooleanOption(opt => opt.setName('multi_select').setDescription('Allow multiple roles? (True = Toggle, False = 1 Only)').setRequired(true))
                 .addRoleOption(opt => opt.setName('role1').setDescription('Role 1 (Required)').setRequired(true))
-                
-                // Required Role Option
                 .addRoleOption(opt => opt.setName('required_role').setDescription('Only users with this role can click buttons (Optional)'))
-                
                 .addStringOption(opt => opt.setName('emoji1').setDescription('Emoji for Role 1'))
                 .addChannelOption(opt => opt.setName('channel').setDescription('Where to post?').addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
                 .addStringOption(opt => opt.setName('message_id').setDescription('Reuse a bot message ID'));
@@ -111,7 +108,6 @@ module.exports = {
             const reuseMessageId = interaction.options.getString('message_id');
             const requiredRole = interaction.options.getRole('required_role');
 
-            // ID Generation Strategy:
             let idPrefix = "";
             if (requiredRole) {
                 idPrefix = multiSelect ? `btn_r_${requiredRole.id}_` : `btn_rs_${requiredRole.id}_`;
@@ -122,7 +118,6 @@ module.exports = {
             const buttons = [];
             const descriptionLines = []; 
 
-            // Loop 1 to 5
             for (let i = 1; i <= 5; i++) {
                 const role = interaction.options.getRole(`role${i}`);
                 const emoji = interaction.options.getString(`emoji${i}`);
@@ -147,7 +142,7 @@ module.exports = {
 
             const buttonRows = packButtons(buttons);
 
-            // --- BUILD CONTAINER (Title -> Sep -> Desc -> Sep -> Buttons) ---
+            // Structure: Title -> Text Body -> Separator -> Buttons
             const container = new ContainerBuilder()
                 .setAccentColor(0x888888)
                 .addTextDisplayComponents(
@@ -193,7 +188,20 @@ module.exports = {
                 const message = await targetChannel.messages.fetch(msgId);
                 const container = message.components[0];
                 
-                // 1. Extract Buttons
+                // --- 1. Extract Text Safely ---
+                // We filter for components that are of type 7 (TextDisplay).
+                const textComponents = container.components.filter(c => c.type === 7);
+                
+                // Title is the 1st text component
+                const titleText = textComponents[0]?.content || "### Menu";
+                
+                // Body is the 2nd text component (if it exists)
+                // (Previous bug was looking at index 2, which was undefined)
+                const existingBody = textComponents[1]?.content || ""; 
+                
+                let currentBodyLines = existingBody ? existingBody.split('\n') : [];
+
+                // --- 2. Extract Buttons ---
                 let allButtons = [];
                 container.components.forEach(comp => {
                     if (comp.type === 1) { // Action Row
@@ -201,32 +209,16 @@ module.exports = {
                     }
                 });
 
-                // 2. Extract Text (Indices based on new structure: 0=Title, 2=Desc)
-                const textComponents = container.components.filter(c => c.type === 7);
-                const titleText = textComponents[0]?.content || "### Menu";
-                const existingBody = textComponents[2]?.content || ""; // Index 2
-                
-                let currentBodyLines = existingBody ? existingBody.split('\n') : [];
-
-                // 3. Detect Prefix from the first button found
+                // --- 3. Detect Prefix ---
                 const firstId = allButtons[0]?.data.custom_id || "";
                 let currentPrefix = "";
                 
-                // Identify which prefix scheme is in use
                 if (firstId.startsWith('btn_role_')) currentPrefix = 'btn_role_';
                 else if (firstId.startsWith('btn_single_')) currentPrefix = 'btn_single_';
-                else if (firstId.startsWith('btn_r_')) {
-                    const parts = firstId.split('_');
-                    currentPrefix = `btn_r_${parts[2]}_`;
-                }
-                else if (firstId.startsWith('btn_rs_')) {
-                    const parts = firstId.split('_');
-                    currentPrefix = `btn_rs_${parts[2]}_`;
-                }
+                else if (firstId.startsWith('btn_r_')) currentPrefix = `btn_r_${firstId.split('_')[2]}_`;
+                else if (firstId.startsWith('btn_rs_')) currentPrefix = `btn_rs_${firstId.split('_')[2]}_`;
 
-                if (!currentPrefix && sub !== 'remove') {
-                     currentPrefix = 'btn_role_'; 
-                }
+                if (!currentPrefix && sub !== 'remove') currentPrefix = 'btn_role_'; 
 
                 // --- ADD ---
                 if (sub === 'add') {
@@ -253,9 +245,7 @@ module.exports = {
                     for (let i = 1; i <= 5; i++) {
                         const role = interaction.options.getRole(`role${i}`);
                         if (role) {
-                            // Match ID end
                             const btnToRemove = allButtons.find(b => b.data.custom_id.endsWith(`_${role.id}`));
-                            
                             if (btnToRemove) {
                                 const nameToRemove = btnToRemove.data.label;
                                 allButtons = allButtons.filter(b => b.data.custom_id !== btnToRemove.data.custom_id);
@@ -269,14 +259,13 @@ module.exports = {
                 else if (sub === 'refresh') {
                     const updatedButtons = [];
                     const newDescriptionLines = [];
+                    // Keep custom header text if any (lines that don't start with >)
                     const headerLines = currentBodyLines.filter(l => !l.startsWith('>'));
                     if (headerLines.length > 0) newDescriptionLines.push(...headerLines);
 
                     for (const btn of allButtons) {
-                        // Extract Role ID from the very end of the customID
                         const parts = btn.data.custom_id.split('_');
                         const roleId = parts[parts.length - 1];
-                        
                         const role = interaction.guild.roles.cache.get(roleId);
                         
                         if (role) {

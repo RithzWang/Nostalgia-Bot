@@ -18,6 +18,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('file')
         .setDescription('Manage file containers')
+        .setDMPermission(false)
         .addSubcommand(subcommand =>
             subcommand.setName('send').setDescription('Open the file upload form')
                 .addChannelOption(opt => opt.setName('channel').setDescription('Channel to send to')))

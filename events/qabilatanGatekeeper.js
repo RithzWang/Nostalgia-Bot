@@ -11,31 +11,28 @@ const { ServerList } = require('../src/models/Qabilatan');
 
 // 🔒 CONFIGURATION
 const MAIN_SERVER_ID = '1456197054782111756';
-const LOG_CHANNEL_ID = '1456197056988319869'; // Channel for Gatekeeper Logs
+const LOG_CHANNEL_ID = '1456197056988319869'; 
 const KICK_DELAY_MS = 10 * 60 * 1000; // 10 Minutes
 
 // 🛑 MEMORY STORAGE
 const pendingKicks = new Map();
 
-// 📝 HELPER: Send Log using Container V2
+// 📝 HELPER: Send Log
 async function sendLog(client, title, description, color, user) {
     try {
         const channel = await client.channels.fetch(LOG_CHANNEL_ID).catch(() => null);
         if (!channel) return;
 
-        // Create Section
         const section = new SectionBuilder()
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(`### ${title}`),
                 new TextDisplayBuilder().setContent(description)
             );
 
-        // Add User Avatar if available
         if (user) {
             section.setThumbnailAccessory((thumb) => thumb.setURL(user.displayAvatarURL()));
         }
 
-        // Build Container
         const container = new ContainerBuilder()
             .setAccentColor(color) 
             .addSectionComponents(section)
@@ -82,7 +79,7 @@ module.exports = {
                         // EXEMPTION: Booster
                         if (networkMember.premiumSince) continue; 
 
-                        // ⏳ LOG TIMER (Keep this log for leaving Main Server)
+                        // ⏳ LOG TIMER
                         await sendLog(client, 
                             "Timer Started (Left Main)", 
                             `**User:** **${displayName}** (${user.username})\n**Server:** ${guild.name}\n**Action:** Will kick in **10** mins if they don't return.`, 
@@ -94,7 +91,6 @@ module.exports = {
                         
                         const timeout = setTimeout(async () => {
                             try {
-                                // Final check
                                 const freshNetworkMember = await guild.members.fetch(user.id).catch(() => null);
                                 const mainGuild = client.guilds.cache.get(MAIN_SERVER_ID);
                                 const isInMain = await mainGuild.members.fetch(user.id).catch(() => null);
@@ -140,8 +136,7 @@ module.exports = {
 
             if (cancelledCount > 0) {
                 await sendLog(client, 
-             // ⌛ 
-      "Timers Cancelled", 
+                    "Timers Cancelled", 
                     `**User:** **${displayName}** (${user.username})\n**Reason:** Rejoined Main Server.\n**Saved From:** ${cancelledCount} kicks.`, 
                     0x57F287, // Green
                     user
@@ -167,8 +162,6 @@ module.exports = {
             if (!inMain) {
                 if (member.premiumSince) return; // Booster check
 
-                // 🔇 REMOVED LOG HERE (Silent Timer Start)
-
                 setTimeout(async () => {
                     const freshInMain = await mainGuild.members.fetch(member.id).catch(() => null);
                     if (!freshInMain) {
@@ -176,7 +169,6 @@ module.exports = {
                         if (currentMem && !currentMem.premiumSince) { 
                              await currentMem.kick('Qabilatan: User not in Main Server.');
                              
-                             // 🥾 LOG KICK (We still log if they actually get kicked)
                              await sendLog(client, 
                                 "Member Kicked", 
                                 `**User:** **${displayName}** (${user.username})\n**Server:** ${member.guild.name}\n**Reason:** Not in Main Server (10m expired).`, 
@@ -186,6 +178,60 @@ module.exports = {
                         }
                     }
                 }, KICK_DELAY_MS);
+            }
+        });
+
+        // ====================================================
+        // 4. BOOST EXPIRED -> START TIMER
+        // ====================================================
+        client.on('guildMemberUpdate', async (oldMember, newMember) => {
+            // Check if Boost was removed (Was boosting -> Now NOT boosting)
+            if (oldMember.premiumSince && !newMember.premiumSince) {
+                
+                // 1. Is this a network server?
+                const isProtected = await ServerList.exists({ serverId: newMember.guild.id });
+                if (!isProtected) return;
+
+                // 2. Are they in Main Server?
+                const mainGuild = client.guilds.cache.get(MAIN_SERVER_ID);
+                let inMain = false;
+                try {
+                    await mainGuild.members.fetch(newMember.id);
+                    inMain = true;
+                } catch { inMain = false; }
+
+                // 3. If NOT in Main Server, they lost their immunity!
+                if (!inMain) {
+                    const user = newMember.user;
+                    const displayName = user.globalName || user.username;
+
+                    // ⏳ LOG TIMER
+                    await sendLog(client, 
+                        "Timer Started (Boost Expired)", 
+                        `**User:** **${displayName}** (${user.username})\n**Server:** ${newMember.guild.name}\n**Reason:** Stopped boosting and not in Main Server.`, 
+                        0xFFA500, // Orange
+                        user
+                    );
+
+                    setTimeout(async () => {
+                        // Final Check
+                        const freshInMain = await mainGuild.members.fetch(user.id).catch(() => null);
+                        if (!freshInMain) {
+                            const currentMem = await newMember.guild.members.fetch(user.id).catch(() => null);
+                            // Ensure they didn't re-boost in the last 10 mins
+                            if (currentMem && !currentMem.premiumSince) { 
+                                    await currentMem.kick('Qabilatan: Boost expired & User not in Main Server.');
+                                    
+                                    await sendLog(client, 
+                                    "Member Kicked", 
+                                    `**User:** **${displayName}** (${user.username})\n**Server:** ${newMember.guild.name}\n**Reason:** Boost expired & not in Main Server.`, 
+                                    0xFF0000, // Red
+                                    user
+                                );
+                            }
+                        }
+                    }, KICK_DELAY_MS);
+                }
             }
         });
     }

@@ -6,6 +6,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('servertag')
         .setDescription('Generate a downloadable image of a Server Tag')
+        .setDMPermission(false)
         // 👇 RESTRICT TO ADMINS ONLY
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator) 
         .addUserOption(option => 

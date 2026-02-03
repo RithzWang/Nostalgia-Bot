@@ -41,7 +41,7 @@ module.exports = {
             sub.setName('setup')
                 .setDescription('Create a NEW button menu')
                 .addStringOption(opt => opt.setName('title').setDescription('Menu Title').setRequired(true))
-                .addBooleanOption(opt => opt.setName('multi_select').setDescription('Allow multiple roles? (True = Toggle, False = 1 Only)').setRequired(true)) // NEW
+                .addBooleanOption(opt => opt.setName('multi_select').setDescription('Allow multiple roles? (True = Toggle, False = 1 Only)').setRequired(true))
                 .addRoleOption(opt => opt.setName('role1').setDescription('Role 1 (Required)').setRequired(true))
                 .addStringOption(opt => opt.setName('emoji1').setDescription('Emoji for Role 1'))
                 .addChannelOption(opt => opt.setName('channel').setDescription('Where to post?').addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
@@ -103,11 +103,10 @@ module.exports = {
         // ===============================================
         if (sub === 'setup') {
             const title = interaction.options.getString('title');
-            const multiSelect = interaction.options.getBoolean('multi_select'); // NEW
+            const multiSelect = interaction.options.getBoolean('multi_select');
             const desc = interaction.options.getString('description');
             const reuseMessageId = interaction.options.getString('message_id');
 
-            // Determine Prefix: 'btn_role_' (Multi) or 'btn_single_' (Single)
             const idPrefix = multiSelect ? 'btn_role_' : 'btn_single_';
 
             const buttons = [];
@@ -124,7 +123,7 @@ module.exports = {
                     }
                     
                     const btn = new ButtonBuilder()
-                        .setCustomId(`${idPrefix}${role.id}`) // Use dynamic prefix
+                        .setCustomId(`${idPrefix}${role.id}`)
                         .setLabel(role.name)
                         .setStyle(ButtonStyle.Secondary);
                     if (emoji) btn.setEmoji(emoji);
@@ -138,11 +137,21 @@ module.exports = {
 
             const buttonRows = packButtons(buttons);
 
+            // --- BUILD CONTAINER (NEW STYLE) ---
             const container = new ContainerBuilder()
                 .setAccentColor(0x888888)
-                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`### ${title}`))
-                .addTextDisplayComponents(new TextDisplayBuilder().setContent(descriptionLines.join('\n')))
-                .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(`### ${title}`)
+                )
+                .addSeparatorComponents(
+                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+                )
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(descriptionLines.join('\n'))
+                )
+                .addSeparatorComponents(
+                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+                );
             
             buttonRows.forEach(row => container.addActionRowComponents(row));
 
@@ -177,22 +186,25 @@ module.exports = {
                 const message = await targetChannel.messages.fetch(msgId);
                 const container = message.components[0];
                 
+                // 1. Extract Buttons
                 let allButtons = [];
                 container.components.forEach(comp => {
-                    if (comp.type === 1) { 
+                    if (comp.type === 1) { // Action Row
                         comp.components.forEach(btnData => allButtons.push(ButtonBuilder.from(btnData)));
                     }
                 });
 
-                // Detect Mode based on existing buttons
+                // 2. Extract Text (Robustly finds Title and Description)
+                // Type 7 is TextDisplay. We assume first is Title, second is Desc.
+                const textComponents = container.components.filter(c => c.type === 7);
+                const titleText = textComponents[0]?.content || "### Menu";
+                const existingBody = textComponents[1]?.content || "";
+                
+                let currentBodyLines = existingBody ? existingBody.split('\n') : [];
+
+                // Detect Mode
                 const isSingleMode = allButtons.some(b => b.data.custom_id.startsWith('btn_single_'));
                 const currentPrefix = isSingleMode ? 'btn_single_' : 'btn_role_';
-
-                // Get Text Body
-                let bodyText = "";
-                const bodyComp = container.components.find((c, idx) => c.type === 7 && idx > 0);
-                if (bodyComp) bodyText = bodyComp.content;
-                let currentBodyLines = bodyText ? bodyText.split('\n') : [];
 
                 // --- ADD ---
                 if (sub === 'add') {
@@ -203,7 +215,7 @@ module.exports = {
                             if (allButtons.some(b => b.data.custom_id === `${currentPrefix}${role.id}`)) continue;
                             
                             const btn = new ButtonBuilder()
-                                .setCustomId(`${currentPrefix}${role.id}`) // Use detected prefix
+                                .setCustomId(`${currentPrefix}${role.id}`)
                                 .setLabel(role.name)
                                 .setStyle(ButtonStyle.Secondary);
                             if (emoji) btn.setEmoji(emoji);
@@ -219,7 +231,6 @@ module.exports = {
                     for (let i = 1; i <= 5; i++) {
                         const role = interaction.options.getRole(`role${i}`);
                         if (role) {
-                            // Match ID with prefix
                             const btnToRemove = allButtons.find(b => b.data.custom_id === `${currentPrefix}${role.id}`);
                             const nameToRemove = btnToRemove ? btnToRemove.data.label : role.name;
 
@@ -237,7 +248,6 @@ module.exports = {
                     newDescriptionLines.push(...headerLines);
 
                     for (const btn of allButtons) {
-                        // Strip either prefix to get ID
                         const roleId = btn.data.custom_id.replace('btn_role_', '').replace('btn_single_', '');
                         const role = interaction.guild.roles.cache.get(roleId);
                         
@@ -253,15 +263,23 @@ module.exports = {
                     currentBodyLines = newDescriptionLines;
                 }
 
-                // Rebuild
+                // --- REBUILD CONTAINER (NEW STYLE) ---
                 const newRows = packButtons(allButtons);
-                const titleText = container.components[0].content;
                 
                 const newContainer = new ContainerBuilder()
                     .setAccentColor(container.accentColor || 0x888888)
-                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(titleText))
-                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(currentBodyLines.join('\n').trim()))
-                    .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
+                    .addTextDisplayComponents(
+                        new TextDisplayBuilder().setContent(titleText)
+                    )
+                    .addSeparatorComponents(
+                        new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+                    )
+                    .addTextDisplayComponents(
+                        new TextDisplayBuilder().setContent(currentBodyLines.join('\n').trim())
+                    )
+                    .addSeparatorComponents(
+                        new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+                    );
 
                 newRows.forEach(row => newContainer.addActionRowComponents(row));
 

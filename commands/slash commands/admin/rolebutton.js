@@ -153,14 +153,11 @@ module.exports = {
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(`### ${title}`)
                 )
-                .addSeparatorComponents(
-                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
-                )
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(descriptionLines.join('\n'))
                 )
                 .addSeparatorComponents(
-                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
                 );
             
             buttonRows.forEach(row => container.addActionRowComponents(row));
@@ -302,14 +299,11 @@ module.exports = {
                     .addTextDisplayComponents(
                         new TextDisplayBuilder().setContent(titleText)
                     )
-                    .addSeparatorComponents(
-                        new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
-                    )
                     .addTextDisplayComponents(
                         new TextDisplayBuilder().setContent(currentBodyLines.join('\n').trim())
                     )
                     .addSeparatorComponents(
-                        new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+                        new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
                     );
 
                 newRows.forEach(row => newContainer.addActionRowComponents(row));

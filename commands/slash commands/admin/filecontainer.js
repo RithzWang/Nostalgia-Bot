@@ -17,6 +17,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('filecontainer')
         .setDescription('Manage File Container Messages')
+        .setDMPermission(false)
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         
         // --- 1. SETUP ---

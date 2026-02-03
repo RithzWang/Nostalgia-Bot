@@ -107,11 +107,7 @@ module.exports = {
             let validRoleCount = 0;
             let descriptionLines = [];
 
-            if (requiredRole) {
-                // CHANGED HERE: Custom Emoji
-                descriptionLines.push(`<:lock:1457147730542465312> **Restricted to:** ${requiredRole.toString()}`);
-                 descriptionLines.push(''); 
-            }
+            // REMOVED: No longer adding the "Restricted to:" line here.
 
             for (let i = 1; i <= 10; i++) {
                 const role = interaction.options.getRole(`role${i}`);
@@ -129,23 +125,33 @@ module.exports = {
                 }
             }
 
+            if (validRoleCount === 0) {
+                 return interaction.editReply({ content: 'You must provide at least one valid role.' });
+            }
+
             menu.setMaxValues(multiSelect ? validRoleCount : 1);
             menu.setPlaceholder(multiSelect 
                 ? `Select one or multiple roles` 
                 : `Select one out of ${validRoleCount} roles`);
 
-            const titleText = new TextDisplayBuilder().setContent(`### ${title}`); 
-            const separator = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false);
-            const bodyText = new TextDisplayBuilder().setContent(descriptionLines.join('\n'));
-            const menuRow = new ActionRowBuilder().addComponents(menu);
-
+            // --- BUILD CONTAINER (NEW STRUCTURE) ---
             const container = new ContainerBuilder()
                 .setAccentColor(0x888888)
-                .addTextDisplayComponents(titleText) 
-                .addSeparatorComponents(separator)
-                .addTextDisplayComponents(bodyText)
-                .addSeparatorComponents(separator)
-                .addActionRowComponents(menuRow);
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(`### ${title}`)
+                )
+                .addSeparatorComponents(
+                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+                )
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(descriptionLines.join('\n'))
+                )
+                .addSeparatorComponents(
+                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+                )
+                .addActionRowComponents(
+                    new ActionRowBuilder().addComponents(menu)
+                );
 
             const payload = { 
                 content: '', 
@@ -190,14 +196,22 @@ module.exports = {
 
             try {
                 const message = await targetChannel.messages.fetch(msgId);
-                const oldContainer = message.components[0]; 
-                const oldMenuRow = oldContainer.components[3]; 
-                const newMenu = StringSelectMenuBuilder.from(oldMenuRow.components[0]);
-
-                const titleText = new TextDisplayBuilder().setContent(oldContainer.components[0].content);
-                const separator = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small);
+                const oldContainer = message.components[0];
                 
-                let currentBodyLines = oldContainer.components[1].content.split('\n');
+                // Extract components based on NEW indices:
+                // 0: Title (TextDisplay)
+                // 1: Separator
+                // 2: Description (TextDisplay)
+                // 3: Separator
+                // 4: Menu Row (ActionRow)
+                
+                // Fallback checks in case of old structure, but assuming new structure:
+                const titleText = new TextDisplayBuilder().setContent(oldContainer.components[0].content);
+                const currentBody = oldContainer.components[2]?.content || ""; // Index 2 is Body
+                let currentBodyLines = currentBody ? currentBody.split('\n') : [];
+
+                const oldMenuRow = oldContainer.components[4]; // Index 4 is Action Row
+                const newMenu = StringSelectMenuBuilder.from(oldMenuRow.components[0]);
 
                 if (sub === 'add') {
                     for (let i = 1; i <= 5; i++) {
@@ -229,15 +243,22 @@ module.exports = {
                 newMenu.setMaxValues(isMultiSelect ? newCount : 1);
                 newMenu.setPlaceholder(isMultiSelect ? `Select one or multiple roles` : `Select one out of ${newCount} roles`);
                 
-                const newBodyText = new TextDisplayBuilder().setContent(currentBodyLines.join('\n'));
-                const newMenuRow = new ActionRowBuilder().addComponents(newMenu);
+                // Rebuild Container
                 const newContainer = new ContainerBuilder()
                     .setAccentColor(oldContainer.accentColor || 0x888888)
                     .addTextDisplayComponents(titleText)
-                    .addSeparatorComponents(separator)
-                    .addTextDisplayComponents(newBodyText)
-                    .addSeparatorComponents(separator)
-                    .addActionRowComponents(newMenuRow);
+                    .addSeparatorComponents(
+                        new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+                    )
+                    .addTextDisplayComponents(
+                        new TextDisplayBuilder().setContent(currentBodyLines.join('\n').trim())
+                    )
+                    .addSeparatorComponents(
+                        new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+                    )
+                    .addActionRowComponents(
+                        new ActionRowBuilder().addComponents(newMenu)
+                    );
 
                 await message.edit({ 
                     components: [newContainer], 
@@ -260,24 +281,13 @@ module.exports = {
             try {
                 const message = await targetChannel.messages.fetch(msgId);
                 const oldContainer = message.components[0];
-                const oldMenuRow = oldContainer.components[3];
+                
+                // New Indices
+                const oldMenuRow = oldContainer.components[4];
                 const menu = StringSelectMenuBuilder.from(oldMenuRow.components[0]);
 
                 let newBodyLines = [];
-                
-                // Check restriction
-                const menuCustomId = menu.data.custom_id;
-                if (menuCustomId.startsWith('role_select_')) {
-                    const restrictionId = menuCustomId.replace('role_select_', '');
-                    if (restrictionId !== 'public' && restrictionId !== 'menu') {
-                        const restrictedRole = interaction.guild.roles.cache.get(restrictionId);
-                        if (restrictedRole) {
-                            // CHANGED HERE: Custom Emoji
-                            newBodyLines.push(`<:lock:1457147730542465312> **Restricted to:** ${restrictedRole.toString()}`);
-                             newBodyLines.push('');
-                        }
-                    }
-                }
+                // REMOVED: Restricted logic check for description.
 
                 // Update Options
                 const updatedOptions = [];
@@ -296,17 +306,23 @@ module.exports = {
                 menu.setOptions(updatedOptions);
 
                 const titleText = new TextDisplayBuilder().setContent(oldContainer.components[0].content);
-                const separator = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false);
-                const newBodyText = new TextDisplayBuilder().setContent(newBodyLines.join('\n'));
-                const newMenuRow = new ActionRowBuilder().addComponents(menu);
-
+                
+                // Rebuild
                 const newContainer = new ContainerBuilder()
                     .setAccentColor(oldContainer.accentColor || 0x888888)
                     .addTextDisplayComponents(titleText)
-                    .addSeparatorComponents(separator)
-                    .addTextDisplayComponents(newBodyText)
-                    .addSeparatorComponents(separator)
-                    .addActionRowComponents(newMenuRow);
+                    .addSeparatorComponents(
+                        new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+                    )
+                    .addTextDisplayComponents(
+                        new TextDisplayBuilder().setContent(newBodyLines.join('\n'))
+                    )
+                    .addSeparatorComponents(
+                        new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+                    )
+                    .addActionRowComponents(
+                        new ActionRowBuilder().addComponents(menu)
+                    );
 
                 await message.edit({ 
                     components: [newContainer], 

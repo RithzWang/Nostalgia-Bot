@@ -92,7 +92,7 @@ module.exports = {
                                 .setURL("https://discord.com/users/837741275603009626")
                         )
                         .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent("### <:owner:1466994441691857063> Owner\n**Name:** Ridouan <:505_1:1467602801512153088><:505_2:1467602844969599330><:505_3:1467602889462517871>\n**ID:** `837741275603009626`"),
+                            new TextDisplayBuilder().setContent("### <:owner:1466994441691857063> Owner\n**Name:** Ridouan <:2007_1:1468081329206722600><:2007_2:1468081369501401269><:2007_3:1468081409280446505>\n**ID:** `837741275603009626`"),
                         ),
                 )
                 .addSeparatorComponents(

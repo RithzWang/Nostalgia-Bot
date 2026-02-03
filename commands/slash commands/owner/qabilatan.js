@@ -24,6 +24,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('qabilatan')
         .setDescription('Manage the A2-Q Server Network')
+        .setDMPermission(false)
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         // --- NEW: DISABLE COMMAND ---
         .addSubcommand(sub => 

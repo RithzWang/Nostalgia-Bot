@@ -135,13 +135,14 @@ module.exports = {
                 : `Select one out of ${validRoleCount} roles`);
 
             const titleText = new TextDisplayBuilder().setContent(`### ${title}`); 
-            const separator = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small);
+            const separator = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false);
             const bodyText = new TextDisplayBuilder().setContent(descriptionLines.join('\n'));
             const menuRow = new ActionRowBuilder().addComponents(menu);
 
             const container = new ContainerBuilder()
                 .setAccentColor(0x888888)
                 .addTextDisplayComponents(titleText) 
+                .addSeparatorComponents(separator)
                 .addTextDisplayComponents(bodyText)
                 .addSeparatorComponents(separator)
                 .addActionRowComponents(menuRow);
@@ -233,6 +234,7 @@ module.exports = {
                 const newContainer = new ContainerBuilder()
                     .setAccentColor(oldContainer.accentColor || 0x888888)
                     .addTextDisplayComponents(titleText)
+                    .addSeparatorComponents(separator)
                     .addTextDisplayComponents(newBodyText)
                     .addSeparatorComponents(separator)
                     .addActionRowComponents(newMenuRow);
@@ -294,13 +296,14 @@ module.exports = {
                 menu.setOptions(updatedOptions);
 
                 const titleText = new TextDisplayBuilder().setContent(oldContainer.components[0].content);
-                const separator = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small);
+                const separator = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false);
                 const newBodyText = new TextDisplayBuilder().setContent(newBodyLines.join('\n'));
                 const newMenuRow = new ActionRowBuilder().addComponents(menu);
 
                 const newContainer = new ContainerBuilder()
                     .setAccentColor(oldContainer.accentColor || 0x888888)
                     .addTextDisplayComponents(titleText)
+                    .addSeparatorComponents(separator)
                     .addTextDisplayComponents(newBodyText)
                     .addSeparatorComponents(separator)
                     .addActionRowComponents(newMenuRow);

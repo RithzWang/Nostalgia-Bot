@@ -43,6 +43,10 @@ module.exports = {
                 .addStringOption(opt => opt.setName('title').setDescription('Menu Title').setRequired(true))
                 .addBooleanOption(opt => opt.setName('multi_select').setDescription('Allow multiple roles? (True = Toggle, False = 1 Only)').setRequired(true))
                 .addRoleOption(opt => opt.setName('role1').setDescription('Role 1 (Required)').setRequired(true))
+                
+                // NEW: Required Role Option
+                .addRoleOption(opt => opt.setName('required_role').setDescription('Only users with this role can click buttons (Optional)'))
+                
                 .addStringOption(opt => opt.setName('emoji1').setDescription('Emoji for Role 1'))
                 .addChannelOption(opt => opt.setName('channel').setDescription('Where to post?').addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
                 .addStringOption(opt => opt.setName('description').setDescription('Extra text description (Optional)'))
@@ -106,8 +110,17 @@ module.exports = {
             const multiSelect = interaction.options.getBoolean('multi_select');
             const desc = interaction.options.getString('description');
             const reuseMessageId = interaction.options.getString('message_id');
+            const requiredRole = interaction.options.getRole('required_role');
 
-            const idPrefix = multiSelect ? 'btn_role_' : 'btn_single_';
+            // ID Generation Strategy:
+            // 1. Standard: btn_role_[RoleID] OR btn_single_[RoleID]
+            // 2. Restricted: btn_r_[ReqRoleID]_[RoleID] (Multi) OR btn_rs_[ReqRoleID]_[RoleID] (Single)
+            let idPrefix = "";
+            if (requiredRole) {
+                idPrefix = multiSelect ? `btn_r_${requiredRole.id}_` : `btn_rs_${requiredRole.id}_`;
+            } else {
+                idPrefix = multiSelect ? 'btn_role_' : 'btn_single_';
+            }
 
             const buttons = [];
             const descriptionLines = []; 
@@ -137,7 +150,7 @@ module.exports = {
 
             const buttonRows = packButtons(buttons);
 
-            // --- BUILD CONTAINER (NEW STYLE) ---
+            // --- BUILD CONTAINER (Title -> Sep -> Desc -> Sep -> Buttons) ---
             const container = new ContainerBuilder()
                 .setAccentColor(0x888888)
                 .addTextDisplayComponents(
@@ -194,17 +207,36 @@ module.exports = {
                     }
                 });
 
-                // 2. Extract Text (Robustly finds Title and Description)
-                // Type 7 is TextDisplay. We assume first is Title, second is Desc.
+                // 2. Extract Text (Indices based on new structure: 0=Title, 2=Desc)
                 const textComponents = container.components.filter(c => c.type === 7);
                 const titleText = textComponents[0]?.content || "### Menu";
-                const existingBody = textComponents[1]?.content || "";
+                const existingBody = textComponents[2]?.content || ""; // Index 2
                 
                 let currentBodyLines = existingBody ? existingBody.split('\n') : [];
 
-                // Detect Mode
-                const isSingleMode = allButtons.some(b => b.data.custom_id.startsWith('btn_single_'));
-                const currentPrefix = isSingleMode ? 'btn_single_' : 'btn_role_';
+                // 3. Detect Prefix from the first button found
+                const firstId = allButtons[0]?.data.custom_id || "";
+                let currentPrefix = "";
+                
+                // Identify which prefix scheme is in use
+                if (firstId.startsWith('btn_role_')) currentPrefix = 'btn_role_';
+                else if (firstId.startsWith('btn_single_')) currentPrefix = 'btn_single_';
+                else if (firstId.startsWith('btn_r_')) {
+                    // "btn_r_[ReqID]_[RoleID]"
+                    const parts = firstId.split('_');
+                    // parts[0]=btn, parts[1]=r, parts[2]=ReqID
+                    currentPrefix = `btn_r_${parts[2]}_`;
+                }
+                else if (firstId.startsWith('btn_rs_')) {
+                    // "btn_rs_[ReqID]_[RoleID]"
+                    const parts = firstId.split('_');
+                    currentPrefix = `btn_rs_${parts[2]}_`;
+                }
+
+                if (!currentPrefix && sub !== 'remove') {
+                     // Default if adding to empty container (unlikely)
+                     currentPrefix = 'btn_role_'; 
+                }
 
                 // --- ADD ---
                 if (sub === 'add') {
@@ -231,11 +263,14 @@ module.exports = {
                     for (let i = 1; i <= 5; i++) {
                         const role = interaction.options.getRole(`role${i}`);
                         if (role) {
-                            const btnToRemove = allButtons.find(b => b.data.custom_id === `${currentPrefix}${role.id}`);
-                            const nameToRemove = btnToRemove ? btnToRemove.data.label : role.name;
-
-                            allButtons = allButtons.filter(b => b.data.custom_id !== `${currentPrefix}${role.id}`);
-                            currentBodyLines = currentBodyLines.filter(l => !l.includes(nameToRemove));
+                            // Match ID end
+                            const btnToRemove = allButtons.find(b => b.data.custom_id.endsWith(`_${role.id}`));
+                            
+                            if (btnToRemove) {
+                                const nameToRemove = btnToRemove.data.label;
+                                allButtons = allButtons.filter(b => b.data.custom_id !== btnToRemove.data.custom_id);
+                                currentBodyLines = currentBodyLines.filter(l => !l.includes(nameToRemove));
+                            }
                         }
                     }
                 }
@@ -245,10 +280,13 @@ module.exports = {
                     const updatedButtons = [];
                     const newDescriptionLines = [];
                     const headerLines = currentBodyLines.filter(l => !l.startsWith('>'));
-                    newDescriptionLines.push(...headerLines);
+                    if (headerLines.length > 0) newDescriptionLines.push(...headerLines);
 
                     for (const btn of allButtons) {
-                        const roleId = btn.data.custom_id.replace('btn_role_', '').replace('btn_single_', '');
+                        // Extract Role ID from the very end of the customID
+                        const parts = btn.data.custom_id.split('_');
+                        const roleId = parts[parts.length - 1];
+                        
                         const role = interaction.guild.roles.cache.get(roleId);
                         
                         if (role) {
@@ -263,7 +301,7 @@ module.exports = {
                     currentBodyLines = newDescriptionLines;
                 }
 
-                // --- REBUILD CONTAINER (NEW STYLE) ---
+                // --- REBUILD CONTAINER ---
                 const newRows = packButtons(allButtons);
                 
                 const newContainer = new ContainerBuilder()

@@ -147,7 +147,7 @@ async function generateDetailedPayload(client, preCalcCounts) {
                 .setButtonAccessory(inviteButton)
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
-                        `### [${data.name || "Unknown"}](${data.inviteLink || "https://discord.com"})\n` +
+                        `## [${data.name || "Unknown"}](${data.inviteLink || "https://discord.com"})\n` +
                         `**<:sparkles:1462851309219872841> Server Tag:** ${displayTagText}\n` +
                         `**<:members:1462851249836654592> Members:** ${memberCount}\n` +
                         `${tagStatusLine}`

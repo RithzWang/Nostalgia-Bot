@@ -14,10 +14,10 @@ module.exports = {
     name: 'userinfo',
     aliases: ['ui', 'user'],
     description: 'Displays information about a user with Server Tag support',
-    // channels: ['1456197056510165026', '1456197056510165029', '1456197056988319870'], 
+    channels: ['1456197056510165026', '1456197056510165029', '1456197056988319870'], 
 
     async execute(message, args) {
-        let tempEmoji = null; // We store the emoji object here to delete it later
+        let tempEmoji = null; 
 
         try {
             // ====================================================
@@ -29,7 +29,6 @@ module.exports = {
             }
             if (!targetUser && !args[0]) targetUser = await message.client.users.fetch(message.author.id, { force: true });
             
-            // Re-fetch to ensure we get banner/primaryGuild data
             if (targetUser) {
                 targetUser = await message.client.users.fetch(targetUser.id, { force: true });
             }
@@ -40,49 +39,62 @@ module.exports = {
             try { targetMember = await message.guild.members.fetch(targetUser.id); } catch (err) { targetMember = null; }
 
             // ====================================================
-            // 2. SERVER TAG (EMOJI CREATION LOGIC)
+            // 2. SERVER TAG (LOGIC + LOGGING)
             // ====================================================
             let serverTagDisplay = "None";
             const guildInfo = targetUser.primaryGuild; 
             
-            // Configuration from your snippet
             const storageGuildId = '1468061368098750507';
-            // const logChannelId = '1468493795531161650'; // Optional: Use if you want to log creation
+            const logChannelId = '1468493795531161650'; 
 
             if (guildInfo && guildInfo.tag) {
-                // Default to text in case emoji fails
+                // Default to text only
                 serverTagDisplay = `**${guildInfo.tag}**`;
 
-                // 1. Get Badge URL
+                // 1. Get Badge URL & Image Name
                 let badgeURL = null;
+                let badgeName = "tag_badge"; 
+
                 if (typeof targetUser.guildTagBadgeURL === 'function') {
+                    // Logic if using a library extension
                     badgeURL = targetUser.guildTagBadgeURL({ extension: 'png', size: 128 });
                 } else if (guildInfo.badge && guildInfo.identityGuildId) {
+                    // Standard Logic
                     badgeURL = `https://cdn.discordapp.com/guild-tag-badges/${guildInfo.identityGuildId}/${guildInfo.badge}.png?size=128`;
+                    badgeName = guildInfo.badge; // Use the image hash as the name
                 }
 
-                // 2. Create Temp Emoji if URL exists
+                // 2. Create & Log Emoji
                 if (badgeURL) {
                     const storageGuild = message.client.guilds.cache.get(storageGuildId);
-                    if (storageGuild) {
+                    const logChannel = message.client.channels.cache.get(logChannelId);
+
+                    if (storageGuild && logChannel) {
                         try {
-                            const safeName = `tag_${guildInfo.tag.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                            // Clean the name (emojis can only be alphanumeric and underscores)
+                            const safeEmojiName = badgeName.replace(/[^a-zA-Z0-9_]/g, '');
+
+                            // A. Create Emoji in Storage Server
                             tempEmoji = await storageGuild.emojis.create({ 
                                 attachment: badgeURL, 
-                                name: safeName 
+                                name: safeEmojiName 
                             });
                             
-                            // 3. Set Display to use the Emoji
-                            serverTagDisplay = `${tempEmoji} **${guildInfo.tag}**`;
+                            // B. Send to Log Channel (Required step)
+                            await logChannel.send({ content: `${tempEmoji}` });
+
+                            // C. Update Display Variable
+                            serverTagDisplay = `${tempEmoji} ${guildInfo.tag}`;
+
                         } catch (emojiErr) {
-                            console.error("Failed to create temp emoji:", emojiErr);
+                            console.error("Failed to process temp emoji:", emojiErr);
                         }
                     }
                 }
             }
 
             // ====================================================
-            // 3. PREPARE OTHER DATA
+            // 3. PREPARE USER DATA
             // ====================================================
             const userAvatar = targetUser.displayAvatarURL({ size: 1024, forceStatic: false });
             const userBanner = targetUser.bannerURL({ size: 1024, forceStatic: false });
@@ -111,7 +123,7 @@ module.exports = {
             }
 
             // ====================================================
-            // 4. BUILD CONTAINER
+            // 4. BUILD V2 CONTAINER
             // ====================================================
             const container = new ContainerBuilder()
                 .setAccentColor(8947848)
@@ -200,14 +212,13 @@ module.exports = {
             });
 
             // ====================================================
-            // 6. CLEANUP EMOJI (Wait 5s then Delete)
+            // 6. CLEANUP (Wait 5s then Delete)
             // ====================================================
             if (tempEmoji) {
                 setTimeout(async () => {
                     try {
                         await tempEmoji.delete();
                     } catch (err) {
-                        // Ignore deletion errors (already deleted, etc.)
                         // console.log("Failed to delete temp emoji", err); 
                     }
                 }, 5000);
@@ -215,7 +226,6 @@ module.exports = {
 
         } catch (error) {
             console.error(error);
-            // Cleanup on error just in case
             if (tempEmoji) tempEmoji.delete().catch(() => {});
         }
     }

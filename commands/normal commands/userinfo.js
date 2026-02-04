@@ -12,9 +12,9 @@ const {
 
 module.exports = {
     name: 'userinfo',
-    aliases: ['ui', 'user'],
+    aliases: ['ui', 'user', 'u'],
     description: 'Displays information about a user with Server Tag and Avatar Decorations',
-    channels: ['1456197056510165026', '1456197056510165029', '1456197056988319870'], 
+  //  channels: ['1456197056510165026', '1456197056510165029', '1456197056988319870'], 
 
     async execute(message, args) {
         let tempEmoji = null; 

@@ -39,7 +39,7 @@ module.exports = {
             try { targetMember = await message.guild.members.fetch(targetUser.id); } catch (err) { targetMember = null; }
 
             // ====================================================
-            // 2. SERVER TAG (LOGIC)
+            // 2. SERVER TAG LOGIC
             // ====================================================
             let serverTagDisplay = "None";
             const guildInfo = targetUser.primaryGuild; 
@@ -48,7 +48,7 @@ module.exports = {
             const logChannelId = '1468493795531161650'; 
 
             if (guildInfo && guildInfo.tag) {
-                serverTagDisplay = `${guildInfo.tag}`;
+                serverTagDisplay = `**${guildInfo.tag}**`;
 
                 let badgeURL = null;
                 let badgeName = "tag_badge"; 
@@ -85,11 +85,12 @@ module.exports = {
             // ====================================================
             const userAvatar = targetUser.displayAvatarURL({ size: 1024, forceStatic: false });
             const userBanner = targetUser.bannerURL({ size: 1024, forceStatic: false });
-            const avatarDecoration = targetUser.avatarDecorationURL({ size: 1024 }); 
+            const userDeco = targetUser.avatarDecorationURL({ size: 1024 }); 
             const createdTimestamp = `<t:${Math.floor(targetUser.createdTimestamp / 1000)}:R>`;
             
             // --- MEMBER SPECIFIC DATA ---
             let memberAvatar = message.guild.iconURL({ size: 1024 }); // Default to Server Icon
+            let memberDeco = null;
             let joinedTimestamp = "Not in server";
             let nickname = "None";
             let rolesDisplay = "N/A";
@@ -99,10 +100,13 @@ module.exports = {
             const messageStatsDisplay = `${stats.total} (Month: ${stats.month} | Week: ${stats.week} | Today: ${stats.today})`;
 
             if (targetMember) {
-                // CHANGE: Use per-server avatar if exists, otherwise keep Server Icon
+                // 1. Avatar: Prefer Server Avatar > Server Icon
                 if (targetMember.avatar) {
                     memberAvatar = targetMember.displayAvatarURL({ size: 1024, forceStatic: false });
                 }
+                
+                // 2. Decoration: Check for Per-Server Decoration
+                memberDeco = targetMember.avatarDecorationURL({ size: 1024 });
 
                 joinedTimestamp = `<t:${Math.floor(targetMember.joinedTimestamp / 1000)}:R>`;
                 nickname = targetMember.nickname || targetMember.user.displayName;
@@ -132,24 +136,24 @@ module.exports = {
                     new SectionBuilder()
                         .setThumbnailAccessory(new ThumbnailBuilder().setURL(userAvatar))
                         .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent("# <:user:1468487542017097873> User Information"),
+                            new TextDisplayBuilder().setContent("## <:user:1468487542017097873> User Information"),
                             new TextDisplayBuilder().setContent(
                                 `<:id:1468487725912166596> **ID:** \`${targetUser.id}\`\n` +
-                                `<:at:1468487835613925396> ${targetUser.toString()} \`(${targetUser.username})\`\n` +
+                                `<:at:1468487835613925396> ${targetUser.toString()} (\`${targetUser.username}\`)\n` +
                                 `<:identity:1468485794938224807> **Display Name:** ${targetUser.globalName || targetUser.username}\n` +
-                                `<:calender:1468485942137323630> **Joined Discord:** ${createdTimestamp}\n` +
+                                `<:calender:1468485942137323630> **Account Created:** ${createdTimestamp}\n` +
                                 `<:sparkles:1468470437838192651> **Server Tag:** ${serverTagDisplay}`
                             ),
                         ),
                 );
 
-            // --- AVATAR DECORATION ---
-            if (avatarDecoration) {
+            // --- GLOBAL DECORATION ---
+            if (userDeco) {
                 container.addSectionComponents(
                     new SectionBuilder()
-                        .setThumbnailAccessory(new ThumbnailBuilder().setURL(avatarDecoration))
+                        .setThumbnailAccessory(new ThumbnailBuilder().setURL(userDeco))
                         .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent(`<:sparkles:1468470437838192651> **Avatar Decoration:** [Link](${avatarDecoration})`),
+                            new TextDisplayBuilder().setContent(`### <:sparkles:1468470437838192651> Avatar Decoration: [Link](${userDeco})`),
                         ),
                 );
             }
@@ -170,15 +174,11 @@ module.exports = {
 
             // --- SERVER SECTION ---
             if (targetMember) {
-                // Ensure there is a valid URL for server thumbnail (member avatar OR server icon)
                 const serverSection = new SectionBuilder();
-                
-                if (memberAvatar) {
-                    serverSection.setThumbnailAccessory(new ThumbnailBuilder().setURL(memberAvatar));
-                }
+                if (memberAvatar) serverSection.setThumbnailAccessory(new ThumbnailBuilder().setURL(memberAvatar));
 
                 serverSection.addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent("# <:home:1468487632328589458> Server Membership"),
+                    new TextDisplayBuilder().setContent("## <:home:1468487632328589458> Server Membership"),
                     new TextDisplayBuilder().setContent(
                         `<:name:1468486108450127915> **Nickname:** ${nickname}\n` +
                         `<:roles:1468486024089964654> **Roles:** ${rolesDisplay}\n` +
@@ -188,8 +188,19 @@ module.exports = {
                         `<:talk:1468488155106640066> **Messages:** ${messageStatsDisplay}`
                     ),
                 );
-
                 container.addSectionComponents(serverSection);
+
+                // --- SERVER SPECIFIC DECORATION ---
+                // Only show if different from global or explicitly set
+                if (memberDeco && memberDeco !== userDeco) {
+                    container.addSectionComponents(
+                        new SectionBuilder()
+                            .setThumbnailAccessory(new ThumbnailBuilder().setURL(memberDeco))
+                            .addTextDisplayComponents(
+                                new TextDisplayBuilder().setContent(`### <:sparkles:1468470437838192651> Server Decoration: [Link](${memberDeco})`),
+                            ),
+                    );
+                }
 
                 const guildBanner = targetMember.bannerURL ? targetMember.bannerURL({ size: 1024 }) : null;
                 if (guildBanner) {

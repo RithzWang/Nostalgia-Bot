@@ -133,7 +133,7 @@ module.exports = {
             // 4. BUILD CONTAINER
             // ====================================================
             const container = new ContainerBuilder()
-                .setAccentColor(8947848)
+               // .setAccentColor(8947848)
                 
                 // --- 1. USER SECTION ---
                 .addSectionComponents(

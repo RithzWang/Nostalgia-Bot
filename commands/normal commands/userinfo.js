@@ -29,7 +29,6 @@ module.exports = {
             }
             if (!targetUser && !args[0]) targetUser = await message.client.users.fetch(message.author.id, { force: true });
             
-            // Force fetch to get Banner and Avatar Decoration
             if (targetUser) {
                 targetUser = await message.client.users.fetch(targetUser.id, { force: true });
             }
@@ -43,7 +42,7 @@ module.exports = {
             // 2. SERVER TAG (LOGIC)
             // ====================================================
             let serverTagDisplay = "None";
-            const guildInfo = targetUser.primaryGuild; // Assuming this exists on your user object
+            const guildInfo = targetUser.primaryGuild; 
             
             const storageGuildId = '1468061368098750507';
             const logChannelId = '1468493795531161650'; 
@@ -86,10 +85,11 @@ module.exports = {
             // ====================================================
             const userAvatar = targetUser.displayAvatarURL({ size: 1024, forceStatic: false });
             const userBanner = targetUser.bannerURL({ size: 1024, forceStatic: false });
-            const avatarDecoration = targetUser.avatarDecorationURL({ size: 1024 }); // Requires DJS v14.12+
+            const avatarDecoration = targetUser.avatarDecorationURL({ size: 1024 }); 
             const createdTimestamp = `<t:${Math.floor(targetUser.createdTimestamp / 1000)}:R>`;
             
-            let memberAvatar = userAvatar;
+            // --- MEMBER SPECIFIC DATA ---
+            let memberAvatar = message.guild.iconURL({ size: 1024 }); // Default to Server Icon
             let joinedTimestamp = "Not in server";
             let nickname = "None";
             let rolesDisplay = "N/A";
@@ -99,7 +99,11 @@ module.exports = {
             const messageStatsDisplay = `${stats.total} (Month: ${stats.month} | Week: ${stats.week} | Today: ${stats.today})`;
 
             if (targetMember) {
-                if (targetMember.avatar) memberAvatar = targetMember.displayAvatarURL({ size: 1024, forceStatic: false });
+                // CHANGE: Use per-server avatar if exists, otherwise keep Server Icon
+                if (targetMember.avatar) {
+                    memberAvatar = targetMember.displayAvatarURL({ size: 1024, forceStatic: false });
+                }
+
                 joinedTimestamp = `<t:${Math.floor(targetMember.joinedTimestamp / 1000)}:R>`;
                 nickname = targetMember.nickname || targetMember.user.displayName;
                 
@@ -123,7 +127,7 @@ module.exports = {
             const container = new ContainerBuilder()
                 .setAccentColor(8947848)
                 
-                // --- USER SECTION (Header + Stats) ---
+                // --- USER SECTION ---
                 .addSectionComponents(
                     new SectionBuilder()
                         .setThumbnailAccessory(new ThumbnailBuilder().setURL(userAvatar))
@@ -139,7 +143,7 @@ module.exports = {
                         ),
                 );
 
-            // --- AVATAR DECORATION SECTION (Conditional) ---
+            // --- AVATAR DECORATION ---
             if (avatarDecoration) {
                 container.addSectionComponents(
                     new SectionBuilder()
@@ -159,28 +163,33 @@ module.exports = {
                     );
             }
 
-            // --- SEPARATOR (Large Divider) ---
+            // --- SEPARATOR ---
             container.addSeparatorComponents(
                 new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true),
             );
 
-            // --- SERVER SECTION (Header + Stats) ---
+            // --- SERVER SECTION ---
             if (targetMember) {
-                container.addSectionComponents(
-                    new SectionBuilder()
-                        .setThumbnailAccessory(new ThumbnailBuilder().setURL(memberAvatar))
-                        .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent("# <:home:1468487632328589458> Server Membership"),
-                            new TextDisplayBuilder().setContent(
-                                `<:name:1468486108450127915> **Nickname:** ${nickname}\n` +
-                                `<:roles:1468486024089964654> **Roles:** ${rolesDisplay}\n` +
-                                `<:calender:1468485942137323630> **Joined:** ${joinedTimestamp}\n` +
-                                `<:pin:1468487912986382396> **Join Position:** ${joinPosition}\n` +
-                                `<:position_right:1468488077692502026> **Join Method:** ${joinMethod}\n` +
-                                `<:talk:1468488155106640066> **Messages:** ${messageStatsDisplay}`
-                            ),
-                        ),
+                // Ensure there is a valid URL for server thumbnail (member avatar OR server icon)
+                const serverSection = new SectionBuilder();
+                
+                if (memberAvatar) {
+                    serverSection.setThumbnailAccessory(new ThumbnailBuilder().setURL(memberAvatar));
+                }
+
+                serverSection.addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent("# <:home:1468487632328589458> Server Membership"),
+                    new TextDisplayBuilder().setContent(
+                        `<:name:1468486108450127915> **Nickname:** ${nickname}\n` +
+                        `<:roles:1468486024089964654> **Roles:** ${rolesDisplay}\n` +
+                        `<:calender:1468485942137323630> **Joined:** ${joinedTimestamp}\n` +
+                        `<:pin:1468487912986382396> **Join Position:** ${joinPosition}\n` +
+                        `<:position_right:1468488077692502026> **Join Method:** ${joinMethod}\n` +
+                        `<:talk:1468488155106640066> **Messages:** ${messageStatsDisplay}`
+                    ),
                 );
+
+                container.addSectionComponents(serverSection);
 
                 const guildBanner = targetMember.bannerURL ? targetMember.bannerURL({ size: 1024 }) : null;
                 if (guildBanner) {

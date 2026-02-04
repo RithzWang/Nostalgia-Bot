@@ -2,6 +2,7 @@ const { MessageFlags } = require('discord.js');
 
 module.exports = {
     name: 'help',
+    aliases: ['helpp', 'helppp', 'helpppp', 'helppppp'],
     description: 'Shows available commands',
     // Same allowed channels as userinfo
     channels: ['1456197056510165026', '1456197056510165029', '1456197056988319870'], 

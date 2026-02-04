@@ -287,7 +287,7 @@ module.exports = {
                             new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true),
                         )
                         .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent(`-# ⏱️ ${timeString} GMT+7`),
+                            new TextDisplayBuilder().setContent(`-# ⏱️ ${timeString} (GMT+7)`),
                         );
 
                     await logChannel.send({ 

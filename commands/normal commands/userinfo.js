@@ -77,7 +77,7 @@ module.exports = {
                                 content: `**Tag Log:** ${tempEmoji} \`${guildInfo.tag}\`\n**Image Source:** ${badgeURL}` 
                             });
                             
-                            serverTagDisplay = `${tempEmoji} **${guildInfo.tag}**`;
+                            serverTagDisplay = `${tempEmoji} ${guildInfo.tag}`;
                         } catch (emojiErr) {
                             console.error("Failed to process temp emoji:", emojiErr);
                         }
@@ -147,7 +147,7 @@ module.exports = {
                                 `<:at:1468487835613925396> ${targetUser.toString()} (\`${targetUser.username}\`)\n` +
                                 `<:identity:1468485794938224807> **Display Name:** ${targetUser.globalName || targetUser.username}\n` +
                                 `<:calender:1468485942137323630> **Account Created:** ${createdTimestamp}\n` +
-                                `<:sparkles:1468470437838192651> **Server Tag:** ${serverTagDisplay}`
+                                `<:badge:1468618581427097724> **Server Tag:** ${serverTagDisplay}`
                             ),
                         ),
                 );
@@ -158,7 +158,7 @@ module.exports = {
                     new SectionBuilder()
                         .setThumbnailAccessory(new ThumbnailBuilder().setURL(userDeco))
                         .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent(`### <:sparkles:1468470437838192651> Avatar Decoration: [Link](${userDeco})`),
+                            new TextDisplayBuilder().setContent(`**<:star:1468618619318571029> Avatar Decoration:**`),
                         ),
                 );
             }
@@ -202,7 +202,7 @@ module.exports = {
                         new SectionBuilder()
                             .setThumbnailAccessory(new ThumbnailBuilder().setURL(memberDeco))
                             .addTextDisplayComponents(
-                                new TextDisplayBuilder().setContent(`### <:sparkles:1468470437838192651> Server Decoration: [Link](${memberDeco})`),
+                                new TextDisplayBuilder().setContent(`**<:star:1468618619318571029> Per-server Avatar Decoration:**`),
                             ),
                     );
                 }
@@ -217,7 +217,7 @@ module.exports = {
                 }
             } else {
                 container.addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent("**User is not in this server.**")
+                    new TextDisplayBuilder().setContent("-# User is not in this server.")
                 );
             }
 

@@ -157,9 +157,10 @@ async function generateDetailedPayload(client, preCalcCounts) {
 // =======================================================
 // 3. STATIC DIRECTORY PAYLOAD (For Satellite Servers)
 // =======================================================
-async function generateDirectoryPayload() {
+async function generateDirectoryPayload(client) {
     const servers = await ServerList.find();
     
+    // 1. Header
     const container = new ContainerBuilder()
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent("# <:A2Q_1:1466981218758426634><:A2Q_2:1466981281060360232> » Servers"),
@@ -168,20 +169,47 @@ async function generateDirectoryPayload() {
             new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true),
         );
 
-    servers.forEach((data, index) => {
+    // 2. Loop through servers
+    for (let i = 0; i < servers.length; i++) {
+        const data = servers[i];
         const inviteUrl = (data.inviteLink && data.inviteLink.startsWith('http')) ? data.inviteLink : 'https://discord.com';
         const serverName = data.name || "Unknown Server";
         
+        // -- Start Building Text Components --
         const textComponents = [
             new TextDisplayBuilder().setContent(`## [${serverName}](${inviteUrl})`)
         ];
         
+        // -- Logic: Try to Fetch Owner & Add Tag Info --
+        let detailsText = "";
+        
+        try {
+            const guild = client.guilds.cache.get(data.serverId);
+            if (guild) {
+                // Fetch Owner (Cached or API)
+                let owner = client.users.cache.get(guild.ownerId);
+                if (!owner) owner = await client.users.fetch(guild.ownerId).catch(() => null);
+
+                if (owner) {
+                    const gName = owner.globalName || owner.username;
+                    // Owner Line
+                    detailsText += `<:corona:1468452573970169886> **Owner:** **${gName}** \`(${owner.username})\``;
+                }
+            }
+        } catch (e) { /* Ignore errors if bot not in server */ }
+
+        // Tag Line
         if (data.tagText && data.tagText.length > 0) {
-            textComponents.push(
-                new TextDisplayBuilder().setContent(`<:sparkles:1462851309219872841> **Server Tag:** ${data.tagText}`)
-            );
+            if (detailsText.length > 0) detailsText += "\n"; // Add new line if owner exists
+            detailsText += `<:sparkles:1462851309219872841> **Server Tag:** ${data.tagText}`;
         }
 
+        // If we have details (Owner or Tag), add them as a second text component
+        if (detailsText.length > 0) {
+            textComponents.push(new TextDisplayBuilder().setContent(detailsText));
+        }
+
+        // -- Add Section --
         container.addSectionComponents(
             new SectionBuilder()
                 .setButtonAccessory(
@@ -193,20 +221,22 @@ async function generateDirectoryPayload() {
                 .addTextDisplayComponents(textComponents)
         );
 
-        if (index < servers.length - 1) {
+        // -- Add Small Separator (Between items only) --
+        if (i < servers.length - 1) {
             container.addSeparatorComponents(
                 new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
             );
         }
-    });
+    }
 
+    // 3. Footer
     const timestampUnix = Math.floor(Date.now() / 1000);
     container
         .addSeparatorComponents(
             new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true),
         )
         .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(`-# ⏱️ Last Updated: <t:${timestampUnix}:R>`),
+            new TextDisplayBuilder().setContent(`-# Last Update <t:${timestampUnix}:R>`),
         );
 
     return [container];
@@ -215,30 +245,23 @@ async function generateDirectoryPayload() {
 // ==========================================
 // 4. MASTER UPDATE
 // ==========================================
-// ✅ ADDED: updateSatellites parameter (defaults to false)
 async function updateAllPanels(client, updateSatellites = false) {
     try {
-        // 1. Always run stats (Main Server needs this every minute)
         const counts = await runRoleUpdates(client);
 
         const detailedPayload = await generateDetailedPayload(client, counts);
         let directoryPayload = null; 
 
-        // Optimization: Only generate directory payload if we are actually going to use it
         if (updateSatellites) {
-            directoryPayload = await generateDirectoryPayload();
+            directoryPayload = await generateDirectoryPayload(client); // ✅ Pass client to fetch owners
         }
 
         const locations = await Panel.find(); 
         
         for (const loc of locations) {
-            // ✅ CHECK: Is this Main Server or Satellite?
             const isMainServer = (loc.guildId === MAIN_GUILD_ID);
 
-            // 🛑 SKIP SATELLITES if updateSatellites is false
-            if (!isMainServer && !updateSatellites) {
-                continue; 
-            }
+            if (!isMainServer && !updateSatellites) continue; 
 
             let channel;
             try { channel = await client.channels.fetch(loc.channelId); } 
@@ -246,10 +269,8 @@ async function updateAllPanels(client, updateSatellites = false) {
 
             if (!channel) { await Panel.deleteOne({ _id: loc._id }); continue; }
 
-            // Rate limit protection
             await sleep(2500);
 
-            // Pick Payload
             const selectedPayload = isMainServer ? detailedPayload : directoryPayload;
 
             try {

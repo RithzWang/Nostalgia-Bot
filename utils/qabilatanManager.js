@@ -3,13 +3,13 @@ const {
     ButtonBuilder, ButtonStyle, SeparatorBuilder, SeparatorSpacingSize,
     MessageFlags 
 } = require('discord.js');
-const { Panel, ServerList } = require('../src/models/Qabilatan'); 
+const { Panel, ServerList } = require('../models/Qabilatan'); 
 
 // 🔒 CONFIGURATION
 const MAIN_GUILD_ID = '1456197054782111756'; 
 const GLOBAL_TAG_ROLE_ID = '1462217123433545812'; 
 
-// 💾 MEMORY CACHE
+// 💾 MEMORY CACHE (Prevents "0" glitch on errors/restarts)
 let lastKnownCounts = new Map();
 
 // 🕒 HELPER
@@ -22,8 +22,10 @@ async function runRoleUpdates(client) {
     const servers = await ServerList.find();
     const mainGuild = client.guilds.cache.get(MAIN_GUILD_ID);
 
+    // If main guild is unreachable, return the cached data
     if (!mainGuild) return lastKnownCounts; 
 
+    // Prepare Config for fast lookup
     const serverConfig = new Map(); 
     const allManagedRoles = new Set();
     allManagedRoles.add(GLOBAL_TAG_ROLE_ID);
@@ -33,29 +35,38 @@ async function runRoleUpdates(client) {
         if (s.tagRoleID) allManagedRoles.add(s.tagRoleID);
     });
 
-    const currentCounts = new Map();
+    const currentCounts = new Map(); // Temp map for this run
 
     try {
+        // ✅ STANDARD FETCH: No { force: true } to keep Tag Data intact
         await mainGuild.members.fetch(); 
         const members = mainGuild.members.cache; 
 
         for (const [memberId, member] of members) {
             if (member.user.bot) continue;
+
             const user = member.user;
             const rolesToKeep = new Set();
             
+            // --- CORE LOGIC: Check Primary Guild ---
             if (user.primaryGuild && user.primaryGuild.identityEnabled && user.primaryGuild.identityGuildId) {
                 const targetId = user.primaryGuild.identityGuildId;
+                
+                // If the user's tag points to a server we are tracking
                 if (serverConfig.has(targetId)) {
+                    
+                    // 1. Increment Count
                     const val = currentCounts.get(targetId) || 0;
                     currentCounts.set(targetId, val + 1);
 
+                    // 2. Queue Roles
                     rolesToKeep.add(GLOBAL_TAG_ROLE_ID);
                     const config = serverConfig.get(targetId);
                     if (config.roleId) rolesToKeep.add(config.roleId);
                 }
             }
 
+            // --- SYNC ROLES ---
             for (const roleId of rolesToKeep) {
                 if (!member.roles.cache.has(roleId)) await member.roles.add(roleId).catch(() => {});
             }
@@ -67,12 +78,16 @@ async function runRoleUpdates(client) {
             }
         }
 
-        if (currentCounts.size > 0) lastKnownCounts = currentCounts;
+        // ✅ Success! Update the global cache
+        if (currentCounts.size > 0) {
+            lastKnownCounts = currentCounts;
+        }
 
     } catch (e) { 
         console.error(`[Role Manager] Update failed (Using Cache): ${e.message}`); 
     }
 
+    // Return current counts if successful, otherwise fallback to cache
     return currentCounts.size > 0 ? currentCounts : lastKnownCounts; 
 }
 
@@ -81,6 +96,8 @@ async function runRoleUpdates(client) {
 // =======================================================
 async function generateDetailedPayload(client, preCalcCounts) {
     const servers = await ServerList.find();
+    
+    // Logic: Use passed counts -> If missing, use Cache -> If missing, Empty Map
     const adoptersMap = preCalcCounts || lastKnownCounts || new Map();
 
     let totalNetworkMembers = 0;
@@ -95,17 +112,20 @@ async function generateDetailedPayload(client, preCalcCounts) {
         let displayTagText = data.tagText || "None";
         let tagStatusLine = ""; 
 
+        // USE THE COUNT
         const currentServerTagCount = adoptersMap.get(data.serverId) || 0;
         totalTagUsers += currentServerTagCount;
 
         if (guild) {
-            const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS'); 
+            const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS') || guild.features.includes('MEMBER_VERIFICATION_GATE_ENABLED'); 
             const hasActiveAdopters = currentServerTagCount > 0; 
+
             const boostCount = guild.premiumSubscriptionCount || 0;
             const boostsNeeded = 3 - boostCount;
 
             if (boostsNeeded > 0) {
                  const s = boostsNeeded === 1 ? '' : 's';
+                 // ✅ FIXED BOLDING
                  tagStatusLine = `<:no_boost:1463272235056889917> **${boostsNeeded} Boost${s} Remain**`; 
                  if(boostsNeeded === 1) tagStatusLine = `<:no_boost:1463272235056889917> **1 Boost Remains**`;
             } 
@@ -126,10 +146,12 @@ async function generateDetailedPayload(client, preCalcCounts) {
             new SectionBuilder()
                 .setButtonAccessory(inviteButton)
                 .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent(`### [${data.name || "Unknown"}](${data.inviteLink || "https://discord.com"})\n` +
+                    new TextDisplayBuilder().setContent(
+                        `### [${data.name || "Unknown"}](${data.inviteLink || "https://discord.com"})\n` +
                         `**<:sparkles:1462851309219872841> Server Tag:** ${displayTagText}\n` +
                         `**<:members:1462851249836654592> Members:** ${memberCount}\n` +
-                        `${tagStatusLine}`)
+                        `${tagStatusLine}`
+                    )
                 )
         );
     }
@@ -153,7 +175,7 @@ async function generateDetailedPayload(client, preCalcCounts) {
 }
 
 // =======================================================
-// 3. STATIC DIRECTORY PAYLOAD (For Other Servers - Simplified)
+// 3. STATIC DIRECTORY PAYLOAD (For Satellite Servers)
 // =======================================================
 async function generateDirectoryPayload() {
     const servers = await ServerList.find();
@@ -190,7 +212,7 @@ async function generateDirectoryPayload() {
                 .addTextDisplayComponents(texts)
         );
 
-        // Add separator between items (but maybe not after the very last one, though snippet had it)
+        // Add separator between items (except after the last one)
         if (index < servers.length - 1) {
             container.addSeparatorComponents(
                 new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
@@ -252,8 +274,10 @@ async function updateAllPanels(client) {
     }
 }
 
-// Allow command file to call generateDashboardPayload (aliasing it to detailed for the /enable command default)
+// EXPORT EVERYTHING SO THE COMMAND FILE CAN USE THEM
 module.exports = { 
     updateAllPanels, 
-    generateDashboardPayload: generateDetailedPayload 
+    generateDetailedPayload, // Use this for Main Server
+    generateDirectoryPayload, // Use this for Satellite Servers
+    generateDashboardPayload: generateDetailedPayload // Alias for backward compatibility if needed
 };

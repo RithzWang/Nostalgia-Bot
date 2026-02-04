@@ -16,8 +16,6 @@ const {
 
 // ⚠️ ADJUST PATHS IF NEEDED
 const { Panel, ServerList, GreetConfig } = require('../../../src/models/Qabilatan'); 
-
-// ✅ CRITICAL FIX: Import the new functions here
 const { 
     generateDetailedPayload, 
     generateDirectoryPayload, 
@@ -25,7 +23,7 @@ const {
 } = require('../../../utils/qabilatanManager'); 
 
 const ALLOWED_USER_ID = '837741275603009626';
-const MAIN_SERVER_ID = '1456197054782111756'; // ✅ DEFINE MAIN ID
+const MAIN_SERVER_ID = '1456197054782111756'; 
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -76,23 +74,19 @@ module.exports = {
                 return interaction.reply({ content: `✅ Panel disabled.`, flags: [MessageFlags.Ephemeral] });
             }
 
-            // ====================================================
-            // ✅ ENABLE (SMART LOGIC ADDED)
-            // ====================================================
+            // --- ENABLE ---
             if (subcommand === 'enable') {
                 const messageId = interaction.options.getString('message_id');
                 const channel = interaction.options.getChannel('channel') || interaction.channel;
 
                 await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
-                // 🧠 SMART CHECK: Which panel do we generate?
+                // SMART CHECK: Main Server vs Satellite
                 let components;
                 if (interaction.guild.id === MAIN_SERVER_ID) {
-                    // MAIN SERVER: Show Full Stats
                     components = await generateDetailedPayload(client);
                 } else {
-                    // SATELLITE SERVER: Show Directory Only
-                    components = await generateDirectoryPayload();
+                    components = await generateDirectoryPayload(client); // Pass client for owner fetch
                 }
 
                 let msg;
@@ -120,11 +114,16 @@ module.exports = {
                 return interaction.editReply({ content: "✅ Statistics Panel Enabled/Updated!" });
             }
 
-            // --- REFRESH ---
+            // ====================================================
+            // 🔄 REFRESH (UPDATED)
+            // ====================================================
             if (subcommand === 'refresh') {
                 await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
-                await updateAllPanels(client);
-                return interaction.editReply("✅ All panels have been refreshed.");
+                
+                // ✅ CHANGED: Pass 'true' to force satellite updates
+                await updateAllPanels(client, true);
+                
+                return interaction.editReply("✅ All panels (Main + Satellites) have been refreshed.");
             }
 
             // --- ADD ---

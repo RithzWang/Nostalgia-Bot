@@ -258,9 +258,7 @@ module.exports = {
                 // --- DESCRIPTION (NEW) ---
                 else if (sub === 'description') {
                     const newDesc = interaction.options.getString('description');
-                    // Replace the new line conversion. 
-                    // Note: Input "\n" in slash commands often comes as a literal string unless pasted as multiline.
-                    // We'll trust the string input.
+                    // Converts raw input into lines for the container
                     currentBodyLines = newDesc.split('\n');
                 }
 

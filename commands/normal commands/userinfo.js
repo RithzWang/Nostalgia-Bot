@@ -203,7 +203,7 @@ module.exports = {
                         .addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(guildBanner)));
                 }
             } else {
-                container.addTextDisplayComponents(new TextDisplayBuilder().setContent("-# User is not in this server."));
+                container.addTextDisplayComponents(new TextDisplayBuilder().setContent("-# The user is not in this server."));
             }
 
             // --- 7. FOOTER ---

@@ -16,12 +16,11 @@ let lastKnownCounts = new Map();
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // ==========================================
-// 1. ROLE MANAGER (Only needed for Main Server)
+// 1. ROLE MANAGER (Main Server Only)
 // ==========================================
 async function runRoleUpdates(client) {
     const servers = await ServerList.find();
     const mainGuild = client.guilds.cache.get(MAIN_GUILD_ID);
-
     if (!mainGuild) return lastKnownCounts; 
 
     const serverConfig = new Map(); 
@@ -77,7 +76,7 @@ async function runRoleUpdates(client) {
 }
 
 // =======================================================
-// 2. DETAILED PAYLOAD (For Main Server - With Stats)
+// 2. DETAILED PAYLOAD (For Main Server)
 // =======================================================
 async function generateDetailedPayload(client, preCalcCounts) {
     const servers = await ServerList.find();
@@ -161,7 +160,6 @@ async function generateDetailedPayload(client, preCalcCounts) {
 async function generateDirectoryPayload() {
     const servers = await ServerList.find();
     
-    // 1. Create Container & Add Header
     const container = new ContainerBuilder()
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent("# <:A2Q_1:1466981218758426634><:A2Q_2:1466981281060360232> » Servers"),
@@ -170,17 +168,14 @@ async function generateDirectoryPayload() {
             new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true),
         );
 
-    // 2. Loop Servers & Add Sections
     servers.forEach((data, index) => {
         const inviteUrl = (data.inviteLink && data.inviteLink.startsWith('http')) ? data.inviteLink : 'https://discord.com';
         const serverName = data.name || "Unknown Server";
         
-        // Build Texts
         const textComponents = [
             new TextDisplayBuilder().setContent(`## [${serverName}](${inviteUrl})`)
         ];
         
-        // Only add "Server Tag" line if text exists
         if (data.tagText && data.tagText.length > 0) {
             textComponents.push(
                 new TextDisplayBuilder().setContent(`<:sparkles:1462851309219872841> **Server Tag:** ${data.tagText}`)
@@ -198,9 +193,6 @@ async function generateDirectoryPayload() {
                 .addTextDisplayComponents(textComponents)
         );
 
-        // Add small separator between items (and after the last one before footer, as per snippet logic)
-        // If you only want it BETWEEN, check index. But snippet implied specific structure.
-        // We will add it between items for clean separation.
         if (index < servers.length - 1) {
             container.addSeparatorComponents(
                 new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
@@ -208,7 +200,6 @@ async function generateDirectoryPayload() {
         }
     });
 
-    // 3. Add Footer
     const timestampUnix = Math.floor(Date.now() / 1000);
     container
         .addSeparatorComponents(
@@ -227,28 +218,41 @@ async function generateDirectoryPayload() {
 // ==========================================
 // 4. MASTER UPDATE
 // ==========================================
-async function updateAllPanels(client) {
+// ✅ ADDED: updateSatellites parameter (defaults to false)
+async function updateAllPanels(client, updateSatellites = false) {
     try {
-        // 1. Get stats (needed for Main Server)
+        // 1. Always run stats (Main Server needs this every minute)
         const counts = await runRoleUpdates(client);
 
-        // 2. Pre-generate BOTH types of payloads
         const detailedPayload = await generateDetailedPayload(client, counts);
-        const directoryPayload = await generateDirectoryPayload(); // Static
+        let directoryPayload = null; 
+
+        // Optimization: Only generate directory payload if we are actually going to use it
+        if (updateSatellites) {
+            directoryPayload = await generateDirectoryPayload();
+        }
 
         const locations = await Panel.find(); 
         
         for (const loc of locations) {
+            // ✅ CHECK: Is this Main Server or Satellite?
+            const isMainServer = (loc.guildId === MAIN_GUILD_ID);
+
+            // 🛑 SKIP SATELLITES if updateSatellites is false
+            if (!isMainServer && !updateSatellites) {
+                continue; 
+            }
+
             let channel;
             try { channel = await client.channels.fetch(loc.channelId); } 
             catch (e) { await Panel.deleteOne({ _id: loc._id }); continue; }
 
             if (!channel) { await Panel.deleteOne({ _id: loc._id }); continue; }
 
+            // Rate limit protection
             await sleep(2500);
 
-            // 3. DECIDE WHICH PAYLOAD TO SEND
-            const isMainServer = (loc.guildId === MAIN_GUILD_ID);
+            // Pick Payload
             const selectedPayload = isMainServer ? detailedPayload : directoryPayload;
 
             try {

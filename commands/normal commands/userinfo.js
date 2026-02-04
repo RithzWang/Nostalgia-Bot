@@ -142,8 +142,8 @@ module.exports = {
                         .addTextDisplayComponents(
                             new TextDisplayBuilder().setContent("## <:user:1468487542017097873> User Information"),
                             new TextDisplayBuilder().setContent(
-                                `<:id:1468487725912166596> **ID:** \`${targetUser.id}\`\n` +
                                 `<:at:1468487835613925396> ${targetUser.toString()} (\`${targetUser.username}\`)\n` +
+                                `<:id:1468487725912166596> **ID:** \`${targetUser.id}\`\n` +
                                 `<:identity:1468485794938224807> **Display Name:** ${targetUser.globalName || targetUser.username}\n` +
                                 `<:calender:1468485942137323630> **Account Created:** ${createdTimestamp}` +
                                 serverTagLine

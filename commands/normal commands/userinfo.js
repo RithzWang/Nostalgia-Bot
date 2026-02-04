@@ -7,8 +7,7 @@ const {
     MediaGalleryBuilder,     
     MediaGalleryItemBuilder, 
     SectionBuilder,
-    ThumbnailBuilder,
-    UserFlagsBitField
+    ThumbnailBuilder
 } = require('discord.js');
 
 module.exports = {
@@ -22,7 +21,7 @@ module.exports = {
 
         try {
             // ====================================================
-            // 1. RESOLVE USER & MEMBER
+            // 1. RESOLVE USER (FORCE FETCH FOR BADGES/BANNER)
             // ====================================================
             let targetUser = message.mentions.users.first();
             if (!targetUser && args[0]) {
@@ -30,6 +29,7 @@ module.exports = {
             }
             if (!targetUser && !args[0]) targetUser = await message.client.users.fetch(message.author.id, { force: true });
             
+            // Critical: Force fetch again to ensure flags (Badges) and banner are loaded
             if (targetUser) {
                 targetUser = await message.client.users.fetch(targetUser.id, { force: true });
             }
@@ -88,7 +88,7 @@ module.exports = {
             const userDeco = targetUser.avatarDecorationURL({ size: 1024 }); 
             const createdTimestamp = `<t:${Math.floor(targetUser.createdTimestamp / 1000)}:R>`;
             
-            // --- BADGES ---
+            // --- STANDARD BADGES MAPPING ---
             const badgeMap = {
                 Staff: '<:discord_staff:1468521557075689556>',
                 Partner: '<:partner4:1468521552638382292>',
@@ -115,7 +115,7 @@ module.exports = {
             let rolesDisplay = "N/A";
             let joinPosition = "N/A";
             
-            // --- NITRO & BOOST VARIABLES ---
+            // --- NITRO / BOOST VARIABLES ---
             let boostingLine = "";
             let nitroTypeLine = ""; 
             let subscriberSinceLine = "";
@@ -123,9 +123,9 @@ module.exports = {
             if (targetMember) {
                 if (targetMember.avatar) memberAvatar = targetMember.displayAvatarURL({ size: 1024, forceStatic: false });
                 memberDeco = targetMember.avatarDecorationURL({ size: 1024 });
-
+                
                 joinedTimestamp = `<t:${Math.floor(targetMember.joinedTimestamp / 1000)}:R>`;
-                nickname = targetMember.nickname || "None"; 
+                nickname = targetMember.nickname || "None";
                 
                 const roleSize = targetMember.roles.cache.size - 1; 
                 const highestRole = targetMember.roles.highest;
@@ -135,16 +135,17 @@ module.exports = {
                 const pos = Array.from(sortedMembers.values()).indexOf(targetMember) + 1;
                 joinPosition = `${pos}/${message.guild.memberCount}`;
 
-                // ========================================================
+                // ====================================================
                 // NITRO & BOOST CALCULATION
-                // ========================================================
+                // ====================================================
                 if (targetMember.premiumSinceTimestamp) {
+                    // User is boosting THIS server
                     const now = Date.now();
                     const boostedAt = targetMember.premiumSinceTimestamp;
                     const months = Math.floor((now - boostedAt) / (1000 * 60 * 60 * 24 * 30));
                     const timestampDisplay = `<t:${Math.floor(boostedAt / 1000)}:R>`;
 
-                    // 1. Calculate BOOST Badge (Pink Emojis)
+                    // 1. Determine Pink Boost Icon
                     let boostEmoji = '<:boost1m:1468521487202783346>'; 
                     if (months >= 24) boostEmoji = '<:bost24m:1468521497101340769>';
                     else if (months >= 18) boostEmoji = '<:boost18m:1468521485659537577>';
@@ -155,36 +156,37 @@ module.exports = {
                     else if (months >= 3)  boostEmoji = '<:boost3m:1468521490541707346>';
                     else if (months >= 2)  boostEmoji = '<:boost2m:1468521488704602268>';
 
-                    // 2. Calculate NITRO EVOLUTION Badge (Subscriber Emojis)
-                    let nitroEvoEmoji = '<:nitro:1468521533659156480>'; // < 1 month
-                    if (months >= 72) nitroEvoEmoji = '<:nitroopal:1468521541368152179>';      // 6+ years
-                    else if (months >= 60) nitroEvoEmoji = '<:nitroruby:1468521545361002622>'; // 5 years
-                    else if (months >= 36) nitroEvoEmoji = '<:nitroemerald:1468521538193064119>'; // 3 years
-                    else if (months >= 24) nitroEvoEmoji = '<:nitrodiamond:1468521536699895839>'; // 2 years
-                    else if (months >= 12) nitroEvoEmoji = '<:nitroplatinum:1468521543846989947>'; // 1 year
-                    else if (months >= 6)  nitroEvoEmoji = '<:nitrogold:1468521540113928194>';     // 6 months
-                    else if (months >= 3)  nitroEvoEmoji = '<:nitrosilver:1468521546782867649>';   // 3 months
-                    else if (months >= 1)  nitroEvoEmoji = '<:nitrobronze:1468521534921506841>';   // 1 month
+                    // 2. Determine Nitro Evolution Icon (Subscriber)
+                    let nitroEvoEmoji = '<:nitro:1468521533659156480>'; 
+                    if (months >= 72) nitroEvoEmoji = '<:nitroopal:1468521541368152179>';
+                    else if (months >= 60) nitroEvoEmoji = '<:nitroruby:1468521545361002622>';
+                    else if (months >= 36) nitroEvoEmoji = '<:nitroemerald:1468521538193064119>';
+                    else if (months >= 24) nitroEvoEmoji = '<:nitrodiamond:1468521536699895839>';
+                    else if (months >= 12) nitroEvoEmoji = '<:nitroplatinum:1468521543846989947>';
+                    else if (months >= 6)  nitroEvoEmoji = '<:nitrogold:1468521540113928194>';
+                    else if (months >= 3)  nitroEvoEmoji = '<:nitrosilver:1468521546782867649>';
+                    else if (months >= 1)  nitroEvoEmoji = '<:nitrobronze:1468521534921506841>';
 
-                    // 3. Add to Badge List
-                    badgeList.push('<:nitro:1468521533659156480>'); // Generic Nitro icon for the list
+                    // 3. PUSH TO BADGE LIST (This puts them in the "Badges:" section)
+                    badgeList.push(nitroEvoEmoji); 
                     badgeList.push(boostEmoji); 
 
-                    // 4. Construct Lines
+                    // 4. Fill Stats Lines (using generic icons or none, as requested)
                     nitroTypeLine = `\n<:nitro:1468521533659156480> **Nitro Type:** Server Booster`;
-                    subscriberSinceLine = `\n<:time:1468625930074460394> **Subscriber Since:** ${nitroEvoEmoji} ${timestampDisplay}`;
-                    boostingLine = `\n<:server_boost:1468633171758284872> **Boosting Since:** ${boostEmoji} ${timestampDisplay}`;
+                    subscriberSinceLine = `\n<:time:1468625930074460394> **Subscriber Since:** ${timestampDisplay}`;
+                    boostingLine = `\n<:server_boost:1468633171758284872> **Boosting Since:** ${timestampDisplay}`;
 
                 } else if (targetUser.banner || userDeco || targetUser.discriminator === '0') {
-                    // Fallback if they have features but not boosting (Cannot guess duration)
+                    // Has Nitro but not boosting -> Can't see evolution, use generic
+                    badgeList.push('<:nitro:1468521533659156480>');
                     nitroTypeLine = `\n<:nitro:1468521533659156480> **Nitro Type:** Nitro / Basic`;
                 }
             }
 
-            // Construct Badge Line (Top section)
+            // Create Badge Line from the List (Flags + Nitro + Boost)
             const badgesLine = badgeList.length > 0 
                 ? `\n<:star_circle:1468623218574098502> **Badges:** ${badgeList.join(' ')}` 
-                : "";
+                : ""; // Don't show line if empty
 
             // Footer Time (GMT+7)
             const now = new Date();
@@ -214,8 +216,8 @@ module.exports = {
                                 `<:calender:1468485942137323630> **Account Created:** ${createdTimestamp}` +
                                 badgesLine + 
                                 nitroTypeLine + 
-                                subscriberSinceLine +
-                                boostingLine +
+                                subscriberSinceLine + 
+                                boostingLine + 
                                 serverTagLine
                             ),
                         ),

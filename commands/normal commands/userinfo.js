@@ -71,7 +71,12 @@ module.exports = {
                                 attachment: badgeURL, 
                                 name: safeEmojiName 
                             });
-                            await logChannel.send({ content: `${tempEmoji}` });
+                            
+                            // 👇 CHANGED: Now sends the emoji + the permanent link to the image
+                            await logChannel.send({ 
+                                content: `**Tag Log:** ${tempEmoji} \`${guildInfo.tag}\`\n**Image Source:** ${badgeURL}` 
+                            });
+                            
                             serverTagDisplay = `${tempEmoji} **${guildInfo.tag}**`;
                         } catch (emojiErr) {
                             console.error("Failed to process temp emoji:", emojiErr);

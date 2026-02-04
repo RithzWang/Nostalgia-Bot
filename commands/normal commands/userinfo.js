@@ -8,13 +8,13 @@ const {
     MediaGalleryItemBuilder, 
     SectionBuilder,
     ThumbnailBuilder,
-    UserFlagsBitField
+    Routes // 👈 Required for raw API fetch
 } = require('discord.js');
 
 module.exports = {
     name: 'userinfo',
     aliases: ['ui', 'user', 'u'],
-    description: 'Displays information about a user with Server Tag and Avatar Decorations',
+    description: 'Displays information about a user with Server Tag, Nameplates, and Decorations',
     channels: ['1456197056510165026', '1456197056510165029', '1456197056988319870'], 
 
     async execute(message, args) {
@@ -22,7 +22,7 @@ module.exports = {
 
         try {
             // ====================================================
-            // 1. RESOLVE USER (FORCE FETCH)
+            // 1. RESOLVE USER
             // ====================================================
             let targetUser = message.mentions.users.first();
             if (!targetUser && args[0]) {
@@ -30,7 +30,6 @@ module.exports = {
             }
             if (!targetUser && !args[0]) targetUser = await message.client.users.fetch(message.author.id, { force: true });
             
-            // Critical: Force fetch ensures flags (Badges) and banner are loaded
             if (targetUser) {
                 targetUser = await message.client.users.fetch(targetUser.id, { force: true });
             }
@@ -41,7 +40,30 @@ module.exports = {
             try { targetMember = await message.guild.members.fetch(targetUser.id); } catch (err) { targetMember = null; }
 
             // ====================================================
-            // 2. SERVER TAG LOGIC
+            // 2. RAW API FETCH (For Nameplates/Collectibles)
+            // ====================================================
+            let rawUser = null;
+            let userNameplate = null;
+            
+            try {
+                // Fetch raw user object from Discord API
+                rawUser = await message.client.rest.get(Routes.user(targetUser.id));
+                
+                // Logic to extract Nameplate
+                // Based on your snippet: collectibles -> nameplate -> asset/sku_id
+                if (rawUser && rawUser.collectibles && rawUser.collectibles.nameplate) {
+                    const np = rawUser.collectibles.nameplate;
+                    if (np.asset && np.sku_id) {
+                        // Construct URL: https://cdn.discordapp.com/app-assets/{sku_id}/{asset}.png
+                        userNameplate = `https://cdn.discordapp.com/app-assets/${np.sku_id}/${np.asset}.png`;
+                    }
+                }
+            } catch (err) {
+                console.log("Failed to fetch raw user data (Nameplate check):", err);
+            }
+
+            // ====================================================
+            // 3. SERVER TAG LOGIC
             // ====================================================
             let serverTagLine = ""; 
             const guildInfo = targetUser.primaryGuild; 
@@ -82,70 +104,29 @@ module.exports = {
             }
 
             // ====================================================
-            // 3. PREPARE DATA
+            // 4. PREPARE STANDARD DATA
             // ====================================================
             const userAvatar = targetUser.displayAvatarURL({ size: 1024, forceStatic: false });
             const userBanner = targetUser.bannerURL({ size: 1024, forceStatic: false });
             const userDeco = targetUser.avatarDecorationURL({ size: 1024 }); 
             const createdTimestamp = `<t:${Math.floor(targetUser.createdTimestamp / 1000)}:R>`;
             
-            // --- BADGES MAPPING (Flags) ---
-            // Mapping Discord's Public Flags to your Emojis
-            const badgeMap = {
-                Staff: '<:discord_staff:1468521557075689556>',
-                Partner: '<:partner4:1468521552638382292>',
-                HypeSquad: '<:hypesquadevents:1468521524725157939>',
-                BugHunterLevel1: '<:bughuntergreen:1468521502377906328>',
-                BugHunterLevel2: '<:bughuntergold:1468521499160739841>',
-                HypeSquadOnlineHouse1: '<:hypesquadbravery:1468521511353843748>',
-                HypeSquadOnlineHouse2: '<:hypesquadbrilliance:1468521513656258634>',
-                HypeSquadOnlineHouse3: '<:hypesquadbalance:1468521509462081597>',
-                PremiumEarlySupporter: '<:earlysupporter:1468521504307150848>',
-                VerifiedDeveloper: '<:earlyverifiedbotdeveloper:1468521505762574485>',
-                ActiveDeveloper: '<:activedeveloper:1468521914107428937>',
-                CertifiedModerator: '<:modnew:1468521530152714250>', // Using 'modnew' as certified
-                ModeratorProgramsAlumni: '<:modold:1468521531603943476>',
-                BotHTTPInteractions: '<:slash:1468653349627891752>',
-                ApplicationAutoModerationRuleCreateBadge: '<:uses_automod:1468521528424402976>',
-                // Custom or Manual Badges
-                QuestsCompleted: '<:quest:1468521554605379617>' 
-            };
-
-            const userFlags = targetUser.flags ? targetUser.flags.toArray() : [];
-            let badgeList = userFlags.map(flag => badgeMap[flag]).filter(Boolean);
-
-            // Manual Checks
-            if (targetUser.bot) {
-                // Check for Automod (Bit 6) if not in .toArray()
-                if ((targetUser.flags.bitfield & (1 << 6)) !== 0) {
-                     if (!badgeList.includes(badgeMap.ApplicationAutoModerationRuleCreateBadge)) {
-                         badgeList.push(badgeMap.ApplicationAutoModerationRuleCreateBadge);
-                     }
-                }
-            }
-
-            // Legacy Username Badge (Migrated users often have discriminator '0')
-            if (targetUser.discriminator === '0' && !targetUser.bot) {
-                badgeList.push('<:username:1468521559202201623>');
-            }
-
             // --- MEMBER DATA ---
             let memberAvatar = message.guild.iconURL({ size: 1024 }); 
             let memberDeco = null;
+            let memberNameplate = null; // Per-server nameplates are rare/API specific, defaulting null
             let joinedTimestamp = "Not in server";
             let nickname = "None";
             let rolesDisplay = "N/A";
             let joinPosition = "N/A";
             
-            // --- NITRO & BOOST VARIABLES ---
-            let boostingLine = "";
-            let nitroTypeLine = ""; 
-            let subscriberSinceLine = "";
-
             if (targetMember) {
                 if (targetMember.avatar) memberAvatar = targetMember.displayAvatarURL({ size: 1024, forceStatic: false });
                 memberDeco = targetMember.avatarDecorationURL({ size: 1024 });
                 
+                // Note: DJS doesn't support fetching per-server nameplates yet. 
+                // It would require a similar RAW fetch on the Guild Member endpoint.
+
                 joinedTimestamp = `<t:${Math.floor(targetMember.joinedTimestamp / 1000)}:R>`;
                 nickname = targetMember.nickname || "None";
                 
@@ -156,78 +137,9 @@ module.exports = {
                 const sortedMembers = message.guild.members.cache.sort((a, b) => a.joinedTimestamp - b.joinedTimestamp);
                 const pos = Array.from(sortedMembers.values()).indexOf(targetMember) + 1;
                 joinPosition = `${pos}/${message.guild.memberCount}`;
-
-                // ====================================================
-                // NITRO & BOOST CALCULATION
-                // ====================================================
-                let nitroType = null;
-                
-                // 1. Try Official API Field (premium_type)
-                // 0: None, 1: Classic, 2: Nitro, 3: Basic
-                if (typeof targetUser.premiumType === 'number') {
-                    if (targetUser.premiumType === 1) nitroType = "Nitro Classic";
-                    else if (targetUser.premiumType === 2) nitroType = "Nitro";
-                    else if (targetUser.premiumType === 3) nitroType = "Nitro Basic";
-                }
-
-                // 2. Logic for Boosting & Badges
-                if (targetMember.premiumSinceTimestamp) {
-                    // They are boosting!
-                    if (!nitroType) nitroType = "Server Booster"; // Override if unknown
-
-                    const now = Date.now();
-                    const boostedAt = targetMember.premiumSinceTimestamp;
-                    const months = Math.floor((now - boostedAt) / (1000 * 60 * 60 * 24 * 30));
-                    const timestampDisplay = `<t:${Math.floor(boostedAt / 1000)}:R>`;
-
-                    // Boost Badge (Pink)
-                    let boostEmoji = '<:boost1m:1468521487202783346>'; 
-                    if (months >= 24) boostEmoji = '<:bost24m:1468521497101340769>';
-                    else if (months >= 18) boostEmoji = '<:boost18m:1468521485659537577>';
-                    else if (months >= 15) boostEmoji = '<:boost15m:1468521482949890088>';
-                    else if (months >= 12) boostEmoji = '<:boost12m:1468521480852733965>';
-                    else if (months >= 9)  boostEmoji = '<:boost9m:1468521495058972672>';
-                    else if (months >= 6)  boostEmoji = '<:boost6m:1468521492500316370>';
-                    else if (months >= 3)  boostEmoji = '<:boost3m:1468521490541707346>';
-                    else if (months >= 2)  boostEmoji = '<:boost2m:1468521488704602268>';
-
-                    // Nitro Evolution (Subscriber)
-                    let nitroEvoEmoji = '<:nitro:1468521533659156480>'; 
-                    if (months >= 72) nitroEvoEmoji = '<:nitroopal:1468521541368152179>';
-                    else if (months >= 60) nitroEvoEmoji = '<:nitroruby:1468521545361002622>';
-                    else if (months >= 36) nitroEvoEmoji = '<:nitroemerald:1468521538193064119>';
-                    else if (months >= 24) nitroEvoEmoji = '<:nitrodiamond:1468521536699895839>';
-                    else if (months >= 12) nitroEvoEmoji = '<:nitroplatinum:1468521543846989947>';
-                    else if (months >= 6)  nitroEvoEmoji = '<:nitrogold:1468521540113928194>';
-                    else if (months >= 3)  nitroEvoEmoji = '<:nitrosilver:1468521546782867649>';
-                    else if (months >= 1)  nitroEvoEmoji = '<:nitrobronze:1468521534921506841>';
-
-                    // Add to Badges List
-                    badgeList.push(nitroEvoEmoji); 
-                    badgeList.push(boostEmoji); 
-
-                    // Set Text Lines
-                    subscriberSinceLine = `\n<:time:1468625930074460394> **Subscriber Since:** ${timestampDisplay}`;
-                    boostingLine = `\n<:server_boost:1468633171758284872> **Boosting Since:** ${timestampDisplay}`;
-
-                } else if (!nitroType) {
-                    // Fallback Heuristics
-                    if (targetUser.banner || userDeco || targetUser.displayAvatarURL().endsWith('.gif')) {
-                        nitroType = "Nitro / Basic";
-                        badgeList.push('<:nitro:1468521533659156480>'); // Add generic icon to list if we guess they have it
-                    }
-                }
-
-                // Final Nitro Type Line
-                if (nitroType) {
-                    nitroTypeLine = `\n<:nitro:1468521533659156480> **Nitro Type:** ${nitroType}`;
-                }
             }
 
-            const badgesLine = badgeList.length > 0 
-                ? `\n<:star_circle:1468623218574098502> **Badges:** ${badgeList.join(' ')}` 
-                : ""; 
-
+            // Footer Time (GMT+7)
             const now = new Date();
             const footerTime = now.toLocaleString('en-GB', { 
                 timeZone: 'Asia/Bangkok', 
@@ -237,10 +149,12 @@ module.exports = {
             }); 
 
             // ====================================================
-            // 4. BUILD CONTAINER
+            // 5. BUILD CONTAINER
             // ====================================================
             const container = new ContainerBuilder()
                 .setAccentColor(8947848)
+                
+                // --- 1. USER SECTION ---
                 .addSectionComponents(
                     new SectionBuilder()
                         .setThumbnailAccessory(new ThumbnailBuilder().setURL(userAvatar))
@@ -251,15 +165,12 @@ module.exports = {
                                 `<:at:1468487835613925396> ${targetUser.toString()} (\`${targetUser.username}\`)\n` +
                                 `<:identity:1468485794938224807> **Display Name:** ${targetUser.globalName || targetUser.username}\n` +
                                 `<:calender:1468485942137323630> **Account Created:** ${createdTimestamp}` +
-                                badgesLine + 
-                                nitroTypeLine + 
-                                subscriberSinceLine + 
-                                boostingLine + 
                                 serverTagLine
                             ),
                         ),
                 );
 
+            // --- 2. GLOBAL AVATAR DECORATION ---
             if (userDeco) {
                 container.addSectionComponents(
                     new SectionBuilder()
@@ -268,14 +179,26 @@ module.exports = {
                 );
             }
 
+            // --- 3. GLOBAL NAMEPLATE (From Raw Fetch) ---
+            if (userNameplate) {
+                container.addSectionComponents(
+                    new SectionBuilder()
+                        .setThumbnailAccessory(new ThumbnailBuilder().setURL(userNameplate))
+                        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**<:star:1468618619318571029> Nameplate:**`)),
+                );
+            }
+
+            // --- 4. PROFILE BANNER ---
             if (userBanner) {
                 container
                     .addTextDisplayComponents(new TextDisplayBuilder().setContent("<:discord:1468638005169229940> **Profile Banner:**"))
                     .addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(userBanner)));
             }
 
+            // --- SEPARATOR ---
             container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true));
 
+            // --- 5. SERVER MEMBERSHIP ---
             if (targetMember) {
                 const serverSection = new SectionBuilder();
                 if (memberAvatar) serverSection.setThumbnailAccessory(new ThumbnailBuilder().setURL(memberAvatar));
@@ -291,6 +214,7 @@ module.exports = {
                 );
                 container.addSectionComponents(serverSection);
 
+                // --- 6. PER-SERVER DECORATION ---
                 if (memberDeco && memberDeco !== userDeco) {
                     container.addSectionComponents(
                         new SectionBuilder()
@@ -299,6 +223,16 @@ module.exports = {
                     );
                 }
 
+                // --- 7. PER-SERVER NAMEPLATE (Placeholder) ---
+                if (memberNameplate && memberNameplate !== userNameplate) {
+                    container.addSectionComponents(
+                        new SectionBuilder()
+                            .setThumbnailAccessory(new ThumbnailBuilder().setURL(memberNameplate))
+                            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**<:star:1468618619318571029> Per-server Nameplate:**`)),
+                    );
+                }
+
+                // --- 8. PER-SERVER BANNER ---
                 const guildBanner = targetMember.bannerURL ? targetMember.bannerURL({ size: 1024 }) : null;
                 if (guildBanner) {
                     container
@@ -306,12 +240,13 @@ module.exports = {
                         .addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(guildBanner)));
                 }
             } else {
-                container.addTextDisplayComponents(new TextDisplayBuilder().setContent("-# User is not in this server."));
+                container.addTextDisplayComponents(new TextDisplayBuilder().setContent("-# The user is not in this server."));
             }
 
+            // --- 9. FOOTER ---
             container
                 .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
-                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${footerTime} (GMT+7)`));
+                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ⏱️ ${footerTime} (GMT+7)`));
 
             await message.reply({ 
                 components: [container], 

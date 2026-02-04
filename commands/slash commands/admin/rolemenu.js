@@ -75,6 +75,15 @@ module.exports = {
                 .addStringOption(opt => opt.setName('message_id').setDescription('The Message ID').setRequired(true))
                 .addChannelOption(opt => opt.setName('channel').setDescription('Channel where the menu is'))
                 .addStringOption(opt => opt.setName('new_title').setDescription('Change the menu title (Optional)'))
+        )
+
+        // --- DESCRIPTION COMMAND (NEW) ---
+        .addSubcommand(sub => 
+            sub.setName('description')
+                .setDescription('Update the menu description manually')
+                .addStringOption(opt => opt.setName('message_id').setDescription('The Message ID').setRequired(true))
+                .addStringOption(opt => opt.setName('description').setDescription('The new description text').setRequired(true))
+                .addChannelOption(opt => opt.setName('channel').setDescription('Channel where the menu is'))
         ),
 
     async execute(interaction) {
@@ -163,7 +172,7 @@ module.exports = {
         }
 
         // ===============================================
-        // 2. ADD / REMOVE / REFRESH LOGIC
+        // 2. ADD / REMOVE / REFRESH / DESCRIPTION LOGIC
         // ===============================================
         else {
             const msgId = interaction.options.getString('message_id');
@@ -244,6 +253,15 @@ module.exports = {
                     }
                     newMenu.setOptions(updatedOptions);
                     currentBodyLines = newDescriptionLines;
+                }
+
+                // --- DESCRIPTION (NEW) ---
+                else if (sub === 'description') {
+                    const newDesc = interaction.options.getString('description');
+                    // Replace the new line conversion. 
+                    // Note: Input "\n" in slash commands often comes as a literal string unless pasted as multiline.
+                    // We'll trust the string input.
+                    currentBodyLines = newDesc.split('\n');
                 }
 
                 // Update Menu Max Values

@@ -7,14 +7,13 @@ const {
     MediaGalleryBuilder,     
     MediaGalleryItemBuilder, 
     SectionBuilder,
-    ThumbnailBuilder,
-    Routes // 👈 Required for raw API fetch
+    ThumbnailBuilder
 } = require('discord.js');
 
 module.exports = {
     name: 'userinfo',
     aliases: ['ui', 'user', 'u'],
-    description: 'Displays information about a user with Server Tag, Nameplates, and Decorations',
+    description: 'Displays information about a user with Server Tag and Avatar Decorations',
     channels: ['1456197056510165026', '1456197056510165029', '1456197056988319870'], 
 
     async execute(message, args) {
@@ -40,30 +39,7 @@ module.exports = {
             try { targetMember = await message.guild.members.fetch(targetUser.id); } catch (err) { targetMember = null; }
 
             // ====================================================
-            // 2. RAW API FETCH (For Nameplates/Collectibles)
-            // ====================================================
-            let rawUser = null;
-            let userNameplate = null;
-            
-            try {
-                // Fetch raw user object from Discord API
-                rawUser = await message.client.rest.get(Routes.user(targetUser.id));
-                
-                // Logic to extract Nameplate
-                // Based on your snippet: collectibles -> nameplate -> asset/sku_id
-                if (rawUser && rawUser.collectibles && rawUser.collectibles.nameplate) {
-                    const np = rawUser.collectibles.nameplate;
-                    if (np.asset && np.sku_id) {
-                        // Construct URL: https://cdn.discordapp.com/app-assets/{sku_id}/{asset}.png
-                        userNameplate = `https://cdn.discordapp.com/app-assets/${np.sku_id}/${np.asset}.png`;
-                    }
-                }
-            } catch (err) {
-                console.log("Failed to fetch raw user data (Nameplate check):", err);
-            }
-
-            // ====================================================
-            // 3. SERVER TAG LOGIC
+            // 2. SERVER TAG LOGIC
             // ====================================================
             let serverTagLine = ""; 
             const guildInfo = targetUser.primaryGuild; 
@@ -104,17 +80,17 @@ module.exports = {
             }
 
             // ====================================================
-            // 4. PREPARE STANDARD DATA
+            // 3. PREPARE DATA
             // ====================================================
             const userAvatar = targetUser.displayAvatarURL({ size: 1024, forceStatic: false });
             const userBanner = targetUser.bannerURL({ size: 1024, forceStatic: false });
+            // This URL points to an APNG (Animated PNG) if the decoration is animated.
             const userDeco = targetUser.avatarDecorationURL({ size: 1024 }); 
             const createdTimestamp = `<t:${Math.floor(targetUser.createdTimestamp / 1000)}:R>`;
             
             // --- MEMBER DATA ---
             let memberAvatar = message.guild.iconURL({ size: 1024 }); 
             let memberDeco = null;
-            let memberNameplate = null; // Per-server nameplates are rare/API specific, defaulting null
             let joinedTimestamp = "Not in server";
             let nickname = "None";
             let rolesDisplay = "N/A";
@@ -124,9 +100,6 @@ module.exports = {
                 if (targetMember.avatar) memberAvatar = targetMember.displayAvatarURL({ size: 1024, forceStatic: false });
                 memberDeco = targetMember.avatarDecorationURL({ size: 1024 });
                 
-                // Note: DJS doesn't support fetching per-server nameplates yet. 
-                // It would require a similar RAW fetch on the Guild Member endpoint.
-
                 joinedTimestamp = `<t:${Math.floor(targetMember.joinedTimestamp / 1000)}:R>`;
                 nickname = targetMember.nickname || "None";
                 
@@ -149,7 +122,7 @@ module.exports = {
             }); 
 
             // ====================================================
-            // 5. BUILD CONTAINER
+            // 4. BUILD CONTAINER
             // ====================================================
             const container = new ContainerBuilder()
                 .setAccentColor(8947848)
@@ -174,21 +147,13 @@ module.exports = {
             if (userDeco) {
                 container.addSectionComponents(
                     new SectionBuilder()
+                        // Thumbnails *should* animate APNGs, but client support varies
                         .setThumbnailAccessory(new ThumbnailBuilder().setURL(userDeco))
                         .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**<:star:1468618619318571029> Avatar Decoration:**`)),
                 );
             }
 
-            // --- 3. GLOBAL NAMEPLATE (From Raw Fetch) ---
-            if (userNameplate) {
-                container.addSectionComponents(
-                    new SectionBuilder()
-                        .setThumbnailAccessory(new ThumbnailBuilder().setURL(userNameplate))
-                        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**<:star:1468618619318571029> Nameplate:**`)),
-                );
-            }
-
-            // --- 4. PROFILE BANNER ---
+            // --- 3. PROFILE BANNER ---
             if (userBanner) {
                 container
                     .addTextDisplayComponents(new TextDisplayBuilder().setContent("<:discord:1468638005169229940> **Profile Banner:**"))
@@ -198,7 +163,7 @@ module.exports = {
             // --- SEPARATOR ---
             container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true));
 
-            // --- 5. SERVER MEMBERSHIP ---
+            // --- 4. SERVER MEMBERSHIP ---
             if (targetMember) {
                 const serverSection = new SectionBuilder();
                 if (memberAvatar) serverSection.setThumbnailAccessory(new ThumbnailBuilder().setURL(memberAvatar));
@@ -214,7 +179,7 @@ module.exports = {
                 );
                 container.addSectionComponents(serverSection);
 
-                // --- 6. PER-SERVER DECORATION ---
+                // --- 5. PER-SERVER DECORATION ---
                 if (memberDeco && memberDeco !== userDeco) {
                     container.addSectionComponents(
                         new SectionBuilder()
@@ -223,16 +188,7 @@ module.exports = {
                     );
                 }
 
-                // --- 7. PER-SERVER NAMEPLATE (Placeholder) ---
-                if (memberNameplate && memberNameplate !== userNameplate) {
-                    container.addSectionComponents(
-                        new SectionBuilder()
-                            .setThumbnailAccessory(new ThumbnailBuilder().setURL(memberNameplate))
-                            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**<:star:1468618619318571029> Per-server Nameplate:**`)),
-                    );
-                }
-
-                // --- 8. PER-SERVER BANNER ---
+                // --- 6. PER-SERVER BANNER ---
                 const guildBanner = targetMember.bannerURL ? targetMember.bannerURL({ size: 1024 }) : null;
                 if (guildBanner) {
                     container
@@ -240,10 +196,10 @@ module.exports = {
                         .addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(guildBanner)));
                 }
             } else {
-                container.addTextDisplayComponents(new TextDisplayBuilder().setContent("-# The user is not in this server."));
+                container.addTextDisplayComponents(new TextDisplayBuilder().setContent("-# User is not in this server."));
             }
 
-            // --- 9. FOOTER ---
+            // --- 7. FOOTER ---
             container
                 .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ⏱️ ${footerTime} (GMT+7)`));

@@ -106,16 +106,16 @@ async function generateDetailedPayload(client, preCalcCounts) {
 
             if (boostsNeeded > 0) {
                  const s = boostsNeeded === 1 ? '' : 's';
-                 tagStatusLine = `<:no_boost:1463272235056889917> **${boostsNeeded} Boost${s} Remain**`; 
-                 if(boostsNeeded === 1) tagStatusLine = `<:no_boost:1463272235056889917> **1 Boost Remains**`;
+                 tagStatusLine = `<:no_boost:1468470028302024776> **${boostsNeeded} Boost${s} Remain**`; 
+                 if(boostsNeeded === 1) tagStatusLine = `<:no_boost:1468470028302024776> **1 Boost Remains**`;
             } 
             else if (!hasClanFeature && !hasActiveAdopters) {
-                 tagStatusLine = `<:no_tag:1463272172201050336> **Not Enabled**`;
+                 tagStatusLine = `<:no_tag:1468470099026510001> **Not Enabled**`;
             } else {
                  tagStatusLine = `<:greysword:1462853724824404069> **Tag Adopters:** ${currentServerTagCount}`;
             }
         } else {
-            tagStatusLine = `<:no_tag:1463272172201050336> **Not Connected**`;
+            tagStatusLine = `<:no_tag:1468470099026510001> **Not Connected**`;
         }
 
         const inviteButton = new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel("Server Link");
@@ -128,8 +128,8 @@ async function generateDetailedPayload(client, preCalcCounts) {
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
                         `## [${data.name || "Unknown"}](${data.inviteLink || "https://discord.com"})\n` +
-                        `**<:sparkles:1462851309219872841> Server Tag:** ${displayTagText}\n` +
-                        `**<:members:1462851249836654592> Members:** ${memberCount}\n` +
+                        `**<:sparkles:1468470437838192651> Server Tag:** ${displayTagText}\n` +
+                        `**<:members:1468470163081924608> Members:** ${memberCount}\n` +
                         `${tagStatusLine}`
                     )
                 )
@@ -193,7 +193,7 @@ async function generateDirectoryPayload(client) {
                 if (owner) {
                     const gName = owner.globalName || owner.username;
                     // Owner Line
-                    detailsText += `<:owner:1468460831577608345> **Owner:** ${gName} \`(${owner.username})\``;
+                    detailsText += `<:owner_crown:1468472226318647337> **Owner:** ${gName} \`(${owner.username})\``;
                 }
             }
         } catch (e) { /* Ignore errors if bot not in server */ }
@@ -201,7 +201,7 @@ async function generateDirectoryPayload(client) {
         // Tag Line
         if (data.tagText && data.tagText.length > 0) {
             if (detailsText.length > 0) detailsText += "\n"; // Add new line if owner exists
-            detailsText += `<:sparkles:1462851309219872841> **Server Tag:** ${data.tagText}`;
+            detailsText += `<:sparkles:1468470437838192651> **Server Tag:** ${data.tagText}`;
         }
 
         // If we have details (Owner or Tag), add them as a second text component

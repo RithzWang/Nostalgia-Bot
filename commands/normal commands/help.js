@@ -5,7 +5,7 @@ module.exports = {
     description: 'Shows available commands',
     async execute(message, args) {
         await message.reply({ 
-            content: "`userinfo, ui, user, u @user` — shows user information\n`avatar, av @user` — shows user avatar\n`banner, bn @user` — shows user banner\n\n-# no prefix",
+            content: "`userinfo, ui, user, u @user` — shows user information\n`avatar, av @user` — shows user avatar\n`banner, bn @user` — shows user banner\n\n-# no prefix!!",
             flags: [MessageFlags.SuppressNotifications],
             allowedMentions: { repliedUser: false } 
         });

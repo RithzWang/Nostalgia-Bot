@@ -15,18 +15,18 @@ const {
 } = require('discord.js');
 
 // ⚠️ ADJUST PATHS IF NEEDED
-const { Panel, ServerList, GreetConfig } = require('../../../src/models/Qabilatan'); 
-const { generateDashboardPayload, updateAllPanels } = require('../../../utils/qabilatanManager'); 
+const { Panel, ServerList, GreetConfig } = require('../../../../models/Qabilatan'); 
+// ✅ IMPORT BOTH GENERATORS
+const { generateDetailedPayload, generateDirectoryPayload, updateAllPanels } = require('../../../../utils/qabilatanManager'); 
 
 const ALLOWED_USER_ID = '837741275603009626';
+const MAIN_SERVER_ID = '1456197054782111756'; // ✅ DEFINE MAIN ID
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('qabilatan')
         .setDescription('Manage the A2-Q Server Network')
-        .setDMPermission(false)
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-        // --- NEW: DISABLE COMMAND ---
         .addSubcommand(sub => 
             sub.setName('disable')
                .setDescription('Stop updating a specific statistics panel')
@@ -50,7 +50,6 @@ module.exports = {
         ),
 
     async execute(interaction, client) {
-        // 🔒 SECURITY CHECK
         if (interaction.user.id !== ALLOWED_USER_ID) {
             return interaction.reply({ 
                 content: "❌ **Access Denied.** Only the Bot Owner can use this command.", 
@@ -61,30 +60,19 @@ module.exports = {
         const subcommand = interaction.options.getSubcommand();
 
         try {
-            // ====================================================
-            // 🛑 DISABLE
-            // ====================================================
+            // --- DISABLE ---
             if (subcommand === 'disable') {
                 const targetMsgId = interaction.options.getString('message_id');
-                
-                // Find and remove from database
                 const result = await Panel.deleteOne({ messageId: targetMsgId });
 
                 if (result.deletedCount === 0) {
-                    return interaction.reply({ 
-                        content: `❌ No active panel found with ID \`${targetMsgId}\`.`, 
-                        flags: [MessageFlags.Ephemeral] 
-                    });
+                    return interaction.reply({ content: `❌ No active panel found with ID \`${targetMsgId}\`.`, flags: [MessageFlags.Ephemeral] });
                 }
-
-                return interaction.reply({ 
-                    content: `✅ Panel disabled. The message \`${targetMsgId}\` will no longer be updated.`, 
-                    flags: [MessageFlags.Ephemeral] 
-                });
+                return interaction.reply({ content: `✅ Panel disabled.`, flags: [MessageFlags.Ephemeral] });
             }
 
             // ====================================================
-            // ✅ ENABLE
+            // ✅ ENABLE (SMART LOGIC ADDED)
             // ====================================================
             if (subcommand === 'enable') {
                 const messageId = interaction.options.getString('message_id');
@@ -92,9 +80,17 @@ module.exports = {
 
                 await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
-                const components = await generateDashboardPayload(client);
-                let msg;
+                // 🧠 SMART CHECK: Which panel do we generate?
+                let components;
+                if (interaction.guild.id === MAIN_SERVER_ID) {
+                    // MAIN SERVER: Show Full Stats
+                    components = await generateDetailedPayload(client);
+                } else {
+                    // SATELLITE SERVER: Show Directory Only
+                    components = await generateDirectoryPayload();
+                }
 
+                let msg;
                 if (messageId) {
                     try {
                         msg = await channel.messages.fetch(messageId);
@@ -119,18 +115,14 @@ module.exports = {
                 return interaction.editReply({ content: "✅ Statistics Panel Enabled/Updated!" });
             }
 
-            // ====================================================
-            // 🔄 REFRESH
-            // ====================================================
+            // --- REFRESH ---
             if (subcommand === 'refresh') {
                 await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
                 await updateAllPanels(client);
                 return interaction.editReply("✅ All panels have been refreshed.");
             }
 
-            // ====================================================
-            // ➕ ADD SERVER
-            // ====================================================
+            // --- ADD ---
             if (subcommand === 'add') {
                 const modal = new ModalBuilder()
                     .setCustomId('qabilatan_add_modal')
@@ -143,121 +135,60 @@ module.exports = {
                     new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('srv_role').setLabel("Tag Role ID (Optional)").setStyle(TextInputStyle.Short).setRequired(false)),
                     new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('srv_name').setLabel("Server Name Override (Optional)").setStyle(TextInputStyle.Short).setRequired(false))
                 );
-
                 return interaction.showModal(modal);
             }
 
-            // ====================================================
-            // ✏️ EDIT SERVER
-            // ====================================================
+            // --- EDIT ---
             if (subcommand === 'edit') {
                 const servers = await ServerList.find();
-                
-                if (servers.length === 0) {
-                    return interaction.reply({ 
-                        content: "No servers found in database.", 
-                        flags: [MessageFlags.Ephemeral] 
-                    });
-                }
+                if (servers.length === 0) return interaction.reply({ content: "No servers found.", flags: [MessageFlags.Ephemeral] });
 
                 const options = servers.slice(0, 25).map(s => 
-                    new StringSelectMenuOptionBuilder()
-                        .setLabel(s.name ? s.name.substring(0, 25) : s.serverId)
-                        .setValue(s.serverId) 
-                        .setDescription(`ID: ${s.serverId}`)
+                    new StringSelectMenuOptionBuilder().setLabel(s.name ? s.name.substring(0, 25) : s.serverId).setValue(s.serverId).setDescription(`ID: ${s.serverId}`)
                 );
 
                 const components = [
                     new ContainerBuilder()
                         .addTextDisplayComponents(new TextDisplayBuilder().setContent("## A2-Q Statistics Edit"))
                         .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small))
-                        .addActionRowComponents(
-                            new ActionRowBuilder().addComponents(
-                                new StringSelectMenuBuilder()
-                                    .setCustomId("qabilatan_edit_select")
-                                    .setPlaceholder("Select a server to edit")
-                                    .addOptions(options)
-                            )
-                        )
+                        .addActionRowComponents(new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId("qabilatan_edit_select").setPlaceholder("Select a server to edit").addOptions(options)))
                 ];
-
-                return interaction.reply({ 
-                    components, 
-                    flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2] 
-                });
+                return interaction.reply({ components, flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2] });
             }
 
-            // ====================================================
-            // 🗑️ DELETE SERVER
-            // ====================================================
+            // --- DELETE ---
             if (subcommand === 'delete') {
                 const servers = await ServerList.find();
-
-                if (servers.length === 0) {
-                    return interaction.reply({ 
-                        content: "No servers found to delete.", 
-                        flags: [MessageFlags.Ephemeral] 
-                    });
-                }
+                if (servers.length === 0) return interaction.reply({ content: "No servers found.", flags: [MessageFlags.Ephemeral] });
 
                 const options = servers.slice(0, 25).map(s => 
-                    new StringSelectMenuOptionBuilder()
-                        .setLabel(s.name ? s.name.substring(0, 25) : s.serverId)
-                        .setValue(s.serverId)
-                        .setDescription(`ID: ${s.serverId}`)
+                    new StringSelectMenuOptionBuilder().setLabel(s.name ? s.name.substring(0, 25) : s.serverId).setValue(s.serverId).setDescription(`ID: ${s.serverId}`)
                 );
 
                 const components = [
                     new ContainerBuilder()
                         .addTextDisplayComponents(new TextDisplayBuilder().setContent("## A2-Q Statistics Remove Server"))
                         .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small))
-                        .addActionRowComponents(
-                            new ActionRowBuilder().addComponents(
-                                new StringSelectMenuBuilder()
-                                    .setCustomId("qabilatan_delete_select")
-                                    .setPlaceholder("Select a server to remove")
-                                    .addOptions(options)
-                            )
-                        )
+                        .addActionRowComponents(new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId("qabilatan_delete_select").setPlaceholder("Select a server to remove").addOptions(options)))
                 ];
-
-                return interaction.reply({ 
-                    components, 
-                    flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2] 
-                });
+                return interaction.reply({ components, flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2] });
             }
 
-            // ====================================================
-            // 👋 GREET MESSAGE
-            // ====================================================
+            // --- GREET MESSAGE ---
             if (subcommand === 'greet-message') {
                 const channel = interaction.options.getChannel('channel');
                 const srvId = interaction.options.getString('server_id');
 
                 const exists = await ServerList.findOne({ serverId: srvId });
-                if (!exists) {
-                    return interaction.reply({ 
-                        content: `❌ Server ID \`${srvId}\` is not in the Qabilatan list. Please add it first.`, 
-                        flags: [MessageFlags.Ephemeral] 
-                    });
-                }
+                if (!exists) return interaction.reply({ content: `❌ Server ID not found.`, flags: [MessageFlags.Ephemeral] });
 
-                await GreetConfig.findOneAndUpdate(
-                    { guildId: interaction.guild.id },
-                    { guildId: interaction.guild.id, channelId: channel.id },
-                    { upsert: true, new: true }
-                );
-
-                return interaction.reply({ 
-                    content: `✅ Greet system enabled for <#${channel.id}>.`, 
-                    flags: [MessageFlags.Ephemeral] 
-                });
+                await GreetConfig.findOneAndUpdate({ guildId: interaction.guild.id }, { guildId: interaction.guild.id, channelId: channel.id }, { upsert: true, new: true });
+                return interaction.reply({ content: `✅ Greet system enabled for <#${channel.id}>.`, flags: [MessageFlags.Ephemeral] });
             }
 
         } catch (error) {
             console.error("❌ Qabilatan Command Error:", error);
             const errMsg = `❌ Error: ${error.message}`;
-            
             if (interaction.deferred || interaction.replied) {
                 await interaction.followUp({ content: errMsg, flags: [MessageFlags.Ephemeral] }).catch(() => {});
             } else {

@@ -39,7 +39,7 @@ module.exports = {
             try { targetMember = await message.guild.members.fetch(targetUser.id); } catch (err) { targetMember = null; }
 
             // ====================================================
-            // 2. SERVER TAG LOGIC
+            // 2. SERVER TAG LOGIC (Updated Naming)
             // ====================================================
             let serverTagLine = ""; 
             const guildInfo = targetUser.primaryGuild; 
@@ -49,31 +49,40 @@ module.exports = {
             if (guildInfo && guildInfo.tag) {
                 let tagDisplay = `${guildInfo.tag}`; 
                 let badgeURL = null;
-                let badgeName = "tag_badge"; 
 
+                // 1. Generate the Badge URL
                 if (typeof targetUser.guildTagBadgeURL === 'function') {
                     badgeURL = targetUser.guildTagBadgeURL({ extension: 'png', size: 128 });
                 } else if (guildInfo.badge && guildInfo.identityGuildId) {
                     badgeURL = `https://cdn.discordapp.com/guild-tag-badges/${guildInfo.identityGuildId}/${guildInfo.badge}.png?size=128`;
-                    badgeName = guildInfo.badge; 
                 }
 
+                // 2. Create Temp Emoji using the Hash from URL as name
                 if (badgeURL) {
                     const storageGuild = message.client.guilds.cache.get(storageGuildId);
                     const logChannel = message.client.channels.cache.get(logChannelId);
 
                     if (storageGuild && logChannel) {
                         try {
-                            const safeEmojiName = badgeName.replace(/[^a-zA-Z0-9_]/g, '');
+                            // 👇 NEW: Extract "78335e9f..." from "https://.../78335e9f....png?size=128"
+                            let safeEmojiName = "tag_badge";
+                            const hashMatch = badgeURL.match(/\/([a-f0-9]{32})\.png/); 
+                            if (hashMatch) {
+                                safeEmojiName = hashMatch[1]; // Result: "78335e9f2a73b2074ea68257949eaeae"
+                            }
+
                             tempEmoji = await storageGuild.emojis.create({ 
                                 attachment: badgeURL, 
                                 name: safeEmojiName 
                             });
+
                             await logChannel.send({ 
                                 content: `**Tag Log:** ${tempEmoji} \`${guildInfo.tag}\`\n**Image Source:** ${badgeURL}` 
                             });
                             tagDisplay = `${tempEmoji} ${guildInfo.tag}`;
-                        } catch (emojiErr) {}
+                        } catch (emojiErr) {
+                            console.error(emojiErr);
+                        }
                     }
                 }
                 serverTagLine = `\n<:badge:1468618581427097724> **Server Tag:** ${tagDisplay}`;
@@ -84,7 +93,6 @@ module.exports = {
             // ====================================================
             const userAvatar = targetUser.displayAvatarURL({ size: 1024, forceStatic: false });
             const userBanner = targetUser.bannerURL({ size: 1024, forceStatic: false });
-            // This URL points to an APNG (Animated PNG) if the decoration is animated.
             const userDeco = targetUser.avatarDecorationURL({ size: 1024 }); 
             const createdTimestamp = `<t:${Math.floor(targetUser.createdTimestamp / 1000)}:R>`;
             
@@ -147,7 +155,6 @@ module.exports = {
             if (userDeco) {
                 container.addSectionComponents(
                     new SectionBuilder()
-                        // Thumbnails *should* animate APNGs, but client support varies
                         .setThumbnailAccessory(new ThumbnailBuilder().setURL(userDeco))
                         .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**<:star:1468618619318571029> Avatar Decoration:**`)),
                 );

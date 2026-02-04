@@ -7,14 +7,15 @@ const {
     MediaGalleryBuilder,     
     MediaGalleryItemBuilder, 
     SectionBuilder,
-    ThumbnailBuilder
+    ThumbnailBuilder,
+    UserFlagsBitField
 } = require('discord.js');
 
 module.exports = {
     name: 'userinfo',
     aliases: ['ui', 'user', 'u'],
     description: 'Displays information about a user with Server Tag and Avatar Decorations',
-  //  channels: ['1456197056510165026', '1456197056510165029', '1456197056988319870'], 
+    channels: ['1456197056510165026', '1456197056510165029', '1456197056988319870'], 
 
     async execute(message, args) {
         let tempEmoji = null; 
@@ -41,15 +42,13 @@ module.exports = {
             // ====================================================
             // 2. SERVER TAG LOGIC
             // ====================================================
-            let serverTagDisplay = "None";
+            let serverTagLine = ""; 
             const guildInfo = targetUser.primaryGuild; 
-            
             const storageGuildId = '1468061368098750507';
             const logChannelId = '1468493795531161650'; 
 
             if (guildInfo && guildInfo.tag) {
-                serverTagDisplay = `${guildInfo.tag}`;
-
+                let tagDisplay = `${guildInfo.tag}`; 
                 let badgeURL = null;
                 let badgeName = "tag_badge"; 
 
@@ -71,18 +70,14 @@ module.exports = {
                                 attachment: badgeURL, 
                                 name: safeEmojiName 
                             });
-                            
-                            // 👇 CHANGED: Now sends the emoji + the permanent link to the image
                             await logChannel.send({ 
                                 content: `**Tag Log:** ${tempEmoji} \`${guildInfo.tag}\`\n**Image Source:** ${badgeURL}` 
                             });
-                            
-                            serverTagDisplay = `${tempEmoji} ${guildInfo.tag}`;
-                        } catch (emojiErr) {
-                            console.error("Failed to process temp emoji:", emojiErr);
-                        }
+                            tagDisplay = `${tempEmoji} ${guildInfo.tag}`;
+                        } catch (emojiErr) {}
                     }
                 }
+                serverTagLine = `\n<:badge:1468618581427097724> **Server Tag:** ${tagDisplay}`;
             }
 
             // ====================================================
@@ -93,28 +88,44 @@ module.exports = {
             const userDeco = targetUser.avatarDecorationURL({ size: 1024 }); 
             const createdTimestamp = `<t:${Math.floor(targetUser.createdTimestamp / 1000)}:R>`;
             
-            // --- MEMBER SPECIFIC DATA ---
-            let memberAvatar = message.guild.iconURL({ size: 1024 }); // Default to Server Icon
+            // --- BADGES ---
+            const badgeMap = {
+                Staff: '<:discord_staff:1468521557075689556>',
+                Partner: '<:partner4:1468521552638382292>',
+                HypeSquad: '<:hypesquadevents:1468521524725157939>',
+                BugHunterLevel1: '<:bughuntergreen:1468521502377906328>',
+                BugHunterLevel2: '<:bughuntergold:1468521499160739841>',
+                HypeSquadOnlineHouse1: '<:hypesquadbravery:1468521511353843748>',
+                HypeSquadOnlineHouse2: '<:hypesquadbrilliance:1468521513656258634>',
+                HypeSquadOnlineHouse3: '<:hypesquadbalance:1468521509462081597>',
+                PremiumEarlySupporter: '<:earlysupporter:1468521504307150848>',
+                VerifiedDeveloper: '<:earlyverifiedbotdeveloper:1468521505762574485>',
+                ActiveDeveloper: '<:activedeveloper:1468521914107428937>',
+                CertifiedModerator: '<:modnew:1468521530152714250>'
+            };
+
+            const userFlags = targetUser.flags ? targetUser.flags.toArray() : [];
+            let badgeList = userFlags.map(flag => badgeMap[flag]).filter(Boolean);
+
+            // --- MEMBER DATA ---
+            let memberAvatar = message.guild.iconURL({ size: 1024 }); 
             let memberDeco = null;
             let joinedTimestamp = "Not in server";
             let nickname = "None";
             let rolesDisplay = "N/A";
             let joinPosition = "N/A";
-            let joinMethod = "Unknown"; 
-            const stats = { total: 0, month: 0, week: 0, today: 0 }; 
-            const messageStatsDisplay = `${stats.total} (Month: ${stats.month} | Week: ${stats.week} | Today: ${stats.today})`;
+            
+            // --- NITRO & BOOST VARIABLES ---
+            let boostingLine = "";
+            let nitroTypeLine = ""; 
+            let subscriberSinceLine = "";
 
             if (targetMember) {
-                // 1. Avatar: Prefer Server Avatar > Server Icon
-                if (targetMember.avatar) {
-                    memberAvatar = targetMember.displayAvatarURL({ size: 1024, forceStatic: false });
-                }
-                
-                // 2. Decoration: Check for Per-Server Decoration
+                if (targetMember.avatar) memberAvatar = targetMember.displayAvatarURL({ size: 1024, forceStatic: false });
                 memberDeco = targetMember.avatarDecorationURL({ size: 1024 });
 
                 joinedTimestamp = `<t:${Math.floor(targetMember.joinedTimestamp / 1000)}:R>`;
-                nickname = targetMember.nickname || targetMember.user.displayName;
+                nickname = targetMember.nickname || "None"; 
                 
                 const roleSize = targetMember.roles.cache.size - 1; 
                 const highestRole = targetMember.roles.highest;
@@ -124,11 +135,65 @@ module.exports = {
                 const pos = Array.from(sortedMembers.values()).indexOf(targetMember) + 1;
                 joinPosition = `${pos}/${message.guild.memberCount}`;
 
-                if (targetUser.bot) joinMethod = `[OAuth2 / Bot Add](https://discord.com/oauth2/authorize?client_id=${targetUser.id})`;
-                else if (targetUser.id === message.guild.ownerId) joinMethod = `**Server Creator**`;
-                else if (message.guild.vanityURLCode) joinMethod = `[Vanity: ${message.guild.vanityURLCode}](https://discord.gg/${message.guild.vanityURLCode})`;
-                else joinMethod = `Standard Invite / Discovery`;
+                // ========================================================
+                // NITRO & BOOST CALCULATION
+                // ========================================================
+                if (targetMember.premiumSinceTimestamp) {
+                    const now = Date.now();
+                    const boostedAt = targetMember.premiumSinceTimestamp;
+                    const months = Math.floor((now - boostedAt) / (1000 * 60 * 60 * 24 * 30));
+                    const timestampDisplay = `<t:${Math.floor(boostedAt / 1000)}:R>`;
+
+                    // 1. Calculate BOOST Badge (Pink Emojis)
+                    let boostEmoji = '<:boost1m:1468521487202783346>'; 
+                    if (months >= 24) boostEmoji = '<:bost24m:1468521497101340769>';
+                    else if (months >= 18) boostEmoji = '<:boost18m:1468521485659537577>';
+                    else if (months >= 15) boostEmoji = '<:boost15m:1468521482949890088>';
+                    else if (months >= 12) boostEmoji = '<:boost12m:1468521480852733965>';
+                    else if (months >= 9)  boostEmoji = '<:boost9m:1468521495058972672>';
+                    else if (months >= 6)  boostEmoji = '<:boost6m:1468521492500316370>';
+                    else if (months >= 3)  boostEmoji = '<:boost3m:1468521490541707346>';
+                    else if (months >= 2)  boostEmoji = '<:boost2m:1468521488704602268>';
+
+                    // 2. Calculate NITRO EVOLUTION Badge (Subscriber Emojis)
+                    let nitroEvoEmoji = '<:nitro:1468521533659156480>'; // < 1 month
+                    if (months >= 72) nitroEvoEmoji = '<:nitroopal:1468521541368152179>';      // 6+ years
+                    else if (months >= 60) nitroEvoEmoji = '<:nitroruby:1468521545361002622>'; // 5 years
+                    else if (months >= 36) nitroEvoEmoji = '<:nitroemerald:1468521538193064119>'; // 3 years
+                    else if (months >= 24) nitroEvoEmoji = '<:nitrodiamond:1468521536699895839>'; // 2 years
+                    else if (months >= 12) nitroEvoEmoji = '<:nitroplatinum:1468521543846989947>'; // 1 year
+                    else if (months >= 6)  nitroEvoEmoji = '<:nitrogold:1468521540113928194>';     // 6 months
+                    else if (months >= 3)  nitroEvoEmoji = '<:nitrosilver:1468521546782867649>';   // 3 months
+                    else if (months >= 1)  nitroEvoEmoji = '<:nitrobronze:1468521534921506841>';   // 1 month
+
+                    // 3. Add to Badge List
+                    badgeList.push('<:nitro:1468521533659156480>'); // Generic Nitro icon for the list
+                    badgeList.push(boostEmoji); 
+
+                    // 4. Construct Lines
+                    nitroTypeLine = `\n<:nitro:1468521533659156480> **Nitro Type:** Server Booster`;
+                    subscriberSinceLine = `\n<:time:1468625930074460394> **Subscriber Since:** ${nitroEvoEmoji} ${timestampDisplay}`;
+                    boostingLine = `\n<:server_boost:1468633171758284872> **Boosting Since:** ${boostEmoji} ${timestampDisplay}`;
+
+                } else if (targetUser.banner || userDeco || targetUser.discriminator === '0') {
+                    // Fallback if they have features but not boosting (Cannot guess duration)
+                    nitroTypeLine = `\n<:nitro:1468521533659156480> **Nitro Type:** Nitro / Basic`;
+                }
             }
+
+            // Construct Badge Line (Top section)
+            const badgesLine = badgeList.length > 0 
+                ? `\n<:star_circle:1468623218574098502> **Badges:** ${badgeList.join(' ')}` 
+                : "";
+
+            // Footer Time (GMT+7)
+            const now = new Date();
+            const footerTime = now.toLocaleString('en-GB', { 
+                timeZone: 'Asia/Bangkok', 
+                hour12: false,
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            }); 
 
             // ====================================================
             // 4. BUILD CONTAINER
@@ -136,7 +201,7 @@ module.exports = {
             const container = new ContainerBuilder()
                 .setAccentColor(8947848)
                 
-                // --- USER SECTION ---
+                // --- 1. USER SECTION ---
                 .addSectionComponents(
                     new SectionBuilder()
                         .setThumbnailAccessory(new ThumbnailBuilder().setURL(userAvatar))
@@ -146,38 +211,38 @@ module.exports = {
                                 `<:id:1468487725912166596> **ID:** \`${targetUser.id}\`\n` +
                                 `<:at:1468487835613925396> ${targetUser.toString()} (\`${targetUser.username}\`)\n` +
                                 `<:identity:1468485794938224807> **Display Name:** ${targetUser.globalName || targetUser.username}\n` +
-                                `<:calender:1468485942137323630> **Account Created:** ${createdTimestamp}\n` +
-                                `<:badge:1468618581427097724> **Server Tag:** ${serverTagDisplay}`
+                                `<:calender:1468485942137323630> **Account Created:** ${createdTimestamp}` +
+                                badgesLine + 
+                                nitroTypeLine + 
+                                subscriberSinceLine +
+                                boostingLine +
+                                serverTagLine
                             ),
                         ),
                 );
 
-            // --- GLOBAL DECORATION ---
+            // --- 2. GLOBAL DECORATION ---
             if (userDeco) {
                 container.addSectionComponents(
                     new SectionBuilder()
                         .setThumbnailAccessory(new ThumbnailBuilder().setURL(userDeco))
                         .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent(`**<:star:1468618619318571029> Avatar Decoration:**`),
+                            new TextDisplayBuilder().setContent(`**<:star:1468618619318571029> Avatar Decoration:**`), 
                         ),
                 );
             }
 
-            // --- USER BANNER ---
+            // --- 3. PROFILE BANNER ---
             if (userBanner) {
                 container
-                    .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
-                    .addMediaGalleryComponents(
-                        new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(userBanner)),
-                    );
+                    .addTextDisplayComponents(new TextDisplayBuilder().setContent("<:discord:1468638005169229940> **Profile Banner:**"))
+                    .addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(userBanner)));
             }
 
             // --- SEPARATOR ---
-            container.addSeparatorComponents(
-                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true),
-            );
+            container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true));
 
-            // --- SERVER SECTION ---
+            // --- 4. SERVER MEMBERSHIP ---
             if (targetMember) {
                 const serverSection = new SectionBuilder();
                 if (memberAvatar) serverSection.setThumbnailAccessory(new ThumbnailBuilder().setURL(memberAvatar));
@@ -188,42 +253,36 @@ module.exports = {
                         `<:name:1468486108450127915> **Nickname:** ${nickname}\n` +
                         `<:roles:1468486024089964654> **Roles:** ${rolesDisplay}\n` +
                         `<:calender:1468485942137323630> **Joined:** ${joinedTimestamp}\n` +
-                        `<:pin:1468487912986382396> **Join Position:** ${joinPosition}\n` +
-                        `<:position_right:1468488077692502026> **Join Method:** ${joinMethod}\n` +
-                        `<:talk:1468488155106640066> **Messages:** ${messageStatsDisplay}`
+                        `<:location:1468629967956086961> **Join Position:** ${joinPosition}`
                     ),
                 );
                 container.addSectionComponents(serverSection);
 
-                // --- SERVER SPECIFIC DECORATION ---
-                // Only show if different from global or explicitly set
+                // --- 5. PER-SERVER DECORATION ---
                 if (memberDeco && memberDeco !== userDeco) {
                     container.addSectionComponents(
                         new SectionBuilder()
                             .setThumbnailAccessory(new ThumbnailBuilder().setURL(memberDeco))
-                            .addTextDisplayComponents(
-                                new TextDisplayBuilder().setContent(`**<:star:1468618619318571029> Per-server Avatar Decoration:**`),
-                            ),
+                            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**<:star:1468618619318571029> Per-server Avatar Decoration:**`)),
                     );
                 }
 
+                // --- 6. PER-SERVER BANNER ---
                 const guildBanner = targetMember.bannerURL ? targetMember.bannerURL({ size: 1024 }) : null;
                 if (guildBanner) {
                     container
-                        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
-                        .addMediaGalleryComponents(
-                            new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(guildBanner)),
-                        );
+                        .addTextDisplayComponents(new TextDisplayBuilder().setContent("<:discord:1468638005169229940> **Per-server Profile Banner:**"))
+                        .addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(guildBanner)));
                 }
             } else {
-                container.addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent("-# User is not in this server.")
-                );
+                container.addTextDisplayComponents(new TextDisplayBuilder().setContent("-# User is not in this server."));
             }
 
-            // ====================================================
-            // 5. SEND & CLEANUP
-            // ====================================================
+            // --- 7. FOOTER ---
+            container
+                .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
+                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`⏱️ ${footerTime} (GMT+7)`));
+
             await message.reply({ 
                 components: [container], 
                 flags: [MessageFlags.IsComponentsV2, MessageFlags.SuppressNotifications],
@@ -231,9 +290,7 @@ module.exports = {
             });
 
             if (tempEmoji) {
-                setTimeout(async () => {
-                    try { await tempEmoji.delete(); } catch (err) {}
-                }, 5000);
+                setTimeout(async () => { try { await tempEmoji.delete(); } catch (err) {} }, 5000);
             }
 
         } catch (error) {

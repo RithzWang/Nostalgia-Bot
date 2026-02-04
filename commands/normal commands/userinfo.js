@@ -48,7 +48,7 @@ module.exports = {
             const logChannelId = '1468493795531161650'; 
 
             if (guildInfo && guildInfo.tag) {
-                serverTagDisplay = `**${guildInfo.tag}**`;
+                serverTagDisplay = `${guildInfo.tag}`;
 
                 let badgeURL = null;
                 let badgeName = "tag_badge"; 

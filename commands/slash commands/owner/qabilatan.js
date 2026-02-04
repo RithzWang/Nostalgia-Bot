@@ -16,8 +16,13 @@ const {
 
 // ⚠️ ADJUST PATHS IF NEEDED
 const { Panel, ServerList, GreetConfig } = require('../../../src/models/Qabilatan'); 
-// ✅ IMPORT BOTH GENERATORS
-const { generateDetailedPayload, generateDirectoryPayload, updateAllPanels } = require('../../../utils/qabilatanManager'); 
+
+// ✅ CRITICAL FIX: Import the new functions here
+const { 
+    generateDetailedPayload, 
+    generateDirectoryPayload, 
+    updateAllPanels 
+} = require('../../../utils/qabilatanManager'); 
 
 const ALLOWED_USER_ID = '837741275603009626';
 const MAIN_SERVER_ID = '1456197054782111756'; // ✅ DEFINE MAIN ID

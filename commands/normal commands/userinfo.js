@@ -7,7 +7,8 @@ const {
     MediaGalleryBuilder,     
     MediaGalleryItemBuilder, 
     SectionBuilder,
-    ThumbnailBuilder
+    ThumbnailBuilder,
+    UserFlagsBitField
 } = require('discord.js');
 
 module.exports = {
@@ -29,7 +30,7 @@ module.exports = {
             }
             if (!targetUser && !args[0]) targetUser = await message.client.users.fetch(message.author.id, { force: true });
             
-            // Critical: Force fetch to ensure flags/banner are loaded
+            // Critical: Force fetch ensures flags (Badges) and banner are loaded
             if (targetUser) {
                 targetUser = await message.client.users.fetch(targetUser.id, { force: true });
             }
@@ -88,9 +89,9 @@ module.exports = {
             const userDeco = targetUser.avatarDecorationURL({ size: 1024 }); 
             const createdTimestamp = `<t:${Math.floor(targetUser.createdTimestamp / 1000)}:R>`;
             
-            // --- BADGES MAPPING (Updated with your list) ---
+            // --- BADGES MAPPING (Flags) ---
+            // Mapping Discord's Public Flags to your Emojis
             const badgeMap = {
-                // User Badges
                 Staff: '<:discord_staff:1468521557075689556>',
                 Partner: '<:partner4:1468521552638382292>',
                 HypeSquad: '<:hypesquadevents:1468521524725157939>',
@@ -102,36 +103,31 @@ module.exports = {
                 PremiumEarlySupporter: '<:earlysupporter:1468521504307150848>',
                 VerifiedDeveloper: '<:earlyverifiedbotdeveloper:1468521505762574485>',
                 ActiveDeveloper: '<:activedeveloper:1468521914107428937>',
+                CertifiedModerator: '<:modnew:1468521530152714250>', // Using 'modnew' as certified
                 ModeratorProgramsAlumni: '<:modold:1468521531603943476>',
-                
-                // Bot Badges (Mapped via flags)
-                BotHTTPInteractions: '<:slash:1468653349627891752>', // Supports Commands
-                // These often need bitfield checks (see below) but we map keys if they appear
-                ApplicationCommandBadge: '<:slash:1468653349627891752>',
+                BotHTTPInteractions: '<:slash:1468653349627891752>',
                 ApplicationAutoModerationRuleCreateBadge: '<:uses_automod:1468521528424402976>',
+                // Custom or Manual Badges
                 QuestsCompleted: '<:quest:1468521554605379617>' 
             };
 
             const userFlags = targetUser.flags ? targetUser.flags.toArray() : [];
             let badgeList = userFlags.map(flag => badgeMap[flag]).filter(Boolean);
 
-            // Manual Checks for specific badges not always in .toArray()
-            // 1. "Uses Automod" (Bitflag: 1 << 6)
+            // Manual Checks
             if (targetUser.bot) {
-                const flags = targetUser.flags.bitfield;
-                if ((flags & (1 << 6)) !== 0) badgeList.push('<:uses_automod:1468521528424402976>'); 
-                // "Premium App" usually doesn't have a public flag on the User object, but if you have logic for it:
-                // badgeList.push('<:premium_app:1468653351863582842>'); 
+                // Check for Automod (Bit 6) if not in .toArray()
+                if ((targetUser.flags.bitfield & (1 << 6)) !== 0) {
+                     if (!badgeList.includes(badgeMap.ApplicationAutoModerationRuleCreateBadge)) {
+                         badgeList.push(badgeMap.ApplicationAutoModerationRuleCreateBadge);
+                     }
+                }
             }
 
-            // 2. "Originally Known As" (Legacy Username)
-            // Logic: Migrated user usually has discriminator '0'
+            // Legacy Username Badge (Migrated users often have discriminator '0')
             if (targetUser.discriminator === '0' && !targetUser.bot) {
                 badgeList.push('<:username:1468521559202201623>');
             }
-
-            // 3. "Orb" Badge (Custom/Event) - Add manually if needed or based on specific logic
-            // badgeList.push('<:orbs:1468521551065256063>'); 
 
             // --- MEMBER DATA ---
             let memberAvatar = message.guild.iconURL({ size: 1024 }); 
@@ -161,8 +157,24 @@ module.exports = {
                 const pos = Array.from(sortedMembers.values()).indexOf(targetMember) + 1;
                 joinPosition = `${pos}/${message.guild.memberCount}`;
 
-                // --- NITRO & BOOST CALCULATION ---
+                // ====================================================
+                // NITRO & BOOST CALCULATION
+                // ====================================================
+                let nitroType = null;
+                
+                // 1. Try Official API Field (premium_type)
+                // 0: None, 1: Classic, 2: Nitro, 3: Basic
+                if (typeof targetUser.premiumType === 'number') {
+                    if (targetUser.premiumType === 1) nitroType = "Nitro Classic";
+                    else if (targetUser.premiumType === 2) nitroType = "Nitro";
+                    else if (targetUser.premiumType === 3) nitroType = "Nitro Basic";
+                }
+
+                // 2. Logic for Boosting & Badges
                 if (targetMember.premiumSinceTimestamp) {
+                    // They are boosting!
+                    if (!nitroType) nitroType = "Server Booster"; // Override if unknown
+
                     const now = Date.now();
                     const boostedAt = targetMember.premiumSinceTimestamp;
                     const months = Math.floor((now - boostedAt) / (1000 * 60 * 60 * 24 * 30));
@@ -179,7 +191,7 @@ module.exports = {
                     else if (months >= 3)  boostEmoji = '<:boost3m:1468521490541707346>';
                     else if (months >= 2)  boostEmoji = '<:boost2m:1468521488704602268>';
 
-                    // Nitro Evolution Badge (Subscriber)
+                    // Nitro Evolution (Subscriber)
                     let nitroEvoEmoji = '<:nitro:1468521533659156480>'; 
                     if (months >= 72) nitroEvoEmoji = '<:nitroopal:1468521541368152179>';
                     else if (months >= 60) nitroEvoEmoji = '<:nitroruby:1468521545361002622>';
@@ -194,13 +206,21 @@ module.exports = {
                     badgeList.push(nitroEvoEmoji); 
                     badgeList.push(boostEmoji); 
 
-                    nitroTypeLine = `\n<:nitro:1468521533659156480> **Nitro Type:** Server Booster`;
+                    // Set Text Lines
                     subscriberSinceLine = `\n<:time:1468625930074460394> **Subscriber Since:** ${timestampDisplay}`;
                     boostingLine = `\n<:server_boost:1468633171758284872> **Boosting Since:** ${timestampDisplay}`;
 
-                } else if (targetUser.banner || userDeco || targetUser.discriminator === '0') {
-                    badgeList.push('<:nitro:1468521533659156480>');
-                    nitroTypeLine = `\n<:nitro:1468521533659156480> **Nitro Type:** Nitro / Basic`;
+                } else if (!nitroType) {
+                    // Fallback Heuristics
+                    if (targetUser.banner || userDeco || targetUser.displayAvatarURL().endsWith('.gif')) {
+                        nitroType = "Nitro / Basic";
+                        badgeList.push('<:nitro:1468521533659156480>'); // Add generic icon to list if we guess they have it
+                    }
+                }
+
+                // Final Nitro Type Line
+                if (nitroType) {
+                    nitroTypeLine = `\n<:nitro:1468521533659156480> **Nitro Type:** ${nitroType}`;
                 }
             }
 
@@ -291,7 +311,7 @@ module.exports = {
 
             container
                 .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
-                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ⏱️ ${footerTime} (GMT+7)`));
+                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${footerTime} (GMT+7)`));
 
             await message.reply({ 
                 components: [container], 

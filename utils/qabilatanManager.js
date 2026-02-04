@@ -193,7 +193,7 @@ async function generateDirectoryPayload(client) {
                 if (owner) {
                     const gName = owner.globalName || owner.username;
                     // Owner Line
-                    detailsText += `<:owner:1468458871864426557> **Owner:** ${gName} \`(${owner.username})\``;
+                    detailsText += `<:owner:1468460831577608345> **Owner:** ${gName} \`(${owner.username})\``;
                 }
             }
         } catch (e) { /* Ignore errors if bot not in server */ }

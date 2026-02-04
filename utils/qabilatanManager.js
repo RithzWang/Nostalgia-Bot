@@ -128,7 +128,7 @@ async function generateDetailedPayload(client, preCalcCounts) {
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
                         `## [${data.name || "Unknown"}](${data.inviteLink || "https://discord.com"})\n` +
-                        `**<:sparkles:1468470437838192651> Server Tag:** ${displayTagText}\n` +
+                        `**<:badge:1468618581427097724> Server Tag:** ${displayTagText}\n` +
                         `**<:members:1468470163081924608> Members:** ${memberCount}\n` +
                         `${tagStatusLine}`
                     )
@@ -201,7 +201,7 @@ async function generateDirectoryPayload(client) {
         // Tag Line
         if (data.tagText && data.tagText.length > 0) {
             if (detailsText.length > 0) detailsText += "\n"; // Add new line if owner exists
-            detailsText += `<:sparkles:1468470437838192651> **Server Tag:** ${data.tagText}`;
+            detailsText += `<:badge:1468618581427097724> **Server Tag:** ${data.tagText}`;
         }
 
         // If we have details (Owner or Tag), add them as a second text component

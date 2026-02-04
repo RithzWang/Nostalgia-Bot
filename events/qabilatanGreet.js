@@ -3,7 +3,7 @@ const { GreetConfig, ServerList } = require('../src/models/Qabilatan'); // Adjus
 const { serverID } = require('../config.json'); 
 
 const MAIN_SERVER_ID = serverID; 
-const MAIN_SERVER_INVITE = "https://discord.gg/Sra726wPJs";
+const MAIN_SERVER_INVITE = "https://discord.gg/MjR6GtkHag";
 
 module.exports = {
     name: 'guildMemberAdd',

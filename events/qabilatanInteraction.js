@@ -4,9 +4,9 @@ const {
     TextInputBuilder, 
     TextInputStyle, 
     ActionRowBuilder,
-    MessageFlags // Import MessageFlags
+    MessageFlags 
 } = require('discord.js');
-const { ServerList } = require('../src/models/Qabilatan'); 
+const { ServerList } = require('../src/models/Qabilatan'); // Adjusted path to match your previous snippets
 const { updateAllPanels } = require('../utils/qabilatanManager'); 
 
 const ALLOWED_USER_ID = '837741275603009626';
@@ -21,7 +21,7 @@ module.exports = {
         if (interaction.user.id !== ALLOWED_USER_ID) {
             return interaction.reply({ 
                 content: "❌ Unauthorized.", 
-                flags: [MessageFlags.Ephemeral] // Used Flag
+                flags: [MessageFlags.Ephemeral] 
             });
         }
 
@@ -30,7 +30,6 @@ module.exports = {
             // 1. ADD SERVER (Modal Submit)
             // ====================================================
             if (interaction.isModalSubmit() && interaction.customId === 'qabilatan_add_modal') {
-                // ⏳ DEFER using Flag
                 await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
                 const serverId = interaction.fields.getTextInputValue('srv_id');
@@ -48,7 +47,8 @@ module.exports = {
                     { upsert: true }
                 );
 
-                await updateAllPanels(client); 
+                // ✅ PASSED TRUE: Updates Satellites too!
+                await updateAllPanels(client, true); 
                 return interaction.editReply({ content: `✅ Added **${finalName}** to the network. Stats updated.` });
             }
 
@@ -66,7 +66,6 @@ module.exports = {
                     });
                 }
 
-                // Show Modal (Cannot use ephemeral flag here, modals are always user-specific)
                 const modal = new ModalBuilder()
                     .setCustomId(`qabilatan_edit_modal_${selectedId}`)
                     .setTitle(`Edit ${serverData.name ? serverData.name.substring(0, 20) : 'Server'}`);
@@ -85,7 +84,6 @@ module.exports = {
             // 3. EDIT SERVER (Modal Submit)
             // ====================================================
             if (interaction.isModalSubmit() && interaction.customId.startsWith('qabilatan_edit_modal_')) {
-                // ⏳ DEFER using Flag
                 await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
                 const serverId = interaction.customId.split('_').pop();
@@ -100,7 +98,8 @@ module.exports = {
                     }
                 );
 
-                await updateAllPanels(client);
+                // ✅ PASSED TRUE: Updates Satellites too!
+                await updateAllPanels(client, true);
                 return interaction.editReply({ content: "✅ Server updated. Panels refreshed." });
             }
 
@@ -108,19 +107,18 @@ module.exports = {
             // 4. DELETE SERVER (Select Menu)
             // ====================================================
             if (interaction.isStringSelectMenu() && interaction.customId === 'qabilatan_delete_select') {
-                // ⏳ DEFER using Flag
                 await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
                 const selectedId = interaction.values[0];
                 await ServerList.deleteOne({ serverId: selectedId });
                 
-                await updateAllPanels(client);
+                // ✅ PASSED TRUE: Updates Satellites too!
+                await updateAllPanels(client, true);
                 return interaction.editReply({ content: `✅ Server removed. Stats updated.` });
             }
 
         } catch (error) {
             console.error("Qabilatan Interaction Error:", error);
-            // Handle error safely
             if (interaction.deferred || interaction.replied) {
                 await interaction.followUp({ 
                     content: "❌ Error processing request. Check logs.", 

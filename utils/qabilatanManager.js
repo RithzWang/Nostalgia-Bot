@@ -207,9 +207,6 @@ async function generateDirectoryPayload() {
         )
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(`-# ⏱️ Last Updated: <t:${timestampUnix}:R>`),
-        )
-        .addSeparatorComponents(
-            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
         );
 
     return [container];

@@ -15,9 +15,9 @@ const {
 } = require('discord.js');
 
 // ⚠️ ADJUST PATHS IF NEEDED
-const { Panel, ServerList, GreetConfig } = require('../../../../models/Qabilatan'); 
+const { Panel, ServerList, GreetConfig } = require('../../../src/models/Qabilatan'); 
 // ✅ IMPORT BOTH GENERATORS
-const { generateDetailedPayload, generateDirectoryPayload, updateAllPanels } = require('../../../../utils/qabilatanManager'); 
+const { generateDetailedPayload, generateDirectoryPayload, updateAllPanels } = require('../../../utils/qabilatanManager'); 
 
 const ALLOWED_USER_ID = '837741275603009626';
 const MAIN_SERVER_ID = '1456197054782111756'; // ✅ DEFINE MAIN ID

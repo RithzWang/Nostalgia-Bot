@@ -13,7 +13,7 @@ const {
 module.exports = {
     name: 'userinfo',
     aliases: ['ui', 'user'],
-    description: 'Displays information about a user with Server Tag support',
+    description: 'Displays information about a user with Server Tag, Join Method, and Message Stats',
     channels: ['1456197056510165026', '1456197056510165029', '1456197056988319870'], 
 
     async execute(message, args) {
@@ -48,43 +48,37 @@ module.exports = {
             const logChannelId = '1468493795531161650'; 
 
             if (guildInfo && guildInfo.tag) {
-                // Default to text only
-                serverTagDisplay = `**${guildInfo.tag}**`;
+                serverTagDisplay = `${guildInfo.tag}`;
 
-                // 1. Get Badge URL & Image Name
                 let badgeURL = null;
                 let badgeName = "tag_badge"; 
 
                 if (typeof targetUser.guildTagBadgeURL === 'function') {
-                    // Logic if using a library extension
                     badgeURL = targetUser.guildTagBadgeURL({ extension: 'png', size: 128 });
                 } else if (guildInfo.badge && guildInfo.identityGuildId) {
-                    // Standard Logic
                     badgeURL = `https://cdn.discordapp.com/guild-tag-badges/${guildInfo.identityGuildId}/${guildInfo.badge}.png?size=128`;
-                    badgeName = guildInfo.badge; // Use the image hash as the name
+                    badgeName = guildInfo.badge; 
                 }
 
-                // 2. Create & Log Emoji
                 if (badgeURL) {
                     const storageGuild = message.client.guilds.cache.get(storageGuildId);
                     const logChannel = message.client.channels.cache.get(logChannelId);
 
                     if (storageGuild && logChannel) {
                         try {
-                            // Clean the name (emojis can only be alphanumeric and underscores)
                             const safeEmojiName = badgeName.replace(/[^a-zA-Z0-9_]/g, '');
-
-                            // A. Create Emoji in Storage Server
+                            
+                            // A. Create
                             tempEmoji = await storageGuild.emojis.create({ 
                                 attachment: badgeURL, 
                                 name: safeEmojiName 
                             });
                             
-                            // B. Send to Log Channel (Required step)
+                            // B. Log
                             await logChannel.send({ content: `${tempEmoji}` });
 
-                            // C. Update Display Variable
-                            serverTagDisplay = `${tempEmoji} ${guildInfo.tag}`;
+                            // C. Display
+                            serverTagDisplay = `${tempEmoji} **${guildInfo.tag}**`;
 
                         } catch (emojiErr) {
                             console.error("Failed to process temp emoji:", emojiErr);
@@ -105,8 +99,15 @@ module.exports = {
             let nickname = "None";
             let rolesDisplay = "N/A";
             let joinPosition = "N/A";
-            const joinMethod = "Unknown"; 
-            const messageCount = "0";
+            let joinMethod = "Unknown"; 
+            
+            // --- MESSAGE STATS (Placeholder) ---
+            // Note: You must connect a database (MongoDB/SQL) to fill these numbers.
+            // Discord API does not allow fetching old message counts.
+            const stats = { total: 0, month: 0, week: 0, today: 0 }; 
+            // Example: const stats = await db.getMessages(targetUser.id, message.guild.id);
+            
+            const messageStatsDisplay = `${stats.total} (Month: ${stats.month} | Week: ${stats.week} | Today: ${stats.today})`;
 
             if (targetMember) {
                 if (targetMember.avatar) memberAvatar = targetMember.displayAvatarURL({ size: 1024, forceStatic: false });
@@ -117,13 +118,25 @@ module.exports = {
                 const highestRole = targetMember.roles.highest;
                 rolesDisplay = `${roleSize} (Highest: ${highestRole})`;
 
+                // Join Position
                 const sortedMembers = message.guild.members.cache.sort((a, b) => a.joinedTimestamp - b.joinedTimestamp);
                 const pos = Array.from(sortedMembers.values()).indexOf(targetMember) + 1;
                 joinPosition = `${pos}/${message.guild.memberCount}`;
+
+                // --- JOIN METHOD LOGIC ---
+                if (targetUser.bot) {
+                    joinMethod = `[OAuth2 / Bot Add](https://discord.com/oauth2/authorize?client_id=${targetUser.id})`;
+                } else if (targetUser.id === message.guild.ownerId) {
+                    joinMethod = `**Server Creator**`;
+                } else if (message.guild.vanityURLCode) {
+                    joinMethod = `[Vanity: ${message.guild.vanityURLCode}](https://discord.gg/${message.guild.vanityURLCode})`;
+                } else {
+                    joinMethod = `Standard Invite / Discovery`;
+                }
             }
 
             // ====================================================
-            // 4. BUILD V2 CONTAINER
+            // 4. BUILD CONTAINER
             // ====================================================
             const container = new ContainerBuilder()
                 .setAccentColor(8947848)
@@ -181,7 +194,7 @@ module.exports = {
                                 `<:calender:1468485942137323630> **Joined:** ${joinedTimestamp}\n` +
                                 `<:pin:1468487912986382396> **Join Position:** ${joinPosition}\n` +
                                 `<:position_right:1468488077692502026> **Join Method:** ${joinMethod}\n` +
-                                `<:talk:1468488155106640066> **Messages:** ${messageCount}`
+                                `<:talk:1468488155106640066> **Messages:** ${messageStatsDisplay}`
                             ),
                         ),
                 );

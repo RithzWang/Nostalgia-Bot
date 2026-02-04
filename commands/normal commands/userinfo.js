@@ -13,7 +13,7 @@ const {
 module.exports = {
     name: 'userinfo',
     aliases: ['ui', 'user'],
-    description: 'Displays information about a user with Server Tag, Join Method, and Message Stats',
+    description: 'Displays information about a user with Server Tag and Avatar Decorations',
     channels: ['1456197056510165026', '1456197056510165029', '1456197056988319870'], 
 
     async execute(message, args) {
@@ -29,6 +29,7 @@ module.exports = {
             }
             if (!targetUser && !args[0]) targetUser = await message.client.users.fetch(message.author.id, { force: true });
             
+            // Force fetch to get Banner and Avatar Decoration
             if (targetUser) {
                 targetUser = await message.client.users.fetch(targetUser.id, { force: true });
             }
@@ -39,10 +40,10 @@ module.exports = {
             try { targetMember = await message.guild.members.fetch(targetUser.id); } catch (err) { targetMember = null; }
 
             // ====================================================
-            // 2. SERVER TAG (LOGIC + LOGGING)
+            // 2. SERVER TAG (LOGIC)
             // ====================================================
             let serverTagDisplay = "None";
-            const guildInfo = targetUser.primaryGuild; 
+            const guildInfo = targetUser.primaryGuild; // Assuming this exists on your user object
             
             const storageGuildId = '1468061368098750507';
             const logChannelId = '1468493795531161650'; 
@@ -67,19 +68,12 @@ module.exports = {
                     if (storageGuild && logChannel) {
                         try {
                             const safeEmojiName = badgeName.replace(/[^a-zA-Z0-9_]/g, '');
-                            
-                            // A. Create
                             tempEmoji = await storageGuild.emojis.create({ 
                                 attachment: badgeURL, 
                                 name: safeEmojiName 
                             });
-                            
-                            // B. Log
                             await logChannel.send({ content: `${tempEmoji}` });
-
-                            // C. Display
                             serverTagDisplay = `${tempEmoji} **${guildInfo.tag}**`;
-
                         } catch (emojiErr) {
                             console.error("Failed to process temp emoji:", emojiErr);
                         }
@@ -88,10 +82,11 @@ module.exports = {
             }
 
             // ====================================================
-            // 3. PREPARE USER DATA
+            // 3. PREPARE DATA
             // ====================================================
             const userAvatar = targetUser.displayAvatarURL({ size: 1024, forceStatic: false });
             const userBanner = targetUser.bannerURL({ size: 1024, forceStatic: false });
+            const avatarDecoration = targetUser.avatarDecorationURL({ size: 1024 }); // Requires DJS v14.12+
             const createdTimestamp = `<t:${Math.floor(targetUser.createdTimestamp / 1000)}:R>`;
             
             let memberAvatar = userAvatar;
@@ -100,13 +95,7 @@ module.exports = {
             let rolesDisplay = "N/A";
             let joinPosition = "N/A";
             let joinMethod = "Unknown"; 
-            
-            // --- MESSAGE STATS (Placeholder) ---
-            // Note: You must connect a database (MongoDB/SQL) to fill these numbers.
-            // Discord API does not allow fetching old message counts.
             const stats = { total: 0, month: 0, week: 0, today: 0 }; 
-            // Example: const stats = await db.getMessages(targetUser.id, message.guild.id);
-            
             const messageStatsDisplay = `${stats.total} (Month: ${stats.month} | Week: ${stats.week} | Today: ${stats.today})`;
 
             if (targetMember) {
@@ -118,21 +107,14 @@ module.exports = {
                 const highestRole = targetMember.roles.highest;
                 rolesDisplay = `${roleSize} (Highest: ${highestRole})`;
 
-                // Join Position
                 const sortedMembers = message.guild.members.cache.sort((a, b) => a.joinedTimestamp - b.joinedTimestamp);
                 const pos = Array.from(sortedMembers.values()).indexOf(targetMember) + 1;
                 joinPosition = `${pos}/${message.guild.memberCount}`;
 
-                // --- JOIN METHOD LOGIC ---
-                if (targetUser.bot) {
-                    joinMethod = `[OAuth2 / Bot Add](https://discord.com/oauth2/authorize?client_id=${targetUser.id})`;
-                } else if (targetUser.id === message.guild.ownerId) {
-                    joinMethod = `**Server Creator**`;
-                } else if (message.guild.vanityURLCode) {
-                    joinMethod = `[Vanity: ${message.guild.vanityURLCode}](https://discord.gg/${message.guild.vanityURLCode})`;
-                } else {
-                    joinMethod = `Standard Invite / Discovery`;
-                }
+                if (targetUser.bot) joinMethod = `[OAuth2 / Bot Add](https://discord.com/oauth2/authorize?client_id=${targetUser.id})`;
+                else if (targetUser.id === message.guild.ownerId) joinMethod = `**Server Creator**`;
+                else if (message.guild.vanityURLCode) joinMethod = `[Vanity: ${message.guild.vanityURLCode}](https://discord.gg/${message.guild.vanityURLCode})`;
+                else joinMethod = `Standard Invite / Discovery`;
             }
 
             // ====================================================
@@ -140,18 +122,13 @@ module.exports = {
             // ====================================================
             const container = new ContainerBuilder()
                 .setAccentColor(8947848)
-                // USER HEADER
-                .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent("# <:user:1468487542017097873> User Information"),
-                )
-                .addSeparatorComponents(
-                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
-                )
-                // USER SECTION
+                
+                // --- USER SECTION (Header + Stats) ---
                 .addSectionComponents(
                     new SectionBuilder()
                         .setThumbnailAccessory(new ThumbnailBuilder().setURL(userAvatar))
                         .addTextDisplayComponents(
+                            new TextDisplayBuilder().setContent("# <:user:1468487542017097873> User Information"),
                             new TextDisplayBuilder().setContent(
                                 `<:id:1468487725912166596> **ID:** \`${targetUser.id}\`\n` +
                                 `<:at:1468487835613925396> ${targetUser.toString()} \`(${targetUser.username})\`\n` +
@@ -160,34 +137,40 @@ module.exports = {
                                 `<:sparkles:1468470437838192651> **Server Tag:** ${serverTagDisplay}`
                             ),
                         ),
-                )
-                .addSeparatorComponents(
-                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
                 );
 
-            if (userBanner) {
-                container.addMediaGalleryComponents(
-                    new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(userBanner)),
+            // --- AVATAR DECORATION SECTION (Conditional) ---
+            if (avatarDecoration) {
+                container.addSectionComponents(
+                    new SectionBuilder()
+                        .setThumbnailAccessory(new ThumbnailBuilder().setURL(avatarDecoration))
+                        .addTextDisplayComponents(
+                            new TextDisplayBuilder().setContent(`<:sparkles:1468470437838192651> **Avatar Decoration:** [Link](${avatarDecoration})`),
+                        ),
                 );
             }
 
-            // SERVER HEADER
-            container
-                .addSeparatorComponents(
-                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true),
-                )
-                .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent("# <:home:1468487632328589458> Server Membership"),
-                )
-                .addSeparatorComponents(
-                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
-                );
+            // --- USER BANNER ---
+            if (userBanner) {
+                container
+                    .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
+                    .addMediaGalleryComponents(
+                        new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(userBanner)),
+                    );
+            }
 
+            // --- SEPARATOR (Large Divider) ---
+            container.addSeparatorComponents(
+                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true),
+            );
+
+            // --- SERVER SECTION (Header + Stats) ---
             if (targetMember) {
                 container.addSectionComponents(
                     new SectionBuilder()
                         .setThumbnailAccessory(new ThumbnailBuilder().setURL(memberAvatar))
                         .addTextDisplayComponents(
+                            new TextDisplayBuilder().setContent("# <:home:1468487632328589458> Server Membership"),
                             new TextDisplayBuilder().setContent(
                                 `<:name:1468486108450127915> **Nickname:** ${nickname}\n` +
                                 `<:roles:1468486024089964654> **Roles:** ${rolesDisplay}\n` +
@@ -198,13 +181,11 @@ module.exports = {
                             ),
                         ),
                 );
-                
+
                 const guildBanner = targetMember.bannerURL ? targetMember.bannerURL({ size: 1024 }) : null;
                 if (guildBanner) {
                     container
-                        .addSeparatorComponents(
-                            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
-                        )
+                        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
                         .addMediaGalleryComponents(
                             new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(guildBanner)),
                         );
@@ -216,7 +197,7 @@ module.exports = {
             }
 
             // ====================================================
-            // 5. SEND REPLY
+            // 5. SEND & CLEANUP
             // ====================================================
             await message.reply({ 
                 components: [container], 
@@ -224,16 +205,9 @@ module.exports = {
                 allowedMentions: { parse: [], repliedUser: false } 
             });
 
-            // ====================================================
-            // 6. CLEANUP (Wait 5s then Delete)
-            // ====================================================
             if (tempEmoji) {
                 setTimeout(async () => {
-                    try {
-                        await tempEmoji.delete();
-                    } catch (err) {
-                        // console.log("Failed to delete temp emoji", err); 
-                    }
+                    try { await tempEmoji.delete(); } catch (err) {}
                 }, 5000);
             }
 

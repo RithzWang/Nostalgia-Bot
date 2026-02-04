@@ -88,11 +88,6 @@ module.exports = {
                     .setAccentColor(0x888888) // Green if success, Red if all fail
                     .addTextDisplayComponents(new TextDisplayBuilder().setContent(`${titleText}\n${bodyText}`));
 
-                // Optional: Add a separator if it looks cleaner
-                if (count > 0) {
-                     container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true));
-                }
-
                 return container;
             };
 

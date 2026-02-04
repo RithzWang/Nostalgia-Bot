@@ -16,7 +16,7 @@ let lastKnownCounts = new Map();
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // ==========================================
-// 1. ROLE MANAGER & STATS CALCULATOR
+// 1. ROLE MANAGER (Only needed for Main Server)
 // ==========================================
 async function runRoleUpdates(client) {
     const servers = await ServerList.find();
@@ -36,19 +36,16 @@ async function runRoleUpdates(client) {
     const currentCounts = new Map();
 
     try {
-        // ✅ FIXED: Removed { force: true } to prevent "0" bug
         await mainGuild.members.fetch(); 
         const members = mainGuild.members.cache; 
 
         for (const [memberId, member] of members) {
             if (member.user.bot) continue;
-
             const user = member.user;
             const rolesToKeep = new Set();
             
             if (user.primaryGuild && user.primaryGuild.identityEnabled && user.primaryGuild.identityGuildId) {
                 const targetId = user.primaryGuild.identityGuildId;
-                
                 if (serverConfig.has(targetId)) {
                     const val = currentCounts.get(targetId) || 0;
                     currentCounts.set(targetId, val + 1);
@@ -70,9 +67,7 @@ async function runRoleUpdates(client) {
             }
         }
 
-        if (currentCounts.size > 0) {
-            lastKnownCounts = currentCounts;
-        }
+        if (currentCounts.size > 0) lastKnownCounts = currentCounts;
 
     } catch (e) { 
         console.error(`[Role Manager] Update failed (Using Cache): ${e.message}`); 
@@ -81,10 +76,10 @@ async function runRoleUpdates(client) {
     return currentCounts.size > 0 ? currentCounts : lastKnownCounts; 
 }
 
-// ==========================================
-// 2. DASHBOARD UI GENERATOR
-// ==========================================
-async function generateDashboardPayload(client, preCalcCounts) {
+// =======================================================
+// 2. DETAILED PAYLOAD (For Main Server - With Stats)
+// =======================================================
+async function generateDetailedPayload(client, preCalcCounts) {
     const servers = await ServerList.find();
     const adoptersMap = preCalcCounts || lastKnownCounts || new Map();
 
@@ -104,15 +99,13 @@ async function generateDashboardPayload(client, preCalcCounts) {
         totalTagUsers += currentServerTagCount;
 
         if (guild) {
-            const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS') || guild.features.includes('MEMBER_VERIFICATION_GATE_ENABLED'); 
+            const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS'); 
             const hasActiveAdopters = currentServerTagCount > 0; 
-
             const boostCount = guild.premiumSubscriptionCount || 0;
             const boostsNeeded = 3 - boostCount;
 
             if (boostsNeeded > 0) {
                  const s = boostsNeeded === 1 ? '' : 's';
-                 // ✅ FIXED: Number inside bolding
                  tagStatusLine = `<:no_boost:1463272235056889917> **${boostsNeeded} Boost${s} Remain**`; 
                  if(boostsNeeded === 1) tagStatusLine = `<:no_boost:1463272235056889917> **1 Boost Remains**`;
             } 
@@ -133,12 +126,10 @@ async function generateDashboardPayload(client, preCalcCounts) {
             new SectionBuilder()
                 .setButtonAccessory(inviteButton)
                 .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent(
-                        `## [${data.name || "Unknown"}](${data.inviteLink || "https://discord.com"})\n` +
+                    new TextDisplayBuilder().setContent(`### [${data.name || "Unknown"}](${data.inviteLink || "https://discord.com"})\n` +
                         `**<:sparkles:1462851309219872841> Server Tag:** ${displayTagText}\n` +
                         `**<:members:1462851249836654592> Members:** ${memberCount}\n` +
-                        `${tagStatusLine}`
-                    )
+                        `${tagStatusLine}`)
                 )
         );
     }
@@ -161,10 +152,67 @@ async function generateDashboardPayload(client, preCalcCounts) {
     return [container];
 }
 
+// =======================================================
+// 3. STATIC DIRECTORY PAYLOAD (For Other Servers - Simplified)
+// =======================================================
+async function generateDirectoryPayload() {
+    const servers = await ServerList.find();
+    
+    // Create the Main Container
+    const container = new ContainerBuilder()
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent("# <:A2Q_1:1466981218758426634><:A2Q_2:1466981281060360232> » Servers"),
+        )
+        .addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true),
+        );
+
+    // Loop through servers and add Sections
+    servers.forEach((data, index) => {
+        const inviteUrl = (data.inviteLink && data.inviteLink.startsWith('http')) ? data.inviteLink : 'https://discord.com';
+        const serverName = data.name || "Unknown Server";
+        
+        // Build Texts: Always Name, optionally Tag if it exists
+        const texts = [new TextDisplayBuilder().setContent(`## [${serverName}](${inviteUrl})`)];
+        
+        if (data.tagText && data.tagText.length > 0) {
+            texts.push(new TextDisplayBuilder().setContent(`<:sparkles:1462851309219872841> **Server Tag:** ${data.tagText}`));
+        }
+
+        container.addSectionComponents(
+            new SectionBuilder()
+                .setButtonAccessory(
+                    new ButtonBuilder()
+                        .setStyle(ButtonStyle.Link)
+                        .setLabel("Server Link")
+                        .setURL(inviteUrl)
+                )
+                .addTextDisplayComponents(texts)
+        );
+
+        // Add separator between items (but maybe not after the very last one, though snippet had it)
+        if (index < servers.length - 1) {
+            container.addSeparatorComponents(
+                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
+            );
+        }
+    });
+
+    return [container];
+}
+
+// ==========================================
+// 4. MASTER UPDATE
+// ==========================================
 async function updateAllPanels(client) {
     try {
+        // 1. Get stats (needed for Main Server)
         const counts = await runRoleUpdates(client);
-        const payload = await generateDashboardPayload(client, counts);
+
+        // 2. Pre-generate BOTH types of payloads
+        const detailedPayload = await generateDetailedPayload(client, counts);
+        const directoryPayload = await generateDirectoryPayload(); // Static
+
         const locations = await Panel.find(); 
         
         for (const loc of locations) {
@@ -176,6 +224,10 @@ async function updateAllPanels(client) {
 
             await sleep(2500);
 
+            // 3. DECIDE WHICH PAYLOAD TO SEND
+            const isMainServer = (loc.guildId === MAIN_GUILD_ID);
+            const selectedPayload = isMainServer ? detailedPayload : directoryPayload;
+
             try {
                 let msg = null;
                 if (loc.messageId) {
@@ -184,9 +236,9 @@ async function updateAllPanels(client) {
                 }
 
                 if (msg && msg.editable) {
-                    await msg.edit({ components: payload, flags: [MessageFlags.IsComponentsV2] });
+                    await msg.edit({ components: selectedPayload, flags: [MessageFlags.IsComponentsV2] });
                 } else {
-                    const newMsg = await channel.send({ components: payload, flags: [MessageFlags.IsComponentsV2] });
+                    const newMsg = await channel.send({ components: selectedPayload, flags: [MessageFlags.IsComponentsV2] });
                     loc.messageId = newMsg.id;
                     await loc.save();
                 }
@@ -200,4 +252,8 @@ async function updateAllPanels(client) {
     }
 }
 
-module.exports = { updateAllPanels, generateDashboardPayload };
+// Allow command file to call generateDashboardPayload (aliasing it to detailed for the /enable command default)
+module.exports = { 
+    updateAllPanels, 
+    generateDashboardPayload: generateDetailedPayload 
+};

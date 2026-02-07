@@ -40,7 +40,7 @@ async function sendLog(client, title, description, color, user) {
                 new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
             )
             .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(`-# 🕒 <t:${Math.floor(Date.now() / 1000)}:R> • User ID: ${user ? user.id : 'N/A'}`)
+                new TextDisplayBuilder().setContent(`-# 🕒 <t:${Math.floor(Date.now() / 1000)}:f>`)
             );
 
         await channel.send({ 
@@ -82,7 +82,7 @@ module.exports = {
                         // ⏳ LOG TIMER
                         await sendLog(client, 
                             "Timer Started (Left Main)", 
-                            `**User:** **${displayName}** (${user.username})\n**Server:** ${guild.name}\n**Action:** Will kick in **10** mins if they don't return.`, 
+                            `**User:** **${displayName}** (${user.username})\n**ID:** ${user ? user.id : 'N/A'}\n**Server:** ${guild.name}\n**Action:** Will kick in **10** mins if they don't return.`, 
                             0xFFA500, // Orange
                             user
                         );
@@ -101,7 +101,7 @@ module.exports = {
                                     // 🥾 LOG KICK
                                     await sendLog(client, 
                                         "Member Kicked", 
-                                        `**User:** **${displayName}** (${user.username})\n**Server:** ${guild.name}\n**Reason:** Did not return to **A2-Q** Main Server.`, 
+                                        `**User:** **${displayName}** (${user.username})\n**ID:** ${user ? user.id : 'N/A'}\n**Server:** ${guild.name}\n**Reason:** Did not return to **A2-Q** Main Server.`, 
                                         0xFF0000, // Red
                                         user
                                     );
@@ -137,7 +137,7 @@ module.exports = {
             if (cancelledCount > 0) {
                 await sendLog(client, 
                     "Timers Cancelled", 
-                    `**User:** **${displayName}** (${user.username})\n**Reason:** Rejoined Main Server.\n**Saved From:** ${cancelledCount} kicks.`, 
+                    `**User:** **${displayName}** (${user.username})\n**ID:** ${user ? user.id : 'N/A'}\n**Reason:** Rejoined Main Server.\n**Saved From:** ${cancelledCount} kicks.`, 
                     0x57F287, // Green
                     user
                 );
@@ -171,7 +171,7 @@ module.exports = {
                              
                              await sendLog(client, 
                                 "Member Kicked", 
-                                `**User:** **${displayName}** (${user.username})\n**Server:** ${member.guild.name}\n**Reason:** Not in Main Server (10m expired).`, 
+                                `**User:** **${displayName}** (${user.username})\n**ID:** ${user ? user.id : 'N/A'}\n**Server:** ${member.guild.name}\n**Reason:** Not in Main Server (10m expired).`, 
                                 0xFF0000, // Red
                                 user
                             );
@@ -208,7 +208,7 @@ module.exports = {
                     // ⏳ LOG TIMER
                     await sendLog(client, 
                         "Timer Started (Boost Expired)", 
-                        `**User:** **${displayName}** (${user.username})\n**Server:** ${newMember.guild.name}\n**Reason:** Stopped boosting and not in Main Server.`, 
+                        `**User:** **${displayName}** (${user.username})\n**ID:** ${user ? user.id : 'N/A'}\n**Server:** ${newMember.guild.name}\n**Reason:** Stopped boosting and not in Main Server.`, 
                         0xFFA500, // Orange
                         user
                     );
@@ -224,7 +224,7 @@ module.exports = {
                                     
                                     await sendLog(client, 
                                     "Member Kicked", 
-                                    `**User:** **${displayName}** (${user.username})\n**Server:** ${newMember.guild.name}\n**Reason:** Boost expired & not in Main Server.`, 
+                                    `**User:** **${displayName}** (${user.username})\n**ID:** ${user ? user.id : 'N/A'}\n**Server:** ${newMember.guild.name}\n**Reason:** Boost expired & not in Main Server.`, 
                                     0xFF0000, // Red
                                     user
                                 );

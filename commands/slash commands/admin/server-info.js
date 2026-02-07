@@ -104,7 +104,7 @@ module.exports = {
                             new ButtonBuilder()
                                 .setStyle(ButtonStyle.Link)
                                 .setLabel("View Profile")
-                                .setURL("https://")
+                                .setURL("https://discord.com/users/")
                         )
                         .addTextDisplayComponents(
                             new TextDisplayBuilder().setContent("### <:co_owner:1466994498268696627> Co-owner\n**Name:** Unknown\n**ID:** `1234567890`"),

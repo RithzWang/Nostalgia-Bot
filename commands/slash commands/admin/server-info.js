@@ -104,10 +104,10 @@ module.exports = {
                             new ButtonBuilder()
                                 .setStyle(ButtonStyle.Link)
                                 .setLabel("View Profile")
-                                .setURL("_")
+                                .setURL("https://")
                         )
                         .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent("### <:co_owner:1466994498268696627> Co-owner\n**Name:** Unknown <:qahtani_1:1463886050270118055><:qahtani_2:1463886211343974462><:qahtani_3:1463886253098537035>\n**ID:** `1234567890`"),
+                            new TextDisplayBuilder().setContent("### <:co_owner:1466994498268696627> Co-owner\n**Name:** Unknown\n**ID:** `1234567890`"),
                         ),
                 )
                 .addSeparatorComponents(

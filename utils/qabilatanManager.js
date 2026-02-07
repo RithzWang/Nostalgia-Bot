@@ -236,7 +236,7 @@ async function generateDirectoryPayload(client) {
             new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true),
         )
         .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(`-# Last Update <t:${timestampUnix}:R>`),
+            new TextDisplayBuilder().setContent(`-# Last Update: <t:${timestampUnix}:R>`),
         );
 
     return [container];

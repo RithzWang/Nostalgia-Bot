@@ -145,7 +145,7 @@ module.exports = {
                                 `<:at:1468487835613925396> ${targetUser.toString()} (\`${targetUser.username}\`)\n` +
                                 `<:id:1468487725912166596> **ID:** \`${targetUser.id}\`\n` +
                                 `<:identity:1468485794938224807> **Display Name:** ${targetUser.globalName || targetUser.username}\n` +
-                                `<:calender:1468485942137323630> **Account Created:** ${createdTimestamp}` +
+                                `<:calendar:1470475413175144530> **Account Created:** ${createdTimestamp}` +
                                 serverTagLine
                             ),
                         ),
@@ -180,7 +180,7 @@ module.exports = {
                     new TextDisplayBuilder().setContent(
                         `<:name:1468486108450127915> **Nickname:** ${nickname}\n` +
                         `<:roles:1468486024089964654> **Roles:** ${rolesDisplay}\n` +
-                        `<:calender:1468485942137323630> **Joined:** ${joinedTimestamp}\n` +
+                        `<:calendar:1470475413175144530> **Joined:** ${joinedTimestamp}\n` +
                         `<:location:1468629967956086961> **Join Position:** ${joinPosition}`
                     ),
                 );

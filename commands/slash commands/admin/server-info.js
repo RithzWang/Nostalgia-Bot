@@ -51,12 +51,12 @@ module.exports = {
                 .addSeparatorComponents(
                     new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
                 )
-                .addTextDisplayComponents(
+              //  .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent("```ansi\n\u001b[2;32m\u001b[2;37m\u001b[2;33m\u001b[2;31m\u001b[2;32m\u001b[2;34mA2-Q came from the word Al-Qabīlatān (القبيلتان) which means The Two Tribes in Arabic.\u001b[0m\u001b[2;32m\u001b[0m\u001b[2;31m\u001b[0m\u001b[2;33m\u001b[0m\u001b[2;37m\u001b[0m\u001b[2;32m\u001b[0m\n```"),
-                )
-                .addSeparatorComponents(
+                ) //
+            //    .addSeparatorComponents(
                     new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
-                )
+                ) //
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent("We’re a community server built for people who love to game, talk, and just have a good time. From chill voice chats to lively text convos, there’s always something going on.\n \nOur goal is to keep things safe, fun, and friendly — a place where everyone can relax, share moments, and enjoy being part of something good.\n\n### **A2-Q** Established Date:\n<t:1698316020:F>\n### **A2-Q Server** Created Date: \n<t:1767254820:F>"),
                 )

@@ -3,7 +3,7 @@ const {
     ButtonBuilder, ButtonStyle, SeparatorBuilder, SeparatorSpacingSize,
     MessageFlags 
 } = require('discord.js');
-const { Panel, ServerList } = require('../src/models/Qabilatan'); 
+const { Panel, ServerList } = require('../models/Qabilatan'); 
 
 // 🔒 CONFIGURATION
 const MAIN_GUILD_ID = '1456197054782111756'; 
@@ -127,7 +127,7 @@ async function generateDetailedPayload(client, preCalcCounts) {
                 .setButtonAccessory(inviteButton)
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
-                        `## [${data.name || "Unknown"}](${data.inviteLink || "https://discord.com"})\n` +
+                        `### [${data.name || "Unknown"}](${data.inviteLink || "https://discord.com"})\n` +
                         `**<:badge:1468618581427097724> Server Tag:** ${displayTagText}\n` +
                         `**<:members:1468470163081924608> Members:** ${memberCount}\n` +
                         `${tagStatusLine}`
@@ -142,6 +142,7 @@ async function generateDetailedPayload(client, preCalcCounts) {
     const container = new ContainerBuilder()
         .addTextDisplayComponents(new TextDisplayBuilder().setContent("# <:A2Q_1:1466981218758426634><:A2Q_2:1466981281060360232> » Servers’ Stats"))
         .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
+        // ✅ RESTORED: Both Total Members and Total Adopters
         .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# Total Tags Adopters: ${totalTagUsers}`))
         .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true));
 
@@ -182,33 +183,11 @@ async function generateDirectoryPayload(client) {
             new TextDisplayBuilder().setContent(`## [${serverName}](${inviteUrl})`)
         ];
         
-        // -- Logic: Try to Fetch Owner & Add Tag Info --
-        let detailsText = "";
-        
-        try {
-            const guild = client.guilds.cache.get(data.serverId);
-            if (guild) {
-                // Fetch Owner (Cached or API)
-                let owner = client.users.cache.get(guild.ownerId);
-                if (!owner) owner = await client.users.fetch(guild.ownerId).catch(() => null);
-
-                if (owner) {
-                    const gName = owner.globalName || owner.username;
-                    // Owner Line
-                    detailsText += `<:owner_crown:1468472226318647337> **Owner:** ${gName} \`(${owner.username})\``;
-                }
-            }
-        } catch (e) { /* Ignore errors if bot not in server */ }
-
-        // Tag Line
+        // -- Tag Info Logic Only (No Owner) --
         if (data.tagText && data.tagText.length > 0) {
-            if (detailsText.length > 0) detailsText += "\n"; // Add new line if owner exists
-            detailsText += `<:badge:1468618581427097724> **Server Tag:** ${data.tagText}`;
-        }
-
-        // If we have details (Owner or Tag), add them as a second text component
-        if (detailsText.length > 0) {
-            textComponents.push(new TextDisplayBuilder().setContent(detailsText));
+            textComponents.push(
+                new TextDisplayBuilder().setContent(`<:badge:1468618581427097724> **Server Tag:** ${data.tagText}`)
+            );
         }
 
         // -- Add Section --
@@ -255,7 +234,7 @@ async function updateAllPanels(client, updateSatellites = false) {
         let directoryPayload = null; 
 
         if (updateSatellites) {
-            directoryPayload = await generateDirectoryPayload(client); // ✅ Pass client to fetch owners
+            directoryPayload = await generateDirectoryPayload(client); 
         }
 
         const locations = await Panel.find(); 

@@ -186,7 +186,7 @@ async function generateDirectoryPayload(client) {
         // -- Tag Info Logic Only (No Owner) --
         if (data.tagText && data.tagText.length > 0) {
             textComponents.push(
-                new TextDisplayBuilder().setContent(`<:badge:1468618581427097724> **Server Tag:** ${data.tagText}`)
+                new TextDisplayBuilder().setContent(`**Server Tag:** ${data.tagText}`)
             );
         }
 

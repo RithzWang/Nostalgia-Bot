@@ -1,24 +1,30 @@
-const { REST, Routes, ActivityType } = require('discord.js');
+const { REST, Routes, ActivityType, Collection } = require('discord.js');
 const moment = require('moment-timezone');
 const { serverID } = require('../config.json'); 
 const { updateAllPanels } = require('../utils/qabilatanManager'); 
 
 module.exports = {
-    name: 'clientReady',
+    name: 'clientReady', // Changed from 'clientReady' to 'ready' (standard v14 name)
     once: true,
     async execute(client) {
         console.log(`Logged in as ${client.user.tag}`);
+
+        // 🛑 CRITICAL FIX: Ensure collections exist before filtering
+        if (!client.slashCommands) client.slashCommands = new Collection();
+        if (!client.invitesCache) client.invitesCache = new Collection();
 
         // 1. SLASH COMMAND REGISTRATION
         const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
         
         // Filter commands into Global vs Guild Only
+        // We add optional chaining ?. just in case
         const globalDatas = client.slashCommands.filter(c => !c.guildOnly).map(c => c.data.toJSON());
         const guildDatas = client.slashCommands.filter(c => c.guildOnly).map(c => c.data.toJSON());
 
         try {
             console.log(`Started refreshing ${globalDatas.length} global and ${guildDatas.length} guild commands.`);
 
+            // REGISTRATION LOGIC...
             if (guildDatas.length > 0) {
                 await rest.put(
                     Routes.applicationGuildCommands(client.user.id, serverID), 
@@ -41,8 +47,14 @@ module.exports = {
         // 2. INVITE TRACKER CACHE
         const guild = client.guilds.cache.get(serverID);
         if(guild) {
-            const currentInvites = await guild.invites.fetch().catch(() => new Map());
-            currentInvites.each(invite => client.invitesCache.set(invite.code, invite.uses));
+            // Using a Map for fetch fallback, then setting to client cache
+            try {
+                const currentInvites = await guild.invites.fetch();
+                currentInvites.each(invite => client.invitesCache.set(invite.code, invite.uses));
+                console.log('✅ Invites cached.');
+            } catch (e) {
+                console.log('⚠️ Could not cache invites (Missing Permissions?)');
+            }
         }
 
         // 3. TIMERS (Status + Qabilatan Stats)
@@ -67,11 +79,11 @@ module.exports = {
             });
 
             // B. Qabilatan Stats Auto-Update (Every minute)
-            // We check if seconds are < 5 so it only triggers once per minute
             if (now.seconds() < 5) {
-                updateAllPanels(client);
+                // Pass false (default) so it ONLY updates the Main Server automatically
+                updateAllPanels(client, false).catch(err => console.error(err));
             }
 
-        }, 5000); // Loop runs every 5 seconds
+        }, 5000); 
     }
 };

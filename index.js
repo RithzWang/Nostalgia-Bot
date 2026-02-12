@@ -8,11 +8,13 @@ const {
     AttachmentBuilder, 
     ButtonBuilder, 
     ButtonStyle, 
-    // ✅ ADDED MISSING BUILDERS HERE
+    // ✅ ADDED MISSING BUILDERS
     ContainerBuilder,
     SectionBuilder,
     TextDisplayBuilder,
-    ThumbnailAccessory, // (Ensure your d.js version supports this, or remove if error)
+    ActionRowBuilder, // Needed for buttons inside containers
+    SeparatorBuilder, // Needed for separators
+    ThumbnailAccessory, 
     MessageFlags,
     SeparatorSpacingSize 
 } = require('discord.js');
@@ -41,6 +43,8 @@ const client = new Client({
 // --- COLLECTIONS ---
 client.messageCommands = new Collection();
 client.invitesCache = new Collection(); 
+// ✅ CRITICAL FIX: Initialize the slash commands collection so handlers don't crash
+client.slashCommands = new Collection(); 
 
 // --- 1. LOAD HANDLERS ---
 require('./handlers/commandHandler')(client);
@@ -77,7 +81,7 @@ if (fs.existsSync(eventsPath)) {
 }
 
 // ✅ 4. CRITICAL: CACHE INVITES ON READY
-// This prevents the bot from guessing the wrong inviter after a restart.
+// Keeps 'clientReady' as requested
 client.once('clientReady', async () => {
     console.log(`Logged in as ${client.user.tag}`);
 
@@ -137,7 +141,6 @@ client.on('guildMemberAdd', async (member) => {
         const attachment = new AttachmentBuilder(buffer, { name: 'welcome-image.png' });
         const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
         
-        // ✅ FIXED CONTAINER SYNTAX (No callback functions)
         const mainContainer = new ContainerBuilder()
             .setAccentColor(0x888888)
             .addSectionComponents(
@@ -151,23 +154,19 @@ client.on('guildMemberAdd', async (member) => {
                             `-# <:chain:1456242418717556776> Invited by ${inviterId ? `<@${inviterId}>` : '**Unknown**'} \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`
                         )
                     )
-                    // Note: ThumbnailAccessory requires a specific builder or object depending on your d.js version.
-                    // If this fails, comment it out. Standard SectionBuilder usually creates a thumbnail automatically via logic or requires a specific Accessory builder.
                     .setThumbnailAccessory(new ThumbnailAccessory().setURL(member.user.displayAvatarURL())) 
             )
+            // ✅ FIX: Wrapped Button in ActionRowBuilder
             .addActionRowComponents(
-                // Note: Rows usually take an ActionRowBuilder, NOT a callback
-                // But container rows might be different. Safest standard d.js way:
-                // .addActionRowComponents(new ActionRowBuilder().addComponents(...))
-                // However, container specific methods might vary. This line is likely safer:
-               new ButtonBuilder().setLabel('Register Here').setEmoji('1447143542643490848').setStyle(ButtonStyle.Link).setURL('https://discord.com/channels/1456197054782111756/1456197056250122352')
+                new ActionRowBuilder().addComponents(
+                    new ButtonBuilder().setLabel('Register Here').setEmoji('1447143542643490848').setStyle(ButtonStyle.Link).setURL('https://discord.com/channels/1456197054782111756/1456197056250122352')
+                )
             )
+            // ✅ FIX: Used SeparatorBuilder
             .addSeparatorComponents(
-                // Same here, usually expects an instance, not callback
-                 { spacing: SeparatorSpacingSize.Small } // Or new SeparatorBuilder()
+                 new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
             )
             .addMediaGalleryComponents(
-                // MediaGallery usually takes an array of items or builder
                  { items: [{ url: "attachment://welcome-image.png", description: `${member.user.username} is here!` }] }
             );
 

@@ -78,7 +78,7 @@ if (fs.existsSync(eventsPath)) {
 
 // ✅ 4. CRITICAL: CACHE INVITES ON READY
 // This prevents the bot from guessing the wrong inviter after a restart.
-client.once('ready', async () => {
+client.once('clientReady', async () => {
     console.log(`Logged in as ${client.user.tag}`);
 
     // Fetch and cache invites for the Main Server

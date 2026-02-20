@@ -92,7 +92,7 @@ module.exports = {
                                 .setURL("https://discord.com/users/837741275603009626")
                         )
                         .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent("### <:owner:1466994441691857063> Owner\n**Name:** Ridouan <:2007_1:1468081329206722600><:2007_2:1468081369501401269><:2007_3:1468081409280446505>\n**ID:** `837741275603009626`"),
+                            new TextDisplayBuilder().setContent("### <:owner:1466993819949072576> Owner\n**Name:** Ridouan <:2007_1:1468081329206722600><:2007_2:1468081369501401269><:2007_3:1468081409280446505>\n**ID:** `837741275603009626`"),
                         ),
                 )
                 .addSeparatorComponents(
@@ -107,7 +107,7 @@ module.exports = {
                                 .setURL("https://discord.com/users/")
                         )
                         .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent("### <:co_owner:1466994498268696627> Co-owner\n**Name:** Unknown\n**ID:** `1234567890`"),
+                            new TextDisplayBuilder().setContent("### <:co_owner:1466993861275680949> Co-owner\n**Name:** Unknown\n**ID:** `1234567890`"),
                         ),
                 )
                 .addSeparatorComponents(

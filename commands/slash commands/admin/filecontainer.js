@@ -75,6 +75,11 @@ module.exports = {
                 new TextDisplayBuilder().setContent(`## ${data.title}`)
             );
 
+            // Large Divider directly after the title
+            container.addSeparatorComponents(
+                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
+            );
+
             const payloadFiles = [];
 
             if (data.files.length > 0) {
@@ -83,10 +88,14 @@ module.exports = {
                 data.files.forEach((fileData, index) => {
                     const num = index + 1;
 
-                    container.addSeparatorComponents(
-                        new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
-                    );
+                    // Small Divider ONLY between files (skip for the first item)
+                    if (index > 0) {
+                        container.addSeparatorComponents(
+                            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
+                        );
+                    }
 
+                    // Display Name
                     container.addTextDisplayComponents(
                         new TextDisplayBuilder().setContent(`### ${num}. ${fileData.name}`)
                     );
@@ -101,13 +110,14 @@ module.exports = {
                     const attachment = new AttachmentBuilder(fileData.url, { name: uniqueFileName });
                     payloadFiles.push(attachment);
 
+                    // File Component
                     const fileComponent = new FileBuilder()
                         .setURL(`attachment://${uniqueFileName}`);
                     
                     container.addFileComponents(fileComponent);
                 });
             } else {
-                container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
+                // Empty state handling
                 container.addTextDisplayComponents(
                     new TextDisplayBuilder().setContent('*No files added yet.*')
                 );

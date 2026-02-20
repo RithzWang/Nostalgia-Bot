@@ -13,9 +13,6 @@ const GLOBAL_TAG_ROLE_ID = '1462217123433545812';
 // 💾 MEMORY CACHE
 let lastKnownCounts = new Map();
 
-// 🕒 HELPER
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
 function createInviteButton(link) {
     const isValid = link && link.startsWith('http');
     const btn = new ButtonBuilder()
@@ -131,8 +128,10 @@ async function generateDetailedPayload(client, preCalcCounts) {
         tagText: "None"
     };
 
+    let founderId = "0"; 
     let mainHumanCount = 0;
     if (mainGuild) {
+        founderId = mainGuild.ownerId; 
         mainHumanCount = mainGuild.members.cache.filter(m => !m.user.bot).size;
     }
 
@@ -167,9 +166,8 @@ async function generateDetailedPayload(client, preCalcCounts) {
         .addSeparatorComponents(
             new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
         )
-        // Main Server Section (Uses standard TextDisplays instead of a SectionBuilder)
         .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(`## [${mainData.name}](${mainInviteLink}) <:sparkles:1468470437838192651>`)
+            new TextDisplayBuilder().setContent(`## [${mainData.name}](${mainInviteLink}) <:owner_crown:1468472226318647337> <@${founderId}>`)
         )
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
@@ -192,7 +190,6 @@ async function generateDetailedPayload(client, preCalcCounts) {
         const tagCount = adoptersMap.get(data.serverId) || 0;
         const { tagStatusLine } = getServerStats(guild, tagCount);
         
-        // Members ignoring bots
         const humanCount = guild ? guild.members.cache.filter(m => !m.user.bot).size : 0;
         const inviteUrl = data.inviteLink && data.inviteLink.startsWith('http') ? data.inviteLink : 'https://discord.com';
 
@@ -209,7 +206,6 @@ async function generateDetailedPayload(client, preCalcCounts) {
                 )
         );
 
-        // Separator between items
         if (index < satelliteServers.length - 1) {
             container2.addSeparatorComponents(
                 new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
@@ -230,110 +226,43 @@ async function generateDetailedPayload(client, preCalcCounts) {
     return [container1, container2];
 }
 
-// =======================================================
-// 3. STATIC DIRECTORY PAYLOAD (For Satellite Servers)
-// =======================================================
-async function generateDirectoryPayload(client) {
-    const servers = await ServerList.find();
-    
-    const container = new ContainerBuilder()
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent("# <:A2Q_1:1466981218758426634><:A2Q_2:1466981281060360232> » Servers")
-        )
-        .addSeparatorComponents(
-            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
-        );
-
-    for (let i = 0; i < servers.length; i++) {
-        const data = servers[i];
-        const inviteUrl = (data.inviteLink && data.inviteLink.startsWith('http')) ? data.inviteLink : 'https://discord.com';
-        const serverName = data.name || "Unknown Server";
-        
-        const textComponents = [
-            new TextDisplayBuilder().setContent(`## [${serverName}](${inviteUrl})`)
-        ];
-        
-        if (data.tagText && data.tagText.length > 0) {
-            textComponents.push(
-                new TextDisplayBuilder().setContent(`<:badge:1468618581427097724> **Server Tag:** ${data.tagText}`)
-            );
-        }
-
-        container.addSectionComponents(
-            new SectionBuilder()
-                .setButtonAccessory(createInviteButton(data.inviteLink))
-                .addTextDisplayComponents(textComponents)
-        );
-
-        if (i < servers.length - 1) {
-            container.addSeparatorComponents(
-                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
-            );
-        }
-    }
-
-    const timestampUnix = Math.floor(Date.now() / 1000);
-    container
-        .addSeparatorComponents(
-            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
-        )
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(`-# Last Update: <t:${timestampUnix}:R>`)
-        );
-
-    return [container];
-}
 
 // ==========================================
-// 4. MASTER UPDATE
+// 4. MASTER UPDATE (MAIN SERVER ONLY NOW)
 // ==========================================
-async function updateAllPanels(client, updateSatellites = false) {
+async function updateAllPanels(client) {
     try {
         const counts = await runRoleUpdates(client);
-
         const detailedPayload = await generateDetailedPayload(client, counts);
-        let directoryPayload = null; 
 
-        if (updateSatellites) {
-            directoryPayload = await generateDirectoryPayload(client); 
-        }
+        // Fetch ONLY the main server panel
+        const mainPanel = await Panel.findOne({ guildId: MAIN_GUILD_ID });
+        if (!mainPanel) return;
 
-        const locations = await Panel.find(); 
-        
-        for (const loc of locations) {
-            const isMainServer = (loc.guildId === MAIN_GUILD_ID);
+        let channel;
+        try { channel = await client.channels.fetch(mainPanel.channelId); } 
+        catch (e) { return; }
 
-            if (!isMainServer && !updateSatellites) continue; 
+        if (!channel) return;
 
-            let channel;
-            try { channel = await client.channels.fetch(loc.channelId); } 
-            catch (e) { await Panel.deleteOne({ _id: loc._id }); continue; }
-
-            if (!channel) { await Panel.deleteOne({ _id: loc._id }); continue; }
-
-            await sleep(2500);
-
-            const selectedPayload = isMainServer ? detailedPayload : directoryPayload;
-
-            try {
-                let msg = null;
-                if (loc.messageId) {
-                    try { msg = await channel.messages.fetch(loc.messageId); } 
-                    catch (e) { msg = null; }
-                }
-
-                if (msg && msg.editable) {
-                    await msg.edit({ components: selectedPayload, flags: [MessageFlags.IsComponentsV2] });
-                } else {
-                    const newMsg = await channel.send({ components: selectedPayload, flags: [MessageFlags.IsComponentsV2] });
-                    loc.messageId = newMsg.id;
-                    await loc.save();
-                }
-            } catch (err) {
-                console.error(`🛑 Failed in ${channel.guild.name}. Removing location.`);
-                await Panel.deleteOne({ _id: loc._id });
+        try {
+            let msg = null;
+            if (mainPanel.messageId) {
+                try { msg = await channel.messages.fetch(mainPanel.messageId); } 
+                catch (e) { msg = null; }
             }
+
+            if (msg && msg.editable) {
+                await msg.edit({ components: detailedPayload, flags: [MessageFlags.IsComponentsV2] });
+            } else {
+                const newMsg = await channel.send({ components: detailedPayload, flags: [MessageFlags.IsComponentsV2] });
+                mainPanel.messageId = newMsg.id;
+                await mainPanel.save();
+            }
+        } catch (err) {
+            console.error(`🛑 Failed to update main panel.`);
         }
+        
     } catch (error) {
         console.error('🛑 FATAL ERROR:', error);
     }
@@ -342,6 +271,5 @@ async function updateAllPanels(client, updateSatellites = false) {
 module.exports = { 
     updateAllPanels, 
     generateDetailedPayload, 
-    generateDirectoryPayload,
     generateDashboardPayload: generateDetailedPayload 
 };

@@ -14,11 +14,11 @@ const {
     MessageFlags 
 } = require('discord.js');
 
-const { Panel, ServerList, GreetConfig } = require('../../../../src/models/Qabilatan'); 
+const { Panel, ServerList, GreetConfig } = require('../../../src/models/Qabilatan'); 
 const { 
     generateDetailedPayload, 
     updateAllPanels 
-} = require('../../../../utils/qabilatanManager'); 
+} = require('../../../utils/qabilatanManager'); 
 
 const ALLOWED_USER_ID = '837741275603009626';
 const MAIN_SERVER_ID = '1456197054782111756'; 

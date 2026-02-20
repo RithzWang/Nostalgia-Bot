@@ -14,11 +14,11 @@ const {
     MessageFlags 
 } = require('discord.js');
 
-const { Panel, ServerList, GreetConfig } = require('../../../src/models/Qabilatan'); 
+const { Panel, ServerList, GreetConfig } = require('../../../../src/models/Qabilatan'); 
 const { 
     generateDetailedPayload, 
     updateAllPanels 
-} = require('../../../utils/qabilatanManager'); 
+} = require('../../../../utils/qabilatanManager'); 
 
 const ALLOWED_USER_ID = '837741275603009626';
 const MAIN_SERVER_ID = '1456197054782111756'; 
@@ -43,11 +43,20 @@ module.exports = {
         .addSubcommand(sub => sub.setName('edit').setDescription('Edit a server in the network'))
         .addSubcommand(sub => sub.setName('delete').setDescription('Remove a server from the network'))
         .addSubcommand(sub => sub.setName('refresh').setDescription('Force update the main dashboard'))
+        // ✅ UPDATED: Greet Message Subcommand
         .addSubcommand(sub => 
             sub.setName('greet-message')
                .setDescription('Setup greet/kick logic for this server')
-               .addChannelOption(opt => opt.setName('channel').setDescription('Welcome channel').setRequired(true))
                .addStringOption(opt => opt.setName('server_id').setDescription('The ID of this server in the list').setRequired(true))
+               .addBooleanOption(opt => opt.setName('enable').setDescription('Enable or disable').setRequired(true))
+               .addChannelOption(opt => opt.setName('channel').setDescription('Welcome channel (required if enabling)').setRequired(false))
+        )
+        .addSubcommand(sub => 
+            sub.setName('tag-user')
+               .setDescription('Give a role to tag adopters in a satellite server')
+               .addStringOption(opt => opt.setName('server_id').setDescription('The Dashboard Server ID').setRequired(true))
+               .addBooleanOption(opt => opt.setName('enable').setDescription('Enable or disable').setRequired(true))
+               .addStringOption(opt => opt.setName('role_id').setDescription('Role ID in the satellite server to give').setRequired(false))
         ),
 
     async execute(interaction, client) {
@@ -74,7 +83,6 @@ module.exports = {
 
             // --- ENABLE ---
             if (subcommand === 'enable') {
-                // ✅ ENFORCE MAIN SERVER ONLY
                 if (interaction.guild.id !== MAIN_SERVER_ID) {
                     return interaction.reply({ 
                         content: "❌ **The Statistics Dashboard is exclusive to the Main Server.**", 
@@ -173,16 +181,56 @@ module.exports = {
                 return interaction.reply({ components, flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2] });
             }
 
-            // --- GREET MESSAGE ---
+            // ✅ GREET MESSAGE
             if (subcommand === 'greet-message') {
-                const channel = interaction.options.getChannel('channel');
                 const srvId = interaction.options.getString('server_id');
+                const enable = interaction.options.getBoolean('enable');
+                const channel = interaction.options.getChannel('channel');
 
                 const exists = await ServerList.findOne({ serverId: srvId });
-                if (!exists) return interaction.reply({ content: `❌ Server ID not found.`, flags: [MessageFlags.Ephemeral] });
+                if (!exists) return interaction.reply({ content: `❌ Server ID not found in dashboard.`, flags: [MessageFlags.Ephemeral] });
 
-                await GreetConfig.findOneAndUpdate({ guildId: interaction.guild.id }, { guildId: interaction.guild.id, channelId: channel.id }, { upsert: true, new: true });
-                return interaction.reply({ content: `✅ Greet system enabled for <#${channel.id}>.`, flags: [MessageFlags.Ephemeral] });
+                if (enable) {
+                    if (!channel) {
+                        return interaction.reply({ content: `❌ You must provide a \`channel\` when enabling the greet message.`, flags: [MessageFlags.Ephemeral] });
+                    }
+                    
+                    await GreetConfig.findOneAndUpdate(
+                        { guildId: srvId }, 
+                        { guildId: srvId, channelId: channel.id }, 
+                        { upsert: true, new: true }
+                    );
+                    return interaction.reply({ content: `✅ Greet system enabled for **${exists.name || srvId}** in <#${channel.id}>.`, flags: [MessageFlags.Ephemeral] });
+                } else {
+                    // Disable logic
+                    await GreetConfig.findOneAndDelete({ guildId: srvId });
+                    return interaction.reply({ content: `✅ Greet system disabled for **${exists.name || srvId}**.`, flags: [MessageFlags.Ephemeral] });
+                }
+            }
+
+            // --- TAG USER ---
+            if (subcommand === 'tag-user') {
+                const srvId = interaction.options.getString('server_id');
+                const enable = interaction.options.getBoolean('enable');
+                const roleId = interaction.options.getString('role_id');
+
+                const server = await ServerList.findOne({ serverId: srvId });
+                if (!server) {
+                    return interaction.reply({ content: `❌ Server ID \`${srvId}\` is not in the dashboard.`, flags: [MessageFlags.Ephemeral] });
+                }
+
+                if (enable && !roleId && !server.satelliteRoleId) {
+                    return interaction.reply({ content: `❌ You must provide a \`role_id\` when enabling this feature for the first time.`, flags: [MessageFlags.Ephemeral] });
+                }
+
+                server.satelliteRoleEnabled = enable;
+                if (roleId) server.satelliteRoleId = roleId;
+                await server.save();
+
+                return interaction.reply({ 
+                    content: `✅ Satellite Tag Role for **${server.name || srvId}** has been **${enable ? 'enabled' : 'disabled'}**.${enable ? `\nRole ID: \`${server.satelliteRoleId}\`` : ''}`, 
+                    flags: [MessageFlags.Ephemeral] 
+                });
             }
 
         } catch (error) {

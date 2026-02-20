@@ -14,11 +14,9 @@ const {
     MessageFlags 
 } = require('discord.js');
 
-// ⚠️ ADJUST PATHS IF NEEDED
 const { Panel, ServerList, GreetConfig } = require('../../../src/models/Qabilatan'); 
 const { 
     generateDetailedPayload, 
-    generateDirectoryPayload, 
     updateAllPanels 
 } = require('../../../utils/qabilatanManager'); 
 
@@ -37,14 +35,14 @@ module.exports = {
         )
         .addSubcommand(sub => 
             sub.setName('enable')
-               .setDescription('Enable statistics panel here or update an existing message')
+               .setDescription('Enable statistics dashboard in the Main Server')
                .addStringOption(opt => opt.setName('message_id').setDescription('Existing Message ID to edit').setRequired(false))
                .addChannelOption(opt => opt.setName('channel').setDescription('Channel to send/edit').setRequired(false))
         )
         .addSubcommand(sub => sub.setName('add').setDescription('Add a server to the network'))
         .addSubcommand(sub => sub.setName('edit').setDescription('Edit a server in the network'))
         .addSubcommand(sub => sub.setName('delete').setDescription('Remove a server from the network'))
-        .addSubcommand(sub => sub.setName('refresh').setDescription('Force update all statistics panels'))
+        .addSubcommand(sub => sub.setName('refresh').setDescription('Force update the main dashboard'))
         .addSubcommand(sub => 
             sub.setName('greet-message')
                .setDescription('Setup greet/kick logic for this server')
@@ -76,18 +74,20 @@ module.exports = {
 
             // --- ENABLE ---
             if (subcommand === 'enable') {
+                // ✅ ENFORCE MAIN SERVER ONLY
+                if (interaction.guild.id !== MAIN_SERVER_ID) {
+                    return interaction.reply({ 
+                        content: "❌ **The Statistics Dashboard is exclusive to the Main Server.**", 
+                        flags: [MessageFlags.Ephemeral] 
+                    });
+                }
+
                 const messageId = interaction.options.getString('message_id');
                 const channel = interaction.options.getChannel('channel') || interaction.channel;
 
                 await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
-                // SMART CHECK: Main Server vs Satellite
-                let components;
-                if (interaction.guild.id === MAIN_SERVER_ID) {
-                    components = await generateDetailedPayload(client);
-                } else {
-                    components = await generateDirectoryPayload(client); // Pass client for owner fetch
-                }
+                const components = await generateDetailedPayload(client);
 
                 let msg;
                 if (messageId) {
@@ -111,19 +111,14 @@ module.exports = {
                     { upsert: true, new: true }
                 );
 
-                return interaction.editReply({ content: "✅ Statistics Panel Enabled/Updated!" });
+                return interaction.editReply({ content: "✅ Main Statistics Panel Enabled/Updated!" });
             }
 
-            // ====================================================
-            // 🔄 REFRESH (UPDATED)
-            // ====================================================
+            // --- REFRESH ---
             if (subcommand === 'refresh') {
                 await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
-                
-                // ✅ CHANGED: Pass 'true' to force satellite updates
-                await updateAllPanels(client, true);
-                
-                return interaction.editReply("✅ All panels (Main + Satellites) have been refreshed.");
+                await updateAllPanels(client);
+                return interaction.editReply("✅ Dashboard refreshed.");
             }
 
             // --- ADD ---

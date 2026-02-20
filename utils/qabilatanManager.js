@@ -196,7 +196,7 @@ async function generateDetailedPayload(client, preCalcCounts) {
             new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
                     .setStyle(ButtonStyle.Secondary)
-                    .setEmoji('1474282137367609527')
+                    .setEmoji('1474321044314783767')
                     .setLabel(`Total Tags Adopters: ${totalTagsAdopters}/${mainHumanCount}`)
                     .setDisabled(true)
                     .setCustomId("stats_adopt_btn")

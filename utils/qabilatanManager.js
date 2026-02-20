@@ -169,7 +169,7 @@ async function generateDetailedPayload(client, preCalcCounts) {
         )
         // Main Server Section (Uses standard TextDisplays instead of a SectionBuilder)
         .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(`## [${mainData.name}](${mainInviteLink}) <:owner_crown:1468472226318647337>`)
+            new TextDisplayBuilder().setContent(`## [${mainData.name}](${mainInviteLink}) <:sparkles:1468470437838192651>`)
         )
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(

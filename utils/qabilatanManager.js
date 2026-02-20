@@ -1,6 +1,7 @@
 const { 
     ContainerBuilder, TextDisplayBuilder, SectionBuilder, 
     ButtonBuilder, ButtonStyle, SeparatorBuilder, SeparatorSpacingSize,
+    ActionRowBuilder, // ✅ Added ActionRowBuilder for the stats buttons
     MessageFlags 
 } = require('discord.js');
 
@@ -128,10 +129,8 @@ async function generateDetailedPayload(client, preCalcCounts) {
         tagText: "None"
     };
 
-    let founderId = "0"; 
     let mainHumanCount = 0;
     if (mainGuild) {
-        founderId = mainGuild.ownerId; 
         mainHumanCount = mainGuild.members.cache.filter(m => !m.user.bot).size;
     }
 
@@ -148,7 +147,7 @@ async function generateDetailedPayload(client, preCalcCounts) {
         if (isEnabled) availableTagsCount++;
     }
 
-    // --- 3. BUILD CONTAINER 1 (MAIN SERVER INFO & AGGREGATES) ---
+    // --- 3. BUILD CONTAINER 1 (MAIN SERVER INFO & AGGREGATES IN BUTTONS) ---
     const mainTagCount = adoptersMap.get(MAIN_GUILD_ID) || 0;
     const { tagStatusLine: mainStatus } = getServerStats(mainGuild, mainTagCount);
     const mainInviteLink = mainData.inviteLink && mainData.inviteLink.startsWith('http') ? mainData.inviteLink : 'https://discord.com';
@@ -160,24 +159,35 @@ async function generateDetailedPayload(client, preCalcCounts) {
         .addSeparatorComponents(
             new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
         )
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(`-# Total Tags Available: ${availableTagsCount}/${servers.length}\n-# Total Tags Adopters: ${totalTagsAdopters}/${mainHumanCount}`)
+        // ✅ Added stats as disabled buttons in an ActionRow
+        .addActionRowComponents(
+            new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setStyle(ButtonStyle.Secondary)
+                    .setLabel(`Total Tags Available: ${availableTagsCount}/${servers.length}`)
+                    .setDisabled(true)
+                    .setCustomId("stats_avail_btn"),
+                new ButtonBuilder()
+                    .setStyle(ButtonStyle.Secondary)
+                    .setLabel(`Total Tags Adopters: ${totalTagsAdopters}/${mainHumanCount}`)
+                    .setDisabled(true)
+                    .setCustomId("stats_adopt_btn")
+            )
         )
         .addSeparatorComponents(
             new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
         )
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(`## [${mainData.name}](${mainInviteLink}) <:sparkles:1468470437838192651>`)
-        )
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(
-                `<:badge:1468618581427097724> **Server Tag:** ${mainData.tagText || "None"}\n` +
-                `<:members:1468470163081924608> **Members:** ${mainHumanCount}\n` +
-                `${mainStatus}`
-            )
-        )
-        .addSeparatorComponents(
-            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+        .addSectionComponents(
+            new SectionBuilder()
+                .setButtonAccessory(createInviteButton(mainInviteLink))
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(`## [${mainData.name}](${mainInviteLink}) <:sparkles:1468470437838192651>`),
+                    new TextDisplayBuilder().setContent(
+                        `<:badge:1468618581427097724> **Server Tag:** ${mainData.tagText || "None"}\n` +
+                        `<:members:1468470163081924608> **Members:** ${mainHumanCount}\n` +
+                        `${mainStatus}`
+                    )
+                )
         );
 
     // --- 4. BUILD CONTAINER 2 (SATELLITES LIST) ---
@@ -226,9 +236,8 @@ async function generateDetailedPayload(client, preCalcCounts) {
     return [container1, container2];
 }
 
-
 // ==========================================
-// 4. MASTER UPDATE (MAIN SERVER ONLY NOW)
+// 4. MASTER UPDATE (MAIN SERVER ONLY)
 // ==========================================
 async function updateAllPanels(client) {
     try {

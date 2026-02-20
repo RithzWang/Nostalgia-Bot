@@ -12,6 +12,11 @@ const serverSchema = new mongoose.Schema({
     inviteLink: String,
     tagText: String, // Optional
     tagRoleID: String, // Role in Main Server
+    
+    // ✅ NEW: Added the fields for the tag-user-role feature
+    satelliteRoleEnabled: { type: Boolean, default: false },
+    satelliteRoleId: String, 
+    
     addedAt: { type: Date, default: Date.now }
 });
 

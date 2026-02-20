@@ -3,6 +3,7 @@ const {
     ButtonBuilder, ButtonStyle, SeparatorBuilder, SeparatorSpacingSize,
     MessageFlags 
 } = require('discord.js');
+
 const { Panel, ServerList } = require('../src/models/Qabilatan'); 
 
 // 🔒 CONFIGURATION
@@ -14,6 +15,46 @@ let lastKnownCounts = new Map();
 
 // 🕒 HELPER
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+function createInviteButton(link) {
+    const isValid = link && link.startsWith('http');
+    const btn = new ButtonBuilder()
+        .setStyle(ButtonStyle.Link)
+        .setLabel("Server Link")
+        .setURL(isValid ? link : 'https://discord.com');
+    
+    if (!isValid) btn.setDisabled(true);
+    return btn;
+}
+
+// Helper to determine status line & whether a tag is "Enabled"
+function getServerStats(guild, currentTagCount) {
+    let tagStatusLine = "";
+    let isEnabled = false;
+
+    if (guild) {
+        const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS') || guild.features.includes('MEMBER_VERIFICATION_GATE_ENABLED'); 
+        const hasActiveAdopters = currentTagCount > 0; 
+        const boostCount = guild.premiumSubscriptionCount || 0;
+        const boostsNeeded = 3 - boostCount;
+
+        if (boostsNeeded > 0) {
+             const s = boostsNeeded === 1 ? '' : 's';
+             tagStatusLine = `<:no_boost:1468470028302024776> **${boostsNeeded} Boost${s} Remain**`; 
+             if(boostsNeeded === 1) tagStatusLine = `<:no_boost:1468470028302024776> **1 Boost Remains**`;
+        } 
+        else if (!hasClanFeature && !hasActiveAdopters) {
+             tagStatusLine = `<:no_tag:1468470099026510001> **Not Enabled**`;
+        } else {
+             tagStatusLine = `<:greysword:1462853724824404069> **Tag Adopters:** ${currentTagCount}`;
+             isEnabled = true;
+        }
+    } else {
+        tagStatusLine = `<:no_tag:1468470099026510001> **Not Connected**`;
+    }
+
+    return { tagStatusLine, isEnabled };
+}
 
 // ==========================================
 // 1. ROLE MANAGER (Main Server Only)
@@ -82,79 +123,122 @@ async function generateDetailedPayload(client, preCalcCounts) {
     const servers = await ServerList.find();
     const adoptersMap = preCalcCounts || lastKnownCounts || new Map();
 
-    let totalNetworkMembers = 0;
-    let totalTagUsers = 0; 
-    const serverComponents = [];
+    // --- 1. PREPARE MAIN SERVER DATA ---
+    const mainGuild = client.guilds.cache.get(MAIN_GUILD_ID);
+    const mainData = servers.find(s => s.serverId === MAIN_GUILD_ID) || {
+        name: mainGuild ? mainGuild.name : "Unknown Server",
+        inviteLink: "https://discord.com",
+        tagText: "None"
+    };
+
+    let founderId = "0"; // Default fallback
+    let mainHumanCount = 0;
+    let mainBoosts = 0;
+
+    if (mainGuild) {
+        // ✅ CHANGED: Uses the exact ID for the mention tag
+        founderId = mainGuild.ownerId; 
+        
+        mainHumanCount = mainGuild.members.cache.filter(m => !m.user.bot).size;
+        mainBoosts = mainGuild.premiumSubscriptionCount || 0;
+    }
+
+    // --- 2. CALCULATE AGGREGATES ---
+    let totalTagsAdopters = 0;
+    let availableTagsCount = 0;
 
     for (const data of servers) {
         const guild = client.guilds.cache.get(data.serverId);
-        const memberCount = guild ? guild.memberCount : 0;
-        totalNetworkMembers += memberCount;
-        
-        let displayTagText = data.tagText || "None";
-        let tagStatusLine = ""; 
+        const count = adoptersMap.get(data.serverId) || 0;
+        totalTagsAdopters += count;
 
-        const currentServerTagCount = adoptersMap.get(data.serverId) || 0;
-        totalTagUsers += currentServerTagCount;
+        const { isEnabled } = getServerStats(guild, count);
+        if (isEnabled) availableTagsCount++;
+    }
 
-        if (guild) {
-            const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS') || guild.features.includes('MEMBER_VERIFICATION_GATE_ENABLED'); 
-            const hasActiveAdopters = currentServerTagCount > 0; 
+    // --- 3. BUILD CONTAINER 1 (MAIN SERVER INFO) ---
+    const mainTagCount = adoptersMap.get(MAIN_GUILD_ID) || 0;
+    const { tagStatusLine: mainStatus } = getServerStats(mainGuild, mainTagCount);
+    const mainInviteLink = mainData.inviteLink && mainData.inviteLink.startsWith('http') ? mainData.inviteLink : 'https://discord.com';
 
-            const boostCount = guild.premiumSubscriptionCount || 0;
-            const boostsNeeded = 3 - boostCount;
-
-            if (boostsNeeded > 0) {
-                 const s = boostsNeeded === 1 ? '' : 's';
-                 tagStatusLine = `<:no_boost:1468470028302024776> **${boostsNeeded} Boost${s} Remain**`; 
-                 if(boostsNeeded === 1) tagStatusLine = `<:no_boost:1468470028302024776> **1 Boost Remains**`;
-            } 
-            else if (!hasClanFeature && !hasActiveAdopters) {
-                 tagStatusLine = `<:no_tag:1468470099026510001> **Not Enabled**`;
-            } else {
-                 tagStatusLine = `<:greysword:1462853724824404069> **Tag Adopters:** ${currentServerTagCount}`;
-            }
-        } else {
-            tagStatusLine = `<:no_tag:1468470099026510001> **Not Connected**`;
-        }
-
-        const inviteButton = new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel("Server Link");
-        inviteButton.setURL((data.inviteLink && data.inviteLink.startsWith('http')) ? data.inviteLink : 'https://discord.com');
-        if (!data.inviteLink) inviteButton.setDisabled(true);
-
-        serverComponents.push(
+    const container1 = new ContainerBuilder()
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent("# <:A2Q_1:1466981218758426634><:A2Q_2:1466981281060360232> » Statistics")
+        )
+        .addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+        )
+        .addSectionComponents(
             new SectionBuilder()
-                .setButtonAccessory(inviteButton)
+                .setButtonAccessory(createInviteButton(mainData.inviteLink))
                 .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(`## [${mainData.name}](${mainInviteLink})`),
                     new TextDisplayBuilder().setContent(
-                        `## [${data.name || "Unknown"}](${data.inviteLink || "https://discord.com"})\n` +
-                        `**<:badge:1468618581427097724> Server Tag:** ${displayTagText}\n` +
-                        `**<:members:1468470163081924608> Members:** ${memberCount}\n` +
+                        // ✅ CHANGED: <@id> is used here!
+                        `<:owner_crown:1468472226318647337> **Founder:** <@${founderId}>\n` +
+                        `<:server_boost:1468633171758284872> **Boosts:** ${mainBoosts}\n` +
+                        `<:badge:1468618581427097724> **Server Tag:** ${mainData.tagText || "None"}\n` +
+                        `<:members:1468470163081924608> **Members:** ${mainHumanCount}\n` +
+                        `${mainStatus}`
+                    )
+                )
+        )
+        .addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+        );
+
+    // --- 4. BUILD CONTAINER 2 (SATELLITES LIST) ---
+    const container2 = new ContainerBuilder()
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(`-# Total Tags Available: ${availableTagsCount}/${servers.length}\n-# Total Tags Adopters: ${totalTagsAdopters}/${mainHumanCount}`)
+        )
+        .addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
+        );
+
+    const satelliteServers = servers.filter(s => s.serverId !== MAIN_GUILD_ID);
+
+    satelliteServers.forEach((data, index) => {
+        const guild = client.guilds.cache.get(data.serverId);
+        const tagCount = adoptersMap.get(data.serverId) || 0;
+        const { tagStatusLine } = getServerStats(guild, tagCount);
+        
+        // Members ignoring bots
+        const humanCount = guild ? guild.members.cache.filter(m => !m.user.bot).size : 0;
+        const inviteUrl = data.inviteLink && data.inviteLink.startsWith('http') ? data.inviteLink : 'https://discord.com';
+
+        container2.addSectionComponents(
+            new SectionBuilder()
+                .setButtonAccessory(createInviteButton(data.inviteLink))
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(`## [${data.name || "Unknown"}](${inviteUrl})`),
+                    new TextDisplayBuilder().setContent(
+                        `<:badge:1468618581427097724> **Server Tag:** ${data.tagText || "None"}\n` +
+                        `<:members:1468470163081924608> **Members:** ${humanCount}\n` +
                         `${tagStatusLine}`
                     )
                 )
         );
-    }
 
-// -# Total Members: ${totalNetworkMembers}\n
-
-    const nextUpdateUnix = Math.floor((Date.now() + 60 * 1000) / 1000);
-    const container = new ContainerBuilder()
-        .addTextDisplayComponents(new TextDisplayBuilder().setContent("# <:A2Q_1:1466981218758426634><:A2Q_2:1466981281060360232> » Servers’ Stats"))
-        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
-        // ✅ RESTORED: Both Total Members and Total Adopters
-        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# Total Tags Adopters: ${totalTagUsers}`))
-        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true));
-
-    serverComponents.forEach((section, i) => {
-        container.addSectionComponents(section);
-        if (i !== serverComponents.length - 1) container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false));
+        // Separator between items
+        if (index < satelliteServers.length - 1) {
+            container2.addSeparatorComponents(
+                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+            );
+        }
     });
 
-    container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
-        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# <a:loading:1447184742934909032> Next Update: <t:${nextUpdateUnix}:R>`));
+    // 5. FOOTER
+    const nextUpdateUnix = Math.floor((Date.now() + 60 * 1000) / 1000);
+    container2
+        .addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
+        )
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(`<a:loading:1447184742934909032> Next Update: <t:${nextUpdateUnix}:R>`)
+        );
 
-    return [container];
+    return [container1, container2];
 }
 
 // =======================================================
@@ -163,61 +247,49 @@ async function generateDetailedPayload(client, preCalcCounts) {
 async function generateDirectoryPayload(client) {
     const servers = await ServerList.find();
     
-    // 1. Header
     const container = new ContainerBuilder()
         .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent("# <:A2Q_1:1466981218758426634><:A2Q_2:1466981281060360232> » Servers"),
+            new TextDisplayBuilder().setContent("# <:A2Q_1:1466981218758426634><:A2Q_2:1466981281060360232> » Servers")
         )
         .addSeparatorComponents(
-            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true),
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
         );
 
-    // 2. Loop through servers
     for (let i = 0; i < servers.length; i++) {
         const data = servers[i];
         const inviteUrl = (data.inviteLink && data.inviteLink.startsWith('http')) ? data.inviteLink : 'https://discord.com';
         const serverName = data.name || "Unknown Server";
         
-        // -- Start Building Text Components --
         const textComponents = [
             new TextDisplayBuilder().setContent(`## [${serverName}](${inviteUrl})`)
         ];
         
-        // -- Tag Info Logic Only (No Owner) --
         if (data.tagText && data.tagText.length > 0) {
             textComponents.push(
-                new TextDisplayBuilder().setContent(`**Server Tag:** ${data.tagText}`)
+                new TextDisplayBuilder().setContent(`<:badge:1468618581427097724> **Server Tag:** ${data.tagText}`)
             );
         }
 
-        // -- Add Section --
         container.addSectionComponents(
             new SectionBuilder()
-                .setButtonAccessory(
-                    new ButtonBuilder()
-                        .setStyle(ButtonStyle.Link)
-                        .setLabel("Server Link")
-                        .setURL(inviteUrl)
-                )
+                .setButtonAccessory(createInviteButton(data.inviteLink))
                 .addTextDisplayComponents(textComponents)
         );
 
-        // -- Add Small Separator (Between items only) --
         if (i < servers.length - 1) {
             container.addSeparatorComponents(
-                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
+                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
             );
         }
     }
 
-    // 3. Footer
     const timestampUnix = Math.floor(Date.now() / 1000);
     container
         .addSeparatorComponents(
-            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true),
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
         )
         .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(`-# Last Update: <t:${timestampUnix}:R>`),
+            new TextDisplayBuilder().setContent(`-# Last Update: <t:${timestampUnix}:R>`)
         );
 
     return [container];

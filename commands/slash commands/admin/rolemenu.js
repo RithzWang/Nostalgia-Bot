@@ -181,8 +181,10 @@ module.exports = {
                 const message = await targetChannel.messages.fetch(msgId);
                 const container = message.components[0];
                 
-                // --- 1. Extract Text & Components Safely ---
-                const textComponents = container.components.filter(c => c.type === 7);
+                // --- 1. Extract Text & Components Safely (FIXED) ---
+                // Grabs any component that actually has text content, ignoring arbitrary type IDs
+                const textComponents = container.components.filter(c => typeof c.content === 'string');
+                
                 let titleText = textComponents[0]?.content || "### Menu";
                 const existingBody = textComponents[1]?.content || ""; 
                 
@@ -258,7 +260,6 @@ module.exports = {
                 // --- DESCRIPTION (NEW) ---
                 else if (sub === 'description') {
                     const newDesc = interaction.options.getString('description');
-                    // Converts raw input into lines for the container
                     currentBodyLines = newDesc.split('\n');
                 }
 

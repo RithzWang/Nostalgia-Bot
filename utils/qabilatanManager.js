@@ -131,16 +131,9 @@ async function generateDetailedPayload(client, preCalcCounts) {
         tagText: "None"
     };
 
-    let founderId = "0"; // Default fallback
     let mainHumanCount = 0;
-    let mainBoosts = 0;
-
     if (mainGuild) {
-        // ✅ CHANGED: Uses the exact ID for the mention tag
-        founderId = mainGuild.ownerId; 
-        
         mainHumanCount = mainGuild.members.cache.filter(m => !m.user.bot).size;
-        mainBoosts = mainGuild.premiumSubscriptionCount || 0;
     }
 
     // --- 2. CALCULATE AGGREGATES ---
@@ -156,45 +149,41 @@ async function generateDetailedPayload(client, preCalcCounts) {
         if (isEnabled) availableTagsCount++;
     }
 
-    // --- 3. BUILD CONTAINER 1 (MAIN SERVER INFO) ---
+    // --- 3. BUILD CONTAINER 1 (MAIN SERVER INFO & AGGREGATES) ---
     const mainTagCount = adoptersMap.get(MAIN_GUILD_ID) || 0;
     const { tagStatusLine: mainStatus } = getServerStats(mainGuild, mainTagCount);
     const mainInviteLink = mainData.inviteLink && mainData.inviteLink.startsWith('http') ? mainData.inviteLink : 'https://discord.com';
 
     const container1 = new ContainerBuilder()
         .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent("# <:A2Q_1:1466981218758426634><:A2Q_2:1466981281060360232> » Statistics")
+            new TextDisplayBuilder().setContent("# <:A2Q_1:1466981218758426634><:A2Q_2:1466981281060360232> » Tags Statistics")
         )
         .addSeparatorComponents(
             new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
         )
-        .addSectionComponents(
-            new SectionBuilder()
-                .setButtonAccessory(createInviteButton(mainData.inviteLink))
-                .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent(`## [${mainData.name}](${mainInviteLink})`),
-                    new TextDisplayBuilder().setContent(
-                        // ✅ CHANGED: <@id> is used here!
-                        `<:owner_crown:1468472226318647337> **Founder:** <@${founderId}>\n` +
-                        `<:server_boost:1468633171758284872> **Boosts:** ${mainBoosts}\n` +
-                        `<:badge:1468618581427097724> **Server Tag:** ${mainData.tagText || "None"}\n` +
-                        `<:members:1468470163081924608> **Members:** ${mainHumanCount}\n` +
-                        `${mainStatus}`
-                    )
-                )
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(`-# Total Tags Available: ${availableTagsCount}/${servers.length}\n-# Total Tags Adopters: ${totalTagsAdopters}/${mainHumanCount}`)
+        )
+        .addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
+        )
+        // Main Server Section (Uses standard TextDisplays instead of a SectionBuilder)
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(`## [${mainData.name}](${mainInviteLink}) <:owner_crown:1468472226318647337>`)
+        )
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `<:badge:1468618581427097724> **Server Tag:** ${mainData.tagText || "None"}\n` +
+                `<:members:1468470163081924608> **Members:** ${mainHumanCount}\n` +
+                `${mainStatus}`
+            )
         )
         .addSeparatorComponents(
             new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
         );
 
     // --- 4. BUILD CONTAINER 2 (SATELLITES LIST) ---
-    const container2 = new ContainerBuilder()
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(`-# Total Tags Available: ${availableTagsCount}/${servers.length}\n-# Total Tags Adopters: ${totalTagsAdopters}/${mainHumanCount}`)
-        )
-        .addSeparatorComponents(
-            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
-        );
+    const container2 = new ContainerBuilder();
 
     const satelliteServers = servers.filter(s => s.serverId !== MAIN_GUILD_ID);
 
@@ -209,7 +198,7 @@ async function generateDetailedPayload(client, preCalcCounts) {
 
         container2.addSectionComponents(
             new SectionBuilder()
-                .setButtonAccessory(createInviteButton(data.inviteLink))
+                .setButtonAccessory(createInviteButton(inviteUrl))
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(`## [${data.name || "Unknown"}](${inviteUrl})`),
                     new TextDisplayBuilder().setContent(
@@ -235,7 +224,7 @@ async function generateDetailedPayload(client, preCalcCounts) {
             new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
         )
         .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(`<a:loading:1447184742934909032> Next Update: <t:${nextUpdateUnix}:R>`)
+            new TextDisplayBuilder().setContent(`-# <a:loading:1447184742934909032> Next Update: <t:${nextUpdateUnix}:R>`)
         );
 
     return [container1, container2];

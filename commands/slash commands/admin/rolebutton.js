@@ -91,8 +91,16 @@ module.exports = {
                 .setDescription('Update button labels and optionally the title')
                 .addStringOption(opt => opt.setName('message_id').setDescription('The Message ID').setRequired(true))
                 .addChannelOption(opt => opt.setName('channel').setDescription('Channel where the menu is'))
-                // NEW OPTION
                 .addStringOption(opt => opt.setName('new_title').setDescription('Change the menu title (Optional)'))
+        )
+
+        // --- DESCRIPTION COMMAND (NEW) ---
+        .addSubcommand(sub => 
+            sub.setName('description')
+                .setDescription('Update the menu description manually')
+                .addStringOption(opt => opt.setName('message_id').setDescription('The Message ID').setRequired(true))
+                .addStringOption(opt => opt.setName('description').setDescription('The new description text').setRequired(true))
+                .addChannelOption(opt => opt.setName('channel').setDescription('Channel where the menu is'))
         ),
 
     async execute(interaction) {
@@ -179,7 +187,7 @@ module.exports = {
         }
 
         // ===============================================
-        // 2. ADD / REMOVE / REFRESH LOGIC
+        // 2. ADD / REMOVE / REFRESH / DESCRIPTION LOGIC
         // ===============================================
         else {
             const msgId = interaction.options.getString('message_id');
@@ -188,8 +196,8 @@ module.exports = {
                 const message = await targetChannel.messages.fetch(msgId);
                 const container = message.components[0];
                 
-                // --- 1. Extract Text Safely ---
-                const textComponents = container.components.filter(c => c.type === 7);
+                // --- 1. Extract Text Safely (FIXED) ---
+                const textComponents = container.components.filter(c => typeof c.content === 'string');
                 let titleText = textComponents[0]?.content || "### Menu";
                 const existingBody = textComponents[1]?.content || ""; 
                 
@@ -253,7 +261,6 @@ module.exports = {
                 else if (sub === 'refresh') {
                     const newTitle = interaction.options.getString('new_title');
                     
-                    // Update Title if provided
                     if (newTitle) {
                         titleText = `### ${newTitle}`;
                     }
@@ -278,6 +285,12 @@ module.exports = {
                     }
                     allButtons = updatedButtons;
                     currentBodyLines = newDescriptionLines;
+                }
+
+                // --- DESCRIPTION (NEW) ---
+                else if (sub === 'description') {
+                    const newDesc = interaction.options.getString('description');
+                    currentBodyLines = newDesc.split('\n');
                 }
 
                 // --- REBUILD CONTAINER ---

@@ -13,7 +13,9 @@ const {
     TextDisplayBuilder,
     ActionRowBuilder, 
     SeparatorBuilder, 
-    ThumbnailAccessory, 
+    ThumbnailBuilder,           // ✅ Added
+    MediaGalleryBuilder,        // ✅ Added
+    MediaGalleryItemBuilder,    // ✅ Added
     MessageFlags,
     SeparatorSpacingSize 
 } = require('discord.js');
@@ -85,7 +87,6 @@ if (fs.existsSync(eventsPath)) {
 client.once('clientReady', async () => {
     console.log(`Logged in as ${client.user.tag}`);
 
-    // Fetch and cache invites for the Main Server
     const guild = client.guilds.cache.get(serverID);
     if (guild) {
         try {
@@ -114,8 +115,6 @@ const { createWelcomeImage } = require('./welcomeCanvas7.js');
 
 client.on('guildMemberAdd', async (member) => {
     if (member.user.bot) return;
-    
-    // ✅ STRICTLY LOCKED TO MAIN SERVER ID
     if (member.guild.id !== serverID) return;
 
     // 1. Roles & Nickname
@@ -128,11 +127,7 @@ client.on('guildMemberAdd', async (member) => {
     // 2. Invite Tracker & Image
     try {
         const newInvites = await member.guild.invites.fetch().catch(() => new Collection());
-        
-        // Logic: Find the invite where current uses > cached uses
         const usedInvite = newInvites.find(inv => inv.uses > (client.invitesCache.get(inv.code) || 0));
-        
-        // Update cache immediately
         newInvites.each(inv => client.invitesCache.set(inv.code, inv.uses));
 
         const inviterName = usedInvite?.inviter ? usedInvite.inviter.username : 'Unknown';
@@ -143,12 +138,17 @@ client.on('guildMemberAdd', async (member) => {
         const attachment = new AttachmentBuilder(buffer, { name: 'welcome-image.png' });
         const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
         
+        // ✅ UPDATED CONTAINER BUILDER MATCHING BLUEPRINT
         const mainContainer = new ContainerBuilder()
-            .setAccentColor(0x888888)
+            .setAccentColor(8947848)
             .addSectionComponents(
                 new SectionBuilder()
+                    .setThumbnailAccessory(
+                        new ThumbnailBuilder()
+                            .setURL(member.user.displayAvatarURL({ extension: 'png', size: 512 }))
+                    )
                     .addTextDisplayComponents(
-                        new TextDisplayBuilder().setContent('### Welcome to A2-Q Server'),
+                        new TextDisplayBuilder().setContent(`### Welcome to ${member.guild.name} Server`),
                         new TextDisplayBuilder().setContent(
                             `-# <@${member.user.id}> \`(${member.user.username})\`\n` +
                             `-# <:calendar:1456242387243499613> Account Created: ${accountCreated}\n` +
@@ -156,21 +156,32 @@ client.on('guildMemberAdd', async (member) => {
                             `-# <:chain:1456242418717556776> Invited by ${inviterId ? `<@${inviterId}>` : '**Unknown**'} \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`
                         )
                     )
-                    .setThumbnailAccessory(new ThumbnailAccessory().setURL(member.user.displayAvatarURL())) 
-            )
-            .addActionRowComponents(
-                new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setLabel('Register Here').setEmoji('1447143542643490848').setStyle(ButtonStyle.Link).setURL('https://discord.com/channels/1456197054782111756/1456197056250122352')
-                )
             )
             .addSeparatorComponents(
-                 new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+            )
+            .addActionRowComponents(
+                new ActionRowBuilder()
+                    .addComponents(
+                        new ButtonBuilder()
+                            .setStyle(ButtonStyle.Link)
+                            .setLabel("Register Here")
+                            .setEmoji('1447143542643490848') // Kept your exact custom emoji
+                            .setURL("https://discord.com/channels/1456197054782111756/1456197056250122352")
+                    )
+            )
+            .addSeparatorComponents(
+                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
             )
             .addMediaGalleryComponents(
-                 { items: [{ url: "attachment://welcome-image.png", description: `${member.user.username} is here!` }] }
+                new MediaGalleryBuilder()
+                    .addItems(
+                        new MediaGalleryItemBuilder()
+                            .setURL("attachment://welcome-image.png")
+                            .setDescription(`${member.user.globalName || member.user.username} is here!`)
+                    )
             );
 
-        // ✅ FETCHES STRICTLY THE PROVIDED WELCOME LOG CHANNEL ID
         const channel = client.channels.cache.get(welcomeLog);
         if (channel) {
             await channel.send({ 

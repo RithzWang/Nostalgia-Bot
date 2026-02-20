@@ -8,12 +8,11 @@ const {
     AttachmentBuilder, 
     ButtonBuilder, 
     ButtonStyle, 
-    // ✅ ADDED MISSING BUILDERS
     ContainerBuilder,
     SectionBuilder,
     TextDisplayBuilder,
-    ActionRowBuilder, // Needed for buttons inside containers
-    SeparatorBuilder, // Needed for separators
+    ActionRowBuilder, 
+    SeparatorBuilder, 
     ThumbnailAccessory, 
     MessageFlags,
     SeparatorSpacingSize 
@@ -26,7 +25,10 @@ require('./keep_alive.js');
 
 // --- CONFIGURATION ---
 const config = require("./config.json");
-const { serverID, welcomeLog } = config;
+
+// ✅ HARDCODED SERVER AND WELCOME CHANNEL IDs
+const serverID = '1456197054782111756'; 
+const welcomeLog = '1456197056250122355'; 
 
 const client = new Client({
     intents: [
@@ -43,7 +45,6 @@ const client = new Client({
 // --- COLLECTIONS ---
 client.messageCommands = new Collection();
 client.invitesCache = new Collection(); 
-// ✅ CRITICAL FIX: Initialize the slash commands collection so handlers don't crash
 client.slashCommands = new Collection(); 
 
 // --- 1. LOAD HANDLERS ---
@@ -80,8 +81,7 @@ if (fs.existsSync(eventsPath)) {
     }
 }
 
-// ✅ 4. CRITICAL: CACHE INVITES ON READY
-// Keeps 'clientReady' as requested
+// ✅ 4. CACHE INVITES ON READY
 client.once('clientReady', async () => {
     console.log(`Logged in as ${client.user.tag}`);
 
@@ -114,6 +114,8 @@ const { createWelcomeImage } = require('./welcomeCanvas7.js');
 
 client.on('guildMemberAdd', async (member) => {
     if (member.user.bot) return;
+    
+    // ✅ STRICTLY LOCKED TO MAIN SERVER ID
     if (member.guild.id !== serverID) return;
 
     // 1. Roles & Nickname
@@ -156,13 +158,11 @@ client.on('guildMemberAdd', async (member) => {
                     )
                     .setThumbnailAccessory(new ThumbnailAccessory().setURL(member.user.displayAvatarURL())) 
             )
-            // ✅ FIX: Wrapped Button in ActionRowBuilder
             .addActionRowComponents(
                 new ActionRowBuilder().addComponents(
                     new ButtonBuilder().setLabel('Register Here').setEmoji('1447143542643490848').setStyle(ButtonStyle.Link).setURL('https://discord.com/channels/1456197054782111756/1456197056250122352')
                 )
             )
-            // ✅ FIX: Used SeparatorBuilder
             .addSeparatorComponents(
                  new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
             )
@@ -170,6 +170,7 @@ client.on('guildMemberAdd', async (member) => {
                  { items: [{ url: "attachment://welcome-image.png", description: `${member.user.username} is here!` }] }
             );
 
+        // ✅ FETCHES STRICTLY THE PROVIDED WELCOME LOG CHANNEL ID
         const channel = client.channels.cache.get(welcomeLog);
         if (channel) {
             await channel.send({ 

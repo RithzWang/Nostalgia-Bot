@@ -172,7 +172,7 @@ async function generateDetailedPayload(client, preCalcCounts) {
             new SectionBuilder()
                 .setButtonAccessory(createInviteButton(mainInviteLink))
                 .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent(`## [${mainData.name}](${mainInviteLink}) ✨`),
+                    new TextDisplayBuilder().setContent(`## [${mainData.name}](${mainInviteLink})`),
                     new TextDisplayBuilder().setContent(
                         `<:badge:1468618581427097724> **Server Tag:** ${mainData.tagText || "None"}\n` +
                         `<:members:1468470163081924608> **Members:** ${mainHumanCount}\n` +

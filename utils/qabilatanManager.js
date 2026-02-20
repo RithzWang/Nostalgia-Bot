@@ -167,7 +167,7 @@ async function generateDetailedPayload(client, preCalcCounts) {
             new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
         )
         .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(`## [${mainData.name}](${mainInviteLink}) <:owner_crown:1468472226318647337> <@${founderId}>`)
+            new TextDisplayBuilder().setContent(`## [${mainData.name}](${mainInviteLink}) <:sparkles:1468470437838192651>`)
         )
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(

@@ -1,7 +1,7 @@
 const { 
     ContainerBuilder, TextDisplayBuilder, SectionBuilder, 
     ButtonBuilder, ButtonStyle, SeparatorBuilder, SeparatorSpacingSize,
-    ActionRowBuilder, // ✅ Added ActionRowBuilder for the stats buttons
+    ActionRowBuilder,
     MessageFlags 
 } = require('discord.js');
 
@@ -136,15 +136,10 @@ async function generateDetailedPayload(client, preCalcCounts) {
 
     // --- 2. CALCULATE AGGREGATES ---
     let totalTagsAdopters = 0;
-    let availableTagsCount = 0;
 
     for (const data of servers) {
-        const guild = client.guilds.cache.get(data.serverId);
         const count = adoptersMap.get(data.serverId) || 0;
         totalTagsAdopters += count;
-
-        const { isEnabled } = getServerStats(guild, count);
-        if (isEnabled) availableTagsCount++;
     }
 
     // --- 3. BUILD CONTAINER 1 (MAIN SERVER INFO & AGGREGATES IN BUTTONS) ---
@@ -159,14 +154,9 @@ async function generateDetailedPayload(client, preCalcCounts) {
         .addSeparatorComponents(
             new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
         )
-        // ✅ Added stats as disabled buttons in an ActionRow
+        // ✅ Only the "Total Tags Adopters" button remains
         .addActionRowComponents(
             new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setStyle(ButtonStyle.Secondary)
-                    .setLabel(`Total Tags Available: ${availableTagsCount}/${servers.length}`)
-                    .setDisabled(true)
-                    .setCustomId("stats_avail_btn"),
                 new ButtonBuilder()
                     .setStyle(ButtonStyle.Secondary)
                     .setLabel(`Total Tags Adopters: ${totalTagsAdopters}/${mainHumanCount}`)
@@ -244,7 +234,6 @@ async function updateAllPanels(client) {
         const counts = await runRoleUpdates(client);
         const detailedPayload = await generateDetailedPayload(client, counts);
 
-        // Fetch ONLY the main server panel
         const mainPanel = await Panel.findOne({ guildId: MAIN_GUILD_ID });
         if (!mainPanel) return;
 

@@ -3,25 +3,67 @@ const {
     ButtonBuilder, ButtonStyle, SeparatorBuilder, SeparatorSpacingSize,
     MessageFlags 
 } = require('discord.js');
+
 const { Panel, ServerList } = require('../src/models/Qabilatan'); 
 
 // 🔒 CONFIGURATION
 const MAIN_GUILD_ID = '1456197054782111756'; 
 const GLOBAL_TAG_ROLE_ID = '1462217123433545812'; 
 
+// 💾 MEMORY CACHE
+let lastKnownCounts = new Map();
+
 // 🕒 HELPER
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+function createInviteButton(link) {
+    const isValid = link && link.startsWith('http');
+    const btn = new ButtonBuilder()
+        .setStyle(ButtonStyle.Link)
+        .setLabel("Server Link")
+        .setURL(isValid ? link : 'https://discord.com');
+    
+    if (!isValid) btn.setDisabled(true);
+    return btn;
+}
+
+// Helper to determine status line & whether a tag is "Enabled"
+function getServerStats(guild, currentTagCount) {
+    let tagStatusLine = "";
+    let isEnabled = false;
+
+    if (guild) {
+        const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS') || guild.features.includes('MEMBER_VERIFICATION_GATE_ENABLED'); 
+        const hasActiveAdopters = currentTagCount > 0; 
+        const boostCount = guild.premiumSubscriptionCount || 0;
+        const boostsNeeded = 3 - boostCount;
+
+        if (boostsNeeded > 0) {
+             const s = boostsNeeded === 1 ? '' : 's';
+             tagStatusLine = `<:no_boost:1468470028302024776> **${boostsNeeded} Boost${s} Remain**`; 
+             if(boostsNeeded === 1) tagStatusLine = `<:no_boost:1468470028302024776> **1 Boost Remains**`;
+        } 
+        else if (!hasClanFeature && !hasActiveAdopters) {
+             tagStatusLine = `<:no_tag:1468470099026510001> **Not Enabled**`;
+        } else {
+             tagStatusLine = `<:greysword:1462853724824404069> **Tag Adopters:** ${currentTagCount}`;
+             isEnabled = true;
+        }
+    } else {
+        tagStatusLine = `<:no_tag:1468470099026510001> **Not Connected**`;
+    }
+
+    return { tagStatusLine, isEnabled };
+}
+
 // ==========================================
-// 1. ROLE MANAGER & STATS CALCULATOR
+// 1. ROLE MANAGER (Main Server Only)
 // ==========================================
 async function runRoleUpdates(client) {
     const servers = await ServerList.find();
     const mainGuild = client.guilds.cache.get(MAIN_GUILD_ID);
+    if (!mainGuild) return lastKnownCounts; 
 
-    if (!mainGuild) return new Map(); // Return empty map if main guild fails
-
-    // Prepare Config for fast lookup
     const serverConfig = new Map(); 
     const allManagedRoles = new Set();
     allManagedRoles.add(GLOBAL_TAG_ROLE_ID);
@@ -31,41 +73,29 @@ async function runRoleUpdates(client) {
         if (s.tagRoleID) allManagedRoles.add(s.tagRoleID);
     });
 
-    // We will use this map to store the counts and return it to the dashboard generator
-    const adopterCounts = new Map(); // Map<ServerID, Count>
+    const currentCounts = new Map();
 
     try {
-        // ⚠️ FORCE FETCH: Crucial to get the latest "Primary Guild" data
-        const members = await mainGuild.members.fetch({ force: true });
+        await mainGuild.members.fetch(); 
+        const members = mainGuild.members.cache; 
 
         for (const [memberId, member] of members) {
             if (member.user.bot) continue;
-
             const user = member.user;
             const rolesToKeep = new Set();
-            let isAdopter = false;
-
-            // --- THE CORE LOGIC YOU REQUESTED ---
-            // iterate through cached members -> check Identity settings
+            
             if (user.primaryGuild && user.primaryGuild.identityEnabled && user.primaryGuild.identityGuildId) {
                 const targetId = user.primaryGuild.identityGuildId;
-                
-                // If the user's tag points to a server we are tracking
                 if (serverConfig.has(targetId)) {
-                    isAdopter = true;
+                    const val = currentCounts.get(targetId) || 0;
+                    currentCounts.set(targetId, val + 1);
 
-                    // 1. Increment Count for that specific server
-                    const currentCount = adopterCounts.get(targetId) || 0;
-                    adopterCounts.set(targetId, currentCount + 1);
-
-                    // 2. Queue Roles
                     rolesToKeep.add(GLOBAL_TAG_ROLE_ID);
                     const config = serverConfig.get(targetId);
                     if (config.roleId) rolesToKeep.add(config.roleId);
                 }
             }
 
-            // --- SYNC ROLES ---
             for (const roleId of rolesToKeep) {
                 if (!member.roles.cache.has(roleId)) await member.roles.add(roleId).catch(() => {});
             }
@@ -76,110 +106,205 @@ async function runRoleUpdates(client) {
                 }
             }
         }
+
+        if (currentCounts.size > 0) lastKnownCounts = currentCounts;
+
     } catch (e) { 
-        console.error(`[Role Manager] Error: ${e.message}`); 
+        console.error(`[Role Manager] Update failed (Using Cache): ${e.message}`); 
     }
 
-    return adopterCounts; // Return the counts so we don't have to calc them again
+    return currentCounts.size > 0 ? currentCounts : lastKnownCounts; 
 }
 
-// ==========================================
-// 2. DASHBOARD UI GENERATOR
-// ==========================================
-async function generateDashboardPayload(client, preCalcCounts) {
+// =======================================================
+// 2. DETAILED PAYLOAD (For Main Server)
+// =======================================================
+async function generateDetailedPayload(client, preCalcCounts) {
     const servers = await ServerList.find();
-    
-    // If we didn't get pre-calculated counts (e.g. run standalone), use empty map
-    const adoptersMap = preCalcCounts || new Map();
+    const adoptersMap = preCalcCounts || lastKnownCounts || new Map();
 
-    let totalNetworkMembers = 0;
-    let totalTagUsers = 0; 
-    const serverComponents = [];
+    // --- 1. PREPARE MAIN SERVER DATA ---
+    const mainGuild = client.guilds.cache.get(MAIN_GUILD_ID);
+    const mainData = servers.find(s => s.serverId === MAIN_GUILD_ID) || {
+        name: mainGuild ? mainGuild.name : "Unknown Server",
+        inviteLink: "https://discord.com",
+        tagText: "None"
+    };
+
+    let mainHumanCount = 0;
+    if (mainGuild) {
+        mainHumanCount = mainGuild.members.cache.filter(m => !m.user.bot).size;
+    }
+
+    // --- 2. CALCULATE AGGREGATES ---
+    let totalTagsAdopters = 0;
+    let availableTagsCount = 0;
 
     for (const data of servers) {
         const guild = client.guilds.cache.get(data.serverId);
-        const memberCount = guild ? guild.memberCount : 0;
-        totalNetworkMembers += memberCount;
+        const count = adoptersMap.get(data.serverId) || 0;
+        totalTagsAdopters += count;
+
+        const { isEnabled } = getServerStats(guild, count);
+        if (isEnabled) availableTagsCount++;
+    }
+
+    // --- 3. BUILD CONTAINER 1 (MAIN SERVER INFO & AGGREGATES) ---
+    const mainTagCount = adoptersMap.get(MAIN_GUILD_ID) || 0;
+    const { tagStatusLine: mainStatus } = getServerStats(mainGuild, mainTagCount);
+    const mainInviteLink = mainData.inviteLink && mainData.inviteLink.startsWith('http') ? mainData.inviteLink : 'https://discord.com';
+
+    const container1 = new ContainerBuilder()
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent("# <:A2Q_1:1466981218758426634><:A2Q_2:1466981281060360232> » Tags Statistics")
+        )
+        .addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+        )
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(`-# Total Tags Available: ${availableTagsCount}/${servers.length}\n-# Total Tags Adopters: ${totalTagsAdopters}/${mainHumanCount}`)
+        )
+        .addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
+        )
+        // Main Server Section (Uses standard TextDisplays instead of a SectionBuilder)
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(`## [${mainData.name}](${mainInviteLink}) <:sparkles:1468470437838192651>`)
+        )
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `<:badge:1468618581427097724> **Server Tag:** ${mainData.tagText || "None"}\n` +
+                `<:members:1468470163081924608> **Members:** ${mainHumanCount}\n` +
+                `${mainStatus}`
+            )
+        )
+        .addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+        );
+
+    // --- 4. BUILD CONTAINER 2 (SATELLITES LIST) ---
+    const container2 = new ContainerBuilder();
+
+    const satelliteServers = servers.filter(s => s.serverId !== MAIN_GUILD_ID);
+
+    satelliteServers.forEach((data, index) => {
+        const guild = client.guilds.cache.get(data.serverId);
+        const tagCount = adoptersMap.get(data.serverId) || 0;
+        const { tagStatusLine } = getServerStats(guild, tagCount);
         
-        let displayTagText = data.tagText || "None";
-        let tagStatusLine = ""; 
+        // Members ignoring bots
+        const humanCount = guild ? guild.members.cache.filter(m => !m.user.bot).size : 0;
+        const inviteUrl = data.inviteLink && data.inviteLink.startsWith('http') ? data.inviteLink : 'https://discord.com';
 
-        // USE THE COUNT FROM THE LOGIC ABOVE
-        const currentServerTagCount = adoptersMap.get(data.serverId) || 0;
-        totalTagUsers += currentServerTagCount;
-
-        if (guild) {
-            // Check feature flags just to be safe about "Enabled" status
-            const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS') || guild.features.includes('MEMBER_VERIFICATION_GATE_ENABLED'); 
-            const hasActiveAdopters = currentServerTagCount > 0; 
-
-            const boostCount = guild.premiumSubscriptionCount || 0;
-            const boostsNeeded = 3 - boostCount;
-
-            if (boostsNeeded > 0) {
-                 const s = boostsNeeded === 1 ? '' : 's';
-                 tagStatusLine = `<:no_boost:1463272235056889917> ${boostsNeeded} **Boost${s} Remain**`; 
-                 if(boostsNeeded === 1) tagStatusLine = `<:no_boost:1463272235056889917> **1 Boost Remains**`;
-            } 
-            else if (!hasClanFeature && !hasActiveAdopters) {
-                 tagStatusLine = `<:no_tag:1463272172201050336> **Not Enabled**`;
-            } else {
-                 tagStatusLine = `<:greysword:1462853724824404069> **Tag Adopters:** ${currentServerTagCount}`;
-            }
-        } else {
-            tagStatusLine = `<:no_tag:1463272172201050336> **Not Connected**`;
-        }
-
-        const inviteButton = new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel("Server Link");
-        inviteButton.setURL((data.inviteLink && data.inviteLink.startsWith('http')) ? data.inviteLink : 'https://discord.com');
-        if (!data.inviteLink) inviteButton.setDisabled(true);
-
-        serverComponents.push(
+        container2.addSectionComponents(
             new SectionBuilder()
-                .setButtonAccessory(inviteButton)
+                .setButtonAccessory(createInviteButton(inviteUrl))
                 .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(`## [${data.name || "Unknown"}](${inviteUrl})`),
                     new TextDisplayBuilder().setContent(
-                        `## [${data.name || "Unknown"}](${data.inviteLink || "https://discord.com"})\n` +
-                        `**<:sparkles:1462851309219872841> Server Tag:** ${displayTagText}\n` +
-                        `**<:members:1462851249836654592> Members:** ${memberCount}\n` +
+                        `<:badge:1468618581427097724> **Server Tag:** ${data.tagText || "None"}\n` +
+                        `<:members:1468470163081924608> **Members:** ${humanCount}\n` +
                         `${tagStatusLine}`
                     )
                 )
         );
-    }
 
-    const nextUpdateUnix = Math.floor((Date.now() + 60 * 1000) / 1000);
-    const container = new ContainerBuilder()
-        .addTextDisplayComponents(new TextDisplayBuilder().setContent("# <:A2Q_1:1466981218758426634><:A2Q_2:1466981281060360232> » Servers"))
-        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
-        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# Total Members: ${totalNetworkMembers}\n-# Total Tags Adopters: ${totalTagUsers}`))
-        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true));
-
-    serverComponents.forEach((section, i) => {
-        container.addSectionComponents(section);
-        if (i !== serverComponents.length - 1) container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false));
+        // Separator between items
+        if (index < satelliteServers.length - 1) {
+            container2.addSeparatorComponents(
+                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+            );
+        }
     });
 
-    container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
-        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# <a:loading:1447184742934909032> Next Update: <t:${nextUpdateUnix}:R>`));
+    // 5. FOOTER
+    const nextUpdateUnix = Math.floor((Date.now() + 60 * 1000) / 1000);
+    container2
+        .addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
+        )
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(`-# <a:loading:1447184742934909032> Next Update: <t:${nextUpdateUnix}:R>`)
+        );
+
+    return [container1, container2];
+}
+
+// =======================================================
+// 3. STATIC DIRECTORY PAYLOAD (For Satellite Servers)
+// =======================================================
+async function generateDirectoryPayload(client) {
+    const servers = await ServerList.find();
+    
+    const container = new ContainerBuilder()
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent("# <:A2Q_1:1466981218758426634><:A2Q_2:1466981281060360232> » Servers")
+        )
+        .addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
+        );
+
+    for (let i = 0; i < servers.length; i++) {
+        const data = servers[i];
+        const inviteUrl = (data.inviteLink && data.inviteLink.startsWith('http')) ? data.inviteLink : 'https://discord.com';
+        const serverName = data.name || "Unknown Server";
+        
+        const textComponents = [
+            new TextDisplayBuilder().setContent(`## [${serverName}](${inviteUrl})`)
+        ];
+        
+        if (data.tagText && data.tagText.length > 0) {
+            textComponents.push(
+                new TextDisplayBuilder().setContent(`<:badge:1468618581427097724> **Server Tag:** ${data.tagText}`)
+            );
+        }
+
+        container.addSectionComponents(
+            new SectionBuilder()
+                .setButtonAccessory(createInviteButton(data.inviteLink))
+                .addTextDisplayComponents(textComponents)
+        );
+
+        if (i < servers.length - 1) {
+            container.addSeparatorComponents(
+                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+            );
+        }
+    }
+
+    const timestampUnix = Math.floor(Date.now() / 1000);
+    container
+        .addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
+        )
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(`-# Last Update: <t:${timestampUnix}:R>`)
+        );
 
     return [container];
 }
 
 // ==========================================
-// 3. MASTER UPDATE
+// 4. MASTER UPDATE
 // ==========================================
-async function updateAllPanels(client) {
+async function updateAllPanels(client, updateSatellites = false) {
     try {
-        // Run Logic FIRST to get the counts
         const counts = await runRoleUpdates(client);
 
-        // Pass counts to the dashboard generator
-        const payload = await generateDashboardPayload(client, counts);
-        
+        const detailedPayload = await generateDetailedPayload(client, counts);
+        let directoryPayload = null; 
+
+        if (updateSatellites) {
+            directoryPayload = await generateDirectoryPayload(client); 
+        }
+
         const locations = await Panel.find(); 
         
         for (const loc of locations) {
+            const isMainServer = (loc.guildId === MAIN_GUILD_ID);
+
+            if (!isMainServer && !updateSatellites) continue; 
+
             let channel;
             try { channel = await client.channels.fetch(loc.channelId); } 
             catch (e) { await Panel.deleteOne({ _id: loc._id }); continue; }
@@ -187,6 +312,8 @@ async function updateAllPanels(client) {
             if (!channel) { await Panel.deleteOne({ _id: loc._id }); continue; }
 
             await sleep(2500);
+
+            const selectedPayload = isMainServer ? detailedPayload : directoryPayload;
 
             try {
                 let msg = null;
@@ -196,9 +323,9 @@ async function updateAllPanels(client) {
                 }
 
                 if (msg && msg.editable) {
-                    await msg.edit({ components: payload, flags: [MessageFlags.IsComponentsV2] });
+                    await msg.edit({ components: selectedPayload, flags: [MessageFlags.IsComponentsV2] });
                 } else {
-                    const newMsg = await channel.send({ components: payload, flags: [MessageFlags.IsComponentsV2] });
+                    const newMsg = await channel.send({ components: selectedPayload, flags: [MessageFlags.IsComponentsV2] });
                     loc.messageId = newMsg.id;
                     await loc.save();
                 }
@@ -212,4 +339,9 @@ async function updateAllPanels(client) {
     }
 }
 
-module.exports = { updateAllPanels, generateDashboardPayload };
+module.exports = { 
+    updateAllPanels, 
+    generateDetailedPayload, 
+    generateDirectoryPayload,
+    generateDashboardPayload: generateDetailedPayload 
+};

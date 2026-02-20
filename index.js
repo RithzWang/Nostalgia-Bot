@@ -166,7 +166,7 @@ client.on('guildMemberAdd', async (member) => {
                         new ButtonBuilder()
                             .setStyle(ButtonStyle.Link)
                             .setLabel("Register Here")
-                            .setEmoji('1447143542643490848') // Kept your exact custom emoji
+                            .setEmoji('1468487912986382396') // Kept your exact custom emoji
                             .setURL("https://discord.com/channels/1456197054782111756/1456197056250122352")
                     )
             )

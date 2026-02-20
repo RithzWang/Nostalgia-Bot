@@ -43,7 +43,6 @@ module.exports = {
         .addSubcommand(sub => sub.setName('edit').setDescription('Edit a server in the network'))
         .addSubcommand(sub => sub.setName('delete').setDescription('Remove a server from the network'))
         .addSubcommand(sub => sub.setName('refresh').setDescription('Force update the main dashboard'))
-        // ✅ UPDATED: Greet Message Subcommand
         .addSubcommand(sub => 
             sub.setName('greet-message')
                .setDescription('Setup greet/kick logic for this server')
@@ -51,12 +50,14 @@ module.exports = {
                .addBooleanOption(opt => opt.setName('enable').setDescription('Enable or disable').setRequired(true))
                .addChannelOption(opt => opt.setName('channel').setDescription('Welcome channel (required if enabling)').setRequired(false))
         )
+        // ✅ RENAMED AND UPDATED: tag-user-role
         .addSubcommand(sub => 
-            sub.setName('tag-user')
+            sub.setName('tag-user-role')
                .setDescription('Give a role to tag adopters in a satellite server')
                .addStringOption(opt => opt.setName('server_id').setDescription('The Dashboard Server ID').setRequired(true))
                .addBooleanOption(opt => opt.setName('enable').setDescription('Enable or disable').setRequired(true))
-               .addStringOption(opt => opt.setName('role_id').setDescription('Role ID in the satellite server to give').setRequired(false))
+               // Changed to a Role Option so you can just click the role in the server
+               .addRoleOption(opt => opt.setName('role').setDescription('Role in this server to give').setRequired(false))
         ),
 
     async execute(interaction, client) {
@@ -181,7 +182,7 @@ module.exports = {
                 return interaction.reply({ components, flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2] });
             }
 
-            // ✅ GREET MESSAGE
+            // --- GREET MESSAGE ---
             if (subcommand === 'greet-message') {
                 const srvId = interaction.options.getString('server_id');
                 const enable = interaction.options.getBoolean('enable');
@@ -202,33 +203,33 @@ module.exports = {
                     );
                     return interaction.reply({ content: `✅ Greet system enabled for **${exists.name || srvId}** in <#${channel.id}>.`, flags: [MessageFlags.Ephemeral] });
                 } else {
-                    // Disable logic
                     await GreetConfig.findOneAndDelete({ guildId: srvId });
                     return interaction.reply({ content: `✅ Greet system disabled for **${exists.name || srvId}**.`, flags: [MessageFlags.Ephemeral] });
                 }
             }
 
-            // --- TAG USER ---
-            if (subcommand === 'tag-user') {
+            // ✅ TAG USER ROLE
+            if (subcommand === 'tag-user-role') {
                 const srvId = interaction.options.getString('server_id');
                 const enable = interaction.options.getBoolean('enable');
-                const roleId = interaction.options.getString('role_id');
+                // We fetch the Role object instead of a string
+                const role = interaction.options.getRole('role');
 
                 const server = await ServerList.findOne({ serverId: srvId });
                 if (!server) {
                     return interaction.reply({ content: `❌ Server ID \`${srvId}\` is not in the dashboard.`, flags: [MessageFlags.Ephemeral] });
                 }
 
-                if (enable && !roleId && !server.satelliteRoleId) {
-                    return interaction.reply({ content: `❌ You must provide a \`role_id\` when enabling this feature for the first time.`, flags: [MessageFlags.Ephemeral] });
+                if (enable && !role && !server.satelliteRoleId) {
+                    return interaction.reply({ content: `❌ You must select a \`role\` when enabling this feature for the first time.`, flags: [MessageFlags.Ephemeral] });
                 }
 
                 server.satelliteRoleEnabled = enable;
-                if (roleId) server.satelliteRoleId = roleId;
+                if (role) server.satelliteRoleId = role.id;
                 await server.save();
 
                 return interaction.reply({ 
-                    content: `✅ Satellite Tag Role for **${server.name || srvId}** has been **${enable ? 'enabled' : 'disabled'}**.${enable ? `\nRole ID: \`${server.satelliteRoleId}\`` : ''}`, 
+                    content: `✅ Satellite Tag Role for **${server.name || srvId}** has been **${enable ? 'enabled' : 'disabled'}**.${enable ? `\nRole: <@&${server.satelliteRoleId}>` : ''}`, 
                     flags: [MessageFlags.Ephemeral] 
                 });
             }

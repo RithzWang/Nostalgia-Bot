@@ -159,6 +159,7 @@ async function generateDetailedPayload(client, preCalcCounts) {
             new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
                     .setStyle(ButtonStyle.Secondary)
+                    .setEmoji('1474282137367609527')
                     .setLabel(`Total Tags Adopters: ${totalTagsAdopters}/${mainHumanCount}`)
                     .setDisabled(true)
                     .setCustomId("stats_adopt_btn")
@@ -171,7 +172,7 @@ async function generateDetailedPayload(client, preCalcCounts) {
             new SectionBuilder()
                 .setButtonAccessory(createInviteButton(mainInviteLink))
                 .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent(`## [${mainData.name}](${mainInviteLink}) <:sparkles:1468470437838192651>`),
+                    new TextDisplayBuilder().setContent(`## [${mainData.name}](${mainInviteLink}) ✨`),
                     new TextDisplayBuilder().setContent(
                         `<:badge:1468618581427097724> **Server Tag:** ${mainData.tagText || "None"}\n` +
                         `<:members:1468470163081924608> **Members:** ${mainHumanCount}\n` +

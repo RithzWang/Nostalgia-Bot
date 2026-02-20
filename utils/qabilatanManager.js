@@ -55,7 +55,7 @@ function getServerStats(guild, currentTagCount) {
 }
 
 // ==========================================
-// 1. ROLE MANAGER (Main Server Only)
+// 1. ROLE MANAGER (Main Server)
 // ==========================================
 async function runRoleUpdates(client) {
     const servers = await ServerList.find();
@@ -114,8 +114,46 @@ async function runRoleUpdates(client) {
     return currentCounts.size > 0 ? currentCounts : lastKnownCounts; 
 }
 
+// ==========================================
+// 2. SATELLITE SERVER ROLE MANAGER
+// ==========================================
+async function runSatelliteRoleUpdates(client) {
+    const servers = await ServerList.find();
+    
+    for (const data of servers) {
+        // Skip if feature is disabled or role isn't set
+        if (!data.satelliteRoleEnabled || !data.satelliteRoleId) continue;
+
+        const guild = client.guilds.cache.get(data.serverId);
+        if (!guild) continue;
+
+        try {
+            // Loop through cached members of the satellite server
+            for (const [memberId, member] of guild.members.cache) {
+                if (member.user.bot) continue;
+                
+                const user = member.user;
+                // Check if they are adopting this specific server's tag
+                const hasTag = user.primaryGuild && user.primaryGuild.identityEnabled && user.primaryGuild.identityGuildId === data.serverId;
+                
+                if (hasTag) {
+                    if (!member.roles.cache.has(data.satelliteRoleId)) {
+                        await member.roles.add(data.satelliteRoleId).catch(() => {});
+                    }
+                } else {
+                    if (member.roles.cache.has(data.satelliteRoleId)) {
+                        await member.roles.remove(data.satelliteRoleId).catch(() => {});
+                    }
+                }
+            }
+        } catch (e) {
+            console.error(`[Satellite Role Manager] Error in ${guild.name}: ${e.message}`);
+        }
+    }
+}
+
 // =======================================================
-// 2. DETAILED PAYLOAD (For Main Server)
+// 3. DETAILED PAYLOAD (For Main Server)
 // =======================================================
 async function generateDetailedPayload(client, preCalcCounts) {
     const servers = await ServerList.find();
@@ -154,12 +192,10 @@ async function generateDetailedPayload(client, preCalcCounts) {
         .addSeparatorComponents(
             new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
         )
-        // ✅ Only the "Total Tags Adopters" button remains
         .addActionRowComponents(
             new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
                     .setStyle(ButtonStyle.Secondary)
-                    .setEmoji('1474282137367609527')
                     .setLabel(`Total Tags Adopters: ${totalTagsAdopters}/${mainHumanCount}`)
                     .setDisabled(true)
                     .setCustomId("stats_adopt_btn")
@@ -233,8 +269,13 @@ async function generateDetailedPayload(client, preCalcCounts) {
 async function updateAllPanels(client) {
     try {
         const counts = await runRoleUpdates(client);
+        
+        // ✅ CALL NEW SATELLITE ROLE SYNC LOGIC HERE
+        await runSatelliteRoleUpdates(client); 
+        
         const detailedPayload = await generateDetailedPayload(client, counts);
 
+        // Fetch ONLY the main server panel
         const mainPanel = await Panel.findOne({ guildId: MAIN_GUILD_ID });
         if (!mainPanel) return;
 

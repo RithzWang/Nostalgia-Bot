@@ -157,9 +157,6 @@ client.on('guildMemberAdd', async (member) => {
                         )
                     )
             )
-            .addSeparatorComponents(
-                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
-            )
             .addActionRowComponents(
                 new ActionRowBuilder()
                     .addComponents(

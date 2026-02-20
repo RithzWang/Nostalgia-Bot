@@ -48,15 +48,13 @@ module.exports = {
                .setDescription('Setup greet/kick logic for this server')
                .addStringOption(opt => opt.setName('server_id').setDescription('The ID of this server in the list').setRequired(true))
                .addBooleanOption(opt => opt.setName('enable').setDescription('Enable or disable').setRequired(true))
-               .addChannelOption(opt => opt.setName('channel').setDescription('Welcome channel (required if enabling)').setRequired(false))
+               .addChannelOption(opt => opt.setName('channel').setDescription('Welcome channel (required if enabling for the first time)').setRequired(false))
         )
-        // ✅ RENAMED AND UPDATED: tag-user-role
         .addSubcommand(sub => 
             sub.setName('tag-user-role')
                .setDescription('Give a role to tag adopters in a satellite server')
                .addStringOption(opt => opt.setName('server_id').setDescription('The Dashboard Server ID').setRequired(true))
                .addBooleanOption(opt => opt.setName('enable').setDescription('Enable or disable').setRequired(true))
-               // Changed to a Role Option so you can just click the role in the server
                .addRoleOption(opt => opt.setName('role').setDescription('Role in this server to give').setRequired(false))
         ),
 
@@ -191,28 +189,56 @@ module.exports = {
                 const exists = await ServerList.findOne({ serverId: srvId });
                 if (!exists) return interaction.reply({ content: `❌ Server ID not found in dashboard.`, flags: [MessageFlags.Ephemeral] });
 
+                const currentGreet = await GreetConfig.findOne({ guildId: srvId });
+
                 if (enable) {
-                    if (!channel) {
-                        return interaction.reply({ content: `❌ You must provide a \`channel\` when enabling the greet message.`, flags: [MessageFlags.Ephemeral] });
+                    if (currentGreet && !channel) {
+                        return interaction.reply({ 
+                            content: `✅ Greet system is already set up for **${exists.name || srvId}** in <#${currentGreet.channelId}>.`, 
+                            flags: [MessageFlags.Ephemeral] 
+                        });
                     }
                     
+                    if (!currentGreet && !channel) {
+                        return interaction.reply({ 
+                            content: `❌ You must provide a \`channel\` when enabling the greet message for the first time.`, 
+                            flags: [MessageFlags.Ephemeral] 
+                        });
+                    }
+                    
+                    const targetChannelId = channel ? channel.id : currentGreet.channelId;
+
                     await GreetConfig.findOneAndUpdate(
                         { guildId: srvId }, 
-                        { guildId: srvId, channelId: channel.id }, 
+                        { guildId: srvId, channelId: targetChannelId }, 
                         { upsert: true, new: true }
                     );
-                    return interaction.reply({ content: `✅ Greet system enabled for **${exists.name || srvId}** in <#${channel.id}>.`, flags: [MessageFlags.Ephemeral] });
+
+                    return interaction.reply({ 
+                        content: `✅ Greet system ${currentGreet && channel ? 'updated' : 'enabled'} for **${exists.name || srvId}** in <#${targetChannelId}>.`, 
+                        flags: [MessageFlags.Ephemeral] 
+                    });
+
                 } else {
+                    if (!currentGreet) {
+                        return interaction.reply({ 
+                            content: `⚠️ Greet system has not been set up for **${exists.name || srvId}** yet.`, 
+                            flags: [MessageFlags.Ephemeral] 
+                        });
+                    }
+
                     await GreetConfig.findOneAndDelete({ guildId: srvId });
-                    return interaction.reply({ content: `✅ Greet system disabled for **${exists.name || srvId}**.`, flags: [MessageFlags.Ephemeral] });
+                    return interaction.reply({ 
+                        content: `✅ Greet system disabled for **${exists.name || srvId}**.`, 
+                        flags: [MessageFlags.Ephemeral] 
+                    });
                 }
             }
 
-            // ✅ TAG USER ROLE
+            // --- TAG USER ROLE ---
             if (subcommand === 'tag-user-role') {
                 const srvId = interaction.options.getString('server_id');
                 const enable = interaction.options.getBoolean('enable');
-                // We fetch the Role object instead of a string
                 const role = interaction.options.getRole('role');
 
                 const server = await ServerList.findOne({ serverId: srvId });

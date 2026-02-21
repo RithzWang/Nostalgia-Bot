@@ -3,6 +3,11 @@ const moment = require('moment-timezone');
 const { serverID } = require('../config.json'); 
 const { updateAllPanels } = require('../utils/qabilatanManager'); 
 
+// --- NEW IMPORTS FOR VOICE REJOIN ---
+const { joinVoiceChannel } = require('@discordjs/voice');
+const fs = require('fs');
+const path = require('path');
+
 module.exports = {
     name: 'clientReady', // Changed from 'clientReady' to 'ready' (standard v14 name)
     once: true,
@@ -13,7 +18,9 @@ module.exports = {
         if (!client.slashCommands) client.slashCommands = new Collection();
         if (!client.invitesCache) client.invitesCache = new Collection();
 
+        // ===============================================
         // 1. SLASH COMMAND REGISTRATION
+        // ===============================================
         const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
         
         // Filter commands into Global vs Guild Only
@@ -44,7 +51,9 @@ module.exports = {
             console.error("Command Register Error:", e); 
         }
 
+        // ===============================================
         // 2. INVITE TRACKER CACHE
+        // ===============================================
         const guild = client.guilds.cache.get(serverID);
         if(guild) {
             // Using a Map for fetch fallback, then setting to client cache
@@ -57,7 +66,38 @@ module.exports = {
             }
         }
 
-        // 3. TIMERS (Status + Qabilatan Stats)
+        // ===============================================
+        // 3. 24/7 VOICE AUTO-REJOIN
+        // ===============================================
+        const dbPath = path.join(process.cwd(), 'voice_data.json');
+        if (fs.existsSync(dbPath)) {
+            const data = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+            
+            for (const [guildId, channelId] of Object.entries(data)) {
+                const voiceGuild = client.guilds.cache.get(guildId);
+                if (voiceGuild) {
+                    const channel = voiceGuild.channels.cache.get(channelId);
+                    if (channel) {
+                        try {
+                            joinVoiceChannel({
+                                channelId: channel.id,
+                                guildId: voiceGuild.id,
+                                adapterCreator: voiceGuild.voiceAdapterCreator,
+                                selfDeaf: true,
+                                selfMute: false
+                            });
+                            console.log(`✅ [Voice] Auto-rejoined ${channel.name} in ${voiceGuild.name}`);
+                        } catch (err) {
+                            console.error(`⚠️ [Voice] Failed to auto-rejoin:`, err);
+                        }
+                    }
+                }
+            }
+        }
+
+        // ===============================================
+        // 4. TIMERS (Status + Qabilatan Stats)
+        // ===============================================
         setInterval(() => {
             const now = moment().tz('Asia/Bangkok');
             const formattedTime = now.format('HH:mm');

@@ -45,9 +45,9 @@ module.exports = {
         }
 
         // ===============================================
-        // 3. 24/7 QURAN AUTO-REJOIN & AUTO-PLAY
+        // 3. 24/7 VOICE ACTIVITY AUTO-REJOIN
         // ===============================================
-        const dbPath = path.join(process.cwd(), 'quran_data.json');
+        const dbPath = path.join(process.cwd(), 'voice_activity.json');
         if (fs.existsSync(dbPath)) {
             const data = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
             
@@ -57,28 +57,26 @@ module.exports = {
                     const channel = voiceGuild.channels.cache.get(channelId);
                     if (channel) {
                         try {
-                            // Join the channel
-                            const connection = joinVoiceChannel({
+                            joinVoiceChannel({
                                 channelId: channel.id,
                                 guildId: voiceGuild.id,
                                 adapterCreator: voiceGuild.voiceAdapterCreator,
                                 selfDeaf: true,
-                                selfMute: false
+                                selfMute: true
                             });
                             
-                            // Immediately start playing the audio AND updating the VC status!
-                            const quranCmd = client.slashCommands.get('quran-play');
-                            if (quranCmd && quranCmd.startPlaying) {
-                                quranCmd.startPlaying(voiceGuild, connection);
-                                console.log(`✅ [Quran] Auto-rejoined ${channel.name} in ${voiceGuild.name}`);
+                            // Trigger the loop from the command file
+                            const activityCmd = client.slashCommands.get('voice-activity');
+                            if (activityCmd && activityCmd.startActivity) {
+                                activityCmd.startActivity(voiceGuild, channel.id);
+                                console.log(`✅ [Voice] Auto-rejoined & started activity in ${channel.name}`);
                             }
-                        } catch (err) {
-                            console.error(`⚠️ [Quran] Failed to auto-rejoin:`, err);
-                        }
+                        } catch (err) { console.error(`⚠️ [Voice] Failed to auto-rejoin:`, err); }
                     }
                 }
             }
         }
+
 
         // 4. TIMERS (Status + Qabilatan Stats)
         setInterval(() => {

@@ -18,6 +18,8 @@
     "dotenv": "^16.4.7",
     "tesseract.js": "^5.0.0",
     "axios": "^1.6.1",
+    "@discordjs/voice": "^0.17.0",
+    "libsodium-wrappers": "^0.7.15",
     "discord-api-types": "^0.37.61",
     "discord.js": "^14.19.3",
     "express": "^4.17.1",

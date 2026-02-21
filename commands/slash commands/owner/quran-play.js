@@ -82,6 +82,12 @@ async function startPlaying(guild, connection) {
         guildPlayers.set(guild.id, player);
         guildQueues.set(guild.id, 0);
 
+        // --- NEW: Catch and log audio errors! ---
+        player.on('error', error => {
+            console.error(`❌ Audio Player Error: ${error.message}`);
+        });
+
+
         // When a track finishes, move to the next one automatically
         player.on(AudioPlayerStatus.Idle, () => {
             let currentIndex = guildQueues.get(guild.id) || 0;

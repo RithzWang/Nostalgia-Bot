@@ -35,6 +35,7 @@ const welcomeLog = '1456197056250122355';
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
+      GatewayIntentBits.GuildVoiceStates,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent, 
         GatewayIntentBits.GuildMembers,

@@ -6,7 +6,9 @@ const {
     ActionRowBuilder,
     MessageFlags 
 } = require('discord.js');
-const { ServerList } = require('../src/models/Qabilatan'); // Adjusted path to match your previous snippets
+
+// ✅ Added GreetConfig to the import
+const { ServerList, GreetConfig } = require('../src/models/Qabilatan'); 
 const { updateAllPanels } = require('../utils/qabilatanManager'); 
 
 const ALLOWED_USER_ID = '837741275603009626';
@@ -47,8 +49,7 @@ module.exports = {
                     { upsert: true }
                 );
 
-                // ✅ PASSED TRUE: Updates Satellites too!
-                await updateAllPanels(client, true); 
+                await updateAllPanels(client); 
                 return interaction.editReply({ content: `✅ Added **${finalName}** to the network. Stats updated.` });
             }
 
@@ -98,8 +99,7 @@ module.exports = {
                     }
                 );
 
-                // ✅ PASSED TRUE: Updates Satellites too!
-                await updateAllPanels(client, true);
+                await updateAllPanels(client);
                 return interaction.editReply({ content: "✅ Server updated. Panels refreshed." });
             }
 
@@ -110,11 +110,15 @@ module.exports = {
                 await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
                 const selectedId = interaction.values[0];
+                
+                // ✅ Deletes the server from the dashboard (this also wipes the tag-user-role setting)
                 await ServerList.deleteOne({ serverId: selectedId });
                 
-                // ✅ PASSED TRUE: Updates Satellites too!
-                await updateAllPanels(client, true);
-                return interaction.editReply({ content: `✅ Server removed. Stats updated.` });
+                // ✅ Deletes the greet-message configuration for this server
+                await GreetConfig.deleteOne({ guildId: selectedId });
+                
+                await updateAllPanels(client);
+                return interaction.editReply({ content: `✅ Server removed and background configurations cleared. Stats updated.` });
             }
 
         } catch (error) {

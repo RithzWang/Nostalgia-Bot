@@ -39,7 +39,7 @@ module.exports = {
                     new MediaGalleryBuilder()
                         .addItems(
                             new MediaGalleryItemBuilder()
-                                .setURL("https://cdn.discordapp.com/attachments/853503167706693632/1466977972685766851/Untitled102_20260131090625.png?ex=697eb533&is=697d63b3&hm=35eae67ed2b85b0bdc3126cdbf571d29ee66149ce9f68af5c9c5c64c187573fc&"),
+                                .setURL("https://cdn.discordapp.com/attachments/853503167706693632/1466977972685766851/Untitled102_20260131090625.png?ex=699bb633&is=699a64b3&hm=48847a177ce9dc4a16154ee9e714494fa8bd27db3c82965d8d5f620a57174de0&"),
                         ),
                 )
                 .addSeparatorComponents(
@@ -51,14 +51,14 @@ module.exports = {
                 .addSeparatorComponents(
                     new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
                 )
-              //  .addTextDisplayComponents(
-                 //   new TextDisplayBuilder().setContent("```ansi\n\u001b[2;32m\u001b[2;37m\u001b[2;33m\u001b[2;31m\u001b[2;32m\u001b[2;34mA2-Q came from the word Al-Qabīlatān (القبيلتان) which means The Two Tribes in Arabic.\u001b[0m\u001b[2;32m\u001b[0m\u001b[2;31m\u001b[0m\u001b[2;33m\u001b[0m\u001b[2;37m\u001b[0m\u001b[2;32m\u001b[0m\n```"),
-            //    )
-            //    .addSeparatorComponents(
-                  //  new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
-             //   ) 
                 .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent("We’re a community server built for people who love to game, talk, and just have a good time. From chill voice chats to lively text convos, there’s always something going on.\n \nOur goal is to keep things safe, fun, and friendly — a place where everyone can relax, share moments, and enjoy being part of something good.\n\n### **A2-Q** Established Date:\n<t:1698316020:F>\n### **A2-Q Server** Created Date: \n<t:1767254820:F>"),
+                    new TextDisplayBuilder().setContent("We’re a community server built for people who love to game, talk, and just have a good time. From chill voice chats to lively text convos, there’s always something going on.\n \nOur goal is to keep things safe, fun, and friendly — a place where everyone can relax, share moments, and enjoy being part of something good."),
+                )
+                .addSeparatorComponents(
+                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
+                )
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent("### **A2-Q** Established Date:\n<t:1698316020:F>\n### **A2-Q Server** Created Date: \n<t:1767254820:F>"),
                 )
                 .addSeparatorComponents(
                     new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
@@ -74,50 +74,13 @@ module.exports = {
                     new TextDisplayBuilder().setContent("1. Be friendly to each other, we want to keep the chat respectful, although we do joke around quite a lot, it’s important to stay respectful.\n\n2. Keep Racism & Bad Behaviour out of the chat.\n\n3. No Spamming or Advertising.\n\nIf you notice any inappropriate behaviour or rule-breaking, do not hesitate to inform **Moderator**.\n\n```ansi\n\u001b[2;31mRule violations will lead to appropriate punishment.\u001b[0m\n```"),
                 )
                 .addSeparatorComponents(
-                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
-                ),
-            new ContainerBuilder()
-                .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent("# <:A2Q_1:1466981218758426634><:A2Q_2:1466981281060360232> » Leadership"),
-                )
-                .addSeparatorComponents(
-                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
-                )
-                .addSectionComponents(
-                    new SectionBuilder()
-                        .setButtonAccessory(
-                            new ButtonBuilder()
-                                .setStyle(ButtonStyle.Link)
-                                .setLabel("View Profile")
-                                .setURL("https://discord.com/users/837741275603009626")
-                        )
-                        .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent("### <:owner:1466993819949072576> Owner\n**Name:** Ridouan <:2007_1:1468081329206722600><:2007_2:1468081369501401269><:2007_3:1468081409280446505>\n**ID:** `837741275603009626`"),
-                        ),
-                )
-                .addSeparatorComponents(
-                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
-                )
-                .addSectionComponents(
-                    new SectionBuilder()
-                        .setButtonAccessory(
-                            new ButtonBuilder()
-                                .setStyle(ButtonStyle.Link)
-                                .setLabel("View Profile")
-                                .setURL("https://discord.com/users/")
-                        )
-                        .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent("### <:co_owner:1466993861275680949> Co-owner\n**Name:** Unknown\n**ID:** `1234567890`"),
-                        ),
-                )
-                .addSeparatorComponents(
                     new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true),
                 )
                 .addMediaGalleryComponents(
                     new MediaGalleryBuilder()
                         .addItems(
                             new MediaGalleryItemBuilder()
-                                .setURL("https://cdn.discordapp.com/attachments/853503167706693632/1467103035384795177/Untitled102_20260131172324.png?ex=697f29ad&is=697dd82d&hm=3c8f8bff99e23298251d8399cf22e8edfe9c3734a4e85bc4e8994097edddab48&"),
+                                .setURL("https://cdn.discordapp.com/attachments/853503167706693632/1467103035384795177/Untitled102_20260131172324.png?ex=699b81ed&is=699a306d&hm=a128dfc0f3d6d221384ea889aa2fbe71ed25b37e36dbbdc2b0137f22d11085f2&"),
                         ),
                 ),
         ];

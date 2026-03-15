@@ -8,12 +8,12 @@ const commandData = new SlashCommandBuilder()
     .addChannelOption(option => 
         option.setName('channel')
             .setDescription('Select the channel (Defaults to current channel)')
-            .setRequired(false) // Optional
+            .setRequired(false)
     )
     .addIntegerOption(option => 
         option.setName('expire_time')
             .setDescription('Expiration time (Defaults to 1 Day)')
-            .setRequired(false) // Optional
+            .setRequired(false)
             .addChoices(
                 { name: '30 Minutes', value: 1800 },
                 { name: '1 Hour', value: 3600 },
@@ -23,6 +23,14 @@ const commandData = new SlashCommandBuilder()
                 { name: '7 Days', value: 604800 },
                 { name: 'Never Expires', value: 0 }
             )
+    )
+    // NEW: Add Limit option
+    .addIntegerOption(option => 
+        option.setName('limit')
+            .setDescription('Max number of uses (0 for unlimited)')
+            .setRequired(false)
+            .setMinValue(0)
+            .setMaxValue(100) // Discord's API limit for max_uses is 100
     );
 
 // 2. User options (All Optional)
@@ -49,9 +57,9 @@ module.exports = {
     async execute(interaction) {
         await interaction.deferReply({ ephemeral: true });
 
-        // Fallbacks: Use current channel if none selected, use 24 hours if no time selected
         const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
         const maxAge = interaction.options.getInteger('expire_time') ?? 86400; 
+        const customLimit = interaction.options.getInteger('limit');
         
         const allowedUserIds = [];
         const roleIds = [];
@@ -66,18 +74,22 @@ module.exports = {
             if (role) roleIds.push(role.id);
         }
 
+        // Determine the max_uses intelligently
+        // 1. If you typed a limit, use it.
+        // 2. Otherwise, if you restricted users, limit it to that exact amount.
+        // 3. Otherwise, 0 (unlimited).
+        const finalMaxUses = customLimit ?? (allowedUserIds.length > 0 ? allowedUserIds.length : 0);
+
         // 4. Build the dynamic API Payload
         const apiPayload = {
             body: {
                 max_age: maxAge,
-                // Only limit max_uses if specific users are targeted
-                ...(allowedUserIds.length > 0 && { max_uses: allowedUserIds.length }),
-                // Only attach roles if roles were selected
+                max_uses: finalMaxUses,
                 ...(roleIds.length > 0 && { role_ids: roleIds })
             }
         };
 
-        // 5. Only generate and attach the CSV file IF users were actually provided
+        // 5. Generate and attach the CSV file IF users were actually provided
         if (allowedUserIds.length > 0) {
             const csvString = "user_id\n" + allowedUserIds.join("\n");
             apiPayload.files = [{
@@ -95,9 +107,11 @@ module.exports = {
 
             // Let you know exactly what kind of invite was generated
             let responseMsg = `Invite created for ${targetChannel}!\nLink: https://discord.gg/${invite.code}\n`;
+            
+            if (finalMaxUses > 0) responseMsg += `\n🔢 Limited to ${finalMaxUses} use(s).`;
             if (allowedUserIds.length > 0) responseMsg += `\n🔒 Restricted to ${allowedUserIds.length} specific user(s).`;
             if (roleIds.length > 0) responseMsg += `\n🎭 Auto-assigns ${roleIds.length} role(s).`;
-            if (allowedUserIds.length === 0 && roleIds.length === 0) responseMsg += `\n🌍 Standard public invite.`;
+            if (allowedUserIds.length === 0 && roleIds.length === 0 && finalMaxUses === 0) responseMsg += `\n🌍 Standard public invite.`;
 
             await interaction.editReply({ content: responseMsg });
 

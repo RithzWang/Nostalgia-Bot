@@ -305,7 +305,7 @@ module.exports = {
                         const newCount = role ? role.members.size : 'N/A';
                         const newContainer = new ContainerBuilder();
                         newContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent('# <:A2Q_1:1466981218758426634><:A2Q_2:1466981281060360232> » Registration'));
-                        newContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`To access chat and connect to voice channels, please register below.\n\n**Note:**\n\`Name\` : your desired name.\n\`Country\` : your country’s flag emoji.`));
+                        newContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`To access chat and connect to voice channels, please register below.\n\n**Note:**\n\`Name\` : your desired name.\n\`Country Flag\` : your country’s flag emoji.`));
                         newContainer.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false));
                         const registerBtn = new ButtonBuilder().setCustomId('reg_btn_open').setLabel('Register').setStyle(ButtonStyle.Primary);
                         const countBtn = new ButtonBuilder().setCustomId('reg_btn_stats').setLabel(`Total Registered: ${newCount}`).setStyle(ButtonStyle.Secondary).setDisabled(true);

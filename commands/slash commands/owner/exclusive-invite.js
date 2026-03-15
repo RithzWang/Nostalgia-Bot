@@ -1,26 +1,45 @@
 const { SlashCommandBuilder, Routes, PermissionFlagsBits } = require('discord.js');
 
-// 1. Build the base command and restrict it to Administrators
+// 1. Base command
 const commandData = new SlashCommandBuilder()
     .setName('exclusive-invite')
-    .setDescription('Create an invite restricted to specific users and roles.')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+    .setDescription('Create a custom invite with optional user restrictions and auto-roles.')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .addChannelOption(option => 
+        option.setName('channel')
+            .setDescription('Select the channel (Defaults to current channel)')
+            .setRequired(false) // Optional
+    )
+    .addIntegerOption(option => 
+        option.setName('expire_time')
+            .setDescription('Expiration time (Defaults to 1 Day)')
+            .setRequired(false) // Optional
+            .addChoices(
+                { name: '30 Minutes', value: 1800 },
+                { name: '1 Hour', value: 3600 },
+                { name: '6 Hours', value: 21600 },
+                { name: '12 Hours', value: 43200 },
+                { name: '1 Day', value: 86400 },
+                { name: '7 Days', value: 604800 },
+                { name: 'Never Expires', value: 0 }
+            )
+    );
 
-// 2. Loop to generate user1 through user15
+// 2. User options (All Optional)
 for (let i = 1; i <= 15; i++) {
-    commandData.addUserOption(option => 
+    commandData.addStringOption(option => 
         option.setName(`user${i}`)
-            .setDescription(`Select allowed user ${i}`)
-            .setRequired(i === 1) // Only user1 is mandatory
+            .setDescription(`Paste User ID ${i}`)
+            .setRequired(false) 
     );
 }
 
-// 3. Loop to generate role1 through role5
+// 3. Role options (All Optional)
 for (let i = 1; i <= 5; i++) {
     commandData.addRoleOption(option => 
         option.setName(`role${i}`)
             .setDescription(`Select role ${i} to auto-assign`)
-            .setRequired(false) // Roles are completely optional
+            .setRequired(false) 
     );
 }
 
@@ -28,56 +47,64 @@ module.exports = {
     data: commandData,
     
     async execute(interaction) {
-        // Defer the reply just in case the API takes a second to process the file
         await interaction.deferReply({ ephemeral: true });
 
+        // Fallbacks: Use current channel if none selected, use 24 hours if no time selected
+        const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
+        const maxAge = interaction.options.getInteger('expire_time') ?? 86400; 
+        
         const allowedUserIds = [];
         const roleIds = [];
 
-        // 4. Collect all provided Users
         for (let i = 1; i <= 15; i++) {
-            const user = interaction.options.getUser(`user${i}`);
-            if (user) allowedUserIds.push(user.id);
+            const userId = interaction.options.getString(`user${i}`);
+            if (userId && /^\d+$/.test(userId)) allowedUserIds.push(userId);
         }
 
-        // 5. Collect all provided Roles
         for (let i = 1; i <= 5; i++) {
             const role = interaction.options.getRole(`role${i}`);
             if (role) roleIds.push(role.id);
         }
 
-        // 6. Format the CSV string required by Discord
-        const csvString = "user_id\n" + allowedUserIds.join("\n");
-        const csvBuffer = Buffer.from(csvString);
+        // 4. Build the dynamic API Payload
+        const apiPayload = {
+            body: {
+                max_age: maxAge,
+                // Only limit max_uses if specific users are targeted
+                ...(allowedUserIds.length > 0 && { max_uses: allowedUserIds.length }),
+                // Only attach roles if roles were selected
+                ...(roleIds.length > 0 && { role_ids: roleIds })
+            }
+        };
+
+        // 5. Only generate and attach the CSV file IF users were actually provided
+        if (allowedUserIds.length > 0) {
+            const csvString = "user_id\n" + allowedUserIds.join("\n");
+            apiPayload.files = [{
+                name: 'targets.csv',
+                data: Buffer.from(csvString),
+                key: 'target_users_file'
+            }];
+        }
 
         try {
-            // 7. Send the REST API request to create the invite
             const invite = await interaction.client.rest.post(
-                Routes.channelInvites(interaction.channelId),
-                {
-                    body: {
-                        max_age: 86400, // Invite expires in 24 hours
-                        max_uses: allowedUserIds.length,
-                        // Only attach the role_ids array if roles were actually selected
-                        ...(roleIds.length > 0 && { role_ids: roleIds })
-                    },
-                    files: [{
-                        name: 'targets.csv',
-                        data: csvBuffer,
-                        key: 'target_users_file'
-                    }]
-                }
+                Routes.channelInvites(targetChannel.id),
+                apiPayload
             );
 
-            // 8. Edit the deferred reply with the final link
-            await interaction.editReply({
-                content: `Exclusive invite created successfully!\nLink: https://discord.gg/${invite.code}\n\nAllowed Users: ${allowedUserIds.length}\nAuto-assigned Roles: ${roleIds.length}`
-            });
+            // Let you know exactly what kind of invite was generated
+            let responseMsg = `Invite created for ${targetChannel}!\nLink: https://discord.gg/${invite.code}\n`;
+            if (allowedUserIds.length > 0) responseMsg += `\n🔒 Restricted to ${allowedUserIds.length} specific user(s).`;
+            if (roleIds.length > 0) responseMsg += `\n🎭 Auto-assigns ${roleIds.length} role(s).`;
+            if (allowedUserIds.length === 0 && roleIds.length === 0) responseMsg += `\n🌍 Standard public invite.`;
+
+            await interaction.editReply({ content: responseMsg });
 
         } catch (error) {
-            console.error('Error creating exclusive invite:', error);
+            console.error('Error creating invite:', error);
             await interaction.editReply({ 
-                content: 'Failed to create the exclusive invite. Ensure the bot has permission to create invites in this channel.' 
+                content: 'Failed to create the invite. Ensure the bot has permission to create invites in that channel.' 
             });
         }
     },

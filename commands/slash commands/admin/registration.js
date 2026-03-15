@@ -56,7 +56,7 @@ module.exports = {
             .setContent('# <:A2Q_1:1466981218758426634><:A2Q_2:1466981281060360232> » Registration');
         
         const descText = new TextDisplayBuilder()
-            .setContent(`To access chat and connect to voice channels, please register below.\n\n**Note:**\n\`Name\` : your desired name.\n\`Country\` : your country’s flag emoji.`);
+            .setContent(`To access chat and connect to voice channels, please register below.\n\n**Note:**\n\`Name\` : your desired name.\n\`Country Flag\` : your country’s flag emoji.`);
 
         // 2. Buttons
         const registerBtn = new ButtonBuilder()

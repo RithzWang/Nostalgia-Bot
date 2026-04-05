@@ -43,8 +43,8 @@ module.exports = {
             // ====================================================
             let serverTagLine = ""; 
             const guildInfo = targetUser.primaryGuild; 
-            const storageGuildId = '1468061368098750507';
-            const logChannelId = '1468493795531161650'; 
+            const storageGuildId = '1490435762372481275';
+            const logChannelId = '1490435899723612210'; 
 
             if (guildInfo && guildInfo.tag) {
                 let tagDisplay = `${guildInfo.tag}`; 

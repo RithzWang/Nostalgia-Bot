@@ -5,7 +5,7 @@ module.exports = {
     aliases: ['helpp', 'helppp', 'helpppp', 'helppppp'],
     description: 'Shows available commands',
     // Same allowed channels as userinfo
-    channels: ['1456197056510165026', '1456197056510165029', '1456197056988319870'], 
+  //  channels: ['1456197056510165026', '1456197056510165029', '1456197056988319870'], 
 
     async execute(message, args) {
         // Optional manual check (if your handler doesn't check 'channels' automatically)

@@ -1,6 +1,7 @@
 const { 
     ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, 
-    SeparatorSpacingSize, MessageFlags 
+    SeparatorSpacingSize, MessageFlags, MediaGalleryBuilder, 
+    MediaGalleryItemBuilder 
 } = require('discord.js');
 const ServerStatsConfig = require('../src/models/ServerStats');
 
@@ -38,11 +39,22 @@ async function generateServerStatsPayload(guild, config) {
 
     // 2. Build Base Container
     const container = new ContainerBuilder()
+        .addMediaGalleryComponents(
+            new MediaGalleryBuilder()
+                .addItems(
+                    new MediaGalleryItemBuilder()
+                        .setURL("https://cdn.discordapp.com/attachments/853503167706693632/1466977972685766851/Untitled102_20260131090625.png?ex=6a028b33&is=6a0139b3&hm=ca6a6523bed88d2ee71c620138a393f6d967295f5b492fcbc7798bdb3541507d&")
+                )
+        )
+        .addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
+        )
         .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(`## ${guild.name}`)
+            new TextDisplayBuilder().setContent("## Server Statistics")
         )
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
+                `### ${guild.name}\n` +
                 `<:id:1468487725912166596> **ID:** \`${guild.id}\`\n` +
                 `<:calendar:1470475413175144530> **Created:** <t:${createdAtUnix}:R>\n` +
                 `<:server_boost:1468633171758284872> **Boosts:** ${boostsCount}\n` +
@@ -68,14 +80,14 @@ async function generateServerStatsPayload(guild, config) {
 
         container
             .addSeparatorComponents(
-                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
+                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
             )
             .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent("## Server Tag Statistics")
+                new TextDisplayBuilder().setContent("## Server Tag")
             )
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
-                    `<:badge:1468618581427097724> **Tag:** ${config.tagText || "None"}\n` +
+                    `<:badge:1468618581427097724> **Name:** ${config.tagText || "None"}\n` +
                     `${tagStatusLine}`
                 )
             );

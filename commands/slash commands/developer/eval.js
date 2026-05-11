@@ -85,7 +85,9 @@ module.exports = {
                         content: typeof content !== 'undefined' ? content : undefined,
                         embeds: typeof embeds !== 'undefined' ? embeds : undefined,
                         components: typeof components !== 'undefined' ? components : undefined,
-                        files: typeof files !== 'undefined' ? files : undefined
+                        files: typeof files !== 'undefined' ? files : undefined,
+
+flags: typeof flags !== 'undefined' ? flags : undefined // <--- ADD THIS LINE
                     };
                 })();
             `);

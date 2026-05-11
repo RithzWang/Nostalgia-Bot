@@ -1,6 +1,6 @@
 const { 
-    ContainerBuilder, TextDisplayBuilder, SectionBuilder, 
-    SeparatorBuilder, SeparatorSpacingSize, ThumbnailBuilder, MessageFlags 
+    ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, 
+    SeparatorSpacingSize, MessageFlags 
 } = require('discord.js');
 const ServerStatsConfig = require('../src/models/ServerStats');
 
@@ -34,23 +34,22 @@ async function generateServerStatsPayload(guild, config) {
 
     const humanCount = guild.members.cache.filter(m => !m.user.bot).size;
     const createdAtUnix = Math.floor(guild.createdTimestamp / 1000);
-    const serverIcon = guild.iconURL({ extension: 'png', size: 512 }) || "https://cdn.discordapp.com/embed/avatars/0.png";
 
     // 2. Build Base Container
     const container = new ContainerBuilder()
-        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`# ${guild.name}`))
-        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
-        .addSectionComponents(
-            new SectionBuilder()
-                .setThumbnailAccessory(new ThumbnailBuilder().setURL(serverIcon))
-                .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent(
-                        `<:id:1468487725912166596> **ID:** \`${guild.id}\`\n` +
-                        `<:calendar:1470475413175144530> **Created Date:** <t:${createdAtUnix}:f>\n` +
-                        (config.inviteLink ? `<:connection:1468633345876431021> **Invite Link:** \`${config.inviteLink}\`\n` : '') +
-                        `<:members:1468470163081924608> **Members:** ${humanCount}`
-                    )
-                )
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(`# ${guild.name}`)
+        )
+        .addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+        )
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `<:id:1468487725912166596> **ID:** \`${guild.id}\`\n` +
+                `<:calendar:1470475413175144530> **Created Date:** <t:${createdAtUnix}:f>\n` +
+                (config.inviteLink ? `<:connection:1468633345876431021> **Invite Link:** \`${config.inviteLink}\`\n` : '') +
+                `<:members:1468470163081924608> **Members:** ${humanCount}`
+            )
         );
 
     // 3. Add Tag Statistics if Enabled
@@ -70,20 +69,32 @@ async function generateServerStatsPayload(guild, config) {
         }
 
         container
-            .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
-            .addTextDisplayComponents(new TextDisplayBuilder().setContent("# Server Tag Statistics"))
-            .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
-            .addSectionComponents(
-                new SectionBuilder()
-                    .setThumbnailAccessory(new ThumbnailBuilder().setURL(serverIcon)) // Using server icon for tag icon by default
-                    .addTextDisplayComponents(
-                        new TextDisplayBuilder().setContent(
-                            `<:badge:1468618581427097724> **Tag:** ${config.tagText || "None"}\n` +
-                            `${tagStatusLine}`
-                        )
-                    )
+            .addSeparatorComponents(
+                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
+            )
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent("# Server Tag Statistics")
+            )
+            .addSeparatorComponents(
+                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+            )
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    `<:badge:1468618581427097724> **Tag:** ${config.tagText || "None"}\n` +
+                    `${tagStatusLine}`
+                )
             );
     }
+
+    // 4. Add Footer (Next Update)
+    const nextUpdateUnix = Math.floor((Date.now() + 60 * 1000) / 1000);
+    container
+        .addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
+        )
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(`-# <a:loading:1447184742934909032> Next Update: <t:${nextUpdateUnix}:R>`)
+        );
 
     return [container];
 }

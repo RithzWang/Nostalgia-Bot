@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
-const WelcomeConfig = require('../../../../src/models/Welcome'); // Adjust the path to your models folder
+const WelcomeConfig = require('../../../src/models/Welcome'); // Adjust the path to your models folder
 
 module.exports = {
     data: new SlashCommandBuilder()

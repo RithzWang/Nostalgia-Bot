@@ -66,4 +66,4 @@ module.exports = {
             // Remove markdown formatting and common import/require statements so it doesn't crash the evaluator
             let cleanCode = codeString
                 .replace(/
-http://googleusercontent.com/immersive_entry_chip/0
+http://googleusercontent.com/immersive_entry_chip/0)

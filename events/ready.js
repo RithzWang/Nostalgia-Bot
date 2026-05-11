@@ -4,7 +4,6 @@ const { serverID } = require('../config.json');
 const { updateAllPanels } = require('../utils/qabilatanManager'); 
 const { updateServerStatsPanels } = require('../utils/serverStatsManager'); 
 
-
 // --- NEW IMPORTS ---
 const fs = require('fs');
 const path = require('path');
@@ -45,8 +44,7 @@ module.exports = {
             } catch (e) { console.log('⚠️ Could not cache invites'); }
         }
 
-
-        // 4. TIMERS (Status + Qabilatan Stats)
+        // 4. TIMERS (Status + Qabilatan Stats + Server Stats)
         setInterval(() => {
             const now = moment().tz('Asia/Bangkok');
             const formattedTime = now.format('HH:mm');
@@ -66,8 +64,13 @@ module.exports = {
                 status: 'dnd'
             });
 
+            // This runs roughly at the start of every new minute (when seconds are 0, 1, 2, 3, or 4)
             if (now.seconds() < 5) {
+                // ✅ Updates Qabilatan Main Dashboard
                 updateAllPanels(client, false).catch(err => console.error(err));
+                
+                // ✅ ADDED: Updates the local Server Stats Dashboard & Tag Roles
+                updateServerStatsPanels(client).catch(err => console.error(err));
             }
 
         }, 5000); 

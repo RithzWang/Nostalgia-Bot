@@ -33,6 +33,8 @@ async function generateServerStatsPayload(guild, config) {
     }
 
     const humanCount = guild.members.cache.filter(m => !m.user.bot).size;
+    const createdAtUnix = Math.floor(guild.createdTimestamp / 1000);
+    const boostsCount = guild.premiumSubscriptionCount || 0;
 
     // 2. Build Base Container
     const container = new ContainerBuilder()
@@ -42,6 +44,8 @@ async function generateServerStatsPayload(guild, config) {
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
                 `<:id:1468487725912166596> **ID:** \`${guild.id}\`\n` +
+                `<:calendar:1470475413175144530> **Created:** <t:${createdAtUnix}:R>\n` +
+                `<:server_boost:1468633171758284872> **Boosts:** ${boostsCount}\n` +
                 `<:members:1468470163081924608> **Members:** ${humanCount}`
             )
         );
@@ -50,7 +54,7 @@ async function generateServerStatsPayload(guild, config) {
     if (config.tagEnabled) {
         let tagStatusLine = "";
         const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS') || guild.features.includes('MEMBER_VERIFICATION_GATE_ENABLED');
-        const boostsNeeded = 3 - (guild.premiumSubscriptionCount || 0);
+        const boostsNeeded = 3 - boostsCount;
 
         if (boostsNeeded > 0) {
             const s = boostsNeeded === 1 ? '' : 's';

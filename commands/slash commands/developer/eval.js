@@ -67,8 +67,3 @@ module.exports = {
             let cleanCode = codeString
                 .replace(/
 http://googleusercontent.com/immersive_entry_chip/0
-
-### How this works behind the scenes:
-1. **Auto-Stripping Imports:** The bot uses Regex to automatically delete lines starting with `import { ... } from 'discord.js'` or `const { ... } = require(...)`. You can leave them in your copy-pasted string; the bot will just ignore them to prevent crashes.
-2. **Dynamic Class Injection:** It pulls *every single exported class* directly from your bot's `discord.js` package and injects them into the background of your code. You won't get "ReferenceError: ButtonBuilder is not defined". 
-3. **Variable Grabbing:** As long as your code declares variables named `components`, `embeds`, `content`, or `files` (just like in your example code), the evaluator will scoop them up at the end and bundle them into a valid Discord message payload.

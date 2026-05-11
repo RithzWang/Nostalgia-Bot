@@ -71,7 +71,7 @@ async function generateServerStatsPayload(guild, config) {
 
         container
             .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
-            .addTextDisplayComponents(new TextDisplayBuilder().setContent("## Server Tag"))
+            .addTextDisplayComponents(new TextDisplayBuilder().setContent("### Server Tag"))
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     `<:badge:1468618581427097724> **Name:** ${config.tagText || "None"}\n${tagStatusLine}`

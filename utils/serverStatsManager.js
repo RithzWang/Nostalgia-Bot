@@ -54,7 +54,7 @@ async function generateServerStatsPayload(guild, config) {
         )
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
-                `### ${guild.name}\n` +
+                `## ${guild.name}\n` +
                 `<:id:1468487725912166596> **ID:** \`${guild.id}\`\n` +
                 `<:calendar:1470475413175144530> **Created:** <t:${createdAtUnix}:R>\n` +
                 `<:server_boost:1468633171758284872> **Boosts:** ${boostsCount}\n` +
@@ -83,11 +83,11 @@ async function generateServerStatsPayload(guild, config) {
                 new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
             )
             .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent("### Server Tag")
+                new TextDisplayBuilder().setContent("## Server Tag")
             )
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
-                    `<:badge:1468618581427097724> **Name:** ${config.tagText || "None"}\n` +
+                    `<:badge:1468618581427097724> **Tag:** ${config.tagText || "None"}\n` +
                     `${tagStatusLine}`
                 )
             );

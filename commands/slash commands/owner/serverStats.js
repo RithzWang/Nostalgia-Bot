@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
-const ServerStatsConfig = require('../../../../src/models/ServerStats');
-const { generateServerStatsPayload } = require('../../../../utils/serverStatsManager');
+const ServerStatsConfig = require('../../../src/models/ServerStats');
+const { generateServerStatsPayload } = require('../../../utils/serverStatsManager');
 
 module.exports = {
     data: new SlashCommandBuilder()

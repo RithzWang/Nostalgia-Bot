@@ -50,7 +50,7 @@ async function generateServerStatsPayload(guild, config) {
             new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
         )
         .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent("## Server Statistics")
+            new TextDisplayBuilder().setContent("# Server Statistics")
         )
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
@@ -83,7 +83,7 @@ async function generateServerStatsPayload(guild, config) {
                 new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
             )
             .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent("## Server Tag")
+                new TextDisplayBuilder().setContent("### Server Tag")
             )
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(

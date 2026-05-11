@@ -2,6 +2,8 @@ const { REST, Routes, ActivityType, Collection } = require('discord.js');
 const moment = require('moment-timezone');
 const { serverID } = require('../config.json'); 
 const { updateAllPanels } = require('../utils/qabilatanManager'); 
+const { updateServerStatsPanels } = require('../utils/serverStatsManager'); 
+
 
 // --- NEW IMPORTS ---
 const fs = require('fs');

@@ -33,21 +33,15 @@ async function generateServerStatsPayload(guild, config) {
     }
 
     const humanCount = guild.members.cache.filter(m => !m.user.bot).size;
-    const createdAtUnix = Math.floor(guild.createdTimestamp / 1000);
 
     // 2. Build Base Container
     const container = new ContainerBuilder()
         .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(`# ${guild.name}`)
-        )
-        .addSeparatorComponents(
-            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+            new TextDisplayBuilder().setContent(`## ${guild.name}`)
         )
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
                 `<:id:1468487725912166596> **ID:** \`${guild.id}\`\n` +
-                `<:calendar:1470475413175144530> **Created Date:** <t:${createdAtUnix}:f>\n` +
-                (config.inviteLink ? `<:connection:1468633345876431021> **Invite Link:** \`${config.inviteLink}\`\n` : '') +
                 `<:members:1468470163081924608> **Members:** ${humanCount}`
             )
         );
@@ -73,10 +67,7 @@ async function generateServerStatsPayload(guild, config) {
                 new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
             )
             .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent("# Server Tag Statistics")
-            )
-            .addSeparatorComponents(
-                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+                new TextDisplayBuilder().setContent("## Server Tag Statistics")
             )
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(

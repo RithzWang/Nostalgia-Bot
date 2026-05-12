@@ -25,7 +25,8 @@ module.exports = {
                             const modal = new ModalBuilder().setCustomId('ss_modal_enable').setTitle('Enable Server Stats');
                             modal.addComponents(
                                 new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('channel_id').setLabel("Channel ID (Where to send stats)").setStyle(TextInputStyle.Short).setRequired(true).setValue(interaction.channel.id)),
-                                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('msg_id').setLabel("Message ID (Optional)").setStyle(TextInputStyle.Short).setRequired(false))
+                                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('msg_id').setLabel("Message ID (Optional)").setStyle(TextInputStyle.Short).setRequired(false)),
+                                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('invite_link').setLabel("Invite Link (Optional)").setStyle(TextInputStyle.Short).setRequired(false))
                             );
                             return interaction.showModal(modal);
                         }
@@ -48,10 +49,21 @@ module.exports = {
                     modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('channel_id').setLabel("Channel ID").setStyle(TextInputStyle.Short).setRequired(true).setValue(config?.channelId || "")));
                     return interaction.showModal(modal);
                 }
+                if (choice === 'set_inv') {
+                    const modal = new ModalBuilder().setCustomId('ss_modal_inv').setTitle('Set Invite Link');
+                    modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('invite_link').setLabel("Invite URL (e.g. https://discord.gg/...)").setStyle(TextInputStyle.Short).setRequired(true).setValue(config?.inviteLink || "")));
+                    return interaction.showModal(modal);
+                }
                 if (choice === 'rm_msg') {
                     config.messageId = "";
                     await config.save();
                     return interaction.update({ components: buildStatsMenu(config) });
+                }
+                if (choice === 'rm_inv') {
+                    config.inviteLink = "";
+                    await config.save();
+                    await interaction.update({ components: buildStatsMenu(config) });
+                    return updateServerStatsPanels(client);
                 }
 
                 // --- TAGS MENU MODALS ---
@@ -70,10 +82,10 @@ module.exports = {
                 if (choice === 'rm_tag' || choice === 'rm_role') {
                     if (choice === 'rm_tag') {
                         config.tagText = "";
-                        config.tagEnabled = false; // Only removing the Tag Text completely disables it
+                        config.tagEnabled = false;
                     }
                     if (choice === 'rm_role') {
-                        config.tagRoleId = ""; // Role removed, but dashboard Tag Stats stay ON
+                        config.tagRoleId = "";
                     }
                     
                     await config.save();
@@ -89,6 +101,7 @@ module.exports = {
                 if (interaction.customId === 'ss_modal_enable') {
                     config.channelId = interaction.fields.getTextInputValue('channel_id');
                     config.messageId = interaction.fields.getTextInputValue('msg_id') || "";
+                    config.inviteLink = interaction.fields.getTextInputValue('invite_link') || "";
                     await config.save();
                     await interaction.update({ components: buildHomeMenu(config) });
                     return updateServerStatsPanels(client);
@@ -107,11 +120,17 @@ module.exports = {
                     return updateServerStatsPanels(client);
                 }
 
+                if (interaction.customId === 'ss_modal_inv') {
+                    config.inviteLink = interaction.fields.getTextInputValue('invite_link');
+                    await config.save();
+                    await interaction.update({ components: buildStatsMenu(config) });
+                    return updateServerStatsPanels(client);
+                }
+
                 if (interaction.customId === 'ss_modal_tag' || interaction.customId === 'ss_modal_role') {
                     if (interaction.customId === 'ss_modal_tag') config.tagText = interaction.fields.getTextInputValue('tag_text');
                     if (interaction.customId === 'ss_modal_role') config.tagRoleId = interaction.fields.getTextInputValue('role_id');
                     
-                    // ✅ UPDATED: Tag Stats enable as soon as there is Tag Text!
                     if (config.tagText) config.tagEnabled = true;
                     
                     await config.save();

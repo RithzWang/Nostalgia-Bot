@@ -6,18 +6,33 @@ const {
 const ServerStatsConfig = require('../src/models/ServerStats');
 const { buildHomeMenu, buildStatsMenu, buildTagStatsMenu, updateServerStatsPanels } = require('../utils/serverStatsManager');
 
-// Helper function to safely extract values from both Text Inputs AND Select Menus in V2 Modals
+// Helper function to safely extract values from both Text Inputs AND deeply nested Select Menus in V2 Modals
 function getFieldValue(interaction, id) {
     try {
+        // Try getting it as a text input first
         return interaction.fields.getTextInputValue(id);
     } catch (e) {
-        // If it's a Select Menu, getTextInputValue throws an error, so we grab it from the raw components array
-        const field = interaction.components?.flatMap(r => r.components || []).find(c => c.customId === id);
-        if (field) {
-            if (field.values && field.values.length > 0) return field.values[0];
-            if (field.value) return field.value;
-        }
-        return "";
+        try {
+            // For Select Menus, use the fields collection
+            const field = interaction.fields.fields.get(id);
+            if (field && field.values && field.values.length > 0) return field.values[0];
+            if (field && field.value) return field.value;
+        } catch (err) {}
+        
+        // Final fallback: Deep search the raw components array (handles V2 LabelBuilder nesting)
+        let extractedValue = "";
+        const search = (components) => {
+            if (!components) return;
+            for (const comp of components) {
+                if (comp.customId === id) {
+                    if (comp.values && comp.values.length > 0) extractedValue = comp.values[0];
+                    else if (comp.value) extractedValue = comp.value;
+                }
+                if (comp.components) search(comp.components);
+            }
+        };
+        search(interaction.components);
+        return extractedValue;
     }
 }
 
@@ -129,7 +144,7 @@ module.exports = {
                 if (choice === 'rm_tag' || choice === 'rm_role' || choice === 'rm_notify') {
                     if (choice === 'rm_tag') {
                         config.tagText = "";
-                        config.tagEnabled = false;
+                        config.tagEnabled = false; // Completely disables if tag is removed
                     }
                     if (choice === 'rm_role') config.tagRoleId = "";
                     if (choice === 'rm_notify') config.tagNotifyChannelId = "";
@@ -187,6 +202,7 @@ module.exports = {
 
                 if (interaction.customId === 'ss_modal_role') {
                     config.tagRoleId = getFieldValue(interaction, 'role_id');
+                    if (config.tagText) config.tagEnabled = true; // Auto-enable if tag exists
                     await config.save();
                     await interaction.update({ components: buildTagStatsMenu(config) });
                     return updateServerStatsPanels(client);
@@ -194,6 +210,7 @@ module.exports = {
 
                 if (interaction.customId === 'ss_modal_notify') {
                     config.tagNotifyChannelId = getFieldValue(interaction, 'notify_channel');
+                    if (config.tagText) config.tagEnabled = true; // Auto-enable if tag exists
                     await config.save();
                     await interaction.update({ components: buildTagStatsMenu(config) });
                     return updateServerStatsPanels(client);

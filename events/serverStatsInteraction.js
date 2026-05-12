@@ -68,11 +68,13 @@ module.exports = {
 
                 // --- REMOVE TAG ACTIONS ---
                 if (choice === 'rm_tag' || choice === 'rm_role') {
-                    if (choice === 'rm_tag') config.tagText = "";
-                    if (choice === 'rm_role') config.tagRoleId = "";
-                    
-                    // If either is missing, disable the tag feature completely
-                    if (!config.tagText || !config.tagRoleId) config.tagEnabled = false;
+                    if (choice === 'rm_tag') {
+                        config.tagText = "";
+                        config.tagEnabled = false; // Only removing the Tag Text completely disables it
+                    }
+                    if (choice === 'rm_role') {
+                        config.tagRoleId = ""; // Role removed, but dashboard Tag Stats stay ON
+                    }
                     
                     await config.save();
                     await interaction.update({ components: buildTagStatsMenu(config) });
@@ -109,7 +111,8 @@ module.exports = {
                     if (interaction.customId === 'ss_modal_tag') config.tagText = interaction.fields.getTextInputValue('tag_text');
                     if (interaction.customId === 'ss_modal_role') config.tagRoleId = interaction.fields.getTextInputValue('role_id');
                     
-                    if (config.tagText && config.tagRoleId) config.tagEnabled = true;
+                    // ✅ UPDATED: Tag Stats enable as soon as there is Tag Text!
+                    if (config.tagText) config.tagEnabled = true;
                     
                     await config.save();
                     await interaction.update({ components: buildTagStatsMenu(config) });

@@ -15,7 +15,7 @@ const {
 } = require('discord.js');
 const ServerStatsConfig = require('../src/models/ServerStats');
 
-// Memory cache to prevent the Adopter count from resetting to 0
+// Memory cache to prevent the Adopter count from resetting to 0 if Discord's API drops
 const memoryAdopterCount = new Map();
 
 // ==========================================
@@ -23,30 +23,51 @@ const memoryAdopterCount = new Map();
 // ==========================================
 async function generateServerStatsPayload(guild, config) {
     let tagAdoptersCount = 0;
+    let membersWithTag = [];
+    let membersWithoutTag = [];
 
     // A. Calculate adopters and assign/remove roles dynamically
     try {
         await guild.members.fetch();
         
-        // If an Adopter Role is set, we count the role (100% accurate)
-        if (config.tagRoleId && guild.roles.cache.has(config.tagRoleId)) {
-            tagAdoptersCount = guild.roles.cache.get(config.tagRoleId).members.filter(m => !m.user.bot).size;
-        } else {
-            // Otherwise, we scan for Discord's built-in Identity Tag
-            for (const [memberId, member] of guild.members.cache) {
-                if (member.user.bot) continue;
+        for (const [memberId, member] of guild.members.cache) {
+            if (member.user.bot) continue;
 
-                const user = member.user;
-                const hasTag = user.primaryGuild && user.primaryGuild.identityEnabled && user.primaryGuild.identityGuildId === guild.id;
-                
-                if (hasTag) tagAdoptersCount++;
+            const user = member.user;
+            // Strict check for Discord's native Server Tag (Clan Identity)
+            const hasTag = user.primaryGuild && user.primaryGuild.identityEnabled && user.primaryGuild.identityGuildId === guild.id;
+            
+            if (hasTag) {
+                tagAdoptersCount++;
+                membersWithTag.push(member);
+            } else {
+                membersWithoutTag.push(member);
+            }
+        }
+        
+        // Memory & Role Protection Fallback
+        if (tagAdoptersCount === 0 && memoryAdopterCount.has(guild.id) && memoryAdopterCount.get(guild.id) > 0) {
+            // If it drops to 0 randomly, the Discord API likely glitched. 
+            // Restore the number from memory and skip role removal to protect members!
+            tagAdoptersCount = memoryAdopterCount.get(guild.id);
+        } else {
+            // API is working fine! Update memory with the real count.
+            if (tagAdoptersCount > 0) {
+                memoryAdopterCount.set(guild.id, tagAdoptersCount);
             }
             
-            // Memory Fallback: If Discord API drops the ball and returns 0, use our memory!
-            if (tagAdoptersCount === 0 && memoryAdopterCount.has(guild.id)) {
-                tagAdoptersCount = memoryAdopterCount.get(guild.id);
-            } else if (tagAdoptersCount > 0) {
-                memoryAdopterCount.set(guild.id, tagAdoptersCount); // Update memory
+            // Safely assign and remove roles
+            if (config.tagEnabled && config.tagRoleId) {
+                for (const member of membersWithTag) {
+                    if (!member.roles.cache.has(config.tagRoleId)) {
+                        await member.roles.add(config.tagRoleId).catch(() => {});
+                    }
+                }
+                for (const member of membersWithoutTag) {
+                    if (member.roles.cache.has(config.tagRoleId)) {
+                        await member.roles.remove(config.tagRoleId).catch(() => {});
+                    }
+                }
             }
         }
 
@@ -82,6 +103,7 @@ async function generateServerStatsPayload(guild, config) {
 
     // C. Add Stats Block (With or Without Section/Button)
     if (config.inviteLink) {
+        // If Invite Link exists, use the SectionBuilder
         let inviteCode = config.inviteLink.split('/').pop() || "Link"; 
         container.addSectionComponents(
             new SectionBuilder()
@@ -94,6 +116,7 @@ async function generateServerStatsPayload(guild, config) {
                 )
         );
     } else {
+        // If NO Invite Link, drop the SectionBuilder and just use pure text exactly like your blueprint!
         container.addTextDisplayComponents(
             new TextDisplayBuilder().setContent(mainStatsText)
         );
@@ -233,12 +256,8 @@ function buildStatsMenu(config) {
         new StringSelectMenuOptionBuilder().setLabel(config.inviteLink ? "Edit Invite Link" : "Set Invite Link").setValue("set_inv")
     );
 
-    if (config.messageId) {
-        selectMenu.addOptions(new StringSelectMenuOptionBuilder().setLabel("Remove Message ID").setValue("rm_msg"));
-    }
-    if (config.inviteLink) {
-        selectMenu.addOptions(new StringSelectMenuOptionBuilder().setLabel("Remove Invite Link").setValue("rm_inv"));
-    }
+    if (config.messageId) selectMenu.addOptions(new StringSelectMenuOptionBuilder().setLabel("Remove Message ID").setValue("rm_msg"));
+    if (config.inviteLink) selectMenu.addOptions(new StringSelectMenuOptionBuilder().setLabel("Remove Invite Link").setValue("rm_inv"));
 
     selectMenu.addOptions(new StringSelectMenuOptionBuilder().setLabel("Go Back Home").setValue("home").setEmoji("🏠"));
 

@@ -11,11 +11,9 @@ module.exports = {
             const guildId = interaction.guild.id;
             let config = await ServerStatsConfig.findOne({ guildId });
 
-            // ================= SELECT MENUS =================
             if (interaction.isStringSelectMenu()) {
                 const choice = interaction.values[0];
 
-                // --- HOME MENU ---
                 if (interaction.customId === 'ss_sel_home') {
                     if (choice === 'toggle') {
                         if (config && config.channelId) {
@@ -35,7 +33,6 @@ module.exports = {
                     if (choice === 'menu_tags') return interaction.update({ components: buildTagStatsMenu(config) });
                 }
 
-                // --- NAVIGATION / QUICK ACTIONS ---
                 if (choice === 'home') return interaction.update({ components: buildHomeMenu(config) });
 
                 // --- STATS MENU MODALS ---
@@ -69,7 +66,10 @@ module.exports = {
                 // --- TAGS MENU MODALS ---
                 if (choice === 'set_tag') {
                     const modal = new ModalBuilder().setCustomId('ss_modal_tag').setTitle('Set Tag Text');
-                    modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('tag_text').setLabel("Server Tag").setStyle(TextInputStyle.Short).setRequired(true).setValue(config?.tagText || "")));
+                    modal.addComponents(
+                        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('tag_text').setLabel("Server Tag").setStyle(TextInputStyle.Short).setRequired(true).setValue(config?.tagText || "")),
+                        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('notify_channel').setLabel("Notify Channel ID (Optional)").setStyle(TextInputStyle.Short).setRequired(false).setValue(config?.tagNotifyChannelId || ""))
+                    );
                     return interaction.showModal(modal);
                 }
                 if (choice === 'set_role') {
@@ -77,16 +77,20 @@ module.exports = {
                     modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('role_id').setLabel("Role ID").setStyle(TextInputStyle.Short).setRequired(true).setValue(config?.tagRoleId || "")));
                     return interaction.showModal(modal);
                 }
+                if (choice === 'set_notify') {
+                    const modal = new ModalBuilder().setCustomId('ss_modal_notify').setTitle('Tag Adopted Notify Channel');
+                    modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('notify_channel').setLabel("Channel ID").setStyle(TextInputStyle.Short).setRequired(true).setValue(config?.tagNotifyChannelId || "")));
+                    return interaction.showModal(modal);
+                }
 
                 // --- REMOVE TAG ACTIONS ---
-                if (choice === 'rm_tag' || choice === 'rm_role') {
+                if (choice === 'rm_tag' || choice === 'rm_role' || choice === 'rm_notify') {
                     if (choice === 'rm_tag') {
                         config.tagText = "";
                         config.tagEnabled = false;
                     }
-                    if (choice === 'rm_role') {
-                        config.tagRoleId = "";
-                    }
+                    if (choice === 'rm_role') config.tagRoleId = "";
+                    if (choice === 'rm_notify') config.tagNotifyChannelId = "";
                     
                     await config.save();
                     await interaction.update({ components: buildTagStatsMenu(config) });
@@ -94,7 +98,6 @@ module.exports = {
                 }
             }
 
-            // ================= MODALS =================
             if (interaction.isModalSubmit()) {
                 if (!config) config = new ServerStatsConfig({ guildId });
 
@@ -127,12 +130,27 @@ module.exports = {
                     return updateServerStatsPanels(client);
                 }
 
-                if (interaction.customId === 'ss_modal_tag' || interaction.customId === 'ss_modal_role') {
-                    if (interaction.customId === 'ss_modal_tag') config.tagText = interaction.fields.getTextInputValue('tag_text');
-                    if (interaction.customId === 'ss_modal_role') config.tagRoleId = interaction.fields.getTextInputValue('role_id');
+                if (interaction.customId === 'ss_modal_tag') {
+                    config.tagText = interaction.fields.getTextInputValue('tag_text');
+                    const notifyInput = interaction.fields.getTextInputValue('notify_channel');
+                    if (notifyInput) config.tagNotifyChannelId = notifyInput;
                     
                     if (config.tagText) config.tagEnabled = true;
                     
+                    await config.save();
+                    await interaction.update({ components: buildTagStatsMenu(config) });
+                    return updateServerStatsPanels(client);
+                }
+
+                if (interaction.customId === 'ss_modal_role') {
+                    config.tagRoleId = interaction.fields.getTextInputValue('role_id');
+                    await config.save();
+                    await interaction.update({ components: buildTagStatsMenu(config) });
+                    return updateServerStatsPanels(client);
+                }
+
+                if (interaction.customId === 'ss_modal_notify') {
+                    config.tagNotifyChannelId = interaction.fields.getTextInputValue('notify_channel');
                     await config.save();
                     await interaction.update({ components: buildTagStatsMenu(config) });
                     return updateServerStatsPanels(client);

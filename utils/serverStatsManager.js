@@ -15,66 +15,79 @@ const {
 } = require('discord.js');
 const ServerStatsConfig = require('../src/models/ServerStats');
 
-// Memory cache to prevent the Adopter count from resetting to 0 if Discord's API drops
-const memoryAdopterCount = new Map();
+// Advanced Memory Cache: Stores exactly WHO has the tag to prevent API glitches and track new adopters
+const knownAdopters = new Map(); // guildId -> Set of member IDs
+const sweptGuilds = new Set();   // Tracks if the bot just restarted to prevent spamming notifications on boot
 
 // ==========================================
 // 1. PUBLIC DASHBOARD PAYLOAD GENERATOR
 // ==========================================
 async function generateServerStatsPayload(guild, config) {
-    let tagAdoptersCount = 0;
-    let membersWithTag = [];
-    let membersWithoutTag = [];
+    let currentDetectedAdopters = new Set();
+    const isFirstSweep = !sweptGuilds.has(guild.id);
+    if (isFirstSweep) sweptGuilds.add(guild.id);
 
-    // A. Calculate adopters and assign/remove roles dynamically
     try {
         await guild.members.fetch();
         
+        // Scan for Discord's built-in Identity Tag
         for (const [memberId, member] of guild.members.cache) {
             if (member.user.bot) continue;
 
             const user = member.user;
-            // Strict check for Discord's native Server Tag (Clan Identity)
             const hasTag = user.primaryGuild && user.primaryGuild.identityEnabled && user.primaryGuild.identityGuildId === guild.id;
             
-            if (hasTag) {
-                tagAdoptersCount++;
-                membersWithTag.push(member);
-            } else {
-                membersWithoutTag.push(member);
-            }
+            if (hasTag) currentDetectedAdopters.add(memberId);
         }
         
-        // Memory & Role Protection Fallback
-        if (tagAdoptersCount === 0 && memoryAdopterCount.has(guild.id) && memoryAdopterCount.get(guild.id) > 0) {
-            // If it drops to 0 randomly, the Discord API likely glitched. 
-            // Restore the number from memory and skip role removal to protect members!
-            tagAdoptersCount = memoryAdopterCount.get(guild.id);
+        // --- GLITCH PROTECTION & NOTIFICATION LOGIC ---
+        if (currentDetectedAdopters.size === 0 && knownAdopters.has(guild.id) && knownAdopters.get(guild.id).size > 0) {
+            // If Discord API drops the ball and returns 0, ignore the sweep and restore from memory!
+            currentDetectedAdopters = knownAdopters.get(guild.id);
         } else {
-            // API is working fine! Update memory with the real count.
-            if (tagAdoptersCount > 0) {
-                memoryAdopterCount.set(guild.id, tagAdoptersCount);
+            // API is working fine. Process roles and notifications.
+            const previousAdopters = knownAdopters.get(guild.id) || new Set();
+            
+            // 1. Handle NEW and EXISTING Adopters
+            for (const memberId of currentDetectedAdopters) {
+                const member = guild.members.cache.get(memberId);
+                if (!member) continue;
+                
+                // NOTIFICATION: If they are newly detected (and it's not the bot's first boot-up sweep)
+                if (!isFirstSweep && !previousAdopters.has(memberId) && config.tagNotifyChannelId) {
+                    const notifyChannel = guild.channels.cache.get(config.tagNotifyChannelId) || await guild.channels.fetch(config.tagNotifyChannelId).catch(() => null);
+                    if (notifyChannel) {
+                        notifyChannel.send(`<@${memberId}> starts adopting our server tag <:grey_heart:1474321044314783767>`).catch(() => {});
+                    }
+                }
+                
+                // ADD ROLE: Give the role safely
+                if (config.tagEnabled && config.tagRoleId && !member.roles.cache.has(config.tagRoleId)) {
+                    await member.roles.add(config.tagRoleId).catch(() => {});
+                }
             }
             
-            // Safely assign and remove roles
+            // 2. Handle REMOVED Adopters (People who took the tag off)
             if (config.tagEnabled && config.tagRoleId) {
-                for (const member of membersWithTag) {
-                    if (!member.roles.cache.has(config.tagRoleId)) {
-                        await member.roles.add(config.tagRoleId).catch(() => {});
-                    }
-                }
-                for (const member of membersWithoutTag) {
-                    if (member.roles.cache.has(config.tagRoleId)) {
-                        await member.roles.remove(config.tagRoleId).catch(() => {});
+                for (const memberId of previousAdopters) {
+                    if (!currentDetectedAdopters.has(memberId)) {
+                        const member = guild.members.cache.get(memberId);
+                        if (member && member.roles.cache.has(config.tagRoleId)) {
+                            await member.roles.remove(config.tagRoleId).catch(() => {});
+                        }
                     }
                 }
             }
+            
+            // Update the memory map for the next minute
+            knownAdopters.set(guild.id, currentDetectedAdopters);
         }
 
     } catch (e) {
         console.error(`[ServerStats] Failed to fetch members for ${guild.name}:`, e.message);
     }
 
+    const tagAdoptersCount = currentDetectedAdopters.size;
     const humanCount = guild.members.cache.filter(m => !m.user.bot).size;
     const createdAtUnix = Math.floor(guild.createdTimestamp / 1000);
     const boostsCount = guild.premiumSubscriptionCount || 0;
@@ -85,25 +98,15 @@ async function generateServerStatsPayload(guild, config) {
                           `<:server_boost:1468633171758284872> **Boosts:** ${boostsCount}\n` +
                           `<:members:1468470163081924608> **Members:** ${humanCount}`;
 
-    // B. Build Base Container
     const container = new ContainerBuilder()
         .addMediaGalleryComponents(
             new MediaGalleryBuilder()
-                .addItems(
-                    new MediaGalleryItemBuilder()
-                        .setURL("https://cdn.discordapp.com/attachments/853503167706693632/1466977972685766851/Untitled102_20260131090625.png?ex=6a028b33&is=6a0139b3&hm=ca6a6523bed88d2ee71c620138a393f6d967295f5b492fcbc7798bdb3541507d&")
-                )
+                .addItems(new MediaGalleryItemBuilder().setURL("https://cdn.discordapp.com/attachments/853503167706693632/1466977972685766851/Untitled102_20260131090625.png?ex=6a028b33&is=6a0139b3&hm=ca6a6523bed88d2ee71c620138a393f6d967295f5b492fcbc7798bdb3541507d&"))
         )
-        .addSeparatorComponents(
-            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
-        )
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent("## Server Statistics")
-        );
+        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent("## Server Statistics"));
 
-    // C. Add Stats Block (With or Without Section/Button)
     if (config.inviteLink) {
-        // If Invite Link exists, use the SectionBuilder
         let inviteCode = config.inviteLink.split('/').pop() || "Link"; 
         container.addSectionComponents(
             new SectionBuilder()
@@ -116,13 +119,9 @@ async function generateServerStatsPayload(guild, config) {
                 )
         );
     } else {
-        // If NO Invite Link, drop the SectionBuilder and just use pure text exactly like your blueprint!
-        container.addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(mainStatsText)
-        );
+        container.addTextDisplayComponents(new TextDisplayBuilder().setContent(mainStatsText));
     }
 
-    // D. Add Tag Statistics if Enabled
     if (config.tagEnabled) {
         let tagStatusLine = "";
         const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS') || guild.features.includes('MEMBER_VERIFICATION_GATE_ENABLED');
@@ -139,43 +138,24 @@ async function generateServerStatsPayload(guild, config) {
         }
 
         container
-            .addSeparatorComponents(
-                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
-            )
-            .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent("### Server Tag")
-            )
-            .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(
-                    `<:badge:1468618581427097724> **Tag:** ${config.tagText || "None"}\n` +
-                    `${tagStatusLine}`
-                )
-            );
+            .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
+            .addTextDisplayComponents(new TextDisplayBuilder().setContent("### Server Tag"))
+            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`<:badge:1468618581427097724> **Tag:** ${config.tagText || "None"}\n${tagStatusLine}`));
     }
 
-    // E. Add Footer (Next Update Timestamp)
     const nextUpdateUnix = Math.floor((Date.now() + 60 * 1000) / 1000);
     container
-        .addSeparatorComponents(
-            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
-        )
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(`-# <a:loading:1447184742934909032> Next Update: <t:${nextUpdateUnix}:R>`)
-        );
+        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# <a:loading:1447184742934909032> Next Update: <t:${nextUpdateUnix}:R>`));
 
     return [container];
 }
 
-// ==========================================
-// 2. DASHBOARD MASS UPDATER
-// ==========================================
 async function updateServerStatsPanels(client) {
     const configs = await ServerStatsConfig.find();
-    
     for (const config of configs) {
         const guild = client.guilds.cache.get(config.guildId);
         if (!guild) continue;
-
         const channel = guild.channels.cache.get(config.channelId) || await client.channels.fetch(config.channelId).catch(() => null);
         if (!channel) continue;
 
@@ -183,9 +163,7 @@ async function updateServerStatsPanels(client) {
 
         try {
             let msg = null;
-            if (config.messageId) {
-                msg = await channel.messages.fetch(config.messageId).catch(() => null);
-            }
+            if (config.messageId) msg = await channel.messages.fetch(config.messageId).catch(() => null);
 
             if (msg && msg.editable) {
                 await msg.edit({ components: payload, flags: [MessageFlags.IsComponentsV2] });
@@ -200,23 +178,12 @@ async function updateServerStatsPanels(client) {
     }
 }
 
-// ==========================================
-// 3. UI BUILDERS FOR THE SETUP MENU
-// ==========================================
 function buildHomeMenu(config) {
     const isEnabled = !!config && !!config.channelId;
     const tagEnabled = config ? !!config.tagEnabled : false;
 
-    const selectMenu = new StringSelectMenuBuilder()
-        .setCustomId("ss_sel_home")
-        .setPlaceholder("Select an option...");
-
-    selectMenu.addOptions(
-        new StringSelectMenuOptionBuilder()
-            .setLabel(isEnabled ? "Disable Dashboard" : "Enable Dashboard")
-            .setValue("toggle")
-            .setEmoji(isEnabled ? "❌" : "✅")
-    );
+    const selectMenu = new StringSelectMenuBuilder().setCustomId("ss_sel_home").setPlaceholder("Select an option...");
+    selectMenu.addOptions(new StringSelectMenuOptionBuilder().setLabel(isEnabled ? "Disable Dashboard" : "Enable Dashboard").setValue("toggle").setEmoji(isEnabled ? "❌" : "✅"));
 
     if (isEnabled) {
         selectMenu.addOptions(
@@ -230,7 +197,7 @@ function buildHomeMenu(config) {
             .addTextDisplayComponents(new TextDisplayBuilder().setContent("## Server Stats Set-up"))
             .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
             .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**Server Stats:** (${isEnabled ? '<:Yes:1297814648417943565>' : '<:No:1297814819105144862>'})\n**Server Tag Stats:** (${tagEnabled ? '<:Yes:1297814648417943565>' : '<:No:1297814819105144862>'})`))
-            .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
+            .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
             .addActionRowComponents(new ActionRowBuilder().addComponents(selectMenu))
     ];
 }
@@ -238,7 +205,6 @@ function buildHomeMenu(config) {
 function buildStatsMenu(config) {
     const msgStr = config.messageId ? `\`${config.messageId}\`` : "None";
     const chStr = config.channelId ? `<#${config.channelId}>` : "None";
-    
     let invStr = "None";
     if (config.inviteLink) {
         const inviteCode = config.inviteLink.split('/').pop() || "Link";
@@ -246,25 +212,20 @@ function buildStatsMenu(config) {
         invStr = `[\`${inviteCode}\`](${validLink})`;
     }
 
-    const selectMenu = new StringSelectMenuBuilder()
-        .setCustomId("ss_sel_stats")
-        .setPlaceholder("Select an action...");
-
+    const selectMenu = new StringSelectMenuBuilder().setCustomId("ss_sel_stats").setPlaceholder("Select an action...");
     selectMenu.addOptions(
         new StringSelectMenuOptionBuilder().setLabel(config.messageId ? "Edit Message ID" : "Set Message ID").setValue("set_msg"),
         new StringSelectMenuOptionBuilder().setLabel(config.channelId ? "Edit Channel" : "Set Channel").setValue("set_ch"),
         new StringSelectMenuOptionBuilder().setLabel(config.inviteLink ? "Edit Invite Link" : "Set Invite Link").setValue("set_inv")
     );
-
     if (config.messageId) selectMenu.addOptions(new StringSelectMenuOptionBuilder().setLabel("Remove Message ID").setValue("rm_msg"));
     if (config.inviteLink) selectMenu.addOptions(new StringSelectMenuOptionBuilder().setLabel("Remove Invite Link").setValue("rm_inv"));
-
-    selectMenu.addOptions(new StringSelectMenuOptionBuilder().setLabel("Go Back Home").setValue("home").setEmoji("🏠"));
+    selectMenu.addOptions(new StringSelectMenuOptionBuilder().setLabel("Go Back Home").setValue("home"));
 
     return [
         new ContainerBuilder()
             .addTextDisplayComponents(new TextDisplayBuilder().setContent("## Server Stats"))
-            .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
+            .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
             .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**Message ID:** ${msgStr}\n**Channel:** ${chStr}\n**Invite Link:** ${invStr}`))
             .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
             .addActionRowComponents(new ActionRowBuilder().addComponents(selectMenu))
@@ -274,35 +235,28 @@ function buildStatsMenu(config) {
 function buildTagStatsMenu(config) {
     const tagStr = config.tagText ? `\`${config.tagText}\`` : "<:No:1297814819105144862>";
     const roleStr = config.tagRoleId ? `<@&${config.tagRoleId}>` : "<:No:1297814819105144862>";
+    const notifyStr = config.tagNotifyChannelId ? `<#${config.tagNotifyChannelId}>` : "<:No:1297814819105144862>";
 
-    const selectMenu = new StringSelectMenuBuilder()
-        .setCustomId("ss_sel_tags")
-        .setPlaceholder("Select an action...");
-
+    const selectMenu = new StringSelectMenuBuilder().setCustomId("ss_sel_tags").setPlaceholder("Select an action...");
     selectMenu.addOptions(
         new StringSelectMenuOptionBuilder().setLabel(config.tagText ? "Edit Tag Text" : "Set Tag Text").setValue("set_tag"),
+        new StringSelectMenuOptionBuilder().setLabel(config.tagNotifyChannelId ? "Edit Notify Channel" : "Set Notify Channel").setValue("set_notify"),
         new StringSelectMenuOptionBuilder().setLabel(config.tagRoleId ? "Edit Adopter Role" : "Set Adopter Role").setValue("set_role")
     );
 
     if (config.tagText) selectMenu.addOptions(new StringSelectMenuOptionBuilder().setLabel("Remove Tag Text").setValue("rm_tag"));
+    if (config.tagNotifyChannelId) selectMenu.addOptions(new StringSelectMenuOptionBuilder().setLabel("Remove Notify Channel").setValue("rm_notify"));
     if (config.tagRoleId) selectMenu.addOptions(new StringSelectMenuOptionBuilder().setLabel("Remove Adopter Role").setValue("rm_role"));
-
-    selectMenu.addOptions(new StringSelectMenuOptionBuilder().setLabel("Go Back Home").setValue("home").setEmoji("🏠"));
+    selectMenu.addOptions(new StringSelectMenuOptionBuilder().setLabel("Go Back Home").setValue("home"));
 
     return [
         new ContainerBuilder()
             .addTextDisplayComponents(new TextDisplayBuilder().setContent("## Server Tag Stats"))
-            .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
-            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**Server Tag:** ${tagStr}\n**Tag Adopter Role:** ${roleStr}`))
+            .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
+            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**Server Tag:** ${tagStr}\n**Tag Adopter Role:** ${roleStr}\n**Notify Channel:** ${notifyStr}`))
             .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
             .addActionRowComponents(new ActionRowBuilder().addComponents(selectMenu))
     ];
 }
 
-module.exports = { 
-    generateServerStatsPayload, 
-    updateServerStatsPanels, 
-    buildHomeMenu, 
-    buildStatsMenu, 
-    buildTagStatsMenu 
-};
+module.exports = { generateServerStatsPayload, updateServerStatsPanels, buildHomeMenu, buildStatsMenu, buildTagStatsMenu };

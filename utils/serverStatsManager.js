@@ -96,7 +96,7 @@ async function generateServerStatsPayload(guild, config) {
             )
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
-                    `<:badge:1468618581427097724> **Name:** ${config.tagText || "None"}\n` +
+                    `<:badge:1468618581427097724> **Tag:** ${config.tagText || "None"}\n` +
                     `${tagStatusLine}`
                 )
             );
@@ -176,7 +176,7 @@ function buildHomeMenu(config) {
 
     return [
         new ContainerBuilder()
-            .addTextDisplayComponents(new TextDisplayBuilder().setContent("# Server Stats Set-up"))
+            .addTextDisplayComponents(new TextDisplayBuilder().setContent("## Server Stats Set-up"))
             .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
             .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**Server Stats:** (${isEnabled ? '<:Yes:1297814648417943565>' : '<:No:1297814819105144862>'})\n**Server Tag Stats:** (${tagEnabled ? '<:Yes:1297814648417943565>' : '<:No:1297814819105144862>'})`))
             .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
@@ -205,7 +205,7 @@ function buildStatsMenu(config) {
 
     return [
         new ContainerBuilder()
-            .addTextDisplayComponents(new TextDisplayBuilder().setContent("# Server Stats"))
+            .addTextDisplayComponents(new TextDisplayBuilder().setContent("## Server Stats"))
             .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
             .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**Message ID:** ${msgStr}\n**Channel:** ${chStr}`))
             .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
@@ -233,7 +233,7 @@ function buildTagStatsMenu(config) {
 
     return [
         new ContainerBuilder()
-            .addTextDisplayComponents(new TextDisplayBuilder().setContent("# Server Tag Stats"))
+            .addTextDisplayComponents(new TextDisplayBuilder().setContent("## Server Tag Stats"))
             .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
             .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**Server Tag:** ${tagStr}\n**Tag Adopter Role:** ${roleStr}`))
             .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))

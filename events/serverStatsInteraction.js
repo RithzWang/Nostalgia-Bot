@@ -1,6 +1,25 @@
-const { Events, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, MessageFlags } = require('discord.js');
+const { 
+    Events, ModalBuilder, TextInputBuilder, TextInputStyle, 
+    ChannelSelectMenuBuilder, RoleSelectMenuBuilder, 
+    LabelBuilder, MessageFlags 
+} = require('discord.js');
 const ServerStatsConfig = require('../src/models/ServerStats');
 const { buildHomeMenu, buildStatsMenu, buildTagStatsMenu, updateServerStatsPanels } = require('../utils/serverStatsManager');
+
+// Helper function to safely extract values from both Text Inputs AND Select Menus in V2 Modals
+function getFieldValue(interaction, id) {
+    try {
+        return interaction.fields.getTextInputValue(id);
+    } catch (e) {
+        // If it's a Select Menu, getTextInputValue throws an error, so we grab it from the raw components array
+        const field = interaction.components?.flatMap(r => r.components || []).find(c => c.customId === id);
+        if (field) {
+            if (field.values && field.values.length > 0) return field.values[0];
+            if (field.value) return field.value;
+        }
+        return "";
+    }
+}
 
 module.exports = {
     name: Events.InteractionCreate,
@@ -11,9 +30,11 @@ module.exports = {
             const guildId = interaction.guild.id;
             let config = await ServerStatsConfig.findOne({ guildId });
 
+            // ================= SELECT MENUS =================
             if (interaction.isStringSelectMenu()) {
                 const choice = interaction.values[0];
 
+                // --- HOME MENU ---
                 if (interaction.customId === 'ss_sel_home') {
                     if (choice === 'toggle') {
                         if (config && config.channelId) {
@@ -21,11 +42,17 @@ module.exports = {
                             return interaction.update({ components: buildHomeMenu(null) });
                         } else {
                             const modal = new ModalBuilder().setCustomId('ss_modal_enable').setTitle('Enable Server Stats');
-                            modal.addComponents(
-                                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('channel_id').setLabel("Channel ID (Where to send stats)").setStyle(TextInputStyle.Short).setRequired(true).setValue(interaction.channel.id)),
-                                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('msg_id').setLabel("Message ID (Optional)").setStyle(TextInputStyle.Short).setRequired(false)),
-                                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('invite_link').setLabel("Invite Link (Optional)").setStyle(TextInputStyle.Short).setRequired(false))
-                            );
+                            
+                            const channelSelect = new ChannelSelectMenuBuilder().setCustomId('channel_id').setPlaceholder('Select the dashboard channel').setRequired(true);
+                            const channelLabel = new LabelBuilder().setLabel("Channel").setChannelSelectMenuComponent(channelSelect);
+                            
+                            const msgInput = new TextInputBuilder().setCustomId('msg_id').setStyle(TextInputStyle.Short).setRequired(false);
+                            const msgLabel = new LabelBuilder().setLabel("Message ID (Optional)").setTextInputComponent(msgInput);
+                            
+                            const invInput = new TextInputBuilder().setCustomId('invite_link').setStyle(TextInputStyle.Short).setRequired(false);
+                            const invLabel = new LabelBuilder().setLabel("Invite Link (Optional)").setTextInputComponent(invInput);
+
+                            modal.addLabelComponents(channelLabel, msgLabel, invLabel);
                             return interaction.showModal(modal);
                         }
                     }
@@ -33,22 +60,29 @@ module.exports = {
                     if (choice === 'menu_tags') return interaction.update({ components: buildTagStatsMenu(config) });
                 }
 
+                // --- NAVIGATION / QUICK ACTIONS ---
                 if (choice === 'home') return interaction.update({ components: buildHomeMenu(config) });
 
                 // --- STATS MENU MODALS ---
                 if (choice === 'set_msg') {
                     const modal = new ModalBuilder().setCustomId('ss_modal_msg').setTitle('Set Message ID');
-                    modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('msg_id').setLabel("Message ID").setStyle(TextInputStyle.Short).setRequired(true).setValue(config?.messageId || "")));
+                    const msgInput = new TextInputBuilder().setCustomId('msg_id').setStyle(TextInputStyle.Short).setRequired(true).setValue(config?.messageId || "");
+                    const msgLabel = new LabelBuilder().setLabel("Message ID").setTextInputComponent(msgInput);
+                    modal.addLabelComponents(msgLabel);
                     return interaction.showModal(modal);
                 }
                 if (choice === 'set_ch') {
                     const modal = new ModalBuilder().setCustomId('ss_modal_ch').setTitle('Set Channel ID');
-                    modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('channel_id').setLabel("Channel ID").setStyle(TextInputStyle.Short).setRequired(true).setValue(config?.channelId || "")));
+                    const chSelect = new ChannelSelectMenuBuilder().setCustomId('channel_id').setPlaceholder('Select a new channel').setRequired(true);
+                    const chLabel = new LabelBuilder().setLabel("Channel").setChannelSelectMenuComponent(chSelect);
+                    modal.addLabelComponents(chLabel);
                     return interaction.showModal(modal);
                 }
                 if (choice === 'set_inv') {
                     const modal = new ModalBuilder().setCustomId('ss_modal_inv').setTitle('Set Invite Link');
-                    modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('invite_link').setLabel("Invite URL (e.g. https://discord.gg/...)").setStyle(TextInputStyle.Short).setRequired(true).setValue(config?.inviteLink || "")));
+                    const invInput = new TextInputBuilder().setCustomId('invite_link').setStyle(TextInputStyle.Short).setRequired(true).setValue(config?.inviteLink || "");
+                    const invLabel = new LabelBuilder().setLabel("Invite URL (e.g. https://discord.gg/...)").setTextInputComponent(invInput);
+                    modal.addLabelComponents(invLabel);
                     return interaction.showModal(modal);
                 }
                 if (choice === 'rm_msg') {
@@ -66,20 +100,28 @@ module.exports = {
                 // --- TAGS MENU MODALS ---
                 if (choice === 'set_tag') {
                     const modal = new ModalBuilder().setCustomId('ss_modal_tag').setTitle('Set Tag Text');
-                    modal.addComponents(
-                        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('tag_text').setLabel("Server Tag").setStyle(TextInputStyle.Short).setRequired(true).setValue(config?.tagText || "")),
-                        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('notify_channel').setLabel("Notify Channel ID (Optional)").setStyle(TextInputStyle.Short).setRequired(false).setValue(config?.tagNotifyChannelId || ""))
-                    );
+                    
+                    const tagInput = new TextInputBuilder().setCustomId('tag_text').setStyle(TextInputStyle.Short).setRequired(true).setValue(config?.tagText || "");
+                    const tagLabel = new LabelBuilder().setLabel("Server Tag").setTextInputComponent(tagInput);
+                    
+                    const notifySelect = new ChannelSelectMenuBuilder().setCustomId('notify_channel').setPlaceholder('Select notify channel').setRequired(false);
+                    const notifyLabel = new LabelBuilder().setLabel("Notify Channel (Optional)").setChannelSelectMenuComponent(notifySelect);
+                    
+                    modal.addLabelComponents(tagLabel, notifyLabel);
                     return interaction.showModal(modal);
                 }
                 if (choice === 'set_role') {
-                    const modal = new ModalBuilder().setCustomId('ss_modal_role').setTitle('Set Adopter Role ID');
-                    modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('role_id').setLabel("Role ID").setStyle(TextInputStyle.Short).setRequired(true).setValue(config?.tagRoleId || "")));
+                    const modal = new ModalBuilder().setCustomId('ss_modal_role').setTitle('Set Adopter Role');
+                    const roleSelect = new RoleSelectMenuBuilder().setCustomId('role_id').setPlaceholder('Select an Adopter Role').setRequired(true);
+                    const roleLabel = new LabelBuilder().setLabel("Adopter Role").setRoleSelectMenuComponent(roleSelect);
+                    modal.addLabelComponents(roleLabel);
                     return interaction.showModal(modal);
                 }
                 if (choice === 'set_notify') {
-                    const modal = new ModalBuilder().setCustomId('ss_modal_notify').setTitle('Tag Adopted Notify Channel');
-                    modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('notify_channel').setLabel("Channel ID").setStyle(TextInputStyle.Short).setRequired(true).setValue(config?.tagNotifyChannelId || "")));
+                    const modal = new ModalBuilder().setCustomId('ss_modal_notify').setTitle('Set Notify Channel');
+                    const notifySelect = new ChannelSelectMenuBuilder().setCustomId('notify_channel').setPlaceholder('Select notify channel').setRequired(true);
+                    const notifyLabel = new LabelBuilder().setLabel("Notify Channel").setChannelSelectMenuComponent(notifySelect);
+                    modal.addLabelComponents(notifyLabel);
                     return interaction.showModal(modal);
                 }
 
@@ -98,41 +140,42 @@ module.exports = {
                 }
             }
 
+            // ================= MODALS =================
             if (interaction.isModalSubmit()) {
                 if (!config) config = new ServerStatsConfig({ guildId });
 
                 if (interaction.customId === 'ss_modal_enable') {
-                    config.channelId = interaction.fields.getTextInputValue('channel_id');
-                    config.messageId = interaction.fields.getTextInputValue('msg_id') || "";
-                    config.inviteLink = interaction.fields.getTextInputValue('invite_link') || "";
+                    config.channelId = getFieldValue(interaction, 'channel_id');
+                    config.messageId = getFieldValue(interaction, 'msg_id') || "";
+                    config.inviteLink = getFieldValue(interaction, 'invite_link') || "";
                     await config.save();
                     await interaction.update({ components: buildHomeMenu(config) });
                     return updateServerStatsPanels(client);
                 }
 
                 if (interaction.customId === 'ss_modal_msg') {
-                    config.messageId = interaction.fields.getTextInputValue('msg_id');
+                    config.messageId = getFieldValue(interaction, 'msg_id');
                     await config.save();
                     return interaction.update({ components: buildStatsMenu(config) });
                 }
 
                 if (interaction.customId === 'ss_modal_ch') {
-                    config.channelId = interaction.fields.getTextInputValue('channel_id');
+                    config.channelId = getFieldValue(interaction, 'channel_id');
                     await config.save();
                     await interaction.update({ components: buildStatsMenu(config) });
                     return updateServerStatsPanels(client);
                 }
 
                 if (interaction.customId === 'ss_modal_inv') {
-                    config.inviteLink = interaction.fields.getTextInputValue('invite_link');
+                    config.inviteLink = getFieldValue(interaction, 'invite_link');
                     await config.save();
                     await interaction.update({ components: buildStatsMenu(config) });
                     return updateServerStatsPanels(client);
                 }
 
                 if (interaction.customId === 'ss_modal_tag') {
-                    config.tagText = interaction.fields.getTextInputValue('tag_text');
-                    const notifyInput = interaction.fields.getTextInputValue('notify_channel');
+                    config.tagText = getFieldValue(interaction, 'tag_text');
+                    const notifyInput = getFieldValue(interaction, 'notify_channel');
                     if (notifyInput) config.tagNotifyChannelId = notifyInput;
                     
                     if (config.tagText) config.tagEnabled = true;
@@ -143,14 +186,14 @@ module.exports = {
                 }
 
                 if (interaction.customId === 'ss_modal_role') {
-                    config.tagRoleId = interaction.fields.getTextInputValue('role_id');
+                    config.tagRoleId = getFieldValue(interaction, 'role_id');
                     await config.save();
                     await interaction.update({ components: buildTagStatsMenu(config) });
                     return updateServerStatsPanels(client);
                 }
 
                 if (interaction.customId === 'ss_modal_notify') {
-                    config.tagNotifyChannelId = interaction.fields.getTextInputValue('notify_channel');
+                    config.tagNotifyChannelId = getFieldValue(interaction, 'notify_channel');
                     await config.save();
                     await interaction.update({ components: buildTagStatsMenu(config) });
                     return updateServerStatsPanels(client);

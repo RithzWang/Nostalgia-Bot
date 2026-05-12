@@ -38,10 +38,14 @@ async function generateServerStatsPayload(guild, config) {
         let dbNeedsUpdate = false;
         
         // --- QABILATAN DATABASE MEMORY PROTECTION ---
-        // If the API returns 0 during a menu interaction but the database knows there are adopters, ignore the API glitch!
         if (currentDetectedAdopters.size === 0 && previousAdopters.size > 0) {
+            // Ignore Discord API glitches if it randomly drops to 0
             currentDetectedAdopters = previousAdopters;
         } else {
+            // ANTI-SPAM GUARD: If the DB is empty but we find multiple people, the admin just enabled the feature.
+            // We SILENCE notifications for this first sweep to prevent mass-pinging 1,000 existing users!
+            const isInitialMassSetup = (config.tagAdopters.length === 0 && currentDetectedAdopters.size > 1);
+
             // 1. Process NEW Adopters
             for (const memberId of currentDetectedAdopters) {
                 const member = guild.members.cache.get(memberId);
@@ -50,8 +54,8 @@ async function generateServerStatsPayload(guild, config) {
                 if (!previousAdopters.has(memberId)) {
                     dbNeedsUpdate = true;
                     
-                    // NOTIFICATION: Hype them up!
-                    if (config.tagEnabled && config.tagNotifyChannelId) {
+                    // NOTIFICATION: Hype them up! (Unless it's the silent mass setup)
+                    if (!isInitialMassSetup && config.tagEnabled && config.tagNotifyChannelId) {
                         const notifyChannel = guild.channels.cache.get(config.tagNotifyChannelId) || await guild.channels.fetch(config.tagNotifyChannelId).catch(() => null);
                         if (notifyChannel) {
                             notifyChannel.send(`<@${memberId}> starts adopting our server tag <:grey_heart:1474321044314783767>`).catch(() => {});

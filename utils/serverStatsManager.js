@@ -58,31 +58,13 @@ async function generateServerStatsPayload(guild, config) {
     const createdAtUnix = Math.floor(guild.createdTimestamp / 1000);
     const boostsCount = guild.premiumSubscriptionCount || 0;
 
-    // B. Main Stats Section with Optional Invite Button
-    const statsSection = new SectionBuilder()
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(
-                `### ${guild.name}\n` +
-                `<:id:1468487725912166596> **ID:** \`${guild.id}\`\n` +
-                `<:calendar:1470475413175144530> **Created:** <t:${createdAtUnix}:R>\n` +
-                `<:server_boost:1468633171758284872> **Boosts:** ${boostsCount}\n` +
-                `<:members:1468470163081924608> **Members:** ${humanCount}`
-            )
-        );
+    const mainStatsText = `### ${guild.name}\n` +
+                          `<:id:1468487725912166596> **ID:** \`${guild.id}\`\n` +
+                          `<:calendar:1470475413175144530> **Created:** <t:${createdAtUnix}:R>\n` +
+                          `<:server_boost:1468633171758284872> **Boosts:** ${boostsCount}\n` +
+                          `<:members:1468470163081924608> **Members:** ${humanCount}`;
 
-    // If an invite link is configured, add the button to the section
-    // If not, this is skipped and the button completely disappears!
-    if (config.inviteLink) {
-        let inviteCode = config.inviteLink.split('/').pop() || "Link"; 
-        statsSection.setButtonAccessory(
-            new ButtonBuilder()
-                .setStyle(ButtonStyle.Link)
-                .setLabel(`.gg/${inviteCode}`)
-                .setURL(config.inviteLink.startsWith('http') ? config.inviteLink : `https://${config.inviteLink}`)
-        );
-    }
-
-    // C. Build Base Container
+    // B. Build Base Container
     const container = new ContainerBuilder()
         .addMediaGalleryComponents(
             new MediaGalleryBuilder()
@@ -96,8 +78,26 @@ async function generateServerStatsPayload(guild, config) {
         )
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent("## Server Statistics")
-        )
-        .addSectionComponents(statsSection);
+        );
+
+    // C. Add Stats Block (With or Without Section/Button)
+    if (config.inviteLink) {
+        let inviteCode = config.inviteLink.split('/').pop() || "Link"; 
+        container.addSectionComponents(
+            new SectionBuilder()
+                .addTextDisplayComponents(new TextDisplayBuilder().setContent(mainStatsText))
+                .setButtonAccessory(
+                    new ButtonBuilder()
+                        .setStyle(ButtonStyle.Link)
+                        .setLabel(`.gg/${inviteCode}`)
+                        .setURL(config.inviteLink.startsWith('http') ? config.inviteLink : `https://${config.inviteLink}`)
+                )
+        );
+    } else {
+        container.addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(mainStatsText)
+        );
+    }
 
     // D. Add Tag Statistics if Enabled
     if (config.tagEnabled) {
@@ -216,7 +216,6 @@ function buildStatsMenu(config) {
     const msgStr = config.messageId ? `\`${config.messageId}\`` : "None";
     const chStr = config.channelId ? `<#${config.channelId}>` : "None";
     
-    // Extract the invite code and format it as a clickable markdown link
     let invStr = "None";
     if (config.inviteLink) {
         const inviteCode = config.inviteLink.split('/').pop() || "Link";

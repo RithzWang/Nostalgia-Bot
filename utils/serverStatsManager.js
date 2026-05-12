@@ -8,7 +8,10 @@ const {
     MediaGalleryItemBuilder, 
     StringSelectMenuBuilder, 
     StringSelectMenuOptionBuilder, 
-    ActionRowBuilder 
+    ActionRowBuilder,
+    SectionBuilder,
+    ButtonBuilder,
+    ButtonStyle
 } = require('discord.js');
 const ServerStatsConfig = require('../src/models/ServerStats');
 
@@ -46,7 +49,30 @@ async function generateServerStatsPayload(guild, config) {
     const createdAtUnix = Math.floor(guild.createdTimestamp / 1000);
     const boostsCount = guild.premiumSubscriptionCount || 0;
 
-    // B. Build Base Container (Banner + Main Stats)
+    // B. Main Stats Section with Optional Invite Button
+    const statsSection = new SectionBuilder()
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `### ${guild.name}\n` +
+                `<:id:1468487725912166596> **ID:** \`${guild.id}\`\n` +
+                `<:calendar:1470475413175144530> **Created:** <t:${createdAtUnix}:R>\n` +
+                `<:server_boost:1468633171758284872> **Boosts:** ${boostsCount}\n` +
+                `<:members:1468470163081924608> **Members:** ${humanCount}`
+            )
+        );
+
+    // If an invite link is configured, add the button to the section
+    if (config.inviteLink) {
+        let inviteCode = config.inviteLink.split('/').pop() || "Link"; // Grabs the code from the end of the URL
+        statsSection.setButtonAccessory(
+            new ButtonBuilder()
+                .setStyle(ButtonStyle.Link)
+                .setLabel(`.gg/${inviteCode}`)
+                .setURL(config.inviteLink.startsWith('http') ? config.inviteLink : `https://${config.inviteLink}`)
+        );
+    }
+
+    // C. Build Base Container
     const container = new ContainerBuilder()
         .addMediaGalleryComponents(
             new MediaGalleryBuilder()
@@ -61,17 +87,9 @@ async function generateServerStatsPayload(guild, config) {
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent("## Server Statistics")
         )
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(
-                `### ${guild.name}\n` +
-                `<:id:1468487725912166596> **ID:** \`${guild.id}\`\n` +
-                `<:calendar:1470475413175144530> **Created:** <t:${createdAtUnix}:R>\n` +
-                `<:server_boost:1468633171758284872> **Boosts:** ${boostsCount}\n` +
-                `<:members:1468470163081924608> **Members:** ${humanCount}`
-            )
-        );
+        .addSectionComponents(statsSection);
 
-    // C. Add Tag Statistics if Enabled
+    // D. Add Tag Statistics if Enabled
     if (config.tagEnabled) {
         let tagStatusLine = "";
         const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS') || guild.features.includes('MEMBER_VERIFICATION_GATE_ENABLED');
@@ -102,7 +120,7 @@ async function generateServerStatsPayload(guild, config) {
             );
     }
 
-    // D. Add Footer (Next Update Timestamp)
+    // E. Add Footer (Next Update Timestamp)
     const nextUpdateUnix = Math.floor((Date.now() + 60 * 1000) / 1000);
     container
         .addSeparatorComponents(
@@ -187,6 +205,14 @@ function buildHomeMenu(config) {
 function buildStatsMenu(config) {
     const msgStr = config.messageId ? `\`${config.messageId}\`` : "None";
     const chStr = config.channelId ? `<#${config.channelId}>` : "None";
+    
+    // Extract the invite code and format it as a clickable markdown link
+    let invStr = "None";
+    if (config.inviteLink) {
+        const inviteCode = config.inviteLink.split('/').pop() || "Link";
+        const validLink = config.inviteLink.startsWith('http') ? config.inviteLink : `https://${config.inviteLink}`;
+        invStr = `[\`${inviteCode}\`](${validLink})`;
+    }
 
     const selectMenu = new StringSelectMenuBuilder()
         .setCustomId("ss_sel_stats")
@@ -194,11 +220,15 @@ function buildStatsMenu(config) {
 
     selectMenu.addOptions(
         new StringSelectMenuOptionBuilder().setLabel(config.messageId ? "Edit Message ID" : "Set Message ID").setValue("set_msg"),
-        new StringSelectMenuOptionBuilder().setLabel(config.channelId ? "Edit Channel" : "Set Channel").setValue("set_ch")
+        new StringSelectMenuOptionBuilder().setLabel(config.channelId ? "Edit Channel" : "Set Channel").setValue("set_ch"),
+        new StringSelectMenuOptionBuilder().setLabel(config.inviteLink ? "Edit Invite Link" : "Set Invite Link").setValue("set_inv")
     );
 
     if (config.messageId) {
         selectMenu.addOptions(new StringSelectMenuOptionBuilder().setLabel("Remove Message ID").setValue("rm_msg"));
+    }
+    if (config.inviteLink) {
+        selectMenu.addOptions(new StringSelectMenuOptionBuilder().setLabel("Remove Invite Link").setValue("rm_inv"));
     }
 
     selectMenu.addOptions(new StringSelectMenuOptionBuilder().setLabel("Go Back Home").setValue("home").setEmoji("🏠"));
@@ -207,7 +237,7 @@ function buildStatsMenu(config) {
         new ContainerBuilder()
             .addTextDisplayComponents(new TextDisplayBuilder().setContent("## Server Stats"))
             .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
-            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**Message ID:** ${msgStr}\n**Channel:** ${chStr}`))
+            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**Message ID:** ${msgStr}\n**Channel:** ${chStr}\n**Invite Link:** ${invStr}`))
             .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
             .addActionRowComponents(new ActionRowBuilder().addComponents(selectMenu))
     ];

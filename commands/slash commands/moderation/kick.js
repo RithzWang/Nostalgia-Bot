@@ -8,6 +8,7 @@ const {
     MessageFlags 
 } = require('discord.js');
 const moment = require('moment-timezone');
+const { setTimeout } = require('node:timers/promises'); // Add this for the delay
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -118,21 +119,17 @@ module.exports = {
         //                      /KICK ROLE
         // --------------------------------------------------------
         if (subcommand === 'role') {
-            // Defer the reply because fetching and kicking many members might take longer than 3 seconds
             await interaction.deferReply(); 
 
             const targetRole = interaction.options.getRole('target_role');
-            
-            // Fetch all members in the server to make sure we don't miss anyone un-cached
             const allMembers = await interaction.guild.members.fetch();
             
-            // Filter out boosters, admins/higher roles, and unkickable members safely
             const membersToKick = allMembers.filter(m => 
                 m.roles.cache.has(targetRole.id) && 
-                !m.premiumSinceTimestamp && // Skips Server Boosters
-                m.id !== interaction.user.id && // Don't kick the command runner
-                m.kickable && // Checks if bot's role is high enough
-                interaction.member.roles.highest.position > m.roles.highest.position // Checks if mod's role is high enough
+                !m.premiumSinceTimestamp && 
+                m.id !== interaction.user.id && 
+                m.kickable && 
+                interaction.member.roles.highest.position > m.roles.highest.position 
             );
 
             if (membersToKick.size === 0) {
@@ -141,10 +138,14 @@ module.exports = {
                 });
             }
 
+            // Send an initial update so the user knows it's working
+            await interaction.editReply({
+                content: `⏳ Commencing mass kick of **${membersToKick.size}** members. This will take some time to prevent API rate limits...`
+            });
+
             let kickedCount = 0;
             let failedCount = 0;
 
-            // Execute mass kick
             for (const [id, m] of membersToKick) {
                 try {
                     await m.send(`You have been kicked from **${interaction.guild.name}**\n**Reason:** Mass Role Kick - ${reason}`).catch(() => {});
@@ -153,6 +154,10 @@ module.exports = {
                 } catch (error) {
                     failedCount++;
                 }
+                
+                // --- CRITICAL FIX: The Delay ---
+                // Wait 1.5 seconds between each kick to respect Discord's rate limits
+                await setTimeout(1500); 
             }
 
             // --- EMBED & BUTTON ---
@@ -170,7 +175,19 @@ module.exports = {
 
             const row = new ActionRowBuilder().addComponents(timeButton);
 
-            await interaction.editReply({ embeds: [embed], components: [row] });
+            // --- CRITICAL FIX: The 15 Minute Timeout Handling ---
+            try {
+                // If the loop finished in under 15 minutes, we can just edit the reply
+                await interaction.editReply({ content: null, embeds: [embed], components: [row] });
+            } catch (error) {
+                // If it took longer than 15 mins, the interaction token expired. 
+                // We fallback to just sending a regular message in the channel.
+                await interaction.channel.send({ 
+                    content: `<@${interaction.user.id}> The mass kick operation has finished.`, 
+                    embeds: [embed], 
+                    components: [row] 
+                });
+            }
         }
     }
 };

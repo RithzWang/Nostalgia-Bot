@@ -15,17 +15,12 @@ const {
 } = require('discord.js');
 const ServerStatsConfig = require('../src/models/ServerStats');
 
-// Advanced Memory Cache: Stores exactly WHO has the tag to prevent API glitches and track new adopters
-const knownAdopters = new Map(); // guildId -> Set of member IDs
-const sweptGuilds = new Set();   // Tracks if the bot just restarted to prevent spamming notifications on boot
-
 // ==========================================
 // 1. PUBLIC DASHBOARD PAYLOAD GENERATOR
 // ==========================================
 async function generateServerStatsPayload(guild, config) {
     let currentDetectedAdopters = new Set();
-    const isFirstSweep = !sweptGuilds.has(guild.id);
-    if (isFirstSweep) sweptGuilds.add(guild.id);
+    const previousAdopters = new Set(config.tagAdopters || []);
 
     try {
         await guild.members.fetch();
@@ -39,48 +34,54 @@ async function generateServerStatsPayload(guild, config) {
             
             if (hasTag) currentDetectedAdopters.add(memberId);
         }
+
+        let dbNeedsUpdate = false;
         
-        // --- GLITCH PROTECTION & NOTIFICATION LOGIC ---
-        if (currentDetectedAdopters.size === 0 && knownAdopters.has(guild.id) && knownAdopters.get(guild.id).size > 0) {
-            // If Discord API drops the ball and returns 0, ignore the sweep and restore from memory!
-            currentDetectedAdopters = knownAdopters.get(guild.id);
+        // --- QABILATAN DATABASE MEMORY PROTECTION ---
+        // If the API returns 0 during a menu interaction but the database knows there are adopters, ignore the API glitch!
+        if (currentDetectedAdopters.size === 0 && previousAdopters.size > 0) {
+            currentDetectedAdopters = previousAdopters;
         } else {
-            // API is working fine. Process roles and notifications.
-            const previousAdopters = knownAdopters.get(guild.id) || new Set();
-            
-            // 1. Handle NEW and EXISTING Adopters
+            // 1. Process NEW Adopters
             for (const memberId of currentDetectedAdopters) {
                 const member = guild.members.cache.get(memberId);
                 if (!member) continue;
                 
-                // NOTIFICATION: If they are newly detected (and it's not the bot's first boot-up sweep)
-                if (!isFirstSweep && !previousAdopters.has(memberId) && config.tagNotifyChannelId) {
-                    const notifyChannel = guild.channels.cache.get(config.tagNotifyChannelId) || await guild.channels.fetch(config.tagNotifyChannelId).catch(() => null);
-                    if (notifyChannel) {
-                        notifyChannel.send(`<@${memberId}> starts adopting our server tag <:grey_heart:1474321044314783767>`).catch(() => {});
-                    }
-                }
-                
-                // ADD ROLE: Give the role safely
-                if (config.tagEnabled && config.tagRoleId && !member.roles.cache.has(config.tagRoleId)) {
-                    await member.roles.add(config.tagRoleId).catch(() => {});
-                }
-            }
-            
-            // 2. Handle REMOVED Adopters (People who took the tag off)
-            if (config.tagEnabled && config.tagRoleId) {
-                for (const memberId of previousAdopters) {
-                    if (!currentDetectedAdopters.has(memberId)) {
-                        const member = guild.members.cache.get(memberId);
-                        if (member && member.roles.cache.has(config.tagRoleId)) {
-                            await member.roles.remove(config.tagRoleId).catch(() => {});
+                if (!previousAdopters.has(memberId)) {
+                    dbNeedsUpdate = true;
+                    
+                    // NOTIFICATION: Hype them up!
+                    if (config.tagEnabled && config.tagNotifyChannelId) {
+                        const notifyChannel = guild.channels.cache.get(config.tagNotifyChannelId) || await guild.channels.fetch(config.tagNotifyChannelId).catch(() => null);
+                        if (notifyChannel) {
+                            notifyChannel.send(`<@${memberId}> starts adopting our server tag <:grey_heart:1474321044314783767>`).catch(() => {});
                         }
                     }
+                    
+                    // ADD ROLE
+                    if (config.tagEnabled && config.tagRoleId && !member.roles.cache.has(config.tagRoleId)) {
+                        await member.roles.add(config.tagRoleId).catch(() => {});
+                    }
                 }
             }
             
-            // Update the memory map for the next minute
-            knownAdopters.set(guild.id, currentDetectedAdopters);
+            // 2. Process REMOVED Adopters (People who took the tag off)
+            for (const memberId of previousAdopters) {
+                if (!currentDetectedAdopters.has(memberId)) {
+                    dbNeedsUpdate = true;
+                    const member = guild.members.cache.get(memberId);
+                    // REMOVE ROLE
+                    if (member && config.tagEnabled && config.tagRoleId && member.roles.cache.has(config.tagRoleId)) {
+                        await member.roles.remove(config.tagRoleId).catch(() => {});
+                    }
+                }
+            }
+        }
+
+        // Save the new array to the database so it survives bot restarts and menu edits
+        if (dbNeedsUpdate) {
+            config.tagAdopters = Array.from(currentDetectedAdopters);
+            await config.save().catch(() => {});
         }
 
     } catch (e) {
@@ -151,6 +152,9 @@ async function generateServerStatsPayload(guild, config) {
     return [container];
 }
 
+// ==========================================
+// 2. DASHBOARD MASS UPDATER
+// ==========================================
 async function updateServerStatsPanels(client) {
     const configs = await ServerStatsConfig.find();
     for (const config of configs) {
@@ -178,6 +182,9 @@ async function updateServerStatsPanels(client) {
     }
 }
 
+// ==========================================
+// 3. UI BUILDERS FOR THE SETUP MENU
+// ==========================================
 function buildHomeMenu(config) {
     const isEnabled = !!config && !!config.channelId;
     const tagEnabled = config ? !!config.tagEnabled : false;

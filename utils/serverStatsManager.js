@@ -58,7 +58,7 @@ async function generateServerStatsPayload(guild, config) {
                     if (!isInitialMassSetup && config.tagEnabled && config.tagNotifyChannelId) {
                         const notifyChannel = guild.channels.cache.get(config.tagNotifyChannelId) || await guild.channels.fetch(config.tagNotifyChannelId).catch(() => null);
                         if (notifyChannel) {
-                            notifyChannel.send(`-# <@${memberId}> starts adopting our server tag!`).catch(() => {});
+                            notifyChannel.send(`-# **<@${memberId}> starts adopting our server tag!**`).catch(() => {});
                         }
                     }
                     

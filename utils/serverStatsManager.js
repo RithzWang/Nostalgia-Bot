@@ -15,6 +15,9 @@ const {
 } = require('discord.js');
 const ServerStatsConfig = require('../src/models/ServerStats');
 
+// Memory cache to prevent the Adopter count from resetting to 0
+const memoryAdopterCount = new Map();
+
 // ==========================================
 // 1. PUBLIC DASHBOARD PAYLOAD GENERATOR
 // ==========================================
@@ -24,23 +27,29 @@ async function generateServerStatsPayload(guild, config) {
     // A. Calculate adopters and assign/remove roles dynamically
     try {
         await guild.members.fetch();
-        for (const [memberId, member] of guild.members.cache) {
-            if (member.user.bot) continue;
+        
+        // If an Adopter Role is set, we count the role (100% accurate)
+        if (config.tagRoleId && guild.roles.cache.has(config.tagRoleId)) {
+            tagAdoptersCount = guild.roles.cache.get(config.tagRoleId).members.filter(m => !m.user.bot).size;
+        } else {
+            // Otherwise, we scan for Discord's built-in Identity Tag
+            for (const [memberId, member] of guild.members.cache) {
+                if (member.user.bot) continue;
 
-            const user = member.user;
-            const hasTag = user.primaryGuild && user.primaryGuild.identityEnabled && user.primaryGuild.identityGuildId === guild.id;
+                const user = member.user;
+                const hasTag = user.primaryGuild && user.primaryGuild.identityEnabled && user.primaryGuild.identityGuildId === guild.id;
+                
+                if (hasTag) tagAdoptersCount++;
+            }
             
-            if (hasTag) {
-                tagAdoptersCount++;
-                if (config.tagEnabled && config.tagRoleId && !member.roles.cache.has(config.tagRoleId)) {
-                    await member.roles.add(config.tagRoleId).catch(() => {});
-                }
-            } else {
-                if (config.tagEnabled && config.tagRoleId && member.roles.cache.has(config.tagRoleId)) {
-                    await member.roles.remove(config.tagRoleId).catch(() => {});
-                }
+            // Memory Fallback: If Discord API drops the ball and returns 0, use our memory!
+            if (tagAdoptersCount === 0 && memoryAdopterCount.has(guild.id)) {
+                tagAdoptersCount = memoryAdopterCount.get(guild.id);
+            } else if (tagAdoptersCount > 0) {
+                memoryAdopterCount.set(guild.id, tagAdoptersCount); // Update memory
             }
         }
+
     } catch (e) {
         console.error(`[ServerStats] Failed to fetch members for ${guild.name}:`, e.message);
     }
@@ -62,8 +71,9 @@ async function generateServerStatsPayload(guild, config) {
         );
 
     // If an invite link is configured, add the button to the section
+    // If not, this is skipped and the button completely disappears!
     if (config.inviteLink) {
-        let inviteCode = config.inviteLink.split('/').pop() || "Link"; // Grabs the code from the end of the URL
+        let inviteCode = config.inviteLink.split('/').pop() || "Link"; 
         statsSection.setButtonAccessory(
             new ButtonBuilder()
                 .setStyle(ButtonStyle.Link)

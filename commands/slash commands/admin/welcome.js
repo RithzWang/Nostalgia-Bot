@@ -3,7 +3,7 @@ const WelcomeConfig = require('../../../src/models/Welcome'); // Adjust the path
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('welcome')
+        .setName('random-welcome')
         .setDescription('Manage the random welcome message system')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addSubcommand(sub => 

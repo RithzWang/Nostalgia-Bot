@@ -7,11 +7,10 @@ module.exports = {
     async execute(oldUser, newUser, client) {
         if (newUser.bot) return;
 
-        // Check the old identity vs the new identity
+        // Check if their Server Tag (Identity) changed
         const oldGuildId = oldUser.primaryGuild?.identityGuildId;
         const newGuildId = newUser.primaryGuild?.identityGuildId;
 
-        // If the server tag didn't change, ignore the update
         if (oldGuildId === newGuildId) return;
 
         // ==========================================
@@ -23,27 +22,33 @@ module.exports = {
                 const guild = client.guilds.cache.get(newGuildId);
                 if (guild) {
                     try {
-                        const member = await guild.members.fetch(newUser.id);
-                        
-                        // 1A. Give Role Instantly
+                        const member = await guild.members.fetch(newUser.id).catch(() => null);
+                        if (!member) return;
+
+                        let badgeURL = newUser.primaryGuild?.badge 
+                            ? `https://cdn.discordapp.com/guild-tag-badges/${newGuildId}/${newUser.primaryGuild.badge}.png?size=128` 
+                            : guild.iconURL({ extension: 'png', size: 128 });
+
+                        // A. Give Role Instantly
                         if (config.tagRoleId && !member.roles.cache.has(config.tagRoleId)) {
                             await member.roles.add(config.tagRoleId).catch(() => {});
                         }
 
-                        // 1B. Send Hype Notification Instantly
+                        // B. Send Hype Notification (4s delay, no ping)
                         if (config.tagNotifyChannelId && config.tagNotifyAdopt !== false) {
                             const notifyChannel = guild.channels.cache.get(config.tagNotifyChannelId) || await guild.channels.fetch(config.tagNotifyChannelId).catch(() => null);
                             if (notifyChannel) {
-                                let badgeURL = newUser.primaryGuild?.badge ? `https://cdn.discordapp.com/guild-tag-badges/${newGuildId}/${newUser.primaryGuild.badge}.png?size=128` : guild.iconURL({ extension: 'png', size: 128 });
-                                
-                                notifyChannel.send({ 
-                                    components: buildNotifyPayload(newUser.id, 'adopt', badgeURL), 
-                                    flags: [MessageFlags.IsComponentsV2] 
-                                }).catch(() => {});
+                                setTimeout(() => {
+                                    notifyChannel.send({ 
+                                        components: buildNotifyPayload(newUser.id, 'adopt', badgeURL), 
+                                        flags: [MessageFlags.IsComponentsV2],
+                                        allowedMentions: { parse: [] } 
+                                    }).catch(() => {});
+                                }, 4000);
                             }
                         }
 
-                        // 1C. Save to Database
+                        // C. Save to Database
                         if (!config.tagAdopters.includes(newUser.id)) {
                             config.tagAdopters.push(newUser.id);
                             await config.save().catch(() => {});
@@ -62,27 +67,33 @@ module.exports = {
                 const guild = client.guilds.cache.get(oldGuildId);
                 if (guild) {
                     try {
-                        const member = await guild.members.fetch(newUser.id);
-                        
-                        // 2A. Remove Role Instantly
+                        const member = await guild.members.fetch(newUser.id).catch(() => null);
+                        if (!member) return;
+
+                        let badgeURL = oldUser.primaryGuild?.badge 
+                            ? `https://cdn.discordapp.com/guild-tag-badges/${oldGuildId}/${oldUser.primaryGuild.badge}.png?size=128` 
+                            : guild.iconURL({ extension: 'png', size: 128 });
+
+                        // A. Remove Role Instantly
                         if (config.tagRoleId && member.roles.cache.has(config.tagRoleId)) {
                             await member.roles.remove(config.tagRoleId).catch(() => {});
                         }
 
-                        // 2B. Send Sad Notification Instantly
+                        // B. Send Sad Notification (4s delay, no ping)
                         if (config.tagNotifyChannelId && config.tagNotifyRemove === true) {
                             const notifyChannel = guild.channels.cache.get(config.tagNotifyChannelId) || await guild.channels.fetch(config.tagNotifyChannelId).catch(() => null);
                             if (notifyChannel) {
-                                let badgeURL = oldUser.primaryGuild?.badge ? `https://cdn.discordapp.com/guild-tag-badges/${oldGuildId}/${oldUser.primaryGuild.badge}.png?size=128` : guild.iconURL({ extension: 'png', size: 128 });
-                                
-                                notifyChannel.send({ 
-                                    components: buildNotifyPayload(newUser.id, 'remove', badgeURL), 
-                                    flags: [MessageFlags.IsComponentsV2] 
-                                }).catch(() => {});
+                                setTimeout(() => {
+                                    notifyChannel.send({ 
+                                        components: buildNotifyPayload(newUser.id, 'remove', badgeURL), 
+                                        flags: [MessageFlags.IsComponentsV2],
+                                        allowedMentions: { parse: [] } 
+                                    }).catch(() => {});
+                                }, 4000);
                             }
                         }
 
-                        // 2C. Remove from Database
+                        // C. Remove from Database
                         config.tagAdopters = config.tagAdopters.filter(id => id !== newUser.id);
                         await config.save().catch(() => {});
                     } catch (e) { console.error(e); }

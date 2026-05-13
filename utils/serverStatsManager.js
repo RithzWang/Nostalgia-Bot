@@ -319,4 +319,24 @@ function buildTagStatsMenu(config) {
     if (config.tagText) selectMenu.addOptions(new StringSelectMenuOptionBuilder().setLabel("Remove Tag Text").setValue("rm_tag"));
     if (config.tagNotifyChannelId) selectMenu.addOptions(new StringSelectMenuOptionBuilder().setLabel("Remove Notify Channel").setValue("rm_notify"));
     if (config.tagRoleId) selectMenu.addOptions(new StringSelectMenuOptionBuilder().setLabel("Remove Adopter Role").setValue("rm_role"));
-    selectMenu.addOptions
+    selectMenu.addOptions(new StringSelectMenuOptionBuilder().setLabel("Go Back Home").setValue("home"));
+
+    return [
+        new ContainerBuilder()
+            .addTextDisplayComponents(new TextDisplayBuilder().setContent("## Server Tag Stats"))
+            .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
+            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**Server Tag:** ${tagStr}\n**Tag Adopter Role:** ${roleStr}\n**Notify Channel:** ${notifyStr}`))
+            .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
+            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**Notify on Adopt:** ${adoptIcon} | **Notify on Remove:** ${removeIcon}`))
+            .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
+            .addActionRowComponents(new ActionRowBuilder().addComponents(selectMenu))
+    ];
+}
+
+module.exports = { 
+    generateServerStatsPayload, 
+    updateServerStatsPanels, 
+    buildHomeMenu, 
+    buildStatsMenu, 
+    buildTagStatsMenu 
+};

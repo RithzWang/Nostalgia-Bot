@@ -119,7 +119,7 @@ async function generateServerStatsPayload(guild, config) {
                 .setButtonAccessory(
                     new ButtonBuilder()
                         .setStyle(ButtonStyle.Link)
-                        .setLabel(`.gg/${inviteCode}`)
+                        .setLabel(`Invite Link`)
                         .setURL(config.inviteLink.startsWith('http') ? config.inviteLink : `https://${config.inviteLink}`)
                 )
         );

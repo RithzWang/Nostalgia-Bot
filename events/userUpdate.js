@@ -44,7 +44,7 @@ module.exports = {
                                         flags: [MessageFlags.IsComponentsV2],
                                         allowedMentions: { parse: [] } 
                                     }).catch(() => {});
-                                }, 4000);
+                                }, 1000);
                             }
                         }
 
@@ -89,7 +89,7 @@ module.exports = {
                                         flags: [MessageFlags.IsComponentsV2],
                                         allowedMentions: { parse: [] } 
                                     }).catch(() => {});
-                                }, 3000);
+                                }, 1000);
                             }
                         }
 

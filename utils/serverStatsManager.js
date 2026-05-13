@@ -17,13 +17,13 @@ const {
 const ServerStatsConfig = require('../src/models/ServerStats');
 
 // ==========================================
-// NOTIFICATION UI BUILDER
+// NOTIFICATION UI BUILDER (Exported to userUpdate.js)
 // ==========================================
 function buildNotifyPayload(memberId, type, badgeURL) {
     const unix = Math.floor(Date.now() / 1000);
     const title = type === 'adopt' ? "## Tag Adopted" : "## Tag Removed";
     const desc = type === 'adopt' ? `<@${memberId}> starts adopting the tag!` : `<@${memberId}> stopped adopting the tag! 😭`;
-    const colour = type === 'adopt' ? 3447003 : 15548997; // Using your exact decimal color codes
+    const colour = type === 'adopt' ? 3447003 : 15548997; 
 
     return [
         new ContainerBuilder()
@@ -42,103 +42,48 @@ function buildNotifyPayload(memberId, type, badgeURL) {
 }
 
 // ==========================================
-// 1. PUBLIC DASHBOARD PAYLOAD GENERATOR & SYNC
+// 1. PUBLIC DASHBOARD PAYLOAD GENERATOR & SILENT SYNC
 // ==========================================
 async function generateServerStatsPayload(guild, config) {
+    try { await guild.members.fetch(); } catch (e) {}
+
+    // Synchronize roles silently just in case the bot was offline when someone changed their tag
     let currentDetectedAdopters = new Set();
     const previousAdopters = new Set(config.tagAdopters || []);
+    let dbNeedsUpdate = false;
 
-    try {
-        await guild.members.fetch();
-        
-        for (const [memberId, member] of guild.members.cache) {
-            if (member.user.bot) continue;
+    for (const [memberId, member] of guild.members.cache) {
+        if (member.user.bot) continue;
+        const hasTag = member.user.primaryGuild && member.user.primaryGuild.identityEnabled && member.user.primaryGuild.identityGuildId === guild.id;
+        if (hasTag) currentDetectedAdopters.add(memberId);
+    }
 
-            const user = member.user;
-            const hasTag = user.primaryGuild && user.primaryGuild.identityEnabled && user.primaryGuild.identityGuildId === guild.id;
-            
-            if (hasTag) currentDetectedAdopters.add(memberId);
-        }
-
-        let globalBadgeURL = null;
+    if (currentDetectedAdopters.size === 0 && previousAdopters.size > 0) {
+        currentDetectedAdopters = previousAdopters; // Glitch Protection
+    } else {
         for (const memberId of currentDetectedAdopters) {
-            const member = guild.members.cache.get(memberId);
-            if (member && member.user.primaryGuild && member.user.primaryGuild.badge) {
-                globalBadgeURL = `https://cdn.discordapp.com/guild-tag-badges/${member.user.primaryGuild.identityGuildId}/${member.user.primaryGuild.badge}.png?size=128`;
-                break; 
-            }
-        }
-        if (!globalBadgeURL) {
-            globalBadgeURL = guild.iconURL({ extension: 'png', size: 128 }) || "https://cdn.discordapp.com/embed/avatars/0.png";
-        }
-
-        let dbNeedsUpdate = false;
-        
-        if (currentDetectedAdopters.size === 0 && previousAdopters.size > 0) {
-            currentDetectedAdopters = previousAdopters; 
-        } else {
-            const isInitialMassSetup = (config.tagAdopters.length === 0 && currentDetectedAdopters.size > 1);
-
-            // 1. Process NEW Adopters
-            for (const memberId of currentDetectedAdopters) {
+            if (!previousAdopters.has(memberId)) {
+                dbNeedsUpdate = true;
                 const member = guild.members.cache.get(memberId);
-                if (!member) continue;
-                
-                if (!previousAdopters.has(memberId)) {
-                    dbNeedsUpdate = true;
-                    
-                    if (!isInitialMassSetup && config.tagEnabled && config.tagNotifyChannelId && config.tagNotifyAdopt !== false) {
-                        const notifyChannel = guild.channels.cache.get(config.tagNotifyChannelId) || await guild.channels.fetch(config.tagNotifyChannelId).catch(() => null);
-                        if (notifyChannel) {
-                            setTimeout(() => {
-                                notifyChannel.send({ 
-                                    components: buildNotifyPayload(memberId, 'adopt', globalBadgeURL), 
-                                    flags: [MessageFlags.IsComponentsV2],
-                                    allowedMentions: { parse: [] } 
-                                }).catch((err) => console.error("[ServerStats] Adopt Notify Send Error:", err)); 
-                            }, 4000);
-                        }
-                    }
-                    
-                    if (config.tagEnabled && config.tagRoleId && !member.roles.cache.has(config.tagRoleId)) {
-                        await member.roles.add(config.tagRoleId).catch(() => {});
-                    }
-                }
-            }
-            
-            // 2. Process REMOVED Adopters
-            for (const memberId of previousAdopters) {
-                if (!currentDetectedAdopters.has(memberId)) {
-                    dbNeedsUpdate = true;
-                    const member = guild.members.cache.get(memberId);
-                    
-                    if (config.tagEnabled && config.tagNotifyChannelId && config.tagNotifyRemove === true) {
-                        const notifyChannel = guild.channels.cache.get(config.tagNotifyChannelId) || await guild.channels.fetch(config.tagNotifyChannelId).catch(() => null);
-                        if (notifyChannel) {
-                            setTimeout(() => {
-                                notifyChannel.send({ 
-                                    components: buildNotifyPayload(memberId, 'remove', globalBadgeURL), 
-                                    flags: [MessageFlags.IsComponentsV2],
-                                    allowedMentions: { parse: [] } 
-                                }).catch((err) => console.error("[ServerStats] Remove Notify Send Error:", err)); 
-                            }, 4000);
-                        }
-                    }
-
-                    if (member && config.tagEnabled && config.tagRoleId && member.roles.cache.has(config.tagRoleId)) {
-                        await member.roles.remove(config.tagRoleId).catch(() => {});
-                    }
+                if (member && config.tagEnabled && config.tagRoleId && !member.roles.cache.has(config.tagRoleId)) {
+                    await member.roles.add(config.tagRoleId).catch(() => {});
                 }
             }
         }
-
-        if (dbNeedsUpdate) {
-            config.tagAdopters = Array.from(currentDetectedAdopters);
-            await config.save().catch(() => {});
+        for (const memberId of previousAdopters) {
+            if (!currentDetectedAdopters.has(memberId)) {
+                dbNeedsUpdate = true;
+                const member = guild.members.cache.get(memberId);
+                if (member && config.tagEnabled && config.tagRoleId && member.roles.cache.has(config.tagRoleId)) {
+                    await member.roles.remove(config.tagRoleId).catch(() => {});
+                }
+            }
         }
+    }
 
-    } catch (e) {
-        console.error(`[ServerStats] Failed to fetch members for ${guild.name}:`, e.message);
+    if (dbNeedsUpdate) {
+        config.tagAdopters = Array.from(currentDetectedAdopters);
+        await config.save().catch(() => {});
     }
 
     const tagAdoptersCount = currentDetectedAdopters.size;
@@ -338,5 +283,6 @@ module.exports = {
     updateServerStatsPanels, 
     buildHomeMenu, 
     buildStatsMenu, 
-    buildTagStatsMenu 
+    buildTagStatsMenu, 
+    buildNotifyPayload 
 };

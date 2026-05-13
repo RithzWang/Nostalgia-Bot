@@ -89,7 +89,7 @@ module.exports = {
                                         flags: [MessageFlags.IsComponentsV2],
                                         allowedMentions: { parse: [] } 
                                     }).catch(() => {});
-                                }, 4000);
+                                }, 3000);
                             }
                         }
 

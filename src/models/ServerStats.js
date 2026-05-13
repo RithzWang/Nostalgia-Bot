@@ -9,7 +9,9 @@ const serverStatsSchema = new mongoose.Schema({
     tagText: String,
     tagRoleId: String,
     tagNotifyChannelId: String,
-    tagAdopters: { type: [String], default: [] } // Permanent Qabilatan-style memory
+    tagAdopters: { type: [String], default: [] },
+    tagNotifyAdopt: { type: Boolean, default: true },   // ✅ Added Adopt Toggle
+    tagNotifyRemove: { type: Boolean, default: false }  // ✅ Added Remove Toggle
 });
 
 module.exports = mongoose.model('ServerStatsConfig', serverStatsSchema);

@@ -140,6 +140,18 @@ module.exports = {
                     return interaction.showModal(modal);
                 }
 
+                // --- TOGGLE NOTIFICATIONS ---
+                if (choice === 'toggle_adopt') {
+                    config.tagNotifyAdopt = config.tagNotifyAdopt === false ? true : false;
+                    await config.save();
+                    return interaction.update({ components: buildTagStatsMenu(config) });
+                }
+                if (choice === 'toggle_remove') {
+                    config.tagNotifyRemove = config.tagNotifyRemove === true ? false : true;
+                    await config.save();
+                    return interaction.update({ components: buildTagStatsMenu(config) });
+                }
+
                 // --- REMOVE TAG ACTIONS ---
                 if (choice === 'rm_tag' || choice === 'rm_role' || choice === 'rm_notify') {
                     if (choice === 'rm_tag') {

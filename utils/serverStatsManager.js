@@ -23,13 +23,13 @@ function buildNotifyPayload(memberId, type, badgeURL) {
     const unix = Math.floor(Date.now() / 1000);
     const title = type === 'adopt' ? "## Tag Adopted" : "## Tag Removed";
     const desc = type === 'adopt' ? `<@${memberId}> starts adopting the tag!` : `<@${memberId}> stopped adopting the tag! 😭`;
-    const colour = type === 'adopt' ? 0x3498DB : 0xED4245;
+    const colour = type === 'adopt' ? 3447003 : 15548997; // Using your exact decimal color codes
 
     return [
         new ContainerBuilder()
+            .setAccentColor(colour)
             .addSectionComponents(
                 new SectionBuilder()
-                    .setAccentColor(colour)
                     .setThumbnailAccessory(new ThumbnailBuilder().setURL(badgeURL))
                     .addTextDisplayComponents(
                         new TextDisplayBuilder().setContent(title),
@@ -306,4 +306,17 @@ function buildTagStatsMenu(config) {
     selectMenu.addOptions(
         new StringSelectMenuOptionBuilder().setLabel(config.tagText ? "Edit Tag Text" : "Set Tag Text").setValue("set_tag"),
         new StringSelectMenuOptionBuilder().setLabel(config.tagNotifyChannelId ? "Edit Notify Channel" : "Set Notify Channel").setValue("set_notify"),
-        new StringSelectMenuOptionBuilder().set
+        new StringSelectMenuOptionBuilder().setLabel(config.tagRoleId ? "Edit Adopter Role" : "Set Adopter Role").setValue("set_role")
+    );
+
+    if (config.tagNotifyChannelId) {
+        selectMenu.addOptions(
+            new StringSelectMenuOptionBuilder().setLabel(adoptOn ? "Turn OFF Adopt Notify" : "Turn ON Adopt Notify").setValue("toggle_adopt"),
+            new StringSelectMenuOptionBuilder().setLabel(removeOn ? "Turn OFF Remove Notify" : "Turn ON Remove Notify").setValue("toggle_remove")
+        );
+    }
+
+    if (config.tagText) selectMenu.addOptions(new StringSelectMenuOptionBuilder().setLabel("Remove Tag Text").setValue("rm_tag"));
+    if (config.tagNotifyChannelId) selectMenu.addOptions(new StringSelectMenuOptionBuilder().setLabel("Remove Notify Channel").setValue("rm_notify"));
+    if (config.tagRoleId) selectMenu.addOptions(new StringSelectMenuOptionBuilder().setLabel("Remove Adopter Role").setValue("rm_role"));
+    selectMenu.addOptions

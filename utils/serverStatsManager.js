@@ -17,7 +17,7 @@ const {
 const ServerStatsConfig = require('../src/models/ServerStats');
 
 // ==========================================
-// NOTIFICATION UI BUILDER (Used by events/userUpdate.js)
+// NOTIFICATION UI BUILDER
 // ==========================================
 function buildNotifyPayload(memberId, type, badgeURL) {
     const unix = Math.floor(Date.now() / 1000);
@@ -41,7 +41,7 @@ function buildNotifyPayload(memberId, type, badgeURL) {
 }
 
 // ==========================================
-// 1. PUBLIC DASHBOARD PAYLOAD GENERATOR & SILENT SYNC
+// 1. PUBLIC DASHBOARD PAYLOAD GENERATOR & SYNC
 // ==========================================
 async function generateServerStatsPayload(guild, config) {
     let currentDetectedAdopters = new Set();
@@ -50,34 +50,90 @@ async function generateServerStatsPayload(guild, config) {
     try {
         await guild.members.fetch();
         
+        // Scan for Discord's built-in Identity Tag
         for (const [memberId, member] of guild.members.cache) {
             if (member.user.bot) continue;
-            const hasTag = member.user.primaryGuild && member.user.primaryGuild.identityEnabled && member.user.primaryGuild.identityGuildId === guild.id;
+
+            const user = member.user;
+            const hasTag = user.primaryGuild && user.primaryGuild.identityEnabled && user.primaryGuild.identityGuildId === guild.id;
+            
             if (hasTag) currentDetectedAdopters.add(memberId);
+        }
+
+        // Extract the official Tag Badge Image
+        let globalBadgeURL = null;
+        for (const memberId of currentDetectedAdopters) {
+            const member = guild.members.cache.get(memberId);
+            if (member && member.user.primaryGuild && member.user.primaryGuild.badge) {
+                globalBadgeURL = `https://cdn.discordapp.com/guild-tag-badges/${member.user.primaryGuild.identityGuildId}/${member.user.primaryGuild.badge}.png?size=128`;
+                break; 
+            }
+        }
+        if (!globalBadgeURL) {
+            globalBadgeURL = guild.iconURL({ extension: 'png', size: 128 }) || "https://cdn.discordapp.com/embed/avatars/0.png";
         }
 
         let dbNeedsUpdate = false;
         
-        // Glitch protection: If API drops to 0 randomly, ignore it
+        // Glitch Protection: If API returns 0 but DB has people, ignore the glitch
         if (currentDetectedAdopters.size === 0 && previousAdopters.size > 0) {
             currentDetectedAdopters = previousAdopters; 
         } else {
-            // SILENT FALLBACK SYNC: Fixes roles and DB if the bot was offline, NO NOTIFICATIONS!
+            // Anti-Spam Guard
+            const isInitialMassSetup = (config.tagAdopters.length === 0 && currentDetectedAdopters.size > 1);
+
+            // 1. Process NEW Adopters
             for (const memberId of currentDetectedAdopters) {
                 const member = guild.members.cache.get(memberId);
                 if (!member) continue;
+                
                 if (!previousAdopters.has(memberId)) {
                     dbNeedsUpdate = true;
+                    
+                    // NOTIFICATION: Tag Adopted
+                    if (!isInitialMassSetup && config.tagEnabled && config.tagNotifyChannelId && config.tagNotifyAdopt !== false) {
+                        const notifyChannel = guild.channels.cache.get(config.tagNotifyChannelId) || await guild.channels.fetch(config.tagNotifyChannelId).catch(() => null);
+                        if (notifyChannel) {
+                            // Delay by 4 seconds and disable the ping
+                            setTimeout(() => {
+                                notifyChannel.send({ 
+                                    components: buildNotifyPayload(memberId, 'adopt', globalBadgeURL), 
+                                    flags: [MessageFlags.IsComponentsV2],
+                                    allowedMentions: { parse: [] } // <-- THIS PREVENTS THE PING
+                                }).catch(() => {});
+                            }, 4000);
+                        }
+                    }
+                    
+                    // ADD ROLE
                     if (config.tagEnabled && config.tagRoleId && !member.roles.cache.has(config.tagRoleId)) {
                         await member.roles.add(config.tagRoleId).catch(() => {});
                     }
                 }
             }
             
+            // 2. Process REMOVED Adopters
             for (const memberId of previousAdopters) {
                 if (!currentDetectedAdopters.has(memberId)) {
                     dbNeedsUpdate = true;
                     const member = guild.members.cache.get(memberId);
+                    
+                    // NOTIFICATION: Tag Removed
+                    if (config.tagEnabled && config.tagNotifyChannelId && config.tagNotifyRemove === true) {
+                        const notifyChannel = guild.channels.cache.get(config.tagNotifyChannelId) || await guild.channels.fetch(config.tagNotifyChannelId).catch(() => null);
+                        if (notifyChannel) {
+                            // Delay by 4 seconds and disable the ping
+                            setTimeout(() => {
+                                notifyChannel.send({ 
+                                    components: buildNotifyPayload(memberId, 'remove', globalBadgeURL), 
+                                    flags: [MessageFlags.IsComponentsV2],
+                                    allowedMentions: { parse: [] } // <-- THIS PREVENTS THE PING
+                                }).catch(() => {});
+                            }, 4000);
+                        }
+                    }
+
+                    // REMOVE ROLE
                     if (member && config.tagEnabled && config.tagRoleId && member.roles.cache.has(config.tagRoleId)) {
                         await member.roles.remove(config.tagRoleId).catch(() => {});
                     }
@@ -85,6 +141,7 @@ async function generateServerStatsPayload(guild, config) {
             }
         }
 
+        // Save new state to database
         if (dbNeedsUpdate) {
             config.tagAdopters = Array.from(currentDetectedAdopters);
             await config.save().catch(() => {});
@@ -292,5 +349,5 @@ module.exports = {
     buildHomeMenu, 
     buildStatsMenu, 
     buildTagStatsMenu, 
-    buildNotifyPayload // ✅ Make sure this stays exported so userUpdate.js can use it!
+    buildNotifyPayload 
 };

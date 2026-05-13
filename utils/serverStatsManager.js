@@ -34,7 +34,6 @@ function buildNotifyPayload(memberId, type, badgeURL) {
                         new TextDisplayBuilder().setContent(desc)
                     )
             )
-            .addTextDisplayComponents(new TextDisplayBuilder().setContent("")) 
             .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
             .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# 🕒 <t:${unix}:f>`))
     ];
@@ -50,7 +49,6 @@ async function generateServerStatsPayload(guild, config) {
     try {
         await guild.members.fetch();
         
-        // Scan for Discord's built-in Identity Tag
         for (const [memberId, member] of guild.members.cache) {
             if (member.user.bot) continue;
 
@@ -60,7 +58,6 @@ async function generateServerStatsPayload(guild, config) {
             if (hasTag) currentDetectedAdopters.add(memberId);
         }
 
-        // Extract the official Tag Badge Image
         let globalBadgeURL = null;
         for (const memberId of currentDetectedAdopters) {
             const member = guild.members.cache.get(memberId);
@@ -75,11 +72,9 @@ async function generateServerStatsPayload(guild, config) {
 
         let dbNeedsUpdate = false;
         
-        // Glitch Protection: If API returns 0 but DB has people, ignore the glitch
         if (currentDetectedAdopters.size === 0 && previousAdopters.size > 0) {
             currentDetectedAdopters = previousAdopters; 
         } else {
-            // Anti-Spam Guard
             const isInitialMassSetup = (config.tagAdopters.length === 0 && currentDetectedAdopters.size > 1);
 
             // 1. Process NEW Adopters
@@ -90,22 +85,19 @@ async function generateServerStatsPayload(guild, config) {
                 if (!previousAdopters.has(memberId)) {
                     dbNeedsUpdate = true;
                     
-                    // NOTIFICATION: Tag Adopted
                     if (!isInitialMassSetup && config.tagEnabled && config.tagNotifyChannelId && config.tagNotifyAdopt !== false) {
                         const notifyChannel = guild.channels.cache.get(config.tagNotifyChannelId) || await guild.channels.fetch(config.tagNotifyChannelId).catch(() => null);
                         if (notifyChannel) {
-                            // Delay by 4 seconds and disable the ping
                             setTimeout(() => {
                                 notifyChannel.send({ 
                                     components: buildNotifyPayload(memberId, 'adopt', globalBadgeURL), 
                                     flags: [MessageFlags.IsComponentsV2],
-                                    allowedMentions: { parse: [] } // <-- THIS PREVENTS THE PING
-                                }).catch(() => {});
+                                    allowedMentions: { parse: [] } 
+                                }).catch((err) => console.error("[ServerStats] Adopt Notify Send Error:", err)); 
                             }, 4000);
                         }
                     }
                     
-                    // ADD ROLE
                     if (config.tagEnabled && config.tagRoleId && !member.roles.cache.has(config.tagRoleId)) {
                         await member.roles.add(config.tagRoleId).catch(() => {});
                     }
@@ -118,22 +110,19 @@ async function generateServerStatsPayload(guild, config) {
                     dbNeedsUpdate = true;
                     const member = guild.members.cache.get(memberId);
                     
-                    // NOTIFICATION: Tag Removed
                     if (config.tagEnabled && config.tagNotifyChannelId && config.tagNotifyRemove === true) {
                         const notifyChannel = guild.channels.cache.get(config.tagNotifyChannelId) || await guild.channels.fetch(config.tagNotifyChannelId).catch(() => null);
                         if (notifyChannel) {
-                            // Delay by 4 seconds and disable the ping
                             setTimeout(() => {
                                 notifyChannel.send({ 
                                     components: buildNotifyPayload(memberId, 'remove', globalBadgeURL), 
                                     flags: [MessageFlags.IsComponentsV2],
-                                    allowedMentions: { parse: [] } // <-- THIS PREVENTS THE PING
-                                }).catch(() => {});
+                                    allowedMentions: { parse: [] } 
+                                }).catch((err) => console.error("[ServerStats] Remove Notify Send Error:", err)); 
                             }, 4000);
                         }
                     }
 
-                    // REMOVE ROLE
                     if (member && config.tagEnabled && config.tagRoleId && member.roles.cache.has(config.tagRoleId)) {
                         await member.roles.remove(config.tagRoleId).catch(() => {});
                     }
@@ -141,7 +130,6 @@ async function generateServerStatsPayload(guild, config) {
             }
         }
 
-        // Save new state to database
         if (dbNeedsUpdate) {
             config.tagAdopters = Array.from(currentDetectedAdopters);
             await config.save().catch(() => {});
@@ -316,38 +304,4 @@ function buildTagStatsMenu(config) {
     selectMenu.addOptions(
         new StringSelectMenuOptionBuilder().setLabel(config.tagText ? "Edit Tag Text" : "Set Tag Text").setValue("set_tag"),
         new StringSelectMenuOptionBuilder().setLabel(config.tagNotifyChannelId ? "Edit Notify Channel" : "Set Notify Channel").setValue("set_notify"),
-        new StringSelectMenuOptionBuilder().setLabel(config.tagRoleId ? "Edit Adopter Role" : "Set Adopter Role").setValue("set_role")
-    );
-
-    if (config.tagNotifyChannelId) {
-        selectMenu.addOptions(
-            new StringSelectMenuOptionBuilder().setLabel(adoptOn ? "Turn OFF Adopt Notify" : "Turn ON Adopt Notify").setValue("toggle_adopt"),
-            new StringSelectMenuOptionBuilder().setLabel(removeOn ? "Turn OFF Remove Notify" : "Turn ON Remove Notify").setValue("toggle_remove")
-        );
-    }
-
-    if (config.tagText) selectMenu.addOptions(new StringSelectMenuOptionBuilder().setLabel("Remove Tag Text").setValue("rm_tag"));
-    if (config.tagNotifyChannelId) selectMenu.addOptions(new StringSelectMenuOptionBuilder().setLabel("Remove Notify Channel").setValue("rm_notify"));
-    if (config.tagRoleId) selectMenu.addOptions(new StringSelectMenuOptionBuilder().setLabel("Remove Adopter Role").setValue("rm_role"));
-    selectMenu.addOptions(new StringSelectMenuOptionBuilder().setLabel("Go Back Home").setValue("home"));
-
-    return [
-        new ContainerBuilder()
-            .addTextDisplayComponents(new TextDisplayBuilder().setContent("## Server Tag Stats"))
-            .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
-            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**Server Tag:** ${tagStr}\n**Tag Adopter Role:** ${roleStr}\n**Notify Channel:** ${notifyStr}`))
-            .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
-            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**Notify on Adopt:** ${adoptIcon} | **Notify on Remove:** ${removeIcon}`))
-            .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false))
-            .addActionRowComponents(new ActionRowBuilder().addComponents(selectMenu))
-    ];
-}
-
-module.exports = { 
-    generateServerStatsPayload, 
-    updateServerStatsPanels, 
-    buildHomeMenu, 
-    buildStatsMenu, 
-    buildTagStatsMenu, 
-    buildNotifyPayload 
-};
+        new StringSelectMenuOptionBuilder().set

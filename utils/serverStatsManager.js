@@ -23,11 +23,13 @@ function buildNotifyPayload(memberId, type, badgeURL) {
     const unix = Math.floor(Date.now() / 1000);
     const title = type === 'adopt' ? "## Tag Adopted" : "## Tag Removed";
     const desc = type === 'adopt' ? `<@${memberId}> starts adopting the tag!` : `<@${memberId}> stopped adopting the tag! 😭`;
+    const colour = type === 'adopt' ? "#3498DB" : "#ED4245";
 
     return [
         new ContainerBuilder()
             .addSectionComponents(
                 new SectionBuilder()
+                    .setAccentColor(colour)
                     .setThumbnailAccessory(new ThumbnailBuilder().setURL(badgeURL))
                     .addTextDisplayComponents(
                         new TextDisplayBuilder().setContent(title),

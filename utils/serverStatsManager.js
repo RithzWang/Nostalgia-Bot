@@ -22,7 +22,7 @@ const ServerStatsConfig = require('../src/models/ServerStats');
 function buildNotifyPayload(memberId, type, badgeURL) {
     const unix = Math.floor(Date.now() / 1000);
     const title = type === 'adopt' ? "## Tag Adopted" : "## Tag Removed";
-    const desc = type === 'adopt' ? `<@${memberId}> starts adopting the tag!` : `<@${memberId}> stopped adopting the tag! 😭`;
+    const desc = type === 'adopt' ? `<@${memberId}> starts adopting the tag!` : `<@${memberId}> stopped adopting the tag!`;
     const colour = type === 'adopt' ? 3447003 : 15548997; 
 
     return [
@@ -37,7 +37,7 @@ function buildNotifyPayload(memberId, type, badgeURL) {
                     )
             )
             .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
-            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# 🕒 <t:${unix}:f>`))
+            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# <t:${unix}:f>`))
     ];
 }
 

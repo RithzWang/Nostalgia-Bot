@@ -2,8 +2,6 @@ const { REST, Routes, ActivityType, Collection } = require('discord.js');
 const moment = require('moment-timezone');
 const { serverID } = require('../config.json'); 
 
-// ✅ CHANGED: Updated path to networkManager and imported enforceNetworkRules
-const { updateAllPanels, enforceNetworkRules } = require('../utils/networkManager'); 
 const { updateServerStatsPanels } = require('../utils/serverStatsManager'); 
 
 const fs = require('fs');
@@ -45,7 +43,7 @@ module.exports = {
             } catch (e) { console.log('⚠️ Could not cache invites'); }
         }
 
-        // 4. TIMERS (Status + Network Stats + Server Stats)
+        // 4. TIMERS (Status + Server Stats)
         setInterval(() => {
             const now = moment().tz('Asia/Bangkok');
             const formattedTime = now.format('HH:mm');
@@ -67,14 +65,8 @@ module.exports = {
 
             // This runs roughly at the start of every new minute (when seconds are 0, 1, 2, 3, or 4)
             if (now.seconds() < 5) {
-                // ✅ Updates Network Main Dashboard
-                updateAllPanels(client, false).catch(err => console.error(err));
-                
                 // ✅ Updates the local Server Stats Dashboard
                 updateServerStatsPanels(client).catch(err => console.error(err));
-                
-                // ✅ NEW: Validates network positions and syncs cross-server roles!
-                enforceNetworkRules(client).catch(err => console.error(err));
             }
 
         }, 5000); 

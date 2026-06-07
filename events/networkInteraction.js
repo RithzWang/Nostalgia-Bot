@@ -9,7 +9,7 @@ const {
 } = require('discord.js');
 
 // ✅ Updated to match your new Network branding (Make sure your model file is renamed too!)
-const { ServerList, GreetConfig } = require('../src/models/Network'); 
+const { ServerList, GreetConfig } = require('../src/models/NetworkConfig'); 
 const { updateAllPanels } = require('../utils/networkManager'); 
 
 module.exports = {

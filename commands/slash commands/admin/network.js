@@ -54,6 +54,11 @@ module.exports = {
         // 1. CREATE HUB
         // ==========================================
         if (sub === 'create-hub') {
+            // Guard: Prevent a satellite from becoming a hub without unlinking first
+            if (config.mainServerId && !config.isMainServer) {
+                return interaction.reply({ content: "❌ This server is currently linked as a satellite to another network! You must run `/network unlink` first.", flags: [MessageFlags.Ephemeral] });
+            }
+
             config.isMainServer = true;
             config.mainServerId = guildId; 
             await config.save();
@@ -72,6 +77,16 @@ module.exports = {
 
             if (hubId === guildId) {
                 return interaction.reply({ content: "❌ You cannot link a server to itself. Use `/network create-hub` instead.", flags: [MessageFlags.Ephemeral] });
+            }
+
+            // ✅ GUARD: Prevent linking if already a Hub
+            if (config.isMainServer) {
+                return interaction.reply({ content: "❌ This server is currently registered as a Main Hub! You must run `/network unlink` first before it can become a satellite.", flags: [MessageFlags.Ephemeral] });
+            }
+
+            // ✅ GUARD: Prevent linking if already linked to another Hub
+            if (config.mainServerId) {
+                return interaction.reply({ content: `❌ This server is already linked to a network. You must run \`/network unlink\` first before joining a new one.`, flags: [MessageFlags.Ephemeral] });
             }
 
             const targetHub = client.guilds.cache.get(hubId);

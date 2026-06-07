@@ -1,5 +1,5 @@
 const { Events } = require('discord.js');
-const { GreetConfig, ServerList } = require('../src/models/Network'); // Ensure this matches your renamed file
+const { GreetConfig, ServerList } = require('../src/models/NetworkConfig'); // Ensure this matches your renamed file
 const NetworkConfig = require('../src/models/NetworkConfig'); 
 
 module.exports = {

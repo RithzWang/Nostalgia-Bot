@@ -57,16 +57,29 @@ module.exports = {
         .addSubcommand(sub => sub.setName('default-ta-role')
             .setDescription('Set the default Tag Adopters role.')
             .addRoleOption(opt => opt.setName('role').setDescription('Role').setRequired(true))
-        )
-        .addSubcommand(sub => sub.setName('greet-message')
-            .setDescription('Set a greet channel for a server.')
-            .addStringOption(opt => opt.setName('server_id').setDescription('Server ID').setRequired(true))
-            .addChannelOption(opt => opt.setName('channel').setDescription('Greet Channel').setRequired(true))
         ),
 
     async execute(interaction) {
         const sub = interaction.options.getSubcommand();
+        const hub = await GTSHub.findOne();
 
+        // ====================================================
+        // 🛡️ GLOBAL SECURITY GUARD
+        // ====================================================
+        // If the Hub is already setup, block command usage outside of the Main Server.
+        // Exception: /gts tags-stats is allowed in satellites to deploy local dashboards.
+        if (hub && interaction.guildId !== hub.mainServerId) {
+            if (sub !== 'tags-stats') {
+                return interaction.reply({ 
+                    content: "❌ **Security Block:** For network integrity, GTS configuration commands can only be executed inside the **Main Hub Server**.", 
+                    flags: [MessageFlags.Ephemeral] 
+                });
+            }
+        }
+
+        // ====================================================
+        // 1. SETUP MAIN SERVER
+        // ====================================================
         if (sub === 'setup') {
             const mainId = interaction.options.getString('main_server_id');
             const invite = interaction.options.getString('invite_link');
@@ -94,12 +107,15 @@ module.exports = {
             return interaction.showModal(modal);
         }
 
+        // ====================================================
+        // 2. ADD SATELLITE SERVER
+        // ====================================================
         if (sub === 'addserver') {
             const srvId = interaction.options.getString('server_id');
             const invite = interaction.options.getString('invite_link');
 
-            const existingHub = await GTSHub.findOne({ mainServerId: srvId });
-            if (existingHub) return interaction.reply({ content: "❌ **Security Block:** Already registered as a Main Server!", flags: [MessageFlags.Ephemeral] });
+            const existingHubCheck = await GTSHub.findOne({ mainServerId: srvId });
+            if (existingHubCheck) return interaction.reply({ content: "❌ **Security Block:** Already registered as a Main Server!", flags: [MessageFlags.Ephemeral] });
 
             const existingSatellite = await GTSServer.findOne({ serverId: srvId });
             if (existingSatellite) return interaction.reply({ content: "❌ **Security Block:** Already grouped in the network!", flags: [MessageFlags.Ephemeral] });
@@ -118,6 +134,9 @@ module.exports = {
             return interaction.showModal(modal);
         }
 
+        // ====================================================
+        // 3. SATELLITE TAGS STATS DASHBOARD
+        // ====================================================
         if (sub === 'tags-stats') {
             const currentGuildId = interaction.guildId;
             const msgId = interaction.options.getString('message_id');
@@ -136,6 +155,9 @@ module.exports = {
             return updateGTSDashboard(interaction.client);
         }
 
+        // ====================================================
+        // 4. VIEW SERVER 
+        // ====================================================
         if (sub === 'view-server') {
             const srvId = interaction.options.getString('server_id');
             const srvData = await GTSServer.findOne({ serverId: srvId });
@@ -143,8 +165,6 @@ module.exports = {
 
             const guild = interaction.client.guilds.cache.get(srvId);
             const srvName = guild ? guild.name : "Unknown Server";
-
-            const hub = await GTSHub.findOne();
             const mainGuildId = hub ? hub.mainServerId : null;
 
             const mainRoleStr = formatRole(interaction.client, interaction.guildId, mainGuildId, srvData.mainTagRole);
@@ -197,10 +217,9 @@ module.exports = {
         }
 
         // ====================================================
-        // 5. DASHBOARD GLOBALS (Cleaned from Gatekeeper toggles)
+        // 5. DASHBOARD GLOBALS 
         // ====================================================
         if (sub === 'dashboard') {
-            const hub = await GTSHub.findOne();
             if (!hub) return interaction.reply({ content: "Hub not setup. Run `/gts setup` first.", flags: [MessageFlags.Ephemeral] });
             const guild = interaction.client.guilds.cache.get(hub.mainServerId);
 

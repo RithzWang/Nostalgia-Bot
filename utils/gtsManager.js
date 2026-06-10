@@ -5,7 +5,6 @@ const {
 } = require('discord.js');
 const { GTSHub, GTSServer } = require('../src/models/GTS');
 
-// Helper to determine the bottom status line based on your exact layout rules
 function getStatusLine(guild, tagCount) {
     if (!guild) return `<:no_tag:1468470099026510001> **Not Available**`;
     
@@ -29,131 +28,174 @@ function getStatusLine(guild, tagCount) {
 
 async function updateGTSDashboard(client) {
     const hub = await GTSHub.findOne();
-    if (!hub || !hub.dashboardChannelId) return;
+    if (!hub) return;
 
     const mainGuild = client.guilds.cache.get(hub.mainServerId);
     if (!mainGuild) return;
 
-    const channel = mainGuild.channels.cache.get(hub.dashboardChannelId) || await client.channels.fetch(hub.dashboardChannelId).catch(() => null);
-    if (!channel) return;
-
     const allServers = await GTSServer.find();
-    
-    // Globals
-    let globalTagAdopters = 0;
     const mainHumanCount = mainGuild.members.cache.filter(m => !m.user.bot).size;
 
-    const containers = [];
+    // ==========================================
+    // 1. DATA CALCULATION PHASE
+    // ==========================================
+    let globalTagAdopters = 0;
 
-    // ==========================================
-    // Container 1: Header & Main Server
-    // ==========================================
-    const mainData = allServers.find(s => s.serverId === hub.mainServerId) || {};
+    // Fetch and sync main hub local counts
     let mainLocalTags = 0;
-    
     for (const [id, m] of mainGuild.members.cache) {
         if (!m.user.bot && m.user.primaryGuild && m.user.primaryGuild.identityGuildId === hub.mainServerId) mainLocalTags++;
     }
     globalTagAdopters += mainLocalTags;
 
+    const mainData = allServers.find(s => s.serverId === hub.mainServerId) || {};
     const mainStatus = getStatusLine(mainGuild, mainLocalTags);
     const mainInviteUrl = mainData.inviteLink && mainData.inviteLink.startsWith('http') ? mainData.inviteLink : "https://discord.com";
 
-    const headerContainer = new ContainerBuilder()
-        .addTextDisplayComponents(new TextDisplayBuilder().setContent("# » Our Server Tags Statistics"))
-        .addActionRowComponents(
-            new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setStyle(ButtonStyle.Secondary)
-                .setLabel(`Total Tags Adopters: {TOTAL_TAGS}/${mainHumanCount}`) // Placeholder resolved below
-                .setCustomId("stats_adopt_btn")
-                .setDisabled(true)
-            )
-        )
-        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
-        .addSectionComponents(
-            new SectionBuilder()
-                .setButtonAccessory(new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel("Server Link").setURL(mainInviteUrl))
-                .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent(`## ${mainGuild.name}`),
-                    new TextDisplayBuilder().setContent(
-                        `<:id:1468487725912166596> **ID:** \`${mainGuild.id}\`\n` +
-                        `<:badge:1468618581427097724> **Server Tag:** ${mainData.tagText || "None"}\n` +
-                        `<:members:1468470163081924608> **Members:** ${mainHumanCount}\n` +
-                        `${mainStatus}`
-                    )
-                )
-        );
-    containers.push(headerContainer);
-
-    // ==========================================
-    // Container 2: Satellite Servers
-    // ==========================================
+    // Gather statistics arrays across all satellite clusters
     const satellites = allServers.filter(s => s.serverId !== hub.mainServerId);
-    
-    if (satellites.length > 0) {
-        const satContainer = new ContainerBuilder();
+    const satellitePayloadData = [];
+
+    satellites.forEach(satData => {
+        const guild = client.guilds.cache.get(satData.serverId);
+        if (!guild) return;
+
+        const humanCount = guild.members.cache.filter(m => !m.user.bot).size;
         
-        satellites.forEach((satData, index) => {
-            const guild = client.guilds.cache.get(satData.serverId);
-            if (!guild) return;
+        let satLocalTags = 0;
+        for (const [id, m] of guild.members.cache) {
+            if (!m.user.bot && m.user.primaryGuild && m.user.primaryGuild.identityGuildId === satData.serverId) satLocalTags++;
+        }
+        globalTagAdopters += satLocalTags;
 
-            const humanCount = guild.members.cache.filter(m => !m.user.bot).size;
-            
-            let satLocalTags = 0;
-            for (const [id, m] of guild.members.cache) {
-                if (!m.user.bot && m.user.primaryGuild && m.user.primaryGuild.identityGuildId === satData.serverId) satLocalTags++;
-            }
-            globalTagAdopters += satLocalTags;
+        const satStatus = getStatusLine(guild, satLocalTags);
+        const satInviteUrl = satData.inviteLink && satData.inviteLink.startsWith('http') ? satData.inviteLink : "https://discord.com";
 
-            const satStatus = getStatusLine(guild, satLocalTags);
-            const satInviteUrl = satData.inviteLink && satData.inviteLink.startsWith('http') ? satData.inviteLink : "https://discord.com";
+        satellitePayloadData.push({
+            name: guild.name,
+            id: guild.id,
+            tagText: satData.tagText,
+            inviteUrl: satInviteUrl,
+            humanCount: humanCount,
+            statusLine: satStatus
+        });
+    });
 
-            satContainer.addSectionComponents(
+    // ==========================================
+    // 2. BLUEPRINT RENDER ENGINE
+    // ==========================================
+    const renderPayload = () => {
+        const containers = [];
+
+        // Build Container 1 (Header + Main Server)
+        const container1 = new ContainerBuilder()
+            .addTextDisplayComponents(new TextDisplayBuilder().setContent("# » Our Server Tags Statistics"))
+            .addActionRowComponents(
+                new ActionRowBuilder().addComponents(
+                    new ButtonBuilder().setStyle(ButtonStyle.Secondary)
+                    .setLabel(`Total Tags Adopters: ${globalTagAdopters}/${mainHumanCount}`)
+                    .setCustomId("stats_adopt_btn")
+                    .setDisabled(true)
+                )
+            )
+            .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
+            .addSectionComponents(
                 new SectionBuilder()
-                    .setButtonAccessory(new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel("Server Link").setURL(satInviteUrl))
+                    .setButtonAccessory(new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel("Server Link").setURL(mainInviteUrl))
                     .addTextDisplayComponents(
-                        new TextDisplayBuilder().setContent(`## ${guild.name}`),
+                        new TextDisplayBuilder().setContent(`## ${mainGuild.name}`),
                         new TextDisplayBuilder().setContent(
-                            `<:id:1468487725912166596> **ID:** \`${guild.id}\`\n` +
-                            `<:badge:1468618581427097724> **Server Tag:** ${satData.tagText || "None"}\n` +
-                            `<:members:1468470163081924608> **Members:** ${humanCount}\n` +
-                            `${satStatus}`
+                            `<:id:1468487725912166596> **ID:** \`${mainGuild.id}\`\n` +
+                            `<:badge:1468618581427097724> **Server Tag:** ${mainData.tagText || "None"}\n` +
+                            `<:members:1468470163081924608> **Members:** ${mainHumanCount}\n` +
+                            `${mainStatus}`
                         )
                     )
             );
+        containers.push(container1);
 
-            if (index < satellites.length - 1) {
-                satContainer.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false));
-            }
-        });
+        // Build Container 2 (Satellites)
+        if (satellitePayloadData.length > 0) {
+            const container2 = new ContainerBuilder();
 
-        const nextUpdateUnix = Math.floor((Date.now() + 60 * 1000) / 1000);
-        satContainer
-            .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
-            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# <a:loading:1447184742934909032> Next Update: <t:${nextUpdateUnix}:R>`));
-        
-        containers.push(satContainer);
+            satellitePayloadData.forEach((sat, index) => {
+                container2.addSectionComponents(
+                    new SectionBuilder()
+                        .setButtonAccessory(new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel("Server Link").setURL(sat.inviteUrl))
+                        .addTextDisplayComponents(
+                            new TextDisplayBuilder().setContent(`## ${sat.name}`),
+                            new TextDisplayBuilder().setContent(
+                                `<:id:1468487725912166596> **ID:** \`${sat.id}\`\n` +
+                                `<:badge:1468618581427097724> **Server Tag:** ${sat.tagText || "None"}\n` +
+                                `<:members:1468470163081924608> **Members:** ${sat.humanCount}\n` +
+                                `${sat.statusLine}`
+                            )
+                        )
+                );
+
+                if (index < satellitePayloadData.length - 1) {
+                    container2.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false));
+                }
+            });
+
+            const nextUpdateUnix = Math.floor((Date.now() + 60 * 1000) / 1000);
+            container2
+                .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
+                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# <a:loading:1447184742934909032> Next Update: <t:${nextUpdateUnix}:R>`));
+            
+            containers.push(container2);
+        }
+
+        return containers;
+    };
+
+    // ==========================================
+    // 3. BROADCAST DESPATCH
+    // ==========================================
+    const sharedPayload = renderPayload();
+
+    // Despatch A: Update Main Hub Dashboard Placement
+    if (hub.dashboardChannelId) {
+        const hubChannel = mainGuild.channels.cache.get(hub.dashboardChannelId) || await client.channels.fetch(hub.dashboardChannelId).catch(() => null);
+        if (hubChannel) {
+            try {
+                let msg = null;
+                if (hub.dashboardMessageId) msg = await hubChannel.messages.fetch(hub.dashboardMessageId).catch(() => null);
+                if (msg && msg.editable) {
+                    await msg.edit({ components: sharedPayload, flags: [MessageFlags.IsComponentsV2] });
+                } else {
+                    const newMsg = await hubChannel.send({ components: sharedPayload, flags: [MessageFlags.IsComponentsV2] });
+                    hub.dashboardMessageId = newMsg.id;
+                    await hub.save();
+                }
+            } catch (err) { console.error("Failed handling Hub Dashboard distribution:", err); }
+        }
     }
 
-    // Resolve Total Adopters
-    headerContainer.components[1].components[0].data.label = `Total Tags Adopters: ${globalTagAdopters}/${mainHumanCount}`;
+    // Despatch B: Loop and distribute to all configured Satellite Placements
+    for (const satData of allServers) {
+        if (!satData.localDashboardChannelId) continue; // Skip if satellite hasn't run /gts tags-stats
 
-    // ==========================================
-    // Send or Edit Message
-    // ==========================================
-    try {
-        let msg = null;
-        if (hub.dashboardMessageId) msg = await channel.messages.fetch(hub.dashboardMessageId).catch(() => null);
-        
-        if (msg && msg.editable) {
-            await msg.edit({ components: containers, flags: [MessageFlags.IsComponentsV2] });
-        } else {
-            const newMsg = await channel.send({ components: containers, flags: [MessageFlags.IsComponentsV2] });
-            hub.dashboardMessageId = newMsg.id;
-            await hub.save();
+        const satGuild = client.guilds.cache.get(satData.serverId);
+        if (!satGuild) continue;
+
+        const satChannel = satGuild.channels.cache.get(satData.localDashboardChannelId) || await client.channels.fetch(satData.localDashboardChannelId).catch(() => null);
+        if (!satChannel) continue;
+
+        try {
+            let msg = null;
+            if (satData.localDashboardMessageId) msg = await satChannel.messages.fetch(satData.localDashboardMessageId).catch(() => null);
+            
+            if (msg && msg.editable) {
+                await msg.edit({ components: sharedPayload, flags: [MessageFlags.IsComponentsV2] });
+            } else {
+                const newMsg = await satChannel.send({ components: sharedPayload, flags: [MessageFlags.IsComponentsV2] });
+                satData.localDashboardMessageId = newMsg.id;
+                await satData.save();
+            }
+        } catch (err) {
+            console.error(`Failed distributing cloned tags dashboard to satellite server: ${satGuild.name}`, err);
         }
-    } catch (err) {
-        console.error("Dashboard Render Error:", err);
     }
 }
 

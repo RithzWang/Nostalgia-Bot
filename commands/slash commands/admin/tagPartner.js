@@ -3,7 +3,7 @@ const {
     ContainerBuilder, SectionBuilder, ThumbnailBuilder, TextDisplayBuilder,
     AttachmentBuilder
 } = require('discord.js');
-const TagPartner = require('../../src/models/TagPartner'); // Adjust path if needed
+const TagPartner = require('../../src/models/TagPartner'); 
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -99,16 +99,24 @@ module.exports = {
 
             let tempEmoji = null;
             let emojiDisplay = "🔰"; // Fallback if emoji creation fails
+            
+            // ✅ Use the specific server to host the temporary emoji
+            const tempEmojiGuildId = '1490435762372481275';
+            const tempEmojiGuild = interaction.client.guilds.cache.get(tempEmojiGuildId);
 
-            try {
-                // 🛠️ Generate Temporary Emoji in the Server for the V2 Header
-                tempEmoji = await interaction.guild.emojis.create({ 
-                    attachment: badgeURL, 
-                    name: 'partner_temp_badge' 
-                });
-                emojiDisplay = `<:${tempEmoji.name}:${tempEmoji.id}>`;
-            } catch (err) {
-                console.error("Could not create temp emoji. Falling back to default icon.", err);
+            if (tempEmojiGuild) {
+                try {
+                    // 🛠️ Generate Temporary Emoji
+                    tempEmoji = await tempEmojiGuild.emojis.create({ 
+                        attachment: badgeURL, 
+                        name: 'TAGICON' 
+                    });
+                    emojiDisplay = `<:${tempEmoji.name}:${tempEmoji.id}>`;
+                } catch (err) {
+                    console.error("Could not create temp emoji. Falling back to default icon.", err);
+                }
+            } else {
+                console.warn("Temp emoji server not found, falling back to default emoji.");
             }
 
             // 🏗️ Build the V2 Component Container matching your blueprint
@@ -147,11 +155,11 @@ module.exports = {
                 await interaction.editReply("❌ **Error:** Failed to create the forum post. Ensure I have the 'Create Posts' permission in that forum.");
             }
 
-            // 🧹 Cleanup Temporary Emoji
+            // 🧹 Cleanup Temporary Emoji after 5 seconds
             if (tempEmoji) {
                 setTimeout(async () => {
                     try { await tempEmoji.delete(); } catch (e) {}
-                }, 5000); // Waits 5 seconds before deleting the temp emoji to ensure the payload renders
+                }, 5000); 
             }
         }
     }

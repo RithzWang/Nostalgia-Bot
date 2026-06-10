@@ -3,7 +3,7 @@ const {
     ContainerBuilder, SectionBuilder, ThumbnailBuilder, TextDisplayBuilder,
     AttachmentBuilder
 } = require('discord.js');
-const TagPartner = require('../../../src/models/TagPartner'); 
+const TagPartner = require('../../src/models/TagPartner'); 
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -84,29 +84,47 @@ module.exports = {
                 return interaction.editReply("❌ **Error:** Invalid invite link or I could not fetch server details.");
             }
 
-            // 🔍 Fetch target guild (Bot MUST be in the server to reliably get the owner ID & true Server Tag)
+            // 🔍 Fetch target guild
             const targetGuild = interaction.client.guilds.cache.get(invite.guild.id);
             if (!targetGuild) {
-                return interaction.editReply("❌ **Error:** I need to be inside that server to fetch its Owner ID and official Server Tag!");
+                return interaction.editReply("❌ **Error:** I need to be inside that server to fetch its Owner ID and true Server Tag!");
             }
 
-            // 🎯 Extract Data
-            const tagText = targetGuild.tag || targetGuild.name;
+            // ====================================================
+            // 🎯 EXTRACT TRUE SERVER TAG
+            // ====================================================
             const ownerId = targetGuild.ownerId;
-            const badgeURL = targetGuild.badge 
-                ? `https://cdn.discordapp.com/guild-tag-badges/${targetGuild.id}/${targetGuild.badge}.png?size=256` 
-                : targetGuild.iconURL({ extension: 'png', size: 256 }) || "https://cdn.discordapp.com/embed/avatars/0.png";
+            let tagText = targetGuild.name; 
+            let badgeURL = targetGuild.iconURL({ extension: 'png', size: 256 }) || "https://cdn.discordapp.com/embed/avatars/0.png"; 
 
+            const owner = await targetGuild.fetchOwner().catch(() => null);
+            let tagSourceUser = owner?.user;
+
+            if (!tagSourceUser || !(tagSourceUser.primaryGuild?.identityGuildId === targetGuild.id)) {
+                tagSourceUser = targetGuild.members.cache.find(m => m.user.primaryGuild?.identityGuildId === targetGuild.id)?.user;
+            }
+
+            if (tagSourceUser && tagSourceUser.primaryGuild) {
+                const guildInfo = tagSourceUser.primaryGuild;
+                if (guildInfo.tag) tagText = guildInfo.tag;
+                
+                if (typeof tagSourceUser.guildTagBadgeURL === 'function') {
+                    badgeURL = tagSourceUser.guildTagBadgeURL({ extension: 'png', size: 256 }) || badgeURL;
+                } else if (guildInfo.badge && guildInfo.identityGuildId) {
+                    badgeURL = `https://cdn.discordapp.com/guild-tag-badges/${guildInfo.identityGuildId}/${guildInfo.badge}.png?size=256`;
+                }
+            }
+
+            // ====================================================
+            // 🛠️ TEMPORARY EMOJI CREATION
+            // ====================================================
             let tempEmoji = null;
-            let emojiDisplay = "🔰"; // Fallback if emoji creation fails
-            
-            // ✅ Use the specific server to host the temporary emoji
+            let emojiDisplay = "🔰"; 
             const tempEmojiGuildId = '1490435762372481275';
             const tempEmojiGuild = interaction.client.guilds.cache.get(tempEmojiGuildId);
 
             if (tempEmojiGuild) {
                 try {
-                    // 🛠️ Generate Temporary Emoji
                     tempEmoji = await tempEmojiGuild.emojis.create({ 
                         attachment: badgeURL, 
                         name: 'TAGICON' 
@@ -119,7 +137,7 @@ module.exports = {
                 console.warn("Temp emoji server not found, falling back to default emoji.");
             }
 
-            // 🏗️ Build the V2 Component Container matching your blueprint
+            // 🏗️ Build the V2 Component Container
             const container = new ContainerBuilder()
                 .addSectionComponents(
                     new SectionBuilder()
@@ -135,32 +153,46 @@ module.exports = {
                         )
                 );
 
-            // 📎 Create standard file attachment as requested
             const imageAttachment = new AttachmentBuilder(badgeURL, { name: 'tag-icon.png' });
 
             try {
                 // 📝 Create the Forum Post
-                await forumChannel.threads.create({
+                const thread = await forumChannel.threads.create({
                     name: tagText,
                     message: {
                         components: [container],
                         files: [imageAttachment],
-                        flags: [MessageFlags.IsComponentsV2]
+                        flags: [MessageFlags.IsComponentsV2],
+                        allowedMentions: { parse: [] } // ✅ Mentions the owner without pinging
                     }
                 });
 
-                await interaction.editReply(`✅ Successfully posted **${tagText}** in <#${forumChannel.id}>!`);
+                // 🔒 Lock the post immediately
+                await thread.setLocked(true);
+
+                // 👍 React to the initial message
+                if (tempEmoji) {
+                    const starterMessage = await thread.fetchStarterMessage().catch(() => null);
+                    if (starterMessage) {
+                        await starterMessage.react(tempEmoji).catch(err => console.error("Reaction error:", err));
+                    }
+                }
+
+                await interaction.editReply(`✅ Successfully posted and locked **${tagText}** in <#${forumChannel.id}>!`);
             } catch (err) {
                 console.error("Forum Post Error:", err);
                 await interaction.editReply("❌ **Error:** Failed to create the forum post. Ensure I have the 'Create Posts' permission in that forum.");
             }
 
-            // 🧹 Cleanup Temporary Emoji after 5 seconds
+            // 🧹 Cleanup Temporary Emoji
+            // COMMENTED OUT: If you delete the emoji, the reaction will disappear from the post!
+            /*
             if (tempEmoji) {
                 setTimeout(async () => {
                     try { await tempEmoji.delete(); } catch (e) {}
                 }, 5000); 
             }
+            */
         }
     }
 };

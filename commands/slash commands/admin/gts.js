@@ -14,9 +14,9 @@ module.exports = {
         .addSubcommand(sub => sub.setName('setup')
             .setDescription('Setup the Main Server.')
             .addStringOption(opt => opt.setName('main_server_id').setDescription('Main Server ID').setRequired(true))
-            .addChannelOption(opt => opt.setName('channel').setDescription('Dashboard Channel').setRequired(true))
-            .addStringOption(opt => opt.setName('invite_link').setDescription('Invite Link').setRequired(false))
-            .addStringOption(opt => opt.setName('message').setDescription('Message ID to edit (Optional)').setRequired(false))
+            .addStringOption(opt => opt.setName('invite_link').setDescription('Invite Link').setRequired(true))
+            .addStringOption(opt => opt.setName('message_id').setDescription('Message ID to edit (Optional)').setRequired(false))
+            .addChannelOption(opt => opt.setName('channel').setDescription('Dashboard Channel (Optional)').setRequired(false))
         )
         .addSubcommand(sub => sub.setName('addserver')
             .setDescription('Add a satellite server.')
@@ -49,21 +49,37 @@ module.exports = {
 
         if (sub === 'setup') {
             const mainId = interaction.options.getString('main_server_id');
-            const channel = interaction.options.getChannel('channel');
             const invite = interaction.options.getString('invite_link');
-            const msgId = interaction.options.getString('message');
+            const msgId = interaction.options.getString('message_id');
+            const channel = interaction.options.getChannel('channel');
 
-            await GTSHub.findOneAndUpdate({ mainServerId: mainId }, { dashboardChannelId: channel.id, dashboardMessageId: msgId }, { upsert: true });
+            // Build the database update object dynamically based on what was provided
+            const hubUpdateFields = { mainServerId: mainId };
+            if (channel) hubUpdateFields.dashboardChannelId = channel.id;
+            if (msgId) hubUpdateFields.dashboardMessageId = msgId;
+
+            // Save Hub Config
+            await GTSHub.findOneAndUpdate(
+                { mainServerId: mainId }, 
+                hubUpdateFields, 
+                { upsert: true }
+            );
             
-            // Create base server entry
-            await GTSServer.findOneAndUpdate({ serverId: mainId }, { inviteLink: invite }, { upsert: true });
+            // Save Server Config
+            await GTSServer.findOneAndUpdate(
+                { serverId: mainId }, 
+                { inviteLink: invite }, 
+                { upsert: true }
+            );
 
+            // Pop open the Modal Form
             const modal = new ModalBuilder().setCustomId(`gts_setup_modal_${mainId}`).setTitle('Main Server Setup');
             modal.addComponents(
                 new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('tag_text').setLabel("Server Tag Text").setStyle(TextInputStyle.Short).setRequired(true)),
                 new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('tag_role').setLabel("Tag Adopter Role ID").setStyle(TextInputStyle.Short).setRequired(false)),
                 new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('log_channel').setLabel("Log Channel ID").setStyle(TextInputStyle.Short).setRequired(false))
             );
+            
             return interaction.showModal(modal);
         }
 

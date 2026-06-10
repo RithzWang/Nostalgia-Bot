@@ -24,7 +24,7 @@ module.exports = {
             .addStringOption(opt => opt.setName('invite_link').setDescription('Invite Link').setRequired(false))
         )
         .addSubcommand(sub => sub.setName('view-server')
-            .setDescription('View/Edit a specific server.')
+            .setDescription('View/Edit a specific server settings.')
             .addStringOption(opt => opt.setName('server_id').setDescription('Server ID').setRequired(true))
         )
         .addSubcommand(sub => sub.setName('dashboard')
@@ -42,6 +42,11 @@ module.exports = {
             .setDescription('Set a greet channel for a server.')
             .addStringOption(opt => opt.setName('server_id').setDescription('Server ID').setRequired(true))
             .addChannelOption(opt => opt.setName('channel').setDescription('Greet Channel').setRequired(true))
+        )
+        .addSubcommand(sub => sub.setName('tags-stats')
+            .setDescription('Deploy the tags statistics dashboard in a satellite server.')
+            .addStringOption(opt => opt.setName('message_id').setDescription('Message ID to edit (Optional)').setRequired(false))
+            .addChannelOption(opt => opt.setName('channel').setDescription('Dashboard Channel (Optional)').setRequired(false))
         ),
 
     async execute(interaction) {
@@ -127,7 +132,7 @@ module.exports = {
         }
 
         // ====================================================
-        // 3. VIEW SERVER (Dynamic Menu)
+        // 3. VIEW SERVER (Dynamic Adaptive Dropdown)
         // ====================================================
         if (sub === 'view-server') {
             const srvId = interaction.options.getString('server_id');
@@ -137,7 +142,7 @@ module.exports = {
             const guild = interaction.client.guilds.cache.get(srvId);
             const srvName = guild ? guild.name : "Unknown Server";
 
-            // Check current states
+            // Check current configuration states
             const hasMainRole = !!srvData.mainTagRole;
             const hasMainLog = !!srvData.mainLogChannel;
             const hasLocalRole = !!srvData.localTagRole;
@@ -204,18 +209,18 @@ module.exports = {
         }
 
         // ====================================================
-        // 4. DASHBOARD GLOBALS (Dynamic Menu)
+        // 4. DASHBOARD GLOBALS (Dynamic Adaptive Dropdown)
         // ====================================================
         if (sub === 'dashboard') {
             const hub = await GTSHub.findOne();
             if (!hub) return interaction.reply({ content: "Hub not setup. Run `/gts setup` first.", flags: [MessageFlags.Ephemeral] });
             const guild = interaction.client.guilds.cache.get(hub.mainServerId);
 
-            // Check current states
+            // Check current state flags
             const hasDefaultRole = !!hub.defaultTagRole;
             const isGatekeeperEnabled = hub.joinMainRequired;
 
-            // Build dynamic options array
+            // Build dynamic dropdown choices
             const menuOptions = [
                 new StringSelectMenuOptionBuilder()
                     .setLabel("Edit Server Stats Message")
@@ -223,7 +228,7 @@ module.exports = {
                     .setEmoji("✏️")
             ];
 
-            // Conditional Role Options
+            // Setup vs Edit/Remove default global role
             if (!hasDefaultRole) {
                 menuOptions.push(
                     new StringSelectMenuOptionBuilder()
@@ -244,7 +249,7 @@ module.exports = {
                 );
             }
 
-            // Conditional Gatekeeper Options
+            // Enable vs Disable requirement status
             if (!isGatekeeperEnabled) {
                 menuOptions.push(
                     new StringSelectMenuOptionBuilder()
@@ -280,6 +285,9 @@ module.exports = {
             return interaction.reply({ components: [container], flags: [MessageFlags.IsComponentsV2] });
         }
 
+        // ====================================================
+        // 5. HELPER PROPERTY UTILITIES
+        // ====================================================
         if (sub === 'default-ta-role') {
             const role = interaction.options.getRole('role');
             await GTSHub.findOneAndUpdate({}, { defaultTagRole: role.id });
@@ -297,6 +305,35 @@ module.exports = {
             const channel = interaction.options.getChannel('channel');
             await GTSServer.findOneAndUpdate({ serverId: srvId }, { greetChannel: channel.id }, { upsert: true });
             return interaction.reply({ content: `✅ Greet channel set to ${channel} for server \`${srvId}\`.`, flags: [MessageFlags.Ephemeral] });
+        }
+
+        // ====================================================
+        // 6. SATELLITE STATISTICS DISPLAY COMMAND
+        // ====================================================
+        if (sub === 'tags-stats') {
+            const currentGuildId = interaction.guildId;
+            const msgId = interaction.options.getString('message_id');
+            const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
+
+            // Ensure this server is actually loaded into the grid
+            const srvData = await GTSServer.findOne({ serverId: currentGuildId });
+            if (!srvData) {
+                return interaction.reply({ 
+                    content: "❌ **Error:** This server is not registered in the GTS network system. Please add it from the Hub first using `/gts addserver`.", 
+                    flags: [MessageFlags.Ephemeral] 
+                });
+            }
+
+            // Save positioning records
+            srvData.localDashboardChannelId = targetChannel.id;
+            if (msgId) srvData.localDashboardMessageId = msgId;
+            await srvData.save();
+
+            await interaction.reply({ content: "⏳ Deploying and rendering the Server Tags Stats Container...", flags: [MessageFlags.Ephemeral] });
+
+            // Force dynamic dispatch broadcast
+            const { updateGTSDashboard } = require('../../../utils/gtsManager');
+            return updateGTSDashboard(interaction.client);
         }
     }
 };

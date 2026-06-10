@@ -66,6 +66,9 @@ module.exports = {
                     ? `https://cdn.discordapp.com/guild-tag-badges/${newGuildId}/${newUser.primaryGuild.badge}.png?size=256` 
                     : localGuild?.iconURL({ extension: 'png', size: 256 });
 
+                // ✅ Grab the LIVE tag name directly from Discord API (fallback to DB if missing)
+                const liveTagText = newUser.primaryGuild?.tag || srvData.tagText || "Unknown";
+
                 // Main Server Log (Ping User)
                 if (mainGuild) {
                     const mainMember = await mainGuild.members.fetch(newUser.id).catch(() => null);
@@ -74,7 +77,7 @@ module.exports = {
                         if (srvData.mainTagRole) await mainMember.roles.add(srvData.mainTagRole).catch(() => {});
                     }
                     if (srvData.mainLogChannel) {
-                        const mainPayload = buildLogPayload(newUser, 'adopt', srvData.tagText, true, thumbnailImg);
+                        const mainPayload = buildLogPayload(newUser, 'adopt', liveTagText, true, thumbnailImg);
                         const ch = mainGuild.channels.cache.get(srvData.mainLogChannel);
                         if (ch) ch.send({ 
                             components: mainPayload, 
@@ -89,7 +92,7 @@ module.exports = {
                     const localMember = await localGuild.members.fetch(newUser.id).catch(() => null);
                     if (localMember && srvData.localTagRole) await localMember.roles.add(srvData.localTagRole).catch(() => {});
                     if (srvData.localLogChannel) {
-                        const localPayload = buildLogPayload(newUser, 'adopt', srvData.tagText, false, thumbnailImg);
+                        const localPayload = buildLogPayload(newUser, 'adopt', liveTagText, false, thumbnailImg);
                         const ch = localGuild.channels.cache.get(srvData.localLogChannel);
                         if (ch) ch.send({ 
                             components: localPayload, 
@@ -115,6 +118,9 @@ module.exports = {
                     ? `https://cdn.discordapp.com/guild-tag-badges/${oldGuildId}/${oldUser.primaryGuild.badge}.png?size=256` 
                     : localGuild?.iconURL({ extension: 'png', size: 256 });
 
+                // ✅ Grab the LIVE tag name directly from Discord API (from oldUser state)
+                const liveTagText = oldUser.primaryGuild?.tag || srvData.tagText || "Unknown";
+
                 // Main Server Log (Ping User)
                 if (mainGuild) {
                     const mainMember = await mainGuild.members.fetch(newUser.id).catch(() => null);
@@ -123,7 +129,7 @@ module.exports = {
                         if (srvData.mainTagRole) await mainMember.roles.remove(srvData.mainTagRole).catch(() => {});
                     }
                     if (srvData.mainLogChannel) {
-                        const mainPayload = buildLogPayload(newUser, 'remove', srvData.tagText, true, thumbnailImg);
+                        const mainPayload = buildLogPayload(newUser, 'remove', liveTagText, true, thumbnailImg);
                         const ch = mainGuild.channels.cache.get(srvData.mainLogChannel);
                         if (ch) ch.send({ 
                             components: mainPayload, 
@@ -138,7 +144,7 @@ module.exports = {
                     const localMember = await localGuild.members.fetch(newUser.id).catch(() => null);
                     if (localMember && srvData.localTagRole) await localMember.roles.remove(srvData.localTagRole).catch(() => {});
                     if (srvData.localLogChannel) {
-                        const localPayload = buildLogPayload(newUser, 'remove', srvData.tagText, false, thumbnailImg);
+                        const localPayload = buildLogPayload(newUser, 'remove', liveTagText, false, thumbnailImg);
                         const ch = localGuild.channels.cache.get(srvData.localLogChannel);
                         if (ch) ch.send({ 
                             components: localPayload, 

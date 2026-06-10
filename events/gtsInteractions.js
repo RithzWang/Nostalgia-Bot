@@ -24,13 +24,29 @@ async function buildDashboardUI(client, currentGuildId) {
     const guild = client.guilds.cache.get(hub.mainServerId);
 
     const defaultRoleStr = formatRole(client, currentGuildId, hub.mainServerId, hub.defaultTagRole);
+    const alertChannelStr = formatChannel(client, currentGuildId, hub.alertChannelId); // ✅ Added Formatter
+    
     const hasDefaultRole = !!hub.defaultTagRole;
+    const hasAlertChannel = !!hub.alertChannelId; // ✅ Added Check
 
     const menuOptions = [new StringSelectMenuOptionBuilder().setLabel("Edit Server Stats Message").setValue("edit_msg").setEmoji("✏️")];
+    
     if (!hasDefaultRole) menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Default Tag Adopters Role").setValue("set_default_role").setEmoji("⚙️"));
     else menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Default Tag Adopters Role").setValue("edit_default_role").setEmoji("✏️"), new StringSelectMenuOptionBuilder().setLabel("Remove Default Tag Adopters Role").setValue("remove_default_role").setEmoji("🗑️"));
 
-    return new ContainerBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${guild ? guild.name : "Hub Server"}`)).addTextDisplayComponents(new TextDisplayBuilder().setContent(`**Message ID:** \`${hub.dashboardMessageId || "None"}\`\n**Default Tag Adopters Role:** ${defaultRoleStr}`)).addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)).addActionRowComponents(new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId("gts_hub_menu").addOptions(menuOptions)));
+    // ✅ Added Alert Channel Menu Options
+    if (!hasAlertChannel) menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Alert Channel").setValue("set_alert").setEmoji("⚙️"));
+    else menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Alert Channel").setValue("edit_alert").setEmoji("✏️"), new StringSelectMenuOptionBuilder().setLabel("Remove Alert Channel").setValue("remove_alert").setEmoji("🗑️"));
+
+    return new ContainerBuilder()
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${guild ? guild.name : "Hub Server"}`))
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(
+            `**Message ID:** \`${hub.dashboardMessageId || "None"}\`\n` +
+            `**Default Tag Adopters Role:** ${defaultRoleStr}\n` +
+            `**Alert Channel:** ${alertChannelStr}` // ✅ Rendered in Dashboard UI
+        ))
+        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
+        .addActionRowComponents(new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId("gts_hub_menu").addOptions(menuOptions)));
 }
 
 async function buildViewServerUI(client, currentGuildId, srvId) {
@@ -153,10 +169,18 @@ module.exports = {
                 
                 if (choice === 'set_default_role' || choice === 'edit_default_role') return interaction.showModal(buildSingleLabelModal('gts_edit_hub_role', 'Default Adopters Role', 'role_id', 'Select Default Role', 'role'));
 
+                // ✅ Route Set/Edit Alert Channel
+                if (choice === 'set_alert' || choice === 'edit_alert') return interaction.showModal(buildSingleLabelModal('gts_edit_hub_alert', 'Alert Channel', 'channel_id', 'Select Alert Channel', 'channel'));
+
                 await interaction.deferUpdate(); 
                 
                 if (choice === 'remove_default_role') {
                     await GTSHub.findOneAndUpdate({}, { defaultTagRole: null });
+                }
+
+                // ✅ Process Remove Alert Channel
+                if (choice === 'remove_alert') {
+                    await GTSHub.findOneAndUpdate({}, { alertChannelId: null });
                 }
 
                 await updateGTSDashboard(client);
@@ -257,33 +281,18 @@ module.exports = {
                     return;
                 }
 
+                // ✅ Handle Alert Channel Modal Save
+                if (interaction.customId === 'gts_edit_hub_alert') {
+                    await interaction.deferUpdate();
+                    await GTSHub.findOneAndUpdate({}, { alertChannelId: getModalValue(interaction, 'channel_id') });
+                    const newUI = await buildDashboardUI(client, interaction.guildId);
+                    await interaction.editReply({ components: [newUI] });
+                    return;
+                }
+
                 if (interaction.customId.startsWith('gts_edit_srv_')) {
                     await interaction.deferUpdate();
                     const parts = interaction.customId.split('_');
                     const srvId = parts.pop();
                     const editType = parts[3]; 
-                    const inputValue = getModalValue(interaction, 'input');
-
-                    const updateQuery = {};
-                    if (editType === 'invite') updateQuery.inviteLink = inputValue;
-                    if (editType === 'tag') updateQuery.tagText = inputValue;
-                    if (editType === 'mainrole') updateQuery.mainTagRole = inputValue;
-                    if (editType === 'mainlog') updateQuery.mainLogChannel = inputValue;
-                    if (editType === 'localrole') updateQuery.localTagRole = inputValue;
-                    if (editType === 'locallog') updateQuery.localLogChannel = inputValue;
-                    if (editType === 'greet') updateQuery.greetChannel = inputValue;
-
-                    await GTSServer.findOneAndUpdate({ serverId: srvId }, updateQuery);
-                    await updateGTSDashboard(client);
-                    
-                    const newUI = await buildViewServerUI(client, interaction.guildId, srvId);
-                    await interaction.editReply({ components: [newUI] });
-                    return;
-                }
-            }
-
-        } catch (error) {
-            console.error("GTS Interaction Error:", error);
-        }
-    }
-};
+                    const inputValue = getModalValue(interaction

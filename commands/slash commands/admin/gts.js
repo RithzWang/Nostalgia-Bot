@@ -3,9 +3,27 @@ const {
     TextInputStyle, ActionRowBuilder, MessageFlags, ContainerBuilder, 
     TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, 
     StringSelectMenuBuilder, StringSelectMenuOptionBuilder,
-    LabelBuilder, RoleSelectMenuBuilder, ChannelSelectMenuBuilder // ✅ New Builders Included
+    LabelBuilder, RoleSelectMenuBuilder, ChannelSelectMenuBuilder 
 } = require('discord.js');
 const { GTSHub, GTSServer } = require('../../../src/models/GTS');
+
+// --- SMART FORMATTERS ---
+function formatRole(client, currentGuildId, targetGuildId, roleId) {
+    if (!roleId) return "Not Setup";
+    if (currentGuildId === targetGuildId) return `<@&${roleId}>`; 
+    
+    const targetGuild = client.guilds.cache.get(targetGuildId);
+    const role = targetGuild?.roles.cache.get(roleId);
+    return role ? `**${role.name}** (\`${roleId}\`)` : `**Unknown Role** (\`${roleId}\`)`;
+}
+
+function formatChannel(client, currentGuildId, channelId) {
+    if (!channelId) return "Not Setup";
+    
+    const channel = client.channels.cache.get(channelId);
+    if (channel && channel.guildId === currentGuildId) return `<#${channelId}>`; 
+    return channel ? `**#${channel.name}** (\`${channelId}\`)` : `**Unknown Channel** (\`${channelId}\`)`;
+}
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -54,7 +72,7 @@ module.exports = {
         const sub = interaction.options.getSubcommand();
 
         // ====================================================
-        // 1. SETUP MAIN SERVER (V2 Modals)
+        // 1. SETUP MAIN SERVER
         // ====================================================
         if (sub === 'setup') {
             const mainId = interaction.options.getString('main_server_id');
@@ -77,7 +95,6 @@ module.exports = {
             await GTSServer.findOneAndUpdate({ serverId: mainId }, { inviteLink: invite }, { upsert: true });
 
             const modal = new ModalBuilder().setCustomId(`gts_setup_modal_${mainId}`).setTitle('Main Server Setup');
-
             const textDisp = new TextDisplayBuilder().setContent("Configure your server below.\n-# You can easily select Roles and Channels directly from the dropdowns!");
 
             const tagTextLabel = new LabelBuilder().setLabel("Server Tag Text").setDescription("The exact text for the tag.").setTextInputComponent(new TextInputBuilder().setCustomId('tag_text').setStyle(TextInputStyle.Short).setRequired(true));
@@ -89,7 +106,7 @@ module.exports = {
         }
 
         // ====================================================
-        // 2. ADD SATELLITE SERVER (V2 Modals)
+        // 2. ADD SATELLITE SERVER
         // ====================================================
         if (sub === 'addserver') {
             const srvId = interaction.options.getString('server_id');
@@ -137,7 +154,7 @@ module.exports = {
         }
 
         // ====================================================
-        // 4. VIEW SERVER (Dynamic Menu)
+        // 4. VIEW SERVER (Upgraded Layout)
         // ====================================================
         if (sub === 'view-server') {
             const srvId = interaction.options.getString('server_id');
@@ -147,10 +164,21 @@ module.exports = {
             const guild = interaction.client.guilds.cache.get(srvId);
             const srvName = guild ? guild.name : "Unknown Server";
 
+            const hub = await GTSHub.findOne();
+            const mainGuildId = hub ? hub.mainServerId : null;
+
+            // Apply Formatter Engine
+            const mainRoleStr = formatRole(interaction.client, interaction.guildId, mainGuildId, srvData.mainTagRole);
+            const localRoleStr = formatRole(interaction.client, interaction.guildId, srvId, srvData.localTagRole);
+            const mainLogStr = formatChannel(interaction.client, interaction.guildId, srvData.mainLogChannel);
+            const localLogStr = formatChannel(interaction.client, interaction.guildId, srvData.localLogChannel);
+            const greetStr = formatChannel(interaction.client, interaction.guildId, srvData.greetChannel); // ✅ Added channel tracker
+
             const hasMainRole = !!srvData.mainTagRole;
             const hasMainLog = !!srvData.mainLogChannel;
             const hasLocalRole = !!srvData.localTagRole;
             const hasLocalLog = !!srvData.localLogChannel;
+            const hasGreetChannel = !!srvData.greetChannel; // ✅ Check if setup
 
             const menuOptions = [
                 new StringSelectMenuOptionBuilder().setLabel("Edit Invite Link").setValue("edit_invite").setEmoji("✏️"),
@@ -169,15 +197,24 @@ module.exports = {
             if (!hasLocalLog) menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Local Log Channel").setValue("set_local_log").setEmoji("⚙️"));
             else menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Local Log Channel").setValue("edit_local_log").setEmoji("✏️"), new StringSelectMenuOptionBuilder().setLabel("Remove Local Log Channel").setValue("remove_local_log").setEmoji("🗑️"));
 
+            // ✅ Greet Channel Dynamic Triggers added below local log channel
+            if (!hasGreetChannel) {
+                menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Greet Channel").setValue("set_greet").setEmoji("⚙️"));
+            } else {
+                menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Greet Channel").setValue("edit_greet").setEmoji("✏️"));
+                menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Remove Greet Channel").setValue("remove_greet").setEmoji("🗑️"));
+            }
+
             const container = new ContainerBuilder()
                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${srvName}`))
                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(
                     `**Invite Link:** \`${srvData.inviteLink || "None"}\`\n` +
                     `**Server Tag Text:** ${srvData.tagText || "None"}\n` +
-                    `**Adopters Role:** ${hasMainRole ? `<@&${srvData.mainTagRole}>` : "Not Setup"}\n` +
-                    `**Tag Adopted/Removed Log Channel:** ${hasMainLog ? `<#${srvData.mainLogChannel}>` : "Not Setup"}\n` +
-                    `**Local Adopters Role:** ${hasLocalRole ? `<@&${srvData.localTagRole}>` : "Not Setup"}\n` +
-                    `**Local Log Channel:** ${hasLocalLog ? `<#${srvData.localLogChannel}>` : "Not Setup"}`
+                    `**Adopters Role:** ${mainRoleStr}\n` +
+                    `**Tag Adopted/Removed Log Channel:** ${mainLogStr}\n` +
+                    `**Local Adopters Role:** ${localRoleStr}\n` +
+                    `**Local Log Channel:** ${localLogStr}\n` +
+                    `**Greet Channel:** ${greetStr}` // ✅ Live render line added
                 ))
                 .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
                 .addActionRowComponents(new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId(`gts_edit_menu_${srvId}`).addOptions(menuOptions)));
@@ -186,13 +223,14 @@ module.exports = {
         }
 
         // ====================================================
-        // 5. DASHBOARD GLOBALS (Dynamic Menu)
+        // 5. DASHBOARD GLOBALS
         // ====================================================
         if (sub === 'dashboard') {
             const hub = await GTSHub.findOne();
             if (!hub) return interaction.reply({ content: "Hub not setup. Run `/gts setup` first.", flags: [MessageFlags.Ephemeral] });
             const guild = interaction.client.guilds.cache.get(hub.mainServerId);
 
+            const defaultRoleStr = formatRole(interaction.client, interaction.guildId, hub.mainServerId, hub.defaultTagRole);
             const hasDefaultRole = !!hub.defaultTagRole;
             const isGatekeeperEnabled = hub.joinMainRequired;
 
@@ -209,7 +247,7 @@ module.exports = {
                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${guild ? guild.name : "Hub Server"}`))
                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(
                     `**Message ID:** \`${hub.dashboardMessageId || "None"}\`\n` +
-                    `**Default Tag Adopters Role:** ${hasDefaultRole ? `<@&${hub.defaultTagRole}>` : "Not Setup"}\n` +
+                    `**Default Tag Adopters Role:** ${defaultRoleStr}\n` +
                     `**Require to join Main Server:** ${isGatekeeperEnabled ? "Yes" : "No"}`
                 ))
                 .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))

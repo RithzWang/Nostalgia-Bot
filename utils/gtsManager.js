@@ -5,7 +5,7 @@ const {
 } = require('discord.js');
 const { GTSHub, GTSServer } = require('../src/models/GTS');
 
-// Helper to determine the bottom status line based on your rules
+// Helper to determine the bottom status line based on your exact layout rules
 function getStatusLine(guild, tagCount) {
     if (!guild) return `<:no_tag:1468470099026510001> **Not Available**`;
     
@@ -56,12 +56,11 @@ async function updateGTSDashboard(client) {
     }
     globalTagAdopters += mainLocalTags;
 
-    const mainBoosts = mainGuild.premiumSubscriptionCount || 0;
     const mainStatus = getStatusLine(mainGuild, mainLocalTags);
     const mainInviteUrl = mainData.inviteLink && mainData.inviteLink.startsWith('http') ? mainData.inviteLink : "https://discord.com";
 
     const headerContainer = new ContainerBuilder()
-        .addTextDisplayComponents(new TextDisplayBuilder().setContent("# Tags Statistics"))
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent("# » Our Server Tags Statistics"))
         .addActionRowComponents(
             new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setStyle(ButtonStyle.Secondary)
@@ -75,12 +74,11 @@ async function updateGTSDashboard(client) {
             new SectionBuilder()
                 .setButtonAccessory(new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel("Server Link").setURL(mainInviteUrl))
                 .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(`## ${mainGuild.name}`),
                     new TextDisplayBuilder().setContent(
-                        `## [${mainGuild.name}](${mainInviteUrl})\n` +
                         `<:id:1468487725912166596> **ID:** \`${mainGuild.id}\`\n` +
                         `<:badge:1468618581427097724> **Server Tag:** ${mainData.tagText || "None"}\n` +
                         `<:members:1468470163081924608> **Members:** ${mainHumanCount}\n` +
-                        `<:server_boost:1468633171758284872> **Boosts:** ${mainBoosts}\n` +
                         `${mainStatus}`
                     )
                 )
@@ -100,7 +98,6 @@ async function updateGTSDashboard(client) {
             if (!guild) return;
 
             const humanCount = guild.members.cache.filter(m => !m.user.bot).size;
-            const satBoosts = guild.premiumSubscriptionCount || 0;
             
             let satLocalTags = 0;
             for (const [id, m] of guild.members.cache) {
@@ -115,12 +112,11 @@ async function updateGTSDashboard(client) {
                 new SectionBuilder()
                     .setButtonAccessory(new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel("Server Link").setURL(satInviteUrl))
                     .addTextDisplayComponents(
+                        new TextDisplayBuilder().setContent(`## ${guild.name}`),
                         new TextDisplayBuilder().setContent(
-                            `## [${guild.name}](${satInviteUrl})\n` +
                             `<:id:1468487725912166596> **ID:** \`${guild.id}\`\n` +
                             `<:badge:1468618581427097724> **Server Tag:** ${satData.tagText || "None"}\n` +
                             `<:members:1468470163081924608> **Members:** ${humanCount}\n` +
-                            `<:server_boost:1468633171758284872> **Boosts:** ${satBoosts}\n` +
                             `${satStatus}`
                         )
                     )

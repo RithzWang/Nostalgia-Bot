@@ -47,30 +47,34 @@ module.exports = {
     async execute(interaction) {
         const sub = interaction.options.getSubcommand();
 
+        // ====================================================
+        // 1. SETUP MAIN SERVER
+        // ====================================================
         if (sub === 'setup') {
             const mainId = interaction.options.getString('main_server_id');
             const invite = interaction.options.getString('invite_link');
             const msgId = interaction.options.getString('message_id');
             const channel = interaction.options.getChannel('channel');
 
-            // Build the database update object dynamically based on what was provided
+            // 🛡️ GUARD: Cannot register as Main if it's already a Satellite!
+            const existingSatellite = await GTSServer.findOne({ serverId: mainId });
+            const existingHub = await GTSHub.findOne({ mainServerId: mainId });
+
+            if (existingSatellite && !existingHub) {
+                return interaction.reply({ 
+                    content: "❌ **Security Block:** This server is already grouped as a Satellite Server! You cannot register it as a Main Server.", 
+                    flags: [MessageFlags.Ephemeral] 
+                });
+            }
+
+            // Build the database update object dynamically
             const hubUpdateFields = { mainServerId: mainId };
             if (channel) hubUpdateFields.dashboardChannelId = channel.id;
             if (msgId) hubUpdateFields.dashboardMessageId = msgId;
 
             // Save Hub Config
-            await GTSHub.findOneAndUpdate(
-                { mainServerId: mainId }, 
-                hubUpdateFields, 
-                { upsert: true }
-            );
-            
-            // Save Server Config
-            await GTSServer.findOneAndUpdate(
-                { serverId: mainId }, 
-                { inviteLink: invite }, 
-                { upsert: true }
-            );
+            await GTSHub.findOneAndUpdate({ mainServerId: mainId }, hubUpdateFields, { upsert: true });
+            await GTSServer.findOneAndUpdate({ serverId: mainId }, { inviteLink: invite }, { upsert: true });
 
             // Pop open the Modal Form
             const modal = new ModalBuilder().setCustomId(`gts_setup_modal_${mainId}`).setTitle('Main Server Setup');
@@ -83,10 +87,32 @@ module.exports = {
             return interaction.showModal(modal);
         }
 
+        // ====================================================
+        // 2. ADD SATELLITE SERVER
+        // ====================================================
         if (sub === 'addserver') {
             const srvId = interaction.options.getString('server_id');
             const invite = interaction.options.getString('invite_link');
 
+            // 🛡️ GUARD 1: Main server aren't allowed to group as satellite server
+            const existingHub = await GTSHub.findOne({ mainServerId: srvId });
+            if (existingHub) {
+                return interaction.reply({ 
+                    content: "❌ **Security Block:** This server is already registered as a Main Server! It cannot be added as a satellite.", 
+                    flags: [MessageFlags.Ephemeral] 
+                });
+            }
+
+            // 🛡️ GUARD 2: Cannot group with other main servers if already grouped
+            const existingSatellite = await GTSServer.findOne({ serverId: srvId });
+            if (existingSatellite) {
+                return interaction.reply({ 
+                    content: "❌ **Security Block:** This server is already grouped in the network! Use `/gts view-server` to edit it instead.", 
+                    flags: [MessageFlags.Ephemeral] 
+                });
+            }
+
+            // Only save basic data once the guards are passed
             await GTSServer.findOneAndUpdate({ serverId: srvId }, { inviteLink: invite }, { upsert: true });
 
             const modal = new ModalBuilder().setCustomId(`gts_add_modal_${srvId}`).setTitle('Satellite Server Setup');
@@ -100,6 +126,9 @@ module.exports = {
             return interaction.showModal(modal);
         }
 
+        // ====================================================
+        // 3. VIEW SERVER
+        // ====================================================
         if (sub === 'view-server') {
             const srvId = interaction.options.getString('server_id');
             const srvData = await GTSServer.findOne({ serverId: srvId });
@@ -135,6 +164,9 @@ module.exports = {
             return interaction.reply({ components: [container], flags: [MessageFlags.IsComponentsV2] });
         }
 
+        // ====================================================
+        // 4. DASHBOARD GLOBALS
+        // ====================================================
         if (sub === 'dashboard') {
             const hub = await GTSHub.findOne();
             if (!hub) return interaction.reply({ content: "Hub not setup.", flags: [MessageFlags.Ephemeral] });

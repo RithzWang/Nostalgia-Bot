@@ -5,23 +5,26 @@ const {
 } = require('discord.js');
 const { GTSHub, GTSServer } = require('../src/models/GTS');
 
-// Evaluates the exact state of the server for the bottom line
-function getServerStats(guild, currentTagCount) {
+// Helper to determine the bottom status line based on your rules
+function getStatusLine(guild, tagCount) {
     if (!guild) return `<:no_tag:1468470099026510001> **Not Available**`;
-
-    const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS') || guild.features.includes('MEMBER_VERIFICATION_GATE_ENABLED');
-    const hasActiveAdopters = currentTagCount > 0;
+    
     const boostCount = guild.premiumSubscriptionCount || 0;
     const boostsNeeded = 3 - boostCount;
-
+    
     if (boostsNeeded > 0) {
-        if (boostsNeeded === 1) return `<:no_boost:1468470028302024776> **1 Boost Remains**`;
-        return `<:no_boost:1468470028302024776> **${boostsNeeded} Boosts Remain**`;
-    } else if (!hasClanFeature && !hasActiveAdopters) {
-        return `<:no_tag:1468470099026510001> **Not Enabled**`;
-    } else {
-        return `<:greysword:1462853724824404069> **Tag Adopters:** ${currentTagCount}`;
+        return boostsNeeded === 1 
+            ? `<:no_boost:1468470028302024776> **1 Boost Remains**` 
+            : `<:no_boost:1468470028302024776> **${boostsNeeded} Boosts Remain**`;
     }
+    
+    const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS') || guild.features.includes('MEMBER_VERIFICATION_GATE_ENABLED');
+    
+    if (!hasClanFeature && tagCount === 0) {
+        return `<:no_tag:1468470099026510001> **Not Enabled**`;
+    }
+    
+    return `<:greysword:1462853724824404069> **Tag Adopters:** ${tagCount}`;
 }
 
 async function updateGTSDashboard(client) {
@@ -42,16 +45,20 @@ async function updateGTSDashboard(client) {
 
     const containers = [];
 
+    // ==========================================
     // Container 1: Header & Main Server
+    // ==========================================
     const mainData = allServers.find(s => s.serverId === hub.mainServerId) || {};
     let mainLocalTags = 0;
+    
     for (const [id, m] of mainGuild.members.cache) {
         if (!m.user.bot && m.user.primaryGuild && m.user.primaryGuild.identityGuildId === hub.mainServerId) mainLocalTags++;
     }
     globalTagAdopters += mainLocalTags;
 
-    const mainStatus = getServerStats(mainGuild, mainLocalTags);
     const mainBoosts = mainGuild.premiumSubscriptionCount || 0;
+    const mainStatus = getStatusLine(mainGuild, mainLocalTags);
+    const mainInviteUrl = mainData.inviteLink && mainData.inviteLink.startsWith('http') ? mainData.inviteLink : "https://discord.com";
 
     const headerContainer = new ContainerBuilder()
         .addTextDisplayComponents(new TextDisplayBuilder().setContent("# Tags Statistics"))
@@ -66,57 +73,55 @@ async function updateGTSDashboard(client) {
         .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
         .addSectionComponents(
             new SectionBuilder()
-                .setButtonAccessory(new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel("Server Link").setURL(mainData.inviteLink || "https://discord.com"))
+                .setButtonAccessory(new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel("Server Link").setURL(mainInviteUrl))
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
-                        `## ${mainGuild.name}\n` +
+                        `## [${mainGuild.name}](${mainInviteUrl})\n` +
                         `<:id:1468487725912166596> **ID:** \`${mainGuild.id}\`\n` +
                         `<:badge:1468618581427097724> **Server Tag:** ${mainData.tagText || "None"}\n` +
                         `<:members:1468470163081924608> **Members:** ${mainHumanCount}\n` +
                         `<:server_boost:1468633171758284872> **Boosts:** ${mainBoosts}\n` +
-                        `${mainStatus}` // Exact formatting rule applied
+                        `${mainStatus}`
                     )
                 )
         );
     containers.push(headerContainer);
 
-    // Container 2: Satellites
+    // ==========================================
+    // Container 2: Satellite Servers
+    // ==========================================
     const satellites = allServers.filter(s => s.serverId !== hub.mainServerId);
+    
     if (satellites.length > 0) {
         const satContainer = new ContainerBuilder();
         
         satellites.forEach((satData, index) => {
             const guild = client.guilds.cache.get(satData.serverId);
+            if (!guild) return;
+
+            const humanCount = guild.members.cache.filter(m => !m.user.bot).size;
+            const satBoosts = guild.premiumSubscriptionCount || 0;
             
-            let humanCount = 0;
-            let satBoosts = 0;
             let satLocalTags = 0;
-
-            if (guild) {
-                humanCount = guild.members.cache.filter(m => !m.user.bot).size;
-                satBoosts = guild.premiumSubscriptionCount || 0;
-                
-                for (const [id, m] of guild.members.cache) {
-                    if (!m.user.bot && m.user.primaryGuild && m.user.primaryGuild.identityGuildId === satData.serverId) satLocalTags++;
-                }
-                globalTagAdopters += satLocalTags;
+            for (const [id, m] of guild.members.cache) {
+                if (!m.user.bot && m.user.primaryGuild && m.user.primaryGuild.identityGuildId === satData.serverId) satLocalTags++;
             }
+            globalTagAdopters += satLocalTags;
 
-            const satStatus = getServerStats(guild, satLocalTags);
-            const srvName = guild ? guild.name : "Unknown Server";
-            const srvIdText = guild ? guild.id : satData.serverId;
+            const satStatus = getStatusLine(guild, satLocalTags);
+            const satInviteUrl = satData.inviteLink && satData.inviteLink.startsWith('http') ? satData.inviteLink : "https://discord.com";
 
             satContainer.addSectionComponents(
                 new SectionBuilder()
-                    .setButtonAccessory(new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel("Server Link").setURL(satData.inviteLink || "https://discord.com"))
+                    .setButtonAccessory(new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel("Server Link").setURL(satInviteUrl))
                     .addTextDisplayComponents(
                         new TextDisplayBuilder().setContent(
-                            `## ${srvName}\n` +
-                            `<:id:1468487725912166596> **ID:** \`${srvIdText}\`\n` +
+                            `## [${guild.name}](${satInviteUrl})\n` +
+                            `<:id:1468487725912166596> **ID:** \`${guild.id}\`\n` +
                             `<:badge:1468618581427097724> **Server Tag:** ${satData.tagText || "None"}\n` +
                             `<:members:1468470163081924608> **Members:** ${humanCount}\n` +
                             `<:server_boost:1468633171758284872> **Boosts:** ${satBoosts}\n` +
-                            `${satStatus}` // Exact formatting rule applied
+                            `${satStatus}`
                         )
                     )
             );
@@ -134,15 +139,15 @@ async function updateGTSDashboard(client) {
         containers.push(satContainer);
     }
 
-    // Resolve Total Adopters Placeholder
+    // Resolve Total Adopters
     headerContainer.components[1].components[0].data.label = `Total Tags Adopters: ${globalTagAdopters}/${mainHumanCount}`;
 
+    // ==========================================
     // Send or Edit Message
+    // ==========================================
     try {
         let msg = null;
-        if (hub.dashboardMessageId) {
-            msg = await channel.messages.fetch(hub.dashboardMessageId).catch(() => null);
-        }
+        if (hub.dashboardMessageId) msg = await channel.messages.fetch(hub.dashboardMessageId).catch(() => null);
         
         if (msg && msg.editable) {
             await msg.edit({ components: containers, flags: [MessageFlags.IsComponentsV2] });

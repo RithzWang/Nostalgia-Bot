@@ -52,11 +52,11 @@ module.exports = {
         if (!channel) return;
 
         if (inMain) {
-            channel.send(`<@&1456197055117787136>, Welcome to **${member.guild.name}** server!`).catch(err => console.error("Greet Error:", err));
+            channel.send(`<@${member.id}>, Welcome to **${member.guild.name}** server!`).catch(err => console.error("Greet Error:", err));
         } else {
             channel.send(
-                `<@&1456197055117787136>, Welcome to **${member.guild.name}**\n\n` +
-                `It seems like you are **__not__** in our main **[${mainGuild ? mainGuild.name : "Hub Server"}](${inviteLink})** server yet.\n` +
+                `<@${member.id}>, Welcome to **${member.guild.name}** server!\n\n` +
+                `It seems like you are **__not__** in our **[Main Server](${inviteLink})** yet.\n` +
                 `You have **10** minutes to join, otherwise you will be **kicked**.`
             ).catch(err => console.error("Greet Error:", err));
             

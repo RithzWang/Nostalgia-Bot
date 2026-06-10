@@ -1,26 +1,38 @@
 const { 
     Events, MessageFlags, ContainerBuilder, SectionBuilder, 
-    TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize 
+    TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize,
+    ThumbnailBuilder 
 } = require('discord.js');
 const { GTSHub, GTSServer } = require('../src/models/GTS');
 const { updateGTSDashboard } = require('../utils/gtsManager'); 
 
-function buildLogPayload(user, type, tagText, serverName) {
+// Builds the V2 Component UI to match your new Tag Log layouts
+function buildLogPayload(user, type, tagText, pingUser, imageUrl) {
     const isAdopt = type === 'adopt';
-    const title = isAdopt ? "# ✅ Tag Adopted" : "# ❌ Tag Removed";
-    const accentColor = isAdopt ? 3066993 : 15158332; 
+    const accentColor = isAdopt ? 3447003 : 15548997; 
+    const titleText = isAdopt ? "## Tag Adopted" : "## Tag Removed";
+    
+    // Dynamically ping in Main, or just use username in Local
+    const userDisplay = pingUser ? `<@${user.id}>` : `**${user.username}**`;
     
     const contentString = isAdopt 
-        ? `## ${user.username}\n<:id:1468487725912166596> **User ID:** \`${user.id}\`\n<:badge:1468618581427097724> **Server Tag:** \`${tagText}\`\n<:members:1468470163081924608> **Status:** 🎉 Now representing **${serverName}**!`
-        : `## ${user.username}\n<:id:1468487725912166596> **User ID:** \`${user.id}\`\n<:badge:1468618581427097724> **Server Tag:** \`${tagText}\`\n<:members:1468470163081924608> **Status:** 😭 Stopped representing **${serverName}**.`;
+        ? `${userDisplay} starts adopting our **${tagText}** tag`
+        : `${userDisplay} stopped adopting our **${tagText}** tag`;
+
+    const safeImage = imageUrl || "https://cdn.discordapp.com/embed/avatars/0.png";
 
     const container = new ContainerBuilder()
         .setAccentColor(accentColor)
-        .addTextDisplayComponents(new TextDisplayBuilder().setContent(title))
+        .addSectionComponents(
+            new SectionBuilder()
+                .setThumbnailAccessory(new ThumbnailBuilder().setURL(safeImage))
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(titleText),
+                    new TextDisplayBuilder().setContent(contentString)
+                )
+        )
         .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
-        .addSectionComponents(new SectionBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(contentString)))
-        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
-        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# 🕒 <t:${Math.floor(Date.now() / 1000)}:R>`));
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`<t:${Math.floor(Date.now() / 1000)}:f>`));
 
     return [container];
 }
@@ -30,9 +42,7 @@ module.exports = {
     async execute(oldUser, newUser) {
         if (newUser.bot) return;
 
-        // ✅ Securely fetch client from the user object
         const client = newUser.client; 
-
         const oldGuildId = oldUser.primaryGuild?.identityGuildId;
         const newGuildId = newUser.primaryGuild?.identityGuildId;
         
@@ -50,9 +60,13 @@ module.exports = {
             if (srvData) {
                 statsChanged = true;
                 const localGuild = client.guilds.cache.get(newGuildId);
-                const srvName = localGuild ? localGuild.name : "Unknown Server";
-                const payload = buildLogPayload(newUser, 'adopt', srvData.tagText, srvName);
+                
+                // Fetch official Discord Guild Tag Badge, fallback to Guild Icon
+                const thumbnailImg = newUser.primaryGuild?.badge 
+                    ? `https://cdn.discordapp.com/guild-tag-badges/${newGuildId}/${newUser.primaryGuild.badge}.png?size=256` 
+                    : localGuild?.iconURL({ extension: 'png', size: 256 });
 
+                // Main Server Log (Ping User)
                 if (mainGuild) {
                     const mainMember = await mainGuild.members.fetch(newUser.id).catch(() => null);
                     if (mainMember) {
@@ -60,17 +74,28 @@ module.exports = {
                         if (srvData.mainTagRole) await mainMember.roles.add(srvData.mainTagRole).catch(() => {});
                     }
                     if (srvData.mainLogChannel) {
+                        const mainPayload = buildLogPayload(newUser, 'adopt', srvData.tagText, true, thumbnailImg);
                         const ch = mainGuild.channels.cache.get(srvData.mainLogChannel);
-                        if (ch) ch.send({ components: payload, flags: [MessageFlags.IsComponentsV2] }).catch(err => console.error("Log Send Error:", err));
+                        if (ch) ch.send({ 
+                            components: mainPayload, 
+                            flags: [MessageFlags.IsComponentsV2], 
+                            allowedMentions: { parse: ['users'] } 
+                        }).catch(err => console.error("Log Send Error:", err));
                     }
                 }
                 
+                // Local Server Log (Do Not Ping User)
                 if (localGuild) {
                     const localMember = await localGuild.members.fetch(newUser.id).catch(() => null);
                     if (localMember && srvData.localTagRole) await localMember.roles.add(srvData.localTagRole).catch(() => {});
                     if (srvData.localLogChannel) {
+                        const localPayload = buildLogPayload(newUser, 'adopt', srvData.tagText, false, thumbnailImg);
                         const ch = localGuild.channels.cache.get(srvData.localLogChannel);
-                        if (ch) ch.send({ components: payload, flags: [MessageFlags.IsComponentsV2] }).catch(err => console.error("Log Send Error:", err));
+                        if (ch) ch.send({ 
+                            components: localPayload, 
+                            flags: [MessageFlags.IsComponentsV2], 
+                            allowedMentions: { parse: [] } 
+                        }).catch(err => console.error("Log Send Error:", err));
                     }
                 }
             }
@@ -84,9 +109,13 @@ module.exports = {
             if (srvData) {
                 statsChanged = true;
                 const localGuild = client.guilds.cache.get(oldGuildId);
-                const srvName = localGuild ? localGuild.name : "Unknown Server";
-                const payload = buildLogPayload(newUser, 'remove', srvData.tagText, srvName);
+                
+                // Fetch official Discord Guild Tag Badge from oldUser, fallback to Guild Icon
+                const thumbnailImg = oldUser.primaryGuild?.badge 
+                    ? `https://cdn.discordapp.com/guild-tag-badges/${oldGuildId}/${oldUser.primaryGuild.badge}.png?size=256` 
+                    : localGuild?.iconURL({ extension: 'png', size: 256 });
 
+                // Main Server Log (Ping User)
                 if (mainGuild) {
                     const mainMember = await mainGuild.members.fetch(newUser.id).catch(() => null);
                     if (mainMember) {
@@ -94,17 +123,28 @@ module.exports = {
                         if (srvData.mainTagRole) await mainMember.roles.remove(srvData.mainTagRole).catch(() => {});
                     }
                     if (srvData.mainLogChannel) {
+                        const mainPayload = buildLogPayload(newUser, 'remove', srvData.tagText, true, thumbnailImg);
                         const ch = mainGuild.channels.cache.get(srvData.mainLogChannel);
-                        if (ch) ch.send({ components: payload, flags: [MessageFlags.IsComponentsV2] }).catch(err => console.error("Log Send Error:", err));
+                        if (ch) ch.send({ 
+                            components: mainPayload, 
+                            flags: [MessageFlags.IsComponentsV2], 
+                            allowedMentions: { parse: ['users'] } 
+                        }).catch(err => console.error("Log Send Error:", err));
                     }
                 }
                 
+                // Local Server Log (Do Not Ping User)
                 if (localGuild) {
                     const localMember = await localGuild.members.fetch(newUser.id).catch(() => null);
                     if (localMember && srvData.localTagRole) await localMember.roles.remove(srvData.localTagRole).catch(() => {});
                     if (srvData.localLogChannel) {
+                        const localPayload = buildLogPayload(newUser, 'remove', srvData.tagText, false, thumbnailImg);
                         const ch = localGuild.channels.cache.get(srvData.localLogChannel);
-                        if (ch) ch.send({ components: payload, flags: [MessageFlags.IsComponentsV2] }).catch(err => console.error("Log Send Error:", err));
+                        if (ch) ch.send({ 
+                            components: localPayload, 
+                            flags: [MessageFlags.IsComponentsV2], 
+                            allowedMentions: { parse: [] } 
+                        }).catch(err => console.error("Log Send Error:", err));
                     }
                 }
             }

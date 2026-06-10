@@ -58,10 +58,6 @@ module.exports = {
             .setDescription('Set the default Tag Adopters role.')
             .addRoleOption(opt => opt.setName('role').setDescription('Role').setRequired(true))
         )
-        .addSubcommand(sub => sub.setName('join-main-required')
-            .setDescription('Toggle Main Server requirement.')
-            .addBooleanOption(opt => opt.setName('status').setDescription('Enable?').setRequired(true))
-        )
         .addSubcommand(sub => sub.setName('greet-message')
             .setDescription('Set a greet channel for a server.')
             .addStringOption(opt => opt.setName('server_id').setDescription('Server ID').setRequired(true))
@@ -90,13 +86,11 @@ module.exports = {
             await GTSServer.findOneAndUpdate({ serverId: mainId }, { inviteLink: invite }, { upsert: true });
 
             const modal = new ModalBuilder().setCustomId(`gts_setup_modal_${mainId}`).setTitle('Main Server Setup');
-            const textDisp = new TextDisplayBuilder().setContent("Configure your server below.\n-# You can easily select Roles and Channels directly from the dropdowns!");
-
             const tagTextLabel = new LabelBuilder().setLabel("Server Tag Text").setDescription("The exact text for the tag.").setTextInputComponent(new TextInputBuilder().setCustomId('tag_text').setStyle(TextInputStyle.Short).setRequired(true));
             const roleLabel = new LabelBuilder().setLabel("Tag Adopter Role").setDescription("Role given to users adopting the tag").setRoleSelectMenuComponent(new RoleSelectMenuBuilder().setCustomId('tag_role').setRequired(false));
             const channelLabel = new LabelBuilder().setLabel("Log Channel").setDescription("Channel to log tag adoptions").setChannelSelectMenuComponent(new ChannelSelectMenuBuilder().setCustomId('log_channel').setRequired(false));
 
-            modal.addTextDisplayComponents(textDisp).addLabelComponents(tagTextLabel, roleLabel, channelLabel);
+            modal.addLabelComponents(tagTextLabel, roleLabel, channelLabel);
             return interaction.showModal(modal);
         }
 
@@ -142,9 +136,6 @@ module.exports = {
             return updateGTSDashboard(interaction.client);
         }
 
-        // ====================================================
-        // 4. VIEW SERVER (Ephemeral & Interactive)
-        // ====================================================
         if (sub === 'view-server') {
             const srvId = interaction.options.getString('server_id');
             const srvData = await GTSServer.findOne({ serverId: srvId });
@@ -202,12 +193,11 @@ module.exports = {
                 .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
                 .addActionRowComponents(new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId(`gts_edit_menu_${srvId}`).addOptions(menuOptions)));
 
-            // ✅ SENT AS EPHEMERAL
             return interaction.reply({ components: [container], flags: [MessageFlags.IsComponentsV2, MessageFlags.Ephemeral] });
         }
 
         // ====================================================
-        // 5. DASHBOARD GLOBALS (Ephemeral & Interactive)
+        // 5. DASHBOARD GLOBALS (Cleaned from Gatekeeper toggles)
         // ====================================================
         if (sub === 'dashboard') {
             const hub = await GTSHub.findOne();
@@ -216,33 +206,35 @@ module.exports = {
 
             const defaultRoleStr = formatRole(interaction.client, interaction.guildId, hub.mainServerId, hub.defaultTagRole);
             const hasDefaultRole = !!hub.defaultTagRole;
-            const isGatekeeperEnabled = hub.joinMainRequired;
 
             const menuOptions = [new StringSelectMenuOptionBuilder().setLabel("Edit Server Stats Message").setValue("edit_msg").setEmoji("✏️")];
 
-            if (!hasDefaultRole) menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Default Tag Adopters Role").setValue("set_default_role").setEmoji("⚙️"));
-            else menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Default Tag Adopters Role").setValue("edit_default_role").setEmoji("✏️"), new StringSelectMenuOptionBuilder().setLabel("Remove Default Tag Adopters Role").setValue("remove_default_role").setEmoji("🗑️"));
-
-            if (!isGatekeeperEnabled) menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Enable Required To Join Main Server").setValue("enable_gatekeeper").setEmoji("🟢"));
-            else menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Disable Required To Join Main Server").setValue("disable_gatekeeper").setEmoji("🔴"));
+            if (!hasDefaultRole) {
+                menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Default Tag Adopters Role").setValue("set_default_role").setEmoji("⚙️"));
+            } else {
+                menuOptions.push(
+                    new StringSelectMenuOptionBuilder().setLabel("Edit Default Tag Adopters Role").setValue("edit_default_role").setEmoji("✏️"), 
+                    new StringSelectMenuOptionBuilder().setLabel("Remove Default Tag Adopters Role").setValue("remove_default_role").setEmoji("🗑️")
+                );
+            }
 
             const container = new ContainerBuilder()
                 .setSpoiler(true)
                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${guild ? guild.name : "Hub Server"}`))
                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(
                     `**Message ID:** \`${hub.dashboardMessageId || "None"}\`\n` +
-                    `**Default Tag Adopters Role:** ${defaultRoleStr}\n` +
-                    `**Require to join Main Server:** ${isGatekeeperEnabled ? "Yes" : "No"}`
+                    `**Default Tag Adopters Role:** ${defaultRoleStr}`
                 ))
                 .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
                 .addActionRowComponents(new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId("gts_hub_menu").addOptions(menuOptions)));
 
-            // ✅ SENT AS EPHEMERAL
             return interaction.reply({ components: [container], flags: [MessageFlags.IsComponentsV2, MessageFlags.Ephemeral] });
         }
-        
-        if (sub === 'default-ta-role' || sub === 'join-main-required' || sub === 'greet-message') {
-            return interaction.reply({ content: `Please use the interactive \`/gts dashboard\` or \`/gts view-server\` UI to change settings now!`, flags: [MessageFlags.Ephemeral] });
+
+        if (sub === 'default-ta-role') {
+            const role = interaction.options.getRole('role');
+            await GTSHub.findOneAndUpdate({}, { defaultTagRole: role.id });
+            return interaction.reply({ content: `✅ Default Tag Adopter role set to ${role}.`, flags: [MessageFlags.Ephemeral] });
         }
     }
 };

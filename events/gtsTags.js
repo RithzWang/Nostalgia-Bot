@@ -4,7 +4,6 @@ const {
     ThumbnailBuilder 
 } = require('discord.js');
 const { GTSHub, GTSServer } = require('../src/models/GTS');
-const { updateGTSDashboard } = require('../utils/gtsManager'); 
 
 // Builds the V2 Component UI to match your new Tag Log layouts
 function buildLogPayload(user, type, tagText, pingUser, imageUrl) {
@@ -50,7 +49,6 @@ module.exports = {
 
         const hub = await GTSHub.findOne();
         const mainGuild = hub ? client.guilds.cache.get(hub.mainServerId) : null;
-        let statsChanged = false;
 
         // ==========================================
         // 1. TAG ADOPTED
@@ -58,7 +56,6 @@ module.exports = {
         if (newGuildId) {
             const srvData = await GTSServer.findOne({ serverId: newGuildId });
             if (srvData) {
-                statsChanged = true;
                 const localGuild = client.guilds.cache.get(newGuildId);
                 
                 // Fetch official Discord Guild Tag Badge, fallback to Guild Icon
@@ -66,7 +63,7 @@ module.exports = {
                     ? `https://cdn.discordapp.com/guild-tag-badges/${newGuildId}/${newUser.primaryGuild.badge}.png?size=256` 
                     : localGuild?.iconURL({ extension: 'png', size: 256 });
 
-                // ✅ Grab the LIVE tag name directly from Discord API (fallback to DB if missing)
+                // Grab the LIVE tag name directly from Discord API (fallback to DB if missing)
                 const liveTagText = newUser.primaryGuild?.tag || srvData.tagText || "Unknown";
 
                 // Main Server Log (Ping User)
@@ -110,7 +107,6 @@ module.exports = {
         if (oldGuildId) {
             const srvData = await GTSServer.findOne({ serverId: oldGuildId });
             if (srvData) {
-                statsChanged = true;
                 const localGuild = client.guilds.cache.get(oldGuildId);
                 
                 // Fetch official Discord Guild Tag Badge from oldUser, fallback to Guild Icon
@@ -118,7 +114,7 @@ module.exports = {
                     ? `https://cdn.discordapp.com/guild-tag-badges/${oldGuildId}/${oldUser.primaryGuild.badge}.png?size=256` 
                     : localGuild?.iconURL({ extension: 'png', size: 256 });
 
-                // ✅ Grab the LIVE tag name directly from Discord API (from oldUser state)
+                // Grab the LIVE tag name directly from Discord API (from oldUser state)
                 const liveTagText = oldUser.primaryGuild?.tag || srvData.tagText || "Unknown";
 
                 // Main Server Log (Ping User)
@@ -155,7 +151,5 @@ module.exports = {
                 }
             }
         }
-
-        if (statsChanged) updateGTSDashboard(client).catch(() => {});
     }
 };

@@ -295,4 +295,28 @@ module.exports = {
                     const parts = interaction.customId.split('_');
                     const srvId = parts.pop();
                     const editType = parts[3]; 
-                    const inputValue = getModalValue(interaction
+                    const inputValue = getModalValue(interaction, 'input');
+
+                    const updateQuery = {};
+                    if (editType === 'invite') updateQuery.inviteLink = inputValue;
+                    if (editType === 'tag') updateQuery.tagText = inputValue;
+                    if (editType === 'mainrole') updateQuery.mainTagRole = inputValue;
+                    if (editType === 'mainlog') updateQuery.mainLogChannel = inputValue;
+                    if (editType === 'localrole') updateQuery.localTagRole = inputValue;
+                    if (editType === 'locallog') updateQuery.localLogChannel = inputValue;
+                    if (editType === 'greet') updateQuery.greetChannel = inputValue;
+
+                    await GTSServer.findOneAndUpdate({ serverId: srvId }, updateQuery);
+                    await updateGTSDashboard(client);
+                    
+                    const newUI = await buildViewServerUI(client, interaction.guildId, srvId);
+                    await interaction.editReply({ components: [newUI] });
+                    return;
+                }
+            }
+
+        } catch (error) {
+            console.error("GTS Interaction Error:", error);
+        }
+    }
+};

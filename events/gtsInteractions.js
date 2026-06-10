@@ -7,8 +7,8 @@ function getModalValue(interaction, customId) {
     try {
         const field = interaction.fields.fields.get(customId);
         if (!field) return null;
-        if (field.value) return field.value; // It's a text input
-        if (field.values && field.values.length > 0) return field.values[0]; // It's a select menu
+        if (field.value) return field.value; 
+        if (field.values && field.values.length > 0) return field.values[0]; 
         return null;
     } catch (e) {
         return null;
@@ -39,7 +39,7 @@ module.exports = {
 
         try {
             // ====================================================
-            // 1. SELECT MENUS: HUB DASHBOARD (/gts dashboard)
+            // 1. SELECT MENUS: HUB DASHBOARD
             // ====================================================
             if (interaction.isStringSelectMenu() && interaction.customId === 'gts_hub_menu') {
                 const choice = interaction.values[0];
@@ -59,11 +59,13 @@ module.exports = {
                     await GTSHub.findOneAndUpdate({}, { joinMainRequired: false });
                     await interaction.editReply({ content: "🔴 Require to Join Main Server is now DISABLED." });
                 }
+
+                await updateGTSDashboard(client);
                 return;
             }
 
             // ====================================================
-            // 2. SELECT MENUS: VIEW SERVER (/gts view-server)
+            // 2. SELECT MENUS: VIEW SERVER
             // ====================================================
             if (interaction.isStringSelectMenu() && interaction.customId.startsWith('gts_edit_menu_')) {
                 const srvId = interaction.customId.split('_').pop();
@@ -75,6 +77,9 @@ module.exports = {
                 if (choice === 'set_main_log' || choice === 'edit_main_log') return interaction.showModal(buildSingleLabelModal(`gts_edit_srv_mainlog_${srvId}`, 'Main Log Channel', 'input', 'Select Channel', 'channel'));
                 if (choice === 'set_local_role' || choice === 'edit_local_role') return interaction.showModal(buildSingleLabelModal(`gts_edit_srv_localrole_${srvId}`, 'Local Adopters Role', 'input', 'Select Role', 'role'));
                 if (choice === 'set_local_log' || choice === 'edit_local_log') return interaction.showModal(buildSingleLabelModal(`gts_edit_srv_locallog_${srvId}`, 'Local Log Channel', 'input', 'Select Channel', 'channel'));
+                
+                // ✅ Greet Channel modal routing injected here
+                if (choice === 'set_greet' || choice === 'edit_greet') return interaction.showModal(buildSingleLabelModal(`gts_edit_srv_greet_${srvId}`, 'Edit Greet Channel', 'input', 'Select Channel', 'channel'));
 
                 await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
                 const updateQuery = {};
@@ -83,10 +88,11 @@ module.exports = {
                 if (choice === 'remove_main_log') updateQuery.mainLogChannel = null;
                 if (choice === 'remove_local_role') updateQuery.localTagRole = null;
                 if (choice === 'remove_local_log') updateQuery.localLogChannel = null;
+                if (choice === 'remove_greet') updateQuery.greetChannel = null; // ✅ Reset routing target
 
                 if (Object.keys(updateQuery).length > 0) {
                     await GTSServer.findOneAndUpdate({ serverId: srvId }, updateQuery);
-                    await interaction.editReply({ content: `🗑️ Successfully removed the requested setting for server \`${srvId}\`.` });
+                    await interaction.editReply({ content: `🗑️ Successfully updated configurations for server \`${srvId}\`.` });
                     await updateGTSDashboard(client);
                 }
                 return;
@@ -97,7 +103,7 @@ module.exports = {
             // ====================================================
             if (interaction.isModalSubmit()) {
                 
-                // MAIN SERVER SETUP
+                // MAIN SERVER INITIAL SETUP
                 if (interaction.customId.startsWith('gts_setup_modal_')) {
                     await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
                     const serverId = interaction.customId.split('_').pop();
@@ -110,7 +116,7 @@ module.exports = {
                     return interaction.editReply({ content: `✅ Main Server setup completed successfully!` });
                 }
 
-                // SATELLITE SERVER SETUP
+                // SATELLITE SERVER INITIAL SETUP
                 if (interaction.customId.startsWith('gts_add_modal_')) {
                     await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
                     const serverId = interaction.customId.split('_').pop();
@@ -125,7 +131,7 @@ module.exports = {
                     return interaction.editReply({ content: `✅ Satellite Server (\`${serverId}\`) added successfully!` });
                 }
 
-                // SINGLE EDITS
+                // SINGLE EDITS: HUB GLOBALS
                 if (interaction.customId === 'gts_edit_hub_msg') {
                     await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
                     await GTSHub.findOneAndUpdate({}, { dashboardMessageId: getModalValue(interaction, 'msg_id') });
@@ -135,9 +141,11 @@ module.exports = {
                 if (interaction.customId === 'gts_edit_hub_role') {
                     await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
                     await GTSHub.findOneAndUpdate({}, { defaultTagRole: getModalValue(interaction, 'role_id') });
+                    await updateGTSDashboard(client);
                     return interaction.editReply({ content: `✅ Default Tag Adopters Role updated!` });
                 }
 
+                // SINGLE EDITS: SERVER CLUSTERS
                 if (interaction.customId.startsWith('gts_edit_srv_')) {
                     await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
                     const parts = interaction.customId.split('_');
@@ -152,6 +160,7 @@ module.exports = {
                     if (editType === 'mainlog') updateQuery.mainLogChannel = inputValue;
                     if (editType === 'localrole') updateQuery.localTagRole = inputValue;
                     if (editType === 'locallog') updateQuery.localLogChannel = inputValue;
+                    if (editType === 'greet') updateQuery.greetChannel = inputValue; // ✅ Extract and update channel
 
                     await GTSServer.findOneAndUpdate({ serverId: srvId }, updateQuery);
                     await updateGTSDashboard(client);

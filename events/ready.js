@@ -3,6 +3,8 @@ const moment = require('moment-timezone');
 const { serverID } = require('../config.json'); 
 
 const { updateServerStatsPanels } = require('../utils/serverStatsManager'); 
+// ✅ NEW: Import the GTS Dashboard updater
+const { updateGTSDashboard } = require('../utils/gtsManager'); 
 
 const fs = require('fs');
 const path = require('path');
@@ -43,7 +45,7 @@ module.exports = {
             } catch (e) { console.log('⚠️ Could not cache invites'); }
         }
 
-        // 4. TIMERS (Status + Server Stats)
+        // 4. TIMERS (Status + Server Stats + GTS Dashboard)
         setInterval(() => {
             const now = moment().tz('Asia/Bangkok');
             const formattedTime = now.format('HH:mm');
@@ -65,8 +67,11 @@ module.exports = {
 
             // This runs roughly at the start of every new minute (when seconds are 0, 1, 2, 3, or 4)
             if (now.seconds() < 5) {
-                // ✅ Updates the local Server Stats Dashboard
+                // Updates the local Server Stats Dashboard
                 updateServerStatsPanels(client).catch(err => console.error(err));
+                
+                // ✅ NEW: Updates the Global Tags Stats Dashboard every minute
+                updateGTSDashboard(client).catch(err => console.error(err));
             }
 
         }, 5000); 

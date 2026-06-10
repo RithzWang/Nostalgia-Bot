@@ -17,7 +17,10 @@ const GTSServerSchema = new mongoose.Schema({
     localTagRole: { type: String, default: null },
     localLogChannel: { type: String, default: null },
     greetChannel: { type: String, default: null },
-    specialGuestRole: { type: String, default: null } // Ignored by Gatekeeper
+    specialGuestRole: { type: String, default: null },
+    // ✅ NEW: Tracks local dashboard placements within individual satellite servers
+    localDashboardChannelId: { type: String, default: null },
+    localDashboardMessageId: { type: String, default: null }
 });
 
 module.exports = {

@@ -3,28 +3,22 @@ const {
     TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize 
 } = require('discord.js');
 const { GTSHub, GTSServer } = require('../src/models/GTS');
-const { updateGTSDashboard } = require('../utils/gtsManager'); // Triggers instant stats update
+const { updateGTSDashboard } = require('../utils/gtsManager'); 
 
-// Builds the V2 Component UI to match your Stats Dashboard perfectly
 function buildLogPayload(user, type, tagText, serverName) {
     const isAdopt = type === 'adopt';
-    
-    // UI Layout matching your GTS blueprints
     const title = isAdopt ? "# ✅ Tag Adopted" : "# ❌ Tag Removed";
-    const accentColor = isAdopt ? 3066993 : 15158332; // Green for added, Red for removed
+    const accentColor = isAdopt ? 3066993 : 15158332; 
     
     const contentString = isAdopt 
-        ? `## ${user.username}\n<:id:1468487725912166596> **User ID:** \`${user.id}\`\n<:badge:1468618581427097724> **Server Tag:** \`${tagText}\`\n<:members:1468470163081924608> **Status:** Now representing **${serverName}**!`
-        : `## ${user.username}\n<:id:1468487725912166596> **User ID:** \`${user.id}\`\n<:badge:1468618581427097724> **Server Tag:** \`${tagText}\`\n<:members:1468470163081924608> **Status:** Stopped representing **${serverName}**.`;
+        ? `## ${user.username}\n<:id:1468487725912166596> **User ID:** \`${user.id}\`\n<:badge:1468618581427097724> **Server Tag:** \`${tagText}\`\n<:members:1468470163081924608> **Status:** 🎉 Now representing **${serverName}**!`
+        : `## ${user.username}\n<:id:1468487725912166596> **User ID:** \`${user.id}\`\n<:badge:1468618581427097724> **Server Tag:** \`${tagText}\`\n<:members:1468470163081924608> **Status:** 😭 Stopped representing **${serverName}**.`;
 
     const container = new ContainerBuilder()
         .setAccentColor(accentColor)
         .addTextDisplayComponents(new TextDisplayBuilder().setContent(title))
         .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
-        .addSectionComponents(
-            new SectionBuilder()
-                .addTextDisplayComponents(new TextDisplayBuilder().setContent(contentString))
-        )
+        .addSectionComponents(new SectionBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(contentString)))
         .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
         .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# 🕒 <t:${Math.floor(Date.now() / 1000)}:R>`));
 
@@ -33,13 +27,15 @@ function buildLogPayload(user, type, tagText, serverName) {
 
 module.exports = {
     name: Events.UserUpdate,
-    async execute(oldUser, newUser, client) {
+    async execute(oldUser, newUser) {
         if (newUser.bot) return;
+
+        // ✅ Securely fetch client from the user object
+        const client = newUser.client; 
 
         const oldGuildId = oldUser.primaryGuild?.identityGuildId;
         const newGuildId = newUser.primaryGuild?.identityGuildId;
         
-        // Only trigger if their tag adoption status actually changed
         if (oldGuildId === newGuildId) return;
 
         const hub = await GTSHub.findOne();
@@ -57,7 +53,6 @@ module.exports = {
                 const srvName = localGuild ? localGuild.name : "Unknown Server";
                 const payload = buildLogPayload(newUser, 'adopt', srvData.tagText, srvName);
 
-                // Apply Main Server Roles & Send Log
                 if (mainGuild) {
                     const mainMember = await mainGuild.members.fetch(newUser.id).catch(() => null);
                     if (mainMember) {
@@ -66,17 +61,16 @@ module.exports = {
                     }
                     if (srvData.mainLogChannel) {
                         const ch = mainGuild.channels.cache.get(srvData.mainLogChannel);
-                        if (ch) ch.send({ components: payload, flags: [MessageFlags.IsComponentsV2] }).catch(() => {});
+                        if (ch) ch.send({ components: payload, flags: [MessageFlags.IsComponentsV2] }).catch(err => console.error("Log Send Error:", err));
                     }
                 }
                 
-                // Apply Local Roles & Send Log
                 if (localGuild) {
                     const localMember = await localGuild.members.fetch(newUser.id).catch(() => null);
                     if (localMember && srvData.localTagRole) await localMember.roles.add(srvData.localTagRole).catch(() => {});
                     if (srvData.localLogChannel) {
                         const ch = localGuild.channels.cache.get(srvData.localLogChannel);
-                        if (ch) ch.send({ components: payload, flags: [MessageFlags.IsComponentsV2] }).catch(() => {});
+                        if (ch) ch.send({ components: payload, flags: [MessageFlags.IsComponentsV2] }).catch(err => console.error("Log Send Error:", err));
                     }
                 }
             }
@@ -93,7 +87,6 @@ module.exports = {
                 const srvName = localGuild ? localGuild.name : "Unknown Server";
                 const payload = buildLogPayload(newUser, 'remove', srvData.tagText, srvName);
 
-                // Remove Main Server Roles & Send Log
                 if (mainGuild) {
                     const mainMember = await mainGuild.members.fetch(newUser.id).catch(() => null);
                     if (mainMember) {
@@ -102,28 +95,21 @@ module.exports = {
                     }
                     if (srvData.mainLogChannel) {
                         const ch = mainGuild.channels.cache.get(srvData.mainLogChannel);
-                        if (ch) ch.send({ components: payload, flags: [MessageFlags.IsComponentsV2] }).catch(() => {});
+                        if (ch) ch.send({ components: payload, flags: [MessageFlags.IsComponentsV2] }).catch(err => console.error("Log Send Error:", err));
                     }
                 }
                 
-                // Remove Local Roles & Send Log
                 if (localGuild) {
                     const localMember = await localGuild.members.fetch(newUser.id).catch(() => null);
                     if (localMember && srvData.localTagRole) await localMember.roles.remove(srvData.localTagRole).catch(() => {});
                     if (srvData.localLogChannel) {
                         const ch = localGuild.channels.cache.get(srvData.localLogChannel);
-                        if (ch) ch.send({ components: payload, flags: [MessageFlags.IsComponentsV2] }).catch(() => {});
+                        if (ch) ch.send({ components: payload, flags: [MessageFlags.IsComponentsV2] }).catch(err => console.error("Log Send Error:", err));
                     }
                 }
             }
         }
 
-        // ==========================================
-        // 3. INSTANT DASHBOARD REFRESH
-        // ==========================================
-        if (statsChanged) {
-            // Instantly updates the main dashboard to reflect the new numbers
-            updateGTSDashboard(client).catch(err => console.error("Failed to quick-update GTS Dashboard:", err));
-        }
+        if (statsChanged) updateGTSDashboard(client).catch(() => {});
     }
 };

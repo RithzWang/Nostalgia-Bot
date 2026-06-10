@@ -103,7 +103,7 @@ async function updateGTSDashboard(client) {
                 new SectionBuilder()
                     .setButtonAccessory(new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel("Server Link").setURL(mainInviteUrl))
                     .addTextDisplayComponents(
-                        new TextDisplayBuilder().setContent(`## ${mainGuild.name}`),
+                        new TextDisplayBuilder().setContent(`## [${mainGuild.name}](${mainInviteUrl})`),
                         new TextDisplayBuilder().setContent(
                             `<:id:1468487725912166596> **ID:** \`${mainGuild.id}\`\n` +
                             `<:badge:1468618581427097724> **Server Tag:** ${mainData.tagText || "None"}\n` +
@@ -123,7 +123,7 @@ async function updateGTSDashboard(client) {
                     new SectionBuilder()
                         .setButtonAccessory(new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel("Server Link").setURL(sat.inviteUrl))
                         .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent(`## ${sat.name}`),
+                            new TextDisplayBuilder().setContent(`## [${sat.name}](${sat.inviteUrl})`),
                             new TextDisplayBuilder().setContent(
                                 `<:id:1468487725912166596> **ID:** \`${sat.id}\`\n` +
                                 `<:badge:1468618581427097724> **Server Tag:** ${sat.tagText || "None"}\n` +
@@ -174,7 +174,7 @@ async function updateGTSDashboard(client) {
 
     // Despatch B: Loop and distribute to all configured Satellite Placements
     for (const satData of allServers) {
-        if (!satData.localDashboardChannelId) continue; // Skip if satellite hasn't run /gts tags-stats
+        if (!satData.localDashboardChannelId) continue; 
 
         const satGuild = client.guilds.cache.get(satData.serverId);
         if (!satGuild) continue;

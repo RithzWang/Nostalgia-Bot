@@ -127,37 +127,76 @@ module.exports = {
         }
 
         // ====================================================
-        // 3. VIEW SERVER
+        // 3. VIEW SERVER (Dynamic Menu)
         // ====================================================
         if (sub === 'view-server') {
             const srvId = interaction.options.getString('server_id');
             const srvData = await GTSServer.findOne({ serverId: srvId });
-            if (!srvData) return interaction.reply({ content: "Server not found in DB.", flags: [MessageFlags.Ephemeral] });
+            if (!srvData) return interaction.reply({ content: "Server not found in DB. Add it first using `/gts addserver`.", flags: [MessageFlags.Ephemeral] });
 
             const guild = interaction.client.guilds.cache.get(srvId);
             const srvName = guild ? guild.name : "Unknown Server";
+
+            // Check current states
+            const hasMainRole = !!srvData.mainTagRole;
+            const hasMainLog = !!srvData.mainLogChannel;
+            const hasLocalRole = !!srvData.localTagRole;
+            const hasLocalLog = !!srvData.localLogChannel;
+
+            // Build dynamic options array
+            const menuOptions = [
+                new StringSelectMenuOptionBuilder().setLabel("Edit Invite Link").setValue("edit_invite").setEmoji("✏️"),
+                new StringSelectMenuOptionBuilder().setLabel("Edit Server Tag Text").setValue("edit_tag").setEmoji("✏️")
+            ];
+
+            // 1. Main Adopters Role
+            if (!hasMainRole) {
+                menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Adopters Role (Main)").setValue("set_main_role").setEmoji("⚙️"));
+            } else {
+                menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Adopters Role (Main)").setValue("edit_main_role").setEmoji("✏️"));
+                menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Remove Adopters Role (Main)").setValue("remove_main_role").setEmoji("🗑️"));
+            }
+
+            // 2. Main Log Channel
+            if (!hasMainLog) {
+                menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Log Channel (Main)").setValue("set_main_log").setEmoji("⚙️"));
+            } else {
+                menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Log Channel (Main)").setValue("edit_main_log").setEmoji("✏️"));
+                menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Remove Log Channel (Main)").setValue("remove_main_log").setEmoji("🗑️"));
+            }
+
+            // 3. Local Adopters Role
+            if (!hasLocalRole) {
+                menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Local Adopters Role").setValue("set_local_role").setEmoji("⚙️"));
+            } else {
+                menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Local Adopters Role").setValue("edit_local_role").setEmoji("✏️"));
+                menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Remove Local Adopters Role").setValue("remove_local_role").setEmoji("🗑️"));
+            }
+
+            // 4. Local Log Channel
+            if (!hasLocalLog) {
+                menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Local Log Channel").setValue("set_local_log").setEmoji("⚙️"));
+            } else {
+                menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Local Log Channel").setValue("edit_local_log").setEmoji("✏️"));
+                menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Remove Local Log Channel").setValue("remove_local_log").setEmoji("🗑️"));
+            }
 
             const container = new ContainerBuilder()
                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${srvName}`))
                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(
                     `**Invite Link:** \`${srvData.inviteLink || "None"}\`\n` +
                     `**Server Tag Text:** ${srvData.tagText || "None"}\n` +
-                    `**Adopters Role:** ${srvData.mainTagRole ? `<@&${srvData.mainTagRole}>` : "Not Setup"}\n` +
-                    `**Tag Adopted/Removed Log Channel:** ${srvData.mainLogChannel ? `<#${srvData.mainLogChannel}>` : "Not Setup"}\n` +
-                    `**Local Adopters Role:** ${srvData.localTagRole ? `<@&${srvData.localTagRole}>` : "Not Setup"}\n` +
-                    `**Local Log Channel:** ${srvData.localLogChannel ? `<#${srvData.localLogChannel}>` : "Not Setup"} `
+                    `**Adopters Role:** ${hasMainRole ? `<@&${srvData.mainTagRole}>` : "Not Setup"}\n` +
+                    `**Tag Adopted/Removed Log Channel:** ${hasMainLog ? `<#${srvData.mainLogChannel}>` : "Not Setup"}\n` +
+                    `**Local Adopters Role:** ${hasLocalRole ? `<@&${srvData.localTagRole}>` : "Not Setup"}\n` +
+                    `**Local Log Channel:** ${hasLocalLog ? `<#${srvData.localLogChannel}>` : "Not Setup"}`
                 ))
                 .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
                 .addActionRowComponents(
                     new ActionRowBuilder().addComponents(
-                        new StringSelectMenuBuilder().setCustomId(`gts_edit_menu_${srvId}`).addOptions(
-                            new StringSelectMenuOptionBuilder().setLabel("Edit Invite Link").setValue("edit_invite").setEmoji("✏️"),
-                            new StringSelectMenuOptionBuilder().setLabel("Edit Server Tag Text").setValue("edit_tag").setEmoji("✏️"),
-                            new StringSelectMenuOptionBuilder().setLabel("✏️ Edit/🗑️ Remove/⚙️ Set Adopters Role").setValue("edit_main_role"),
-                            new StringSelectMenuOptionBuilder().setLabel("✏️ Edit/🗑️ Remove/⚙️ Set Log Channel").setValue("edit_main_log"),
-                            new StringSelectMenuOptionBuilder().setLabel("✏️ Edit/🗑️ Remove/⚙️ Set Local Role").setValue("edit_local_role"),
-                            new StringSelectMenuOptionBuilder().setLabel("✏️ Edit/🗑️ Remove/⚙️ Set Local Log Channel").setValue("edit_local_log")
-                        )
+                        new StringSelectMenuBuilder()
+                            .setCustomId(`gts_edit_menu_${srvId}`)
+                            .addOptions(menuOptions)
                     )
                 );
 
@@ -165,29 +204,76 @@ module.exports = {
         }
 
         // ====================================================
-        // 4. DASHBOARD GLOBALS
+        // 4. DASHBOARD GLOBALS (Dynamic Menu)
         // ====================================================
         if (sub === 'dashboard') {
             const hub = await GTSHub.findOne();
-            if (!hub) return interaction.reply({ content: "Hub not setup.", flags: [MessageFlags.Ephemeral] });
+            if (!hub) return interaction.reply({ content: "Hub not setup. Run `/gts setup` first.", flags: [MessageFlags.Ephemeral] });
             const guild = interaction.client.guilds.cache.get(hub.mainServerId);
 
+            // Check current states
+            const hasDefaultRole = !!hub.defaultTagRole;
+            const isGatekeeperEnabled = hub.joinMainRequired;
+
+            // Build dynamic options array
+            const menuOptions = [
+                new StringSelectMenuOptionBuilder()
+                    .setLabel("Edit Server Stats Message")
+                    .setValue("edit_msg")
+                    .setEmoji("✏️")
+            ];
+
+            // Conditional Role Options
+            if (!hasDefaultRole) {
+                menuOptions.push(
+                    new StringSelectMenuOptionBuilder()
+                        .setLabel("Set Default Tag Adopters Role")
+                        .setValue("set_default_role")
+                        .setEmoji("⚙️")
+                );
+            } else {
+                menuOptions.push(
+                    new StringSelectMenuOptionBuilder()
+                        .setLabel("Edit Default Tag Adopters Role")
+                        .setValue("edit_default_role")
+                        .setEmoji("✏️"),
+                    new StringSelectMenuOptionBuilder()
+                        .setLabel("Remove Default Tag Adopters Role")
+                        .setValue("remove_default_role")
+                        .setEmoji("🗑️")
+                );
+            }
+
+            // Conditional Gatekeeper Options
+            if (!isGatekeeperEnabled) {
+                menuOptions.push(
+                    new StringSelectMenuOptionBuilder()
+                        .setLabel("Enable Required To Join Main Server")
+                        .setValue("enable_gatekeeper")
+                        .setEmoji("🟢")
+                );
+            } else {
+                menuOptions.push(
+                    new StringSelectMenuOptionBuilder()
+                        .setLabel("Disable Required To Join Main Server")
+                        .setValue("disable_gatekeeper")
+                        .setEmoji("🔴")
+                );
+            }
+
             const container = new ContainerBuilder()
-                .setSpoiler(true)
                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${guild ? guild.name : "Hub Server"}`))
                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(
                     `**Message ID:** \`${hub.dashboardMessageId || "None"}\`\n` +
-                    `**Default Tag Adopters Role:** ${hub.defaultTagRole ? `<@&${hub.defaultTagRole}>` : "Not Setup"}\n` +
-                    `**Require to join Main Server:** ${hub.joinMainRequired ? "Yes" : "No"}`
+                    `**Default Tag Adopters Role:** ${hasDefaultRole ? `<@&${hub.defaultTagRole}>` : "Not Setup"}\n` +
+                    `**Require to join Main Server:** ${isGatekeeperEnabled ? "Yes" : "No"}`
                 ))
                 .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
                 .addActionRowComponents(
                     new ActionRowBuilder().addComponents(
-                        new StringSelectMenuBuilder().setCustomId("gts_hub_menu").addOptions(
-                            new StringSelectMenuOptionBuilder().setLabel("Edit Server Stats Message").setValue("edit_msg").setEmoji("✏️"),
-                            new StringSelectMenuOptionBuilder().setLabel("✏️ Edit/🗑️ Remove/⚙️ Set Default Tag Adopters Role").setValue("edit_default_role"),
-                            new StringSelectMenuOptionBuilder().setLabel("🟢 Enable/🔴 Disable Requires to join Main Server").setValue("toggle_gatekeeper")
-                        )
+                        new StringSelectMenuBuilder()
+                            .setCustomId("gts_hub_menu")
+                            .addOptions(menuOptions)
                     )
                 );
 

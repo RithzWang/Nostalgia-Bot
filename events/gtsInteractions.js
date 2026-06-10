@@ -30,7 +30,7 @@ async function buildDashboardUI(client, currentGuildId) {
     if (!hasDefaultRole) menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Default Tag Adopters Role").setValue("set_default_role").setEmoji("⚙️"));
     else menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Default Tag Adopters Role").setValue("edit_default_role").setEmoji("✏️"), new StringSelectMenuOptionBuilder().setLabel("Remove Default Tag Adopters Role").setValue("remove_default_role").setEmoji("🗑️"));
 
-    return new ContainerBuilder().setSpoiler(true).addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${guild ? guild.name : "Hub Server"}`)).addTextDisplayComponents(new TextDisplayBuilder().setContent(`**Message ID:** \`${hub.dashboardMessageId || "None"}\`\n**Default Tag Adopters Role:** ${defaultRoleStr}`)).addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)).addActionRowComponents(new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId("gts_hub_menu").addOptions(menuOptions)));
+    return new ContainerBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${guild ? guild.name : "Hub Server"}`)).addTextDisplayComponents(new TextDisplayBuilder().setContent(`**Message ID:** \`${hub.dashboardMessageId || "None"}\`\n**Default Tag Adopters Role:** ${defaultRoleStr}`)).addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)).addActionRowComponents(new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId("gts_hub_menu").addOptions(menuOptions)));
 }
 
 async function buildViewServerUI(client, currentGuildId, srvId) {
@@ -141,7 +141,7 @@ module.exports = {
                     
                     const chLabel = new LabelBuilder()
                         .setLabel("Message Channel (Optional)")
-                        .setChannelSelectMenuComponent(new ChannelSelectMenuBuilder().setCustomId('channel_id').setRequired(false)); // ✅ Set to false
+                        .setChannelSelectMenuComponent(new ChannelSelectMenuBuilder().setCustomId('channel_id').setRequired(false));
                         
                     const msgLabel = new LabelBuilder()
                         .setLabel("New Message ID")
@@ -236,7 +236,6 @@ module.exports = {
                     
                     const updateQuery = { dashboardMessageId: newMsgId };
                     
-                    // ✅ Only update the channel ID if a new one was actually selected
                     if (newChannelId) {
                         updateQuery.dashboardChannelId = newChannelId;
                     }

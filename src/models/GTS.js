@@ -5,8 +5,9 @@ const GTSHubSchema = new mongoose.Schema({
     dashboardChannelId: { type: String, default: null },
     dashboardMessageId: { type: String, default: null },
     defaultTagRole: { type: String, default: null },
-    joinMainRequired: { type: Boolean, default: false }
+    alertChannelId: { type: String, default: null }, // ✅ Added Alert Channel Tracker
 });
+
 
 const GTSServerSchema = new mongoose.Schema({
     serverId: { type: String, required: true, unique: true },

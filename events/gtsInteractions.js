@@ -18,22 +18,19 @@ function formatChannel(client, currentGuildId, channelId) {
     return channel ? `**#${channel.name}** (\`${channelId}\`)` : `**Unknown Channel** (\`${channelId}\`)`;
 }
 
-// --- CONTAINER REBUILDERS (For seamless editing) ---
+// --- CONTAINER REBUILDERS ---
 async function buildDashboardUI(client, currentGuildId) {
     const hub = await GTSHub.findOne();
     const guild = client.guilds.cache.get(hub.mainServerId);
 
     const defaultRoleStr = formatRole(client, currentGuildId, hub.mainServerId, hub.defaultTagRole);
     const hasDefaultRole = !!hub.defaultTagRole;
-    const isGatekeeperEnabled = hub.joinMainRequired;
 
     const menuOptions = [new StringSelectMenuOptionBuilder().setLabel("Edit Server Stats Message").setValue("edit_msg").setEmoji("✏️")];
     if (!hasDefaultRole) menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Default Tag Adopters Role").setValue("set_default_role").setEmoji("⚙️"));
     else menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Default Tag Adopters Role").setValue("edit_default_role").setEmoji("✏️"), new StringSelectMenuOptionBuilder().setLabel("Remove Default Tag Adopters Role").setValue("remove_default_role").setEmoji("🗑️"));
-    if (!isGatekeeperEnabled) menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Enable Required To Join Main Server").setValue("enable_gatekeeper").setEmoji("🟢"));
-    else menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Disable Required To Join Main Server").setValue("disable_gatekeeper").setEmoji("🔴"));
 
-    return new ContainerBuilder().setSpoiler(true).addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${guild ? guild.name : "Hub Server"}`)).addTextDisplayComponents(new TextDisplayBuilder().setContent(`**Message ID:** \`${hub.dashboardMessageId || "None"}\`\n**Default Tag Adopters Role:** ${defaultRoleStr}\n**Require to join Main Server:** ${isGatekeeperEnabled ? "Yes" : "No"}`)).addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)).addActionRowComponents(new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId("gts_hub_menu").addOptions(menuOptions)));
+    return new ContainerBuilder().setSpoiler(true).addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${guild ? guild.name : "Hub Server"}`)).addTextDisplayComponents(new TextDisplayBuilder().setContent(`**Message ID:** \`${hub.dashboardMessageId || "None"}\`\n**Default Tag Adopters Role:** ${defaultRoleStr}`)).addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)).addActionRowComponents(new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId("gts_hub_menu").addOptions(menuOptions)));
 }
 
 async function buildViewServerUI(client, currentGuildId, srvId) {
@@ -95,17 +92,16 @@ module.exports = {
                 if (choice === 'edit_msg') return interaction.showModal(buildSingleLabelModal('gts_edit_hub_msg', 'Edit Stats Message ID', 'msg_id', 'New Message ID', 'text'));
                 if (choice === 'set_default_role' || choice === 'edit_default_role') return interaction.showModal(buildSingleLabelModal('gts_edit_hub_role', 'Default Adopters Role', 'role_id', 'Select Default Role', 'role'));
 
-                // 🌟 INSTANT IN-PLACE UPDATE 🌟
                 await interaction.deferUpdate(); 
                 
-                if (choice === 'remove_default_role') await GTSHub.findOneAndUpdate({}, { defaultTagRole: null });
-                else if (choice === 'enable_gatekeeper') await GTSHub.findOneAndUpdate({}, { joinMainRequired: true });
-                else if (choice === 'disable_gatekeeper') await GTSHub.findOneAndUpdate({}, { joinMainRequired: false });
+                if (choice === 'remove_default_role') {
+                    await GTSHub.findOneAndUpdate({}, { defaultTagRole: null });
+                }
 
                 await updateGTSDashboard(client);
                 const newUI = await buildDashboardUI(client, interaction.guildId);
                 await interaction.editReply({ components: [newUI] });
-                return interaction.followUp({ content: "✅ Setting updated successfully.", flags: [MessageFlags.Ephemeral] });
+                return;
             }
 
             // ====================================================
@@ -123,7 +119,6 @@ module.exports = {
                 if (choice === 'set_local_log' || choice === 'edit_local_log') return interaction.showModal(buildSingleLabelModal(`gts_edit_srv_locallog_${srvId}`, 'Local Log Channel', 'input', 'Select Channel', 'channel'));
                 if (choice === 'set_greet' || choice === 'edit_greet') return interaction.showModal(buildSingleLabelModal(`gts_edit_srv_greet_${srvId}`, 'Edit Greet Channel', 'input', 'Select Channel', 'channel'));
 
-                // 🌟 INSTANT IN-PLACE UPDATE 🌟
                 await interaction.deferUpdate();
                 const updateQuery = {};
 
@@ -138,8 +133,8 @@ module.exports = {
                     await updateGTSDashboard(client);
                     const newUI = await buildViewServerUI(client, interaction.guildId, srvId);
                     await interaction.editReply({ components: [newUI] });
-                    return interaction.followUp({ content: `✅ Setting completely cleared.`, flags: [MessageFlags.Ephemeral] });
                 }
+                return;
             }
 
             // ====================================================
@@ -147,7 +142,6 @@ module.exports = {
             // ====================================================
             if (interaction.isModalSubmit()) {
                 
-                // MAIN SETUP (No original message to edit, just reply)
                 if (interaction.customId.startsWith('gts_setup_modal_')) {
                     await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
                     const serverId = interaction.customId.split('_').pop();
@@ -156,7 +150,6 @@ module.exports = {
                     return interaction.editReply({ content: `✅ Main Server setup completed successfully!` });
                 }
 
-                // SATELLITE SETUP (No original message to edit, just reply)
                 if (interaction.customId.startsWith('gts_add_modal_')) {
                     await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
                     const serverId = interaction.customId.split('_').pop();
@@ -165,14 +158,13 @@ module.exports = {
                     return interaction.editReply({ content: `✅ Satellite Server (\`${serverId}\`) added successfully!` });
                 }
 
-                // 🌟 INSTANT IN-PLACE UPDATE 🌟 (For Modal Edits)
                 if (interaction.customId === 'gts_edit_hub_msg') {
                     await interaction.deferUpdate();
                     await GTSHub.findOneAndUpdate({}, { dashboardMessageId: getModalValue(interaction, 'msg_id') });
                     await updateGTSDashboard(client);
                     const newUI = await buildDashboardUI(client, interaction.guildId);
                     await interaction.editReply({ components: [newUI] });
-                    return interaction.followUp({ content: `✅ Dashboard Message ID updated!`, flags: [MessageFlags.Ephemeral] });
+                    return;
                 }
                 if (interaction.customId === 'gts_edit_hub_role') {
                     await interaction.deferUpdate();
@@ -180,7 +172,7 @@ module.exports = {
                     await updateGTSDashboard(client);
                     const newUI = await buildDashboardUI(client, interaction.guildId);
                     await interaction.editReply({ components: [newUI] });
-                    return interaction.followUp({ content: `✅ Default Tag Adopters Role updated!`, flags: [MessageFlags.Ephemeral] });
+                    return;
                 }
 
                 if (interaction.customId.startsWith('gts_edit_srv_')) {
@@ -204,17 +196,12 @@ module.exports = {
                     
                     const newUI = await buildViewServerUI(client, interaction.guildId, srvId);
                     await interaction.editReply({ components: [newUI] });
-                    return interaction.followUp({ content: `✅ Successfully updated the setting!`, flags: [MessageFlags.Ephemeral] });
+                    return;
                 }
             }
 
         } catch (error) {
             console.error("GTS Interaction Error:", error);
-            if (interaction.deferred || interaction.replied) {
-                await interaction.followUp({ content: "❌ An error occurred processing the interaction.", flags: [MessageFlags.Ephemeral] }).catch(()=>{});
-            } else {
-                await interaction.reply({ content: "❌ An error occurred processing the interaction.", flags: [MessageFlags.Ephemeral] }).catch(()=>{});
-            }
         }
     }
 };

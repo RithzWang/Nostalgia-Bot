@@ -2,7 +2,7 @@ const { Events } = require('discord.js');
 const { GTSHub, GTSServer } = require('../src/models/GTS');
 
 async function initiate10MinKick(member, client, hub, reason) {
-    if (member.premiumSince) return; // Booster immunity check
+    if (member.premiumSince) return; // Booster immunity
     
     const srvData = await GTSServer.findOne({ serverId: member.guild.id });
     if (srvData && srvData.specialGuestRole && member.roles.cache.has(srvData.specialGuestRole)) return; // Guest immunity
@@ -11,7 +11,6 @@ async function initiate10MinKick(member, client, hub, reason) {
         const target = await member.guild.members.fetch(member.id).catch(() => null);
         if (!target || target.premiumSince) return; 
 
-        // Final check: did they re-join the main server in the last 10 mins?
         const mainGuild = client.guilds.cache.get(hub.mainServerId);
         if (mainGuild) {
             try {
@@ -24,7 +23,7 @@ async function initiate10MinKick(member, client, hub, reason) {
 }
 
 module.exports = (client) => {
-    // REQUIREMENT 7: Welcome & Initial Gatekeeper
+    // 1. Welcome & Initial Gatekeeper
     client.on(Events.GuildMemberAdd, async (member) => {
         if (member.user.bot) return;
         const hub = await GTSHub.findOne();
@@ -45,7 +44,7 @@ module.exports = (client) => {
         const channel = member.guild.channels.cache.get(srvData.greetChannel);
         if (!channel) return;
 
-        if (inMain || !hub.joinMainRequired) {
+        if (inMain) {
             channel.send(`<@&1456197055117787136>, Welcome to **${member.guild.name}** server!`).catch(() => {});
         } else {
             channel.send(
@@ -58,12 +57,11 @@ module.exports = (client) => {
         }
     });
 
-    // REQUIREMENT 8: Leaves Main Server -> Kick from Satellites in 10 mins
+    // 2. Leaves Main Server -> Kick from Satellites
     client.on(Events.GuildMemberRemove, async (member) => {
         const hub = await GTSHub.findOne();
         if (!hub || member.guild.id !== hub.mainServerId) return;
 
-        // User left main hub. Sweep satellites.
         const satellites = await GTSServer.find({ serverId: { $ne: hub.mainServerId } });
         for (const sat of satellites) {
             const guild = client.guilds.cache.get(sat.serverId);
@@ -75,18 +73,17 @@ module.exports = (client) => {
         }
     });
 
-    // REQUIREMENT 9: Stops Boosting -> Check Main Hub -> Kick in 10 mins if not in Hub
+    // 3. Stops Boosting -> Check Main Hub
     client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
-        if (oldMember.premiumSince && !newMember.premiumSince) { // Lost booster status
+        if (oldMember.premiumSince && !newMember.premiumSince) { 
             const hub = await GTSHub.findOne();
-            if (!hub || newMember.guild.id === hub.mainServerId || !hub.joinMainRequired) return;
+            if (!hub || newMember.guild.id === hub.mainServerId) return;
 
             const mainGuild = client.guilds.cache.get(hub.mainServerId);
             if (mainGuild) {
                 try {
                     await mainGuild.members.fetch(newMember.id);
                 } catch (e) {
-                    // Not in main hub, lost immunity. Begin 10 min countdown.
                     initiate10MinKick(newMember, client, hub, "Lost Booster immunity and is not in Main Server.");
                 }
             }

@@ -238,7 +238,6 @@ module.exports = {
             }
 
             const container = new ContainerBuilder()
-                .setSpoiler(true)
                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${guild ? guild.name : "Hub Server"}`))
                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(
                     `**Message ID:** \`${hub.dashboardMessageId || "None"}\`\n` +

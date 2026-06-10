@@ -77,6 +77,54 @@ function buildSingleLabelModal(modalId, title, inputId, labelText, type = 'text'
     return modal;
 }
 
+// 🌟 NEW CROSS-SERVER UI BYPASS ENGINE
+async function buildCrossServerDropdownModal(client, srvId, modalId, title, inputId, labelText, type) {
+    let targetGuild = client.guilds.cache.get(srvId);
+    
+    // If the bot can't find the server, fallback to a standard Text ID input box
+    if (!targetGuild) return buildSingleLabelModal(modalId, title, inputId, labelText + " (Paste ID)", 'text');
+
+    const modal = new ModalBuilder().setCustomId(modalId).setTitle(title);
+    const label = new LabelBuilder().setLabel(labelText);
+    
+    const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId(inputId)
+        .setPlaceholder(`Select a ${type} from ${targetGuild.name}...`)
+        .setRequired(true);
+
+    if (type === 'channel') {
+        const channels = targetGuild.channels.cache
+            .filter(c => c.isTextBased() && !c.isThread() && !c.isVoiceBased())
+            .first(25); // Discord StringSelect limit is 25 options
+        
+        if (channels.length === 0) return buildSingleLabelModal(modalId, title, inputId, labelText + " (Paste ID)", 'text');
+        
+        channels.forEach(c => {
+            selectMenu.addOptions(new StringSelectMenuOptionBuilder()
+                .setLabel(`${c.name.substring(0, 60)} (ID: ${c.id})`) // Prevents going over Discord's 100 character limit
+                .setValue(c.id));
+        });
+    } else if (type === 'role') {
+        const roles = targetGuild.roles.cache
+            .filter(r => r.id !== targetGuild.id)
+            .sort((a, b) => b.position - a.position)
+            .first(25);
+            
+        if (roles.length === 0) return buildSingleLabelModal(modalId, title, inputId, labelText + " (Paste ID)", 'text');
+        
+        roles.forEach(r => {
+            selectMenu.addOptions(new StringSelectMenuOptionBuilder()
+                .setLabel(`${r.name.substring(0, 60)} (ID: ${r.id})`)
+                .setValue(r.id));
+        });
+    }
+
+    label.setStringSelectMenuComponent(selectMenu);
+    modal.addLabelComponents(label);
+    
+    return modal;
+}
+
 module.exports = {
     name: Events.InteractionCreate,
     async execute(interaction, client) {
@@ -111,13 +159,25 @@ module.exports = {
                 const srvId = interaction.customId.split('_').pop();
                 const choice = interaction.values[0];
 
+                // Text / Native Menus
                 if (choice === 'edit_invite') return interaction.showModal(buildSingleLabelModal(`gts_edit_srv_invite_${srvId}`, 'Edit Invite Link', 'input', 'New Invite Link (URL)', 'text'));
                 if (choice === 'edit_tag') return interaction.showModal(buildSingleLabelModal(`gts_edit_srv_tag_${srvId}`, 'Edit Server Tag', 'input', 'Server Tag Text', 'text'));
                 if (choice === 'set_main_role' || choice === 'edit_main_role') return interaction.showModal(buildSingleLabelModal(`gts_edit_srv_mainrole_${srvId}`, 'Main Adopters Role', 'input', 'Select Role', 'role'));
                 if (choice === 'set_main_log' || choice === 'edit_main_log') return interaction.showModal(buildSingleLabelModal(`gts_edit_srv_mainlog_${srvId}`, 'Main Log Channel', 'input', 'Select Channel', 'channel'));
-                if (choice === 'set_local_role' || choice === 'edit_local_role') return interaction.showModal(buildSingleLabelModal(`gts_edit_srv_localrole_${srvId}`, 'Local Adopters Role', 'input', 'Select Role', 'role'));
-                if (choice === 'set_local_log' || choice === 'edit_local_log') return interaction.showModal(buildSingleLabelModal(`gts_edit_srv_locallog_${srvId}`, 'Local Log Channel', 'input', 'Select Channel', 'channel'));
-                if (choice === 'set_greet' || choice === 'edit_greet') return interaction.showModal(buildSingleLabelModal(`gts_edit_srv_greet_${srvId}`, 'Edit Greet Channel', 'input', 'Select Channel', 'channel'));
+                
+                // 🌟 CROSS-SERVER MENU TRIGGERS
+                if (choice === 'set_local_role' || choice === 'edit_local_role') {
+                    const modal = await buildCrossServerDropdownModal(client, srvId, `gts_edit_srv_localrole_${srvId}`, 'Local Adopters Role', 'input', 'Select Role', 'role');
+                    return interaction.showModal(modal);
+                }
+                if (choice === 'set_local_log' || choice === 'edit_local_log') {
+                    const modal = await buildCrossServerDropdownModal(client, srvId, `gts_edit_srv_locallog_${srvId}`, 'Local Log Channel', 'input', 'Select Channel', 'channel');
+                    return interaction.showModal(modal);
+                }
+                if (choice === 'set_greet' || choice === 'edit_greet') {
+                    const modal = await buildCrossServerDropdownModal(client, srvId, `gts_edit_srv_greet_${srvId}`, 'Edit Greet Channel', 'input', 'Select Channel', 'channel');
+                    return interaction.showModal(modal);
+                }
 
                 await interaction.deferUpdate();
                 const updateQuery = {};

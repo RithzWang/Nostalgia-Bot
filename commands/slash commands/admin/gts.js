@@ -57,6 +57,10 @@ module.exports = {
         .addSubcommand(sub => sub.setName('default-ta-role')
             .setDescription('Set the default Tag Adopters role.')
             .addRoleOption(opt => opt.setName('role').setDescription('Role').setRequired(true))
+        )
+        .addSubcommand(sub => sub.setName('alert-channel') // ✅ NEW SUBCOMMAND
+            .setDescription('Set the global alert channel for the GTS Gatekeeper.')
+            .addChannelOption(opt => opt.setName('channel').setDescription('Alert Channel').setRequired(true))
         ),
 
     async execute(interaction) {
@@ -66,8 +70,6 @@ module.exports = {
         // ====================================================
         // 🛡️ GLOBAL SECURITY GUARD
         // ====================================================
-        // If the Hub is already setup, block command usage outside of the Main Server.
-        // Exception: /gts tags-stats is allowed in satellites to deploy local dashboards.
         if (hub && interaction.guildId !== hub.mainServerId) {
             if (sub !== 'tags-stats') {
                 return interaction.reply({ 
@@ -224,10 +226,14 @@ module.exports = {
             const guild = interaction.client.guilds.cache.get(hub.mainServerId);
 
             const defaultRoleStr = formatRole(interaction.client, interaction.guildId, hub.mainServerId, hub.defaultTagRole);
+            const alertChannelStr = formatChannel(interaction.client, interaction.guildId, hub.alertChannelId);
+            
             const hasDefaultRole = !!hub.defaultTagRole;
+            const hasAlertChannel = !!hub.alertChannelId;
 
             const menuOptions = [new StringSelectMenuOptionBuilder().setLabel("Edit Server Stats Message").setValue("edit_msg").setEmoji("✏️")];
 
+            // Default Role Toggles
             if (!hasDefaultRole) {
                 menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Default Tag Adopters Role").setValue("set_default_role").setEmoji("⚙️"));
             } else {
@@ -237,11 +243,22 @@ module.exports = {
                 );
             }
 
+            // Alert Channel Toggles
+            if (!hasAlertChannel) {
+                menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Alert Channel").setValue("set_alert").setEmoji("⚙️"));
+            } else {
+                menuOptions.push(
+                    new StringSelectMenuOptionBuilder().setLabel("Edit Alert Channel").setValue("edit_alert").setEmoji("✏️"),
+                    new StringSelectMenuOptionBuilder().setLabel("Remove Alert Channel").setValue("remove_alert").setEmoji("🗑️")
+                );
+            }
+
             const container = new ContainerBuilder()
                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${guild ? guild.name : "Hub Server"}`))
                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(
                     `**Message ID:** \`${hub.dashboardMessageId || "None"}\`\n` +
-                    `**Default Tag Adopters Role:** ${defaultRoleStr}`
+                    `**Default Tag Adopters Role:** ${defaultRoleStr}\n` +
+                    `**Alert Channel:** ${alertChannelStr}` // ✅ Added to Container Text
                 ))
                 .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
                 .addActionRowComponents(new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId("gts_hub_menu").addOptions(menuOptions)));
@@ -249,10 +266,19 @@ module.exports = {
             return interaction.reply({ components: [container], flags: [MessageFlags.IsComponentsV2, MessageFlags.Ephemeral] });
         }
 
+        // ====================================================
+        // 6. SINGLE COMMAND SETTERS
+        // ====================================================
         if (sub === 'default-ta-role') {
             const role = interaction.options.getRole('role');
             await GTSHub.findOneAndUpdate({}, { defaultTagRole: role.id });
             return interaction.reply({ content: `✅ Default Tag Adopter role set to ${role}.`, flags: [MessageFlags.Ephemeral] });
+        }
+
+        if (sub === 'alert-channel') {
+            const channel = interaction.options.getChannel('channel');
+            await GTSHub.findOneAndUpdate({}, { alertChannelId: channel.id });
+            return interaction.reply({ content: `✅ Global Alert Channel set to ${channel}.`, flags: [MessageFlags.Ephemeral] });
         }
     }
 };

@@ -3,7 +3,7 @@ const {
     ContainerBuilder, SectionBuilder, ThumbnailBuilder, TextDisplayBuilder,
     AttachmentBuilder
 } = require('discord.js');
-const TagPartner = require('../../../src/models/TagPartner'); 
+const TagPartner = require('../../src/models/TagPartner'); 
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -71,8 +71,15 @@ module.exports = {
                 return interaction.editReply("❌ **Error:** No partner forum has been set! Run `/tag-partner set forum:` first.");
             }
 
-            const forumChannel = interaction.client.channels.cache.get(config.forumChannelId);
-            if (!forumChannel) return interaction.editReply("❌ **Error:** I cannot find the configured forum channel.");
+            // 🛡️ API FETCH FIX: Forces the bot to lookup the channel if it's not in cache
+            let forumChannel = interaction.guild.channels.cache.get(config.forumChannelId);
+            if (!forumChannel) {
+                try {
+                    forumChannel = await interaction.guild.channels.fetch(config.forumChannelId);
+                } catch (e) {
+                    return interaction.editReply("❌ **Error:** I cannot find the configured forum channel. Was it deleted?");
+                }
+            }
 
             // 🛠️ SMART INVITE EXTRACTOR
             const rawLink = interaction.options.getString('invite_link').trim();
@@ -87,9 +94,13 @@ module.exports = {
             // ====================================================
             // 🎯 EXTRACT DATA (Strictly primaryGuild / Server Tag)
             // ====================================================
-            const targetGuild = interaction.client.guilds.cache.get(invite.guild.id);
+            // 🛡️ API FETCH FIX: Ensure we fetch target guild if possible
+            let targetGuild = interaction.client.guilds.cache.get(invite.guild.id);
+            if (!targetGuild) {
+                try { targetGuild = await interaction.client.guilds.fetch(invite.guild.id); } catch(e) {}
+            }
             
-            // Baseline Fallbacks (NO Server Icons!)
+            // Baseline Fallbacks
             let tagText = invite.guild.name; 
             let badgeURL = null; 
 
@@ -114,7 +125,6 @@ module.exports = {
                 }
             }
 
-            // Fallback purely for Discord's API requiring a valid URL for thumbnails
             const finalImageURL = badgeURL || "https://cdn.discordapp.com/embed/avatars/0.png";
 
             // ====================================================
@@ -123,10 +133,14 @@ module.exports = {
             let tempEmoji = null;
             let emojiDisplay = "🔰"; 
             
-            // ONLY create emoji if we successfully extracted the true primaryGuild badge
             if (badgeURL) {
                 const tempEmojiGuildId = '1490435762372481275';
-                const tempEmojiGuild = interaction.client.guilds.cache.get(tempEmojiGuildId);
+                
+                // 🛡️ API FETCH FIX: Fetch storage server if it fell out of cache
+                let tempEmojiGuild = interaction.client.guilds.cache.get(tempEmojiGuildId);
+                if (!tempEmojiGuild) {
+                    try { tempEmojiGuild = await interaction.client.guilds.fetch(tempEmojiGuildId); } catch(e) {}
+                }
 
                 if (tempEmojiGuild) {
                     try {

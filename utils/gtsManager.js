@@ -14,7 +14,7 @@ function getStatusLine(guild, tagCount) {
     if (boostsNeeded > 0) {
         return boostsNeeded === 1 
             ? `<:no_boost:1468470028302024776> **1 Boost Remains**` 
-            : `<:no_boost:1468470028302024776> **${boostsNeeded} Boosts Remain**`;
+            : `<:no_boost:1468470028302024776> **${boostsNeeded} Remain**`;
     }
     
     const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS') || guild.features.includes('MEMBER_VERIFICATION_GATE_ENABLED');
@@ -37,22 +37,43 @@ async function updateGTSDashboard(client) {
     const mainHumanCount = mainGuild.members.cache.filter(m => !m.user.bot).size;
 
     // ==========================================
-    // 1. DATA CALCULATION PHASE
+    // 1. DATA CALCULATION & ROLE SYNC PHASE
     // ==========================================
     let globalTagAdopters = 0;
 
-    // Fetch and sync main hub local counts
+    // 🟢 MAIN SERVER SWEEP (Count tags & Enforce Main Roles)
     let mainLocalTags = 0;
+    const mainData = allServers.find(s => s.serverId === hub.mainServerId) || {};
+    
     for (const [id, m] of mainGuild.members.cache) {
-        if (!m.user.bot && m.user.primaryGuild && m.user.primaryGuild.identityGuildId === hub.mainServerId) mainLocalTags++;
+        if (m.user.bot) continue;
+        
+        const identityId = m.user.primaryGuild?.identityGuildId;
+        
+        if (identityId === hub.mainServerId) mainLocalTags++;
+
+        // 🛡️ AUTO-SYNC ROLE ENFORCEMENT (Main Server)
+        // If they are wearing ANY recognized tag in our network, check their roles
+        if (identityId) {
+            const srvData = allServers.find(s => s.serverId === identityId);
+            if (srvData) {
+                // 1. Check Global Default Tag Role
+                if (hub.defaultTagRole && !m.roles.cache.has(hub.defaultTagRole)) {
+                    m.roles.add(hub.defaultTagRole).catch(() => {});
+                }
+                // 2. Check Specific Server Main Tag Role
+                if (srvData.mainTagRole && !m.roles.cache.has(srvData.mainTagRole)) {
+                    m.roles.add(srvData.mainTagRole).catch(() => {});
+                }
+            }
+        }
     }
     globalTagAdopters += mainLocalTags;
 
-    const mainData = allServers.find(s => s.serverId === hub.mainServerId) || {};
     const mainStatus = getStatusLine(mainGuild, mainLocalTags);
     const mainInviteUrl = mainData.inviteLink && mainData.inviteLink.startsWith('http') ? mainData.inviteLink : "https://discord.com";
 
-    // Gather statistics arrays across all satellite clusters
+    // 🟢 SATELLITE SERVER SWEEP (Count tags & Enforce Local Roles)
     const satellites = allServers.filter(s => s.serverId !== hub.mainServerId);
     const satellitePayloadData = [];
 
@@ -64,7 +85,19 @@ async function updateGTSDashboard(client) {
         
         let satLocalTags = 0;
         for (const [id, m] of guild.members.cache) {
-            if (!m.user.bot && m.user.primaryGuild && m.user.primaryGuild.identityGuildId === satData.serverId) satLocalTags++;
+            if (m.user.bot) continue;
+            
+            const identityId = m.user.primaryGuild?.identityGuildId;
+            
+            if (identityId === satData.serverId) {
+                satLocalTags++;
+
+                // 🛡️ AUTO-SYNC ROLE ENFORCEMENT (Satellite Server)
+                // If they are wearing THIS satellite's tag, ensure they have the local role
+                if (satData.localTagRole && !m.roles.cache.has(satData.localTagRole)) {
+                    m.roles.add(satData.localTagRole).catch(() => {});
+                }
+            }
         }
         globalTagAdopters += satLocalTags;
 
@@ -154,7 +187,6 @@ async function updateGTSDashboard(client) {
     // ==========================================
     const sharedPayload = renderPayload();
 
-    // Despatch A: Update Main Hub Dashboard Placement
     if (hub.dashboardChannelId) {
         const hubChannel = mainGuild.channels.cache.get(hub.dashboardChannelId) || await client.channels.fetch(hub.dashboardChannelId).catch(() => null);
         if (hubChannel) {
@@ -172,7 +204,6 @@ async function updateGTSDashboard(client) {
         }
     }
 
-    // Despatch B: Loop and distribute to all configured Satellite Placements
     for (const satData of allServers) {
         if (!satData.localDashboardChannelId) continue; 
 

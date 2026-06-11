@@ -2,10 +2,8 @@ const { MessageFlags } = require('discord.js');
 const { GTSHub, GTSServer } = require('../src/models/GTS');
 const { buildAlertPayload } = require('./gtsAlerts');
 
-// Central Memory to track active kick countdowns: Map<UserId, Map<GuildId, TimeoutObject>>
 const activeTimers = new Map();
 
-// Helper to send the UI payload to the Global Alert Channel
 async function sendAlert(client, hub, payload) {
     if (!hub.alertChannelId) return;
     const mainGuild = client.guilds.cache.get(hub.mainServerId);
@@ -17,12 +15,12 @@ async function sendAlert(client, hub, payload) {
     }
 }
 
-// ⏱️ START TIMER ENGINE
-async function startTimer(member, client, hub, reason, actionText) {
-    if (member.premiumSince) return; // Booster Immunity
+// ⏱️ START TIMER ENGINE (Added 'silent' parameter)
+async function startTimer(member, client, hub, reason, actionText, silent = false) {
+    if (member.premiumSince) return false; 
     
     const srvData = await GTSServer.findOne({ serverId: member.guild.id });
-    if (srvData && srvData.specialGuestRole && member.roles.cache.has(srvData.specialGuestRole)) return; // Guest Immunity
+    if (srvData && srvData.specialGuestRole && member.roles.cache.has(srvData.specialGuestRole)) return false; 
 
     const userId = member.id;
     const guildId = member.guild.id;
@@ -30,62 +28,61 @@ async function startTimer(member, client, hub, reason, actionText) {
     if (!activeTimers.has(userId)) activeTimers.set(userId, new Map());
     const userTimers = activeTimers.get(userId);
 
-    if (userTimers.has(guildId)) return; // Timer already running for this user in this server
+    if (userTimers.has(guildId)) return false; 
 
-    // 🚨 SEND: Timer Started Alert
-    const startPayload = buildAlertPayload('start', member.user, member.guild.name, reason, actionText);
-    await sendAlert(client, hub, startPayload);
+    // 🚨 SEND ALERT ONLY IF NOT SILENT
+    if (!silent) {
+        const startPayload = buildAlertPayload('start', member.user, member.guild.name, reason, actionText);
+        await sendAlert(client, hub, startPayload);
+    }
 
-    // Start 10-minute countdown
     const timeoutId = setTimeout(async () => {
         userTimers.delete(guildId);
         if (userTimers.size === 0) activeTimers.delete(userId);
 
         const target = await member.guild.members.fetch(userId).catch(() => null);
-        if (!target) return; // User left voluntarily before timer ended
+        if (!target) return; 
         
-        if (target.premiumSince) return; // Failsafe: They boosted at the last second!
+        if (target.premiumSince) return; 
 
         const mainGuild = client.guilds.cache.get(hub.mainServerId);
         if (mainGuild) {
             try {
                 await mainGuild.members.fetch(userId);
-                return; // Failsafe: They joined Main Hub quietly
+                return; 
             } catch (e) {}
         }
 
-        // 🥾 EXECUTE KICK
         await target.kick(`GTS Gatekeeper: ${reason}`).catch(() => {});
         
-        // 🔴 SEND: Member Kicked Alert
         const kickPayload = buildAlertPayload('kick', target.user, target.guild.name, reason);
         await sendAlert(client, hub, kickPayload);
 
-    }, 10 * 60 * 1000); // 10 Minutes
+    }, 10 * 60 * 1000); 
 
     userTimers.set(guildId, timeoutId);
+    
+    return true; // Successfully started
 }
 
-// 🟢 CANCEL ALL ENGINE (Triggers when joining Main Hub)
+// 🟢 CANCEL ALL ENGINE
 async function cancelAllTimersForUser(user, client, hub, reason) {
     const userId = user.id;
     if (!activeTimers.has(userId)) return;
     
     const userTimers = activeTimers.get(userId);
-    const savedCount = userTimers.size; // How many servers they were about to be kicked from
+    const savedCount = userTimers.size; 
     
-    // Kill all pending timeouts
     for (const timeoutId of userTimers.values()) {
         clearTimeout(timeoutId);
     }
     activeTimers.delete(userId);
 
-    // 🟢 SEND: Timers Cancelled Alert
     const cancelPayload = buildAlertPayload('cancel', user, "Multiple Satellites", reason, savedCount);
     await sendAlert(client, hub, cancelPayload);
 }
 
-// 🟢 CANCEL SINGLE ENGINE (Triggers when Boosting a specific Satellite)
+// 🟢 CANCEL SINGLE ENGINE
 async function cancelTimerForServer(member, client, hub, reason) {
     const userId = member.id;
     const guildId = member.guild.id;
@@ -98,7 +95,6 @@ async function cancelTimerForServer(member, client, hub, reason) {
         userTimers.delete(guildId);
         if (userTimers.size === 0) activeTimers.delete(userId);
 
-        // 🟢 SEND: Timer Cancelled Alert
         const cancelPayload = buildAlertPayload('cancel', member.user, member.guild.name, reason, 1);
         await sendAlert(client, hub, cancelPayload);
     }

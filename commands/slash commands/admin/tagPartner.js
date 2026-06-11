@@ -3,7 +3,7 @@ const {
     ContainerBuilder, SectionBuilder, ThumbnailBuilder, TextDisplayBuilder,
     AttachmentBuilder
 } = require('discord.js');
-const TagPartner = require('../../src/models/TagPartner'); 
+const TagPartner = require('../../../src/models/TagPartner'); 
 
 module.exports = {
     data: new SlashCommandBuilder()

@@ -76,8 +76,7 @@ module.exports = {
 
             // 🛠️ SMART INVITE EXTRACTOR
             const rawLink = interaction.options.getString('invite_link').trim();
-            const codeMatch = rawLink.match(/(?:discord\.gg\/|discord\.com\/invite\/|discordapp\.com\/invite\/)?([a-zA-Z0-9-]+)/);
-            const inviteCode = codeMatch ? codeMatch[1] : rawLink;
+            const inviteCode = rawLink.split('/').pop().split('?')[0]; 
             
             // 🔍 Resolve Invite Link
             const invite = await interaction.client.fetchInvite(inviteCode).catch(() => null);
@@ -86,13 +85,13 @@ module.exports = {
             }
 
             // ====================================================
-            // 🎯 EXTRACT DATA 
+            // 🎯 EXTRACT DATA (Strictly primaryGuild / Server Tag)
             // ====================================================
             const targetGuild = interaction.client.guilds.cache.get(invite.guild.id);
             
-            // Baseline Fallbacks
+            // Baseline Fallbacks (NO Server Icons!)
             let tagText = invite.guild.name; 
-            let badgeURL = invite.guild.iconURL({ extension: 'png', size: 256 }) || "https://cdn.discordapp.com/embed/avatars/0.png"; 
+            let badgeURL = null; 
 
             // Upgrade info if bot is in the server
             if (targetGuild) {
@@ -108,30 +107,37 @@ module.exports = {
                     if (guildInfo.tag) tagText = guildInfo.tag;
                     
                     if (typeof tagSourceUser.guildTagBadgeURL === 'function') {
-                        badgeURL = tagSourceUser.guildTagBadgeURL({ extension: 'png', size: 256 }) || badgeURL;
+                        badgeURL = tagSourceUser.guildTagBadgeURL({ extension: 'png', size: 256 });
                     } else if (guildInfo.badge && guildInfo.identityGuildId) {
                         badgeURL = `https://cdn.discordapp.com/guild-tag-badges/${guildInfo.identityGuildId}/${guildInfo.badge}.png?size=256`;
                     }
                 }
             }
 
+            // Fallback purely for Discord's API requiring a valid URL for thumbnails
+            const finalImageURL = badgeURL || "https://cdn.discordapp.com/embed/avatars/0.png";
+
             // ====================================================
             // 🛠️ TEMPORARY EMOJI CREATION
             // ====================================================
             let tempEmoji = null;
             let emojiDisplay = "🔰"; 
-            const tempEmojiGuildId = '1490435762372481275';
-            const tempEmojiGuild = interaction.client.guilds.cache.get(tempEmojiGuildId);
+            
+            // ONLY create emoji if we successfully extracted the true primaryGuild badge
+            if (badgeURL) {
+                const tempEmojiGuildId = '1490435762372481275';
+                const tempEmojiGuild = interaction.client.guilds.cache.get(tempEmojiGuildId);
 
-            if (tempEmojiGuild) {
-                try {
-                    tempEmoji = await tempEmojiGuild.emojis.create({ 
-                        attachment: badgeURL, 
-                        name: 'TAGICON' 
-                    });
-                    emojiDisplay = `<:${tempEmoji.name}:${tempEmoji.id}>`;
-                } catch (err) {
-                    console.error("Could not create temp emoji. Falling back to default icon.", err);
+                if (tempEmojiGuild) {
+                    try {
+                        tempEmoji = await tempEmojiGuild.emojis.create({ 
+                            attachment: badgeURL, 
+                            name: 'TAGICON' 
+                        });
+                        emojiDisplay = `<:${tempEmoji.name}:${tempEmoji.id}>`;
+                    } catch (err) {
+                        console.error("Could not create temp emoji. Falling back to default icon.", err);
+                    }
                 }
             }
 
@@ -139,7 +145,7 @@ module.exports = {
             const container = new ContainerBuilder()
                 .addSectionComponents(
                     new SectionBuilder()
-                        .setThumbnailAccessory(new ThumbnailBuilder().setURL(badgeURL))
+                        .setThumbnailAccessory(new ThumbnailBuilder().setURL(finalImageURL))
                         .addTextDisplayComponents(
                             new TextDisplayBuilder().setContent(`## ${emojiDisplay} ${tagText}`),
                             new TextDisplayBuilder().setContent(
@@ -150,7 +156,7 @@ module.exports = {
                         )
                 );
 
-            const imageAttachment = new AttachmentBuilder(badgeURL, { name: 'tag-icon.png' });
+            const imageAttachment = new AttachmentBuilder(finalImageURL, { name: 'tag-icon.png' });
 
             try {
                 // 📝 Create the Forum Post

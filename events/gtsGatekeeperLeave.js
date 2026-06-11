@@ -1,4 +1,7 @@
-const { Events, ContainerBuilder, SectionBuilder, TextDisplayBuilder, MessageFlags } = require('discord.js');
+const { 
+    Events, MessageFlags, ContainerBuilder, SectionBuilder, ThumbnailBuilder, 
+    TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize 
+} = require('discord.js');
 const { GTSHub, GTSTimer } = require('../src/models/GTS'); 
 
 module.exports = {
@@ -7,53 +10,50 @@ module.exports = {
         const hub = await GTSHub.findOne();
         if (!hub || !hub.alertChannelId) return;
 
-        // We only care if they are leaving the MAIN SERVER
+        // We only trigger this if they leave the MAIN SERVER
         if (member.guild.id !== hub.mainServerId) return;
 
         const alertChannel = member.client.channels.cache.get(hub.alertChannelId);
         if (!alertChannel) return;
 
-        // 1. Find ALL satellite servers the user is currently sitting in
+        const userAvatar = member.user.displayAvatarURL({ size: 1024, forceStatic: false }) || "https://cdn.discordapp.com/embed/avatars/0.png";
+        const globalName = member.user.globalName || member.user.username;
+        const username = member.user.username;
+        const currentTimestamp = Math.floor(Date.now() / 1000);
+
+        // Find all satellite servers the user is currently in
         const satelliteGuilds = [];
-        
         for (const [guildId, guild] of member.client.guilds.cache) {
-            if (guildId === hub.mainServerId) continue; // Skip main server
+            if (guildId === hub.mainServerId) continue; 
             
-            // Check if the user is in this guild
             const isInSatellite = await guild.members.fetch(member.id).catch(() => null);
             if (isInSatellite) {
                 satelliteGuilds.push(guild);
             }
         }
 
-        // 2. Start a timer and send an alert for EVERY satellite server they are in
+        // Apply timers and send alerts for every satellite
         for (const satellite of satelliteGuilds) {
-            // Ensure we don't duplicate timers
             const existingTimer = await GTSTimer.findOne({ userId: member.id, guildId: satellite.id });
             if (existingTimer) continue;
 
-            const kickTime = Date.now() + (24 * 60 * 60 * 1000); // 24 hours
-            const timestamp = `<t:${Math.floor(kickTime / 1000)}:R>`;
+            // Start 10-minute timer
+            const kickTime = Date.now() + (10 * 60 * 1000); 
+            await GTSTimer.create({ userId: member.id, guildId: satellite.id, kickAt: kickTime });
 
-            await GTSTimer.create({
-                userId: member.id,
-                guildId: satellite.id,
-                kickAt: kickTime
-            });
-
-            // Send independent alert for this satellite
+            // V2 "Timer Started" Alert (Left Main Server)
             const container = new ContainerBuilder()
+                .setAccentColor(15105570)
                 .addSectionComponents(
                     new SectionBuilder()
+                        .setThumbnailAccessory(new ThumbnailBuilder().setURL(userAvatar))
                         .addTextDisplayComponents(
                             new TextDisplayBuilder().setContent("## Timer Started"),
-                            new TextDisplayBuilder().setContent(
-                                `**User:** <@${member.id}>\n` +
-                                `**Server:** ${satellite.name}\n` +
-                                `**Action:** Kick ${timestamp}`
-                            )
+                            new TextDisplayBuilder().setContent(`**${globalName}** (${username})\n**ID:** \`${member.id}\`\n**Server:** ${satellite.name}\n**Reason:** Left Main Server\n**Action:** will be kicked in **__10__** mins if they don’t return`)
                         )
-                );
+                )
+                .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
+                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# <t:${currentTimestamp}:f>`));
 
             await alertChannel.send({ components: [container], flags: [MessageFlags.IsComponentsV2] });
         }

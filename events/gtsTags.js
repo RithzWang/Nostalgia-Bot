@@ -6,7 +6,7 @@ const {
 const { GTSHub, GTSServer } = require('../src/models/GTS');
 
 // Builds the V2 Component UI to match your new Tag Log layouts
-function buildLogPayload(user, type, tagText, pingUser, imageUrl) {
+function buildLogPayload(user, type, tagText, serverName, pingUser, imageUrl) {
     const isAdopt = type === 'adopt';
     const accentColor = isAdopt ? 3447003 : 15548997; 
     const titleText = isAdopt ? "## Tag Adopted" : "## Tag Removed";
@@ -14,9 +14,10 @@ function buildLogPayload(user, type, tagText, pingUser, imageUrl) {
     // Dynamically ping in Main, or just use username in Local
     const userDisplay = pingUser ? `<@${user.id}>` : `**${user.username}**`;
     
+    // 🛠️ UPDATED: Added "from **serverName**" to the output strings
     const contentString = isAdopt 
-        ? `${userDisplay} starts adopting our **${tagText}** tag`
-        : `${userDisplay} stopped adopting our **${tagText}** tag`;
+        ? `${userDisplay} starts adopting our **${tagText}** tag from **${serverName}**`
+        : `${userDisplay} stopped adopting our **${tagText}** tag from **${serverName}**`;
 
     const safeImage = imageUrl || "https://cdn.discordapp.com/embed/avatars/0.png";
 
@@ -31,7 +32,7 @@ function buildLogPayload(user, type, tagText, pingUser, imageUrl) {
                 )
         )
         .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
-        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`<t:${Math.floor(Date.now() / 1000)}:f>`));
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# <t:${Math.floor(Date.now() / 1000)}:f>`));
 
     return [container];
 }
@@ -57,6 +58,7 @@ module.exports = {
             const srvData = await GTSServer.findOne({ serverId: newGuildId });
             if (srvData) {
                 const localGuild = client.guilds.cache.get(newGuildId);
+                const serverName = localGuild ? localGuild.name : "Unknown Server";
                 
                 // Fetch official Discord Guild Tag Badge, fallback to Guild Icon
                 const thumbnailImg = newUser.primaryGuild?.badge 
@@ -74,7 +76,7 @@ module.exports = {
                         if (srvData.mainTagRole) await mainMember.roles.add(srvData.mainTagRole).catch(() => {});
                     }
                     if (srvData.mainLogChannel) {
-                        const mainPayload = buildLogPayload(newUser, 'adopt', liveTagText, true, thumbnailImg);
+                        const mainPayload = buildLogPayload(newUser, 'adopt', liveTagText, serverName, true, thumbnailImg);
                         const ch = mainGuild.channels.cache.get(srvData.mainLogChannel);
                         if (ch) ch.send({ 
                             components: mainPayload, 
@@ -89,7 +91,7 @@ module.exports = {
                     const localMember = await localGuild.members.fetch(newUser.id).catch(() => null);
                     if (localMember && srvData.localTagRole) await localMember.roles.add(srvData.localTagRole).catch(() => {});
                     if (srvData.localLogChannel) {
-                        const localPayload = buildLogPayload(newUser, 'adopt', liveTagText, false, thumbnailImg);
+                        const localPayload = buildLogPayload(newUser, 'adopt', liveTagText, serverName, false, thumbnailImg);
                         const ch = localGuild.channels.cache.get(srvData.localLogChannel);
                         if (ch) ch.send({ 
                             components: localPayload, 
@@ -108,6 +110,7 @@ module.exports = {
             const srvData = await GTSServer.findOne({ serverId: oldGuildId });
             if (srvData) {
                 const localGuild = client.guilds.cache.get(oldGuildId);
+                const serverName = localGuild ? localGuild.name : "Unknown Server";
                 
                 // Fetch official Discord Guild Tag Badge from oldUser, fallback to Guild Icon
                 const thumbnailImg = oldUser.primaryGuild?.badge 
@@ -125,7 +128,7 @@ module.exports = {
                         if (srvData.mainTagRole) await mainMember.roles.remove(srvData.mainTagRole).catch(() => {});
                     }
                     if (srvData.mainLogChannel) {
-                        const mainPayload = buildLogPayload(newUser, 'remove', liveTagText, true, thumbnailImg);
+                        const mainPayload = buildLogPayload(newUser, 'remove', liveTagText, serverName, true, thumbnailImg);
                         const ch = mainGuild.channels.cache.get(srvData.mainLogChannel);
                         if (ch) ch.send({ 
                             components: mainPayload, 
@@ -140,7 +143,7 @@ module.exports = {
                     const localMember = await localGuild.members.fetch(newUser.id).catch(() => null);
                     if (localMember && srvData.localTagRole) await localMember.roles.remove(srvData.localTagRole).catch(() => {});
                     if (srvData.localLogChannel) {
-                        const localPayload = buildLogPayload(newUser, 'remove', liveTagText, false, thumbnailImg);
+                        const localPayload = buildLogPayload(newUser, 'remove', liveTagText, serverName, false, thumbnailImg);
                         const ch = localGuild.channels.cache.get(srvData.localLogChannel);
                         if (ch) ch.send({ 
                             components: localPayload, 

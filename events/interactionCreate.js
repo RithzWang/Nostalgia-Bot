@@ -217,7 +217,7 @@ module.exports = {
                 if (interaction.member.roles.cache.has(REGISTERED_ROLE_ID)) {
                     return interaction.reply({ content: `<:no:1297814819105144862> You are already registered!`, flags: MessageFlags.Ephemeral });
                 }
-                const modal = new ModalBuilder().setCustomId('reg_modal_submit').setTitle('A2-Q Registration');
+                const modal = new ModalBuilder().setCustomId('reg_modal_submit').setTitle('Registration');
                 const nameInput = new TextInputBuilder().setCustomId('reg_name').setLabel("Name").setStyle(TextInputStyle.Short).setPlaceholder("e.g. Naif, PrimeQahtani").setMaxLength(20).setRequired(true);
                 const countryInput = new TextInputBuilder().setCustomId('reg_country').setLabel("Country Flag").setStyle(TextInputStyle.Short).setPlaceholder("e.g. 🇵🇸, 🏴󠁧󠁢󠁥󠁮󠁧󠁿").setMaxLength(10).setRequired(true);
                 modal.addComponents(new ActionRowBuilder().addComponents(nameInput), new ActionRowBuilder().addComponents(countryInput));
@@ -280,7 +280,7 @@ module.exports = {
                                 )
                                 .addTextDisplayComponents(
                                     new TextDisplayBuilder().setContent("## New Registration"),
-                                    new TextDisplayBuilder().setContent(`**User:** ${member} \`(${member.user.username})\`\n**ID:** \`${member.id}\`\n**Name:** ${name}\n**Country:** ${countryInput}`),
+                                    new TextDisplayBuilder().setContent(`${member} \`(${member.user.username})\`\n**ID:** \`${member.id}\`\n**Name:** ${name}\n**Country:** ${countryInput}`),
                                 ),
                         )
                         .addSeparatorComponents(
@@ -304,7 +304,7 @@ module.exports = {
                         const role = interaction.guild.roles.cache.get(REGISTERED_ROLE_ID);
                         const newCount = role ? role.members.size : 'N/A';
                         const newContainer = new ContainerBuilder();
-                        newContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent('# <:A2Q_1:1466981218758426634><:A2Q_2:1466981281060360232> » Registration'));
+                        newContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent('# Registration'));
                         newContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`To access chat and connect to voice channels, please register below.\n\n**Note:**\n\`Name\` : your desired name.\n\`Country Flag\` : your country’s flag emoji.`));
                         newContainer.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false));
                         const registerBtn = new ButtonBuilder().setCustomId('reg_btn_open').setLabel('Register').setStyle(ButtonStyle.Primary);

@@ -46,7 +46,7 @@ module.exports = {
                 .addSectionComponents(
                     new SectionBuilder()
                         .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent("## ⚠️ Timer Started"),
+                            new TextDisplayBuilder().setContent("## Timer Started"),
                             new TextDisplayBuilder().setContent(
                                 `**User:** <@${member.id}>\n` +
                                 `**Server:** ${satellite.name}\n` +

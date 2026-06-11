@@ -14,7 +14,7 @@ function getStatusLine(guild, tagCount) {
     if (boostsNeeded > 0) {
         return boostsNeeded === 1 
             ? `<:no_boost:1468470028302024776> **1 Boost Remains**` 
-            : `<:no_boost:1468470028302024776> **${boostsNeeded} Remain**`;
+            : `<:no_boost:1468470028302024776> **${boostsNeeded} Boosts Remain**`;
     }
     
     const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS') || guild.features.includes('MEMBER_VERIFICATION_GATE_ENABLED');

@@ -1,5 +1,5 @@
 const { Events, ContainerBuilder, SectionBuilder, TextDisplayBuilder, MessageFlags } = require('discord.js');
-const { GTSHub, GTSTimer } = require('../../src/models/GTS'); 
+const { GTSHub, GTSTimer } = require('../src/models/GTS'); 
 
 module.exports = {
     name: Events.GuildMemberAdd,

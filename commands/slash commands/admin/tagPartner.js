@@ -50,10 +50,9 @@ module.exports = {
                     { upsert: true }
                 );
 
-                return interaction.editReply(`✅ **Partner Forum Configured!**\n<#${forumChannel.id}> permissions have been locked down and it is now the active Tag Partner forum.`);
+                return interaction.editReply(`✅ **Partner Forum Configured!**\n<#${forumChannel.id}> permissions have been locked down.`);
             } catch (error) {
-                console.error("Forum Permission Error:", error);
-                return interaction.editReply("❌ Failed to update forum permissions. Make sure my bot role is higher than the @everyone role and I have Manage Channels permission.");
+                return interaction.editReply("❌ Failed to update forum permissions. Check my roles.");
             }
         }
 
@@ -61,59 +60,53 @@ module.exports = {
             await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
             const config = await TagPartner.findOne({ guildId: interaction.guild.id });
-            if (!config || !config.forumChannelId) {
-                return interaction.editReply("❌ **Error:** No partner forum has been set! Run `/tag-partner set forum:` first.");
-            }
+            if (!config || !config.forumChannelId) return interaction.editReply("❌ No partner forum set!");
 
             let forumChannel = interaction.guild.channels.cache.get(config.forumChannelId);
             if (!forumChannel) {
                 try { forumChannel = await interaction.guild.channels.fetch(config.forumChannelId); } 
-                catch (e) { return interaction.editReply("❌ **Error:** I cannot find the configured forum channel."); }
+                catch (e) { return interaction.editReply("❌ Cannot find the configured forum channel."); }
             }
 
             // 🛠️ SMART INVITE EXTRACTOR
             const rawLink = interaction.options.getString('invite_link').trim();
             const inviteCode = rawLink.split('/').pop().split('?')[0]; 
             
-            // ====================================================
-            // 🎯 DIRECT REST API FETCH (Bypasses DJS Limitations)
-            // ====================================================
-            let rawInviteData;
-            try {
-                // We ask Discord's API directly for the raw JSON of the invite
-                rawInviteData = await interaction.client.rest.get(`/invites/${inviteCode}?with_counts=true`);
-            } catch (err) {
-                return interaction.editReply(`❌ **Error:** Discord rejected the invite code (\`${inviteCode}\`). It might be expired or invalid.`);
-            }
+            const invite = await interaction.client.fetchInvite(inviteCode).catch(() => null);
+            if (!invite || !invite.guild) return interaction.editReply("❌ Discord rejected the invite code.");
 
-            if (!rawInviteData || !rawInviteData.guild) {
-                return interaction.editReply("❌ **Error:** Could not fetch server details from that invite.");
+            // ====================================================
+            // 🎯 EXTRACT DATA (Strictly using primaryGuild logic)
+            // ====================================================
+            let targetGuild = interaction.client.guilds.cache.get(invite.guild.id);
+            if (!targetGuild) {
+                try { targetGuild = await interaction.client.guilds.fetch(invite.guild.id); } catch(e) {}
             }
-
-            const rawGuild = rawInviteData.guild;
             
-            // Extract baseline info
-            const guildId = rawGuild.id;
-            const guildName = rawGuild.name;
+            let tagText = invite.guild.name; 
+            let badgeURL = null; 
 
-            // Extract Clan Info directly from the raw payload!
-            // Discord stores this inside `clan` or directly on the guild object depending on the API version.
-            let tagText = guildName; // Fallback
-            let badgeURL = null;
+            if (targetGuild) {
+                // 🛡️ API FIX: Force fetch members into cache so we can actually find someone with the tag!
+                await targetGuild.members.fetch({ limit: 100 }).catch(() => {});
 
-            if (rawGuild.clan) {
-                tagText = rawGuild.clan.tag || guildName;
-                if (rawGuild.clan.badge) {
-                    badgeURL = `https://cdn.discordapp.com/guild-tag-badges/${guildId}/${rawGuild.clan.badge}.png?size=256`;
-                }
-            } else if (rawGuild.incidents_data || rawGuild.features?.includes('CLAN')) {
-                // Sometimes older endpoints map it directly
-                if (rawGuild.tag) tagText = rawGuild.tag;
-                if (rawGuild.badge) {
-                    badgeURL = `https://cdn.discordapp.com/guild-tag-badges/${guildId}/${rawGuild.badge}.png?size=256`;
+                // Find ANY member whose primaryGuild matches this server
+                const tagSourceMember = targetGuild.members.cache.find(m => m.user.primaryGuild?.identityGuildId === targetGuild.id);
+
+                if (tagSourceMember && tagSourceMember.user.primaryGuild) {
+                    const guildInfo = tagSourceMember.user.primaryGuild;
+                    if (guildInfo.tag) tagText = guildInfo.tag;
+                    
+                    if (typeof tagSourceMember.user.guildTagBadgeURL === 'function') {
+                        badgeURL = tagSourceMember.user.guildTagBadgeURL({ extension: 'png', size: 256 });
+                    } else if (guildInfo.badge && guildInfo.identityGuildId) {
+                        badgeURL = `https://cdn.discordapp.com/guild-tag-badges/${guildInfo.identityGuildId}/${guildInfo.badge}.png?size=256`;
+                    }
                 }
             }
 
+            // If we absolutely cannot find a primaryGuild badge, we fallback to a default transparent image.
+            // WE NEVER USE THE SERVER ICON.
             const finalImageURL = badgeURL || "https://cdn.discordapp.com/embed/avatars/0.png";
 
             // ====================================================
@@ -125,7 +118,6 @@ module.exports = {
             if (badgeURL) {
                 const tempEmojiGuildId = '1490435762372481275';
                 let tempEmojiGuild = interaction.client.guilds.cache.get(tempEmojiGuildId);
-                
                 if (!tempEmojiGuild) {
                     try { tempEmojiGuild = await interaction.client.guilds.fetch(tempEmojiGuildId); } catch(e) {}
                 }
@@ -138,7 +130,7 @@ module.exports = {
                         });
                         emojiDisplay = `<:${tempEmoji.name}:${tempEmoji.id}>`;
                     } catch (err) {
-                        console.error("Could not create temp emoji.", err);
+                        console.error("Could not create temp emoji:", err);
                     }
                 }
             }
@@ -151,9 +143,9 @@ module.exports = {
                         .addTextDisplayComponents(
                             new TextDisplayBuilder().setContent(`## ${emojiDisplay} ${tagText}`),
                             new TextDisplayBuilder().setContent(
-                                `**Server:** ${guildName}\n` +
-                                `**ID:** \`${guildId}\`\n` +
-                                `**Invite:** https://discord.gg/${inviteCode}`
+                                `**Server:** ${invite.guild.name}\n` +
+                                `**ID:** \`${invite.guild.id}\`\n` +
+                                `**Invite:** https://discord.gg/${invite.code}`
                             )
                         )
                 );
@@ -171,8 +163,10 @@ module.exports = {
                     }
                 });
 
+                // 🔒 Lock the post immediately
                 await thread.setLocked(true);
 
+                // 👍 React to the initial message with the created emoji
                 if (tempEmoji) {
                     const starterMessage = await thread.fetchStarterMessage().catch(() => null);
                     if (starterMessage) {
@@ -183,7 +177,7 @@ module.exports = {
                 await interaction.editReply(`✅ Successfully posted and locked **${tagText}** in <#${forumChannel.id}>!`);
             } catch (err) {
                 console.error("Forum Post Error:", err);
-                await interaction.editReply("❌ **Error:** Failed to create the forum post. Ensure I have the 'Create Posts' permission in that forum.");
+                await interaction.editReply("❌ **Error:** Failed to create the forum post.");
             }
         }
     }

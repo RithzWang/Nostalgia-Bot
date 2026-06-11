@@ -3,7 +3,7 @@ const {
     ContainerBuilder, SectionBuilder, ThumbnailBuilder, TextDisplayBuilder,
     AttachmentBuilder
 } = require('discord.js');
-const TagPartner = require('../../../src/models/TagPartner'); 
+const TagPartner = require('../../src/models/TagPartner'); 
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -29,9 +29,6 @@ module.exports = {
     async execute(interaction) {
         const sub = interaction.options.getSubcommand();
 
-        // ====================================================
-        // 1. SET FORUM COMMAND
-        // ====================================================
         if (sub === 'set') {
             await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
             const forumChannel = interaction.options.getChannel('forum');
@@ -60,9 +57,6 @@ module.exports = {
             }
         }
 
-        // ====================================================
-        // 2. SEND INVITE COMMAND
-        // ====================================================
         if (sub === 'send') {
             await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
@@ -71,57 +65,52 @@ module.exports = {
                 return interaction.editReply("❌ **Error:** No partner forum has been set! Run `/tag-partner set forum:` first.");
             }
 
-            // 🛡️ API FETCH FIX: Forces the bot to lookup the channel if it's not in cache
             let forumChannel = interaction.guild.channels.cache.get(config.forumChannelId);
             if (!forumChannel) {
-                try {
-                    forumChannel = await interaction.guild.channels.fetch(config.forumChannelId);
-                } catch (e) {
-                    return interaction.editReply("❌ **Error:** I cannot find the configured forum channel. Was it deleted?");
-                }
+                try { forumChannel = await interaction.guild.channels.fetch(config.forumChannelId); } 
+                catch (e) { return interaction.editReply("❌ **Error:** I cannot find the configured forum channel."); }
             }
 
             // 🛠️ SMART INVITE EXTRACTOR
             const rawLink = interaction.options.getString('invite_link').trim();
             const inviteCode = rawLink.split('/').pop().split('?')[0]; 
             
-            // 🔍 Resolve Invite Link
-            const invite = await interaction.client.fetchInvite(inviteCode).catch(() => null);
-            if (!invite || !invite.guild) {
+            // ====================================================
+            // 🎯 DIRECT REST API FETCH (Bypasses DJS Limitations)
+            // ====================================================
+            let rawInviteData;
+            try {
+                // We ask Discord's API directly for the raw JSON of the invite
+                rawInviteData = await interaction.client.rest.get(`/invites/${inviteCode}?with_counts=true`);
+            } catch (err) {
                 return interaction.editReply(`❌ **Error:** Discord rejected the invite code (\`${inviteCode}\`). It might be expired or invalid.`);
             }
 
-            // ====================================================
-            // 🎯 EXTRACT DATA (Strictly primaryGuild / Server Tag)
-            // ====================================================
-            // 🛡️ API FETCH FIX: Ensure we fetch target guild if possible
-            let targetGuild = interaction.client.guilds.cache.get(invite.guild.id);
-            if (!targetGuild) {
-                try { targetGuild = await interaction.client.guilds.fetch(invite.guild.id); } catch(e) {}
+            if (!rawInviteData || !rawInviteData.guild) {
+                return interaction.editReply("❌ **Error:** Could not fetch server details from that invite.");
             }
+
+            const rawGuild = rawInviteData.guild;
             
-            // Baseline Fallbacks
-            let tagText = invite.guild.name; 
-            let badgeURL = null; 
+            // Extract baseline info
+            const guildId = rawGuild.id;
+            const guildName = rawGuild.name;
 
-            // Upgrade info if bot is in the server
-            if (targetGuild) {
-                const owner = await targetGuild.fetchOwner().catch(() => null);
-                let tagSourceUser = owner?.user;
+            // Extract Clan Info directly from the raw payload!
+            // Discord stores this inside `clan` or directly on the guild object depending on the API version.
+            let tagText = guildName; // Fallback
+            let badgeURL = null;
 
-                if (!tagSourceUser || !(tagSourceUser.primaryGuild?.identityGuildId === targetGuild.id)) {
-                    tagSourceUser = targetGuild.members.cache.find(m => m.user.primaryGuild?.identityGuildId === targetGuild.id)?.user;
+            if (rawGuild.clan) {
+                tagText = rawGuild.clan.tag || guildName;
+                if (rawGuild.clan.badge) {
+                    badgeURL = `https://cdn.discordapp.com/guild-tag-badges/${guildId}/${rawGuild.clan.badge}.png?size=256`;
                 }
-
-                if (tagSourceUser && tagSourceUser.primaryGuild) {
-                    const guildInfo = tagSourceUser.primaryGuild;
-                    if (guildInfo.tag) tagText = guildInfo.tag;
-                    
-                    if (typeof tagSourceUser.guildTagBadgeURL === 'function') {
-                        badgeURL = tagSourceUser.guildTagBadgeURL({ extension: 'png', size: 256 });
-                    } else if (guildInfo.badge && guildInfo.identityGuildId) {
-                        badgeURL = `https://cdn.discordapp.com/guild-tag-badges/${guildInfo.identityGuildId}/${guildInfo.badge}.png?size=256`;
-                    }
+            } else if (rawGuild.incidents_data || rawGuild.features?.includes('CLAN')) {
+                // Sometimes older endpoints map it directly
+                if (rawGuild.tag) tagText = rawGuild.tag;
+                if (rawGuild.badge) {
+                    badgeURL = `https://cdn.discordapp.com/guild-tag-badges/${guildId}/${rawGuild.badge}.png?size=256`;
                 }
             }
 
@@ -135,9 +124,8 @@ module.exports = {
             
             if (badgeURL) {
                 const tempEmojiGuildId = '1490435762372481275';
-                
-                // 🛡️ API FETCH FIX: Fetch storage server if it fell out of cache
                 let tempEmojiGuild = interaction.client.guilds.cache.get(tempEmojiGuildId);
+                
                 if (!tempEmojiGuild) {
                     try { tempEmojiGuild = await interaction.client.guilds.fetch(tempEmojiGuildId); } catch(e) {}
                 }
@@ -150,7 +138,7 @@ module.exports = {
                         });
                         emojiDisplay = `<:${tempEmoji.name}:${tempEmoji.id}>`;
                     } catch (err) {
-                        console.error("Could not create temp emoji. Falling back to default icon.", err);
+                        console.error("Could not create temp emoji.", err);
                     }
                 }
             }
@@ -163,9 +151,9 @@ module.exports = {
                         .addTextDisplayComponents(
                             new TextDisplayBuilder().setContent(`## ${emojiDisplay} ${tagText}`),
                             new TextDisplayBuilder().setContent(
-                                `**Server:** ${invite.guild.name}\n` +
-                                `**ID:** \`${invite.guild.id}\`\n` +
-                                `**Invite:** https://discord.gg/${invite.code}`
+                                `**Server:** ${guildName}\n` +
+                                `**ID:** \`${guildId}\`\n` +
+                                `**Invite:** https://discord.gg/${inviteCode}`
                             )
                         )
                 );
@@ -183,10 +171,8 @@ module.exports = {
                     }
                 });
 
-                // 🔒 Lock the post immediately
                 await thread.setLocked(true);
 
-                // 👍 React to the initial message
                 if (tempEmoji) {
                     const starterMessage = await thread.fetchStarterMessage().catch(() => null);
                     if (starterMessage) {

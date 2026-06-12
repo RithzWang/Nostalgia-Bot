@@ -9,6 +9,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('tag-partner')
         .setDescription('Manage the standalone Tag Partner forum.')
+        .setDMPermission(false)
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addSubcommand(sub => sub.setName('set')
             .setDescription('Set the partner forum channel and lock its permissions.')

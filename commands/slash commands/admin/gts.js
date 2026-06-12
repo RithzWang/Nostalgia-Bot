@@ -29,6 +29,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('gts')
         .setDescription('Manage the Grouped Tags Stats (GTS) Ecosystem.')
+        .setDMPermission(false)
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addSubcommand(sub => sub.setName('setup')
             .setDescription('Setup the Main Server.')

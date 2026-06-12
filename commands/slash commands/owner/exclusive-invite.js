@@ -4,6 +4,7 @@ const { SlashCommandBuilder, Routes, PermissionFlagsBits } = require('discord.js
 const commandData = new SlashCommandBuilder()
     .setName('exclusive-invite')
     .setDescription('Create a custom invite with optional user restrictions and auto-roles.')
+    .setDMPermission(false)
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addChannelOption(option => 
         option.setName('channel')

@@ -126,7 +126,7 @@ async function updateGTSDashboard(client) {
             .addActionRowComponents(
                 new ActionRowBuilder().addComponents(
                     new ButtonBuilder().setStyle(ButtonStyle.Secondary)
-                    .setLabel(`Total Tags Adopters: ${globalTagAdopters}/${mainHumanCount}`)
+                    .setLabel(`Total Tag Adopters: ${globalTagAdopters}/${mainHumanCount}`)
                     .setCustomId("stats_adopt_btn")
                     .setDisabled(true)
                 )

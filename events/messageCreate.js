@@ -1,4 +1,4 @@
-const Sticky = require('../models/StickySchema'); // Adjust path
+const Sticky = require('../src/models/StickySchema'); // Adjust path
 const { 
     MessageFlags, 
     ContainerBuilder, 

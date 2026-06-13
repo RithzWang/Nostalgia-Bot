@@ -3,10 +3,40 @@ const {
     PermissionFlagsBits, 
     MessageFlags, 
     ChannelType,
-    EmbedBuilder
+    ContainerBuilder,
+    TextDisplayBuilder,
+    SeparatorBuilder,
+    SeparatorSpacingSize
 } = require('discord.js');
 
 const Sticky = require('../../../src/models/StickySchema'); // Adjust path as needed
+
+// --- HELPER FUNCTION TO RENDER THE CONTAINER ---
+const renderSticky = (content, isTemplate, title = '') => {
+    const container = new ContainerBuilder();
+
+    if (isTemplate) {
+        container.addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(`## 📌 ${title}`)
+        );
+        container.addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)
+        );
+        container.addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(content)
+        );
+    } else {
+        container.addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(content)
+        );
+    }
+
+    return { 
+        content: '', 
+        components: [container],
+        flags: MessageFlags.IsComponentsV2
+    };
+};
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -39,13 +69,14 @@ module.exports = {
         // --- 4. TEMPLATE ---
         .addSubcommand(sub => 
             sub.setName('template')
-                .setDescription('Convert a channel\'s sticky message to a formatted Embed Template')
-                .addStringOption(opt => opt.setName('title').setDescription('The Embed Title').setRequired(true))
+                .setDescription('Format a channel\'s sticky message into a Container Template')
+                .addStringOption(opt => opt.setName('title').setDescription('The Heading Title').setRequired(true))
                 .addChannelOption(opt => opt.setName('channel').setDescription('Target Channel (Defaults to current)').addChannelTypes(ChannelType.GuildText))
         ),
 
     async execute(interaction) {
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        // Deferring with ephemeral: true ensures EVERYTHING after this is ephemeral
+        await interaction.deferReply({ ephemeral: true });
 
         const sub = interaction.options.getSubcommand();
         const guildId = interaction.guild.id;
@@ -58,16 +89,15 @@ module.exports = {
                 const content = interaction.options.getString('content');
                 const channel = interaction.options.getChannel('channel') || interaction.channel;
 
-                // Check if one already exists
                 let data = await Sticky.findOne({ guildId, channelId: channel.id });
                 if (data) {
                     return interaction.editReply(`<:no:1297814819105144862> ${channel} already has a sticky message. Remove it first!`);
                 }
 
-                // Send the first sticky message
-                const sentMsg = await channel.send({ content: content });
+                // Send using the new Container V2
+                const payload = renderSticky(content, false);
+                const sentMsg = await channel.send(payload);
 
-                // Save to database
                 await Sticky.create({
                     guildId,
                     channelId: channel.id,
@@ -90,14 +120,11 @@ module.exports = {
                     return interaction.editReply(`<:no:1297814819105144862> No sticky message found in ${channel}.`);
                 }
 
-                // Try to delete the lingering message
                 if (data.lastMessageId) {
                     try {
                         const oldMsg = await channel.messages.fetch(data.lastMessageId);
                         if (oldMsg) await oldMsg.delete();
-                    } catch (e) {
-                        // Ignore if already deleted
-                    }
+                    } catch (e) {}
                 }
 
                 return interaction.editReply(`<:yes:1297814648417943565> Sticky message removed from ${channel}.`);
@@ -113,7 +140,7 @@ module.exports = {
                     return interaction.editReply('*There are no active sticky messages in this server.*');
                 }
 
-                const listContent = data.map((d, i) => `**${i + 1}.** <#${d.channelId}> - ${d.isTemplate ? '[Embed Template]' : '[Plain Text]'}`).join('\n');
+                const listContent = data.map((d, i) => `**${i + 1}.** <#${d.channelId}> - ${d.isTemplate ? '[Container Template]' : '[Standard Container]'}`).join('\n');
                 
                 return interaction.editReply(`### 📌 Active Sticky Messages:\n${listContent}`);
             }
@@ -134,7 +161,6 @@ module.exports = {
                 data.title = title;
                 await data.save();
 
-                // Delete old message and send new template
                 if (data.lastMessageId) {
                     try {
                         const oldMsg = await channel.messages.fetch(data.lastMessageId);
@@ -142,12 +168,10 @@ module.exports = {
                     } catch (e) {}
                 }
 
-                const embed = new EmbedBuilder()
-                    .setTitle(`📌 ${title}`)
-                    .setDescription(data.content)
-                    .setColor('Yellow');
-
-                const sentMsg = await channel.send({ embeds: [embed] });
+                // Send using the structured Template Container
+                const payload = renderSticky(data.content, true, data.title);
+                const sentMsg = await channel.send(payload);
+                
                 data.lastMessageId = sentMsg.id;
                 await data.save();
 

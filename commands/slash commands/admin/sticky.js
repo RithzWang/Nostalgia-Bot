@@ -89,7 +89,7 @@ module.exports = {
                 const content = interaction.options.getString('content');
                 const channel = interaction.options.getChannel('channel') || interaction.channel;
 
-                let data = await Sticky.findOne({ guildId, channelId: channel.id });
+                let data = await Sticky.findOne({ channelId: channel.id });
                 if (data) {
                     return interaction.editReply(`<:no:1297814819105144862> ${channel} already has a sticky message. Remove it first!`);
                 }
@@ -115,7 +115,7 @@ module.exports = {
             if (sub === 'remove') {
                 const channel = interaction.options.getChannel('channel') || interaction.channel;
 
-                const data = await Sticky.findOneAndDelete({ guildId, channelId: channel.id });
+                const data = await Sticky.findOneAndDelete({ channelId: channel.id });
                 if (!data) {
                     return interaction.editReply(`<:no:1297814819105144862> No sticky message found in ${channel}.`);
                 }
@@ -152,7 +152,7 @@ module.exports = {
                 const channel = interaction.options.getChannel('channel') || interaction.channel;
                 const title = interaction.options.getString('title');
 
-                const data = await Sticky.findOne({ guildId, channelId: channel.id });
+                const data = await Sticky.findOne({ channelId: channel.id });
                 if (!data) {
                     return interaction.editReply(`<:no:1297814819105144862> You need to \`/sticky add\` a message to ${channel} before turning it into a template.`);
                 }

@@ -127,36 +127,29 @@ async function handleLootInteraction(interaction) {
             });
         }
 
-        // --- 3 Day Hard Stop Check ---
-        const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
-        if (drop.createdAt && Date.now() > drop.createdAt + threeDaysMs) {
-            const components = buildLootContainer(drop);
-            await interaction.message.edit({ components, flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } }).catch(() => {});
-            
-            return interaction.reply({ 
-                content: `<:no:1297814819105144862> The prizes can no longer be viewed as this drop is over 3 days old.`, 
-                flags: MessageFlags.Ephemeral 
-            });
-        }
-
         // --- Build the dynamically marked list ---
         const prizeList = drop.prizes.map((prize, index) => {
             const isClaimed = index < drop.claimedCount;
-            // Adds the checkmark if the index is lower than the total amount claimed
-            return `${index + 1}. \`${prize}\`${isClaimed ? ' ✅' : ''}`;
+            
+            if (isClaimed) {
+                const userId = drop.claimedUsers[index];
+                return `${index + 1}. \`${prize}\` ✅\n> claimed by: <@${userId}> (ID: ${userId})`;
+            } else {
+                return `${index + 1}. \`${prize}\``;
+            }
         }).join('\n');
 
         // --- Build the Container ---
         const containerComponents = [
             new ContainerBuilder()
                 .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent(`## 💰 Prizes for ${drop.lootName}\n${prizeList}`)
+                    new TextDisplayBuilder().setContent(`## 💰 Loot\n${prizeList}`)
                 )
         ];
 
         return interaction.reply({ 
             components: containerComponents, 
-            flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2, // IsComponentsV2 is required for Containers!
+            flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2, 
             allowedMentions: { parse: [] }
         });
     }

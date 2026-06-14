@@ -15,10 +15,8 @@ const {
     ThumbnailBuilder
 } = require('discord.js');
 
-// --- ADDED: Loot Drops Imports (Adjust paths as needed) ---
-const { GuildConfig, LootDrop, UserLootTracking } = require('../src/models/LootDropSchema'); 
-const { buildLootContainer } = require('../commands/slash commands/admin/loot-drops'); 
-// ---------------------------------------------------------
+// --- Import the separated Loot Drop handler ---
+const { handleLootInteraction } = require('../handlers/lootDropHandler'); // Adjust path as needed
 
 // List of allowed flags as an exact Array
 const ALLOWED_FLAGS = [
@@ -104,11 +102,16 @@ module.exports = {
         }
 
         // ===============================================
-        // 3. ROLE BUTTONS
+        // 3. ALL BUTTON HANDLERS
         // ===============================================
         else if (interaction.isButton()) {
 
-            // --- A. LEGACY ROLE BUTTONS (role_ID_MODE) ---
+            // --- A. LOOT DROPS BUTTONS (Routed to handler) ---
+            if (['536bd0f667bc4218861e4760b5fff9cd', '26d2457488434623f04d00ddcb327a48'].includes(interaction.customId)) {
+                return await handleLootInteraction(interaction);
+            }
+
+            // --- B. LEGACY ROLE BUTTONS (role_ID_MODE) ---
             if (interaction.customId.startsWith('role_')) {
                 const parts = interaction.customId.split('_');
                 const roleId = parts[1];
@@ -137,7 +140,7 @@ module.exports = {
                 }
             }
 
-            // --- B. STANDARD & RESTRICTED ROLE BUTTONS ---
+            // --- C. STANDARD & RESTRICTED ROLE BUTTONS ---
             const isStdMulti = interaction.customId.startsWith('btn_role_');
             const isStdSingle = interaction.customId.startsWith('btn_single_');
             const isRestrictedMulti = interaction.customId.startsWith('btn_r_');
@@ -208,9 +211,7 @@ module.exports = {
                 }
             }
 
-            // ===============================================
-            // 4. REGISTRATION (PART 1: BUTTON)
-            // ===============================================
+            // --- D. REGISTRATION OPEN BUTTON ---
             if (interaction.customId === 'reg_btn_open') {
                 const REGISTERED_ROLE_ID = '1456197055117787136';
                 if (interaction.member.roles.cache.has(REGISTERED_ROLE_ID)) {
@@ -222,135 +223,10 @@ module.exports = {
                 modal.addComponents(new ActionRowBuilder().addComponents(nameInput), new ActionRowBuilder().addComponents(countryInput));
                 await interaction.showModal(modal);
             }
-
-            // ===============================================
-            // 5. LOOT DROPS (CLAIM BUTTON)
-            // ===============================================
-            if (interaction.customId === '536bd0f667bc4218861e4760b5fff9cd') {
-                const messageId = interaction.message.id;
-                const drop = await LootDrop.findOne({ messageId });
-
-                if (!drop) return interaction.reply({ content: `<:no:1297814819105144862> This loot drop is invalid or missing from the database.`, flags: MessageFlags.Ephemeral });
-
-                if (drop.status === 'closed' || (drop.expireTime && Date.now() > drop.expireTime)) {
-                    if (drop.status !== 'closed') {
-                        drop.status = 'closed';
-                        await drop.save();
-                        const components = buildLootContainer(drop.type, drop);
-                        await interaction.message.edit({ components, flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } });
-                    }
-                    return interaction.reply({ content: `<:no:1297814819105144862> This loot drop is no longer available.`, flags: MessageFlags.Ephemeral });
-                }
-
-                if (drop.claimedUsers.includes(interaction.user.id)) {
-                    return interaction.reply({ content: `### <:no:1297814819105144862> You’ve already claimed this loot drop!\nEach user can only claim this loot once.`, flags: MessageFlags.Ephemeral });
-                }
-
-                if (drop.specialRole && !interaction.member.roles.cache.has(drop.specialRole)) {
-                    return interaction.reply({ content: `### <:no:1297814819105144862> You’re not eligible to claim this loot drop!\nOnly users with <@&${drop.specialRole}> can claim this loot drop.`, flags: MessageFlags.Ephemeral });
-                }
-
-                const config = await GuildConfig.findOne({ guildId: interaction.guild.id });
-                let userTracking = null;
-                let logicalDate = null;
-                
-                if (drop.type === 'link' && config && config.dailyClaimLimit > 0) {
-                    logicalDate = new Date(Date.now() + 3600000).toISOString().split('T')[0];
-                    userTracking = await UserLootTracking.findOne({ userId: interaction.user.id });
-                    
-                    if (userTracking && userTracking.lastLinkClaimDate === logicalDate) {
-                        if (userTracking.claimsToday >= config.dailyClaimLimit) {
-                            return interaction.reply({ content: `### <:no:1297814819105144862> You've reached today's claim limit!\nEach user can only claim ${config.dailyClaimLimit} prize(s) per day.`, flags: MessageFlags.Ephemeral });
-                        }
-                    }
-                }
-
-                await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
-                try {
-                    if (drop.type === 'link') {
-                        const prizeLink = drop.prizes[drop.claimedCount];
-                        drop.claimedCount++;
-                        drop.claimedUsers.push(interaction.user.id);
-                        if (drop.claimedCount >= drop.maxAmount) drop.status = 'closed';
-                        await drop.save();
-
-                        if (config && config.dailyClaimLimit > 0) {
-                            if (!userTracking) {
-                                await UserLootTracking.create({ userId: interaction.user.id, lastLinkClaimDate: logicalDate, claimsToday: 1 });
-                            } else {
-                                if (userTracking.lastLinkClaimDate !== logicalDate) {
-                                    userTracking.lastLinkClaimDate = logicalDate;
-                                    userTracking.claimsToday = 1; 
-                                } else {
-                                    userTracking.claimsToday += 1; 
-                                }
-                                await userTracking.save();
-                            }
-                        }
-
-                        const components = buildLootContainer(drop.type, drop);
-                        await interaction.message.edit({ components, flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } });
-
-                        return interaction.editReply({ content: `## 🎉 Loot Claimed\n\nHere’s your **${drop.lootName}**:\n||${prizeLink}||`, allowedMentions: { parse: [] } });
-                    }
-
-                    if (drop.type === 'role') {
-                        await interaction.member.roles.add(drop.rolePrizeId).catch(() => null);
-                        drop.claimedCount++;
-                        drop.claimedUsers.push(interaction.user.id);
-                        if (drop.maxAmount && drop.claimedCount >= drop.maxAmount) drop.status = 'closed';
-                        await drop.save();
-
-                        const components = buildLootContainer(drop.type, drop);
-                        await interaction.message.edit({ components, flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } });
-
-                        return interaction.editReply({ content: `## 🎉 Loot Claimed\n\n<@&${drop.rolePrizeId}> role is now added to your profile!`, allowedMentions: { parse: [] } });
-                    }
-                } catch (error) {
-                    console.error(error);
-                    return interaction.editReply(`<:no:1297814819105144862> An error occurred processing your claim.`);
-                }
-            }
-
-            // ===============================================
-            // 6. LOOT DROPS (VIEW REMAINING PRIZES BUTTON)
-            // ===============================================
-            if (interaction.customId === '26d2457488434623f04d00ddcb327a48') {
-                // Security Check: Only specific users can view the leftover links
-                const allowedUsers = ['837741275603009626', '1469705529306910753'];
-                
-                if (!allowedUsers.includes(interaction.user.id)) {
-                    return interaction.reply({ 
-                        content: `<:no:1297814819105144862> You do not have permission to view the remaining unclaimed links.`, 
-                        flags: MessageFlags.Ephemeral 
-                    });
-                }
-
-                const messageId = interaction.message.id;
-                const drop = await LootDrop.findOne({ messageId });
-
-                if (!drop || drop.type !== 'link') {
-                    return interaction.reply({ content: `<:no:1297814819105144862> This loot drop is invalid.`, flags: MessageFlags.Ephemeral });
-                }
-
-                if (drop.claimedCount >= drop.maxAmount) {
-                    return interaction.reply({ content: `<:no:1297814819105144862> All prizes have been claimed!`, flags: MessageFlags.Ephemeral });
-                }
-
-                const remainingPrizes = drop.prizes.slice(drop.claimedCount);
-                const prizeList = remainingPrizes.map((p, i) => `**${i + 1}.** ||${p}||`).join('\n');
-
-                return interaction.reply({ 
-                    content: `### 💰 Remaining Prizes for **${drop.lootName}**\n${prizeList}`, 
-                    flags: MessageFlags.Ephemeral,
-                    allowedMentions: { parse: [] }
-                });
-            }
         }
 
         // ===============================================
-        // 7. REGISTRATION (MODAL SUBMIT)
+        // 4. REGISTRATION MODAL SUBMIT
         // ===============================================
         else if (interaction.isModalSubmit() && interaction.customId === 'reg_modal_submit') {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });

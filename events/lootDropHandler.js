@@ -56,7 +56,7 @@ async function handleLootInteraction(interaction) {
             if (userTracking && userTracking.lastLinkClaimDate === logicalDate) {
                 if (userTracking.claimsToday >= config.dailyClaimLimit) {
                     return interaction.reply({ 
-                        content: `### <:no:1297814819105144862> You've reached today's claim limit!\nEach user can only claim ${config.dailyClaimLimit} prize(s) per day.`, 
+                        content: `### <:no:1297814819105144862> You've reached today’s claim limit!\nEach user can only claim ${config.dailyClaimLimit} prize(s) per day.`, 
                         flags: MessageFlags.Ephemeral 
                     });
                 }
@@ -133,7 +133,7 @@ async function handleLootInteraction(interaction) {
             
             if (isClaimed) {
                 const userId = drop.claimedUsers[index];
-                return `${index + 1}. \`${prize}\` ✅\n> claimed by: <@${userId}> (ID: ${userId})`;
+                return `${index + 1}. ${prize} ✅\n> claimed by: <@${userId}> (ID: ${userId})`;
             } else {
                 return `${index + 1}. \`${prize}\``;
             }

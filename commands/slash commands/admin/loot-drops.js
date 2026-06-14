@@ -14,7 +14,7 @@ const {
 
 const { GuildConfig, LootDrop } = require('../../../src/models/LootDropSchema'); // Adjust path
 
-// Helper function to build the Container exactly like your request
+// Helper function to build the Container
 const buildLootContainer = (type, data) => {
     const container = new ContainerBuilder()
         .addTextDisplayComponents(
@@ -43,9 +43,11 @@ const buildLootContainer = (type, data) => {
         new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
     );
 
-    // Disable primary button if closed or max claimed
-    const isClosed = Boolean(data.status === 'closed' || (data.maxAmount && data.claimedCount >= data.maxAmount));
+    // Check if expired based on time
+    const isExpired = data.expireTime ? Date.now() > data.expireTime : false;
 
+    // Disable primary button if closed, max claimed, or expired (Forced Boolean to prevent crashes)
+    const isClosed = Boolean(data.status === 'closed' || (data.maxAmount && data.claimedCount >= data.maxAmount) || isExpired);
     
     let secondaryLabel = data.maxAmount 
         ? `Claimed ${data.claimedCount}/${data.maxAmount}` 
@@ -57,13 +59,13 @@ const buildLootContainer = (type, data) => {
                 new ButtonBuilder()
                     .setStyle(ButtonStyle.Primary)
                     .setLabel("Claim Loot")
-                    .setCustomId("536bd0f667bc4218861e4760b5fff9cd") // Your requested custom ID
+                    .setCustomId("536bd0f667bc4218861e4760b5fff9cd") 
                     .setDisabled(isClosed),
                 new ButtonBuilder()
                     .setStyle(ButtonStyle.Secondary)
                     .setLabel(secondaryLabel)
                     .setDisabled(true)
-                    .setCustomId("68df599500984f22fdcfeff6168abdd7") // Your requested custom ID
+                    .setCustomId("68df599500984f22fdcfeff6168abdd7") 
             )
     );
 
@@ -93,7 +95,6 @@ module.exports = {
                .addIntegerOption(opt => opt.setName('expire_time').setDescription('Expire time in minutes (Optional)'))
                .addUserOption(opt => opt.setName('supporter').setDescription('Supporter user (Optional)'));
             
-            // Add optional prizes 2 through 15
             for (let i = 2; i <= 15; i++) {
                 sub.addStringOption(opt => opt.setName(`prize_${i}`).setDescription(`Prize link ${i} (Optional)`));
             }
@@ -105,7 +106,7 @@ module.exports = {
             sub.setName('prize-role')
                 .setDescription('Create a role-based loot drop')
                 .addRoleOption(opt => opt.setName('role_prize').setDescription('The role to give').setRequired(true))
-                .addIntegerOption(opt => opt.setName('expire_time').setDescription('Expire time in minutes').setRequired(true))
+                .addIntegerOption(opt => opt.setName('expire_time').setDescription('Expire time in minutes (Optional)')) // Made Optional
                 .addRoleOption(opt => opt.setName('special_role').setDescription('Role requirement (Optional)'))
                 .addIntegerOption(opt => opt.setName('amount').setDescription('Max amount of claims (Optional)'))
         )
@@ -149,7 +150,6 @@ module.exports = {
                 const expireMins = interaction.options.getInteger('expire_time');
                 const supporter = interaction.options.getUser('supporter');
 
-                // Collect all provided links
                 const prizes = [];
                 for (let i = 1; i <= 15; i++) {
                     const p = interaction.options.getString(`prize_${i}`);
@@ -169,9 +169,27 @@ module.exports = {
                 };
 
                 const components = buildLootContainer('link', data);
-                const msg = await targetChannel.send({ components, flags: MessageFlags.IsComponentsV2 });
+                const msg = await targetChannel.send({ 
+                    components, 
+                    flags: MessageFlags.IsComponentsV2,
+                    allowedMentions: { parse: [] } // <-- ADDED THIS: Stops parsing mentions
+                });
 
                 await LootDrop.create({ ...data, messageId: msg.id, guildId });
+
+                // AUTO-CLOSE TIMER
+                if (expireMins) {
+                    setTimeout(async () => {
+                        const checkDrop = await LootDrop.findOne({ messageId: msg.id });
+                        if (checkDrop && checkDrop.status === 'active') {
+                            checkDrop.status = 'closed';
+                            await checkDrop.save();
+                            const updatedComponents = buildLootContainer(checkDrop.type, checkDrop);
+                            await msg.edit({ components: updatedComponents, flags: MessageFlags.IsComponentsV2 }).catch(() => {});
+                        }
+                    }, expireMins * 60000);
+                }
+
                 return interaction.editReply(`<:yes:1297814648417943565> Link Drop created!`);
             }
 
@@ -187,15 +205,33 @@ module.exports = {
                     rolePrizeId: rolePrize.id,
                     maxAmount: amount || null,
                     claimedCount: 0,
-                    expireTime: Date.now() + (expireMins * 60000), // Required in your prompt
+                    expireTime: expireMins ? Date.now() + (expireMins * 60000) : null,
                     specialRole: specialRole ? specialRole.id : null,
                     status: 'active'
                 };
 
                 const components = buildLootContainer('role', data);
-                const msg = await targetChannel.send({ components, flags: MessageFlags.IsComponentsV2 });
+                const msg = await targetChannel.send({ 
+                    components, 
+                    flags: MessageFlags.IsComponentsV2,
+                    allowedMentions: { parse: [] } // <-- ADDED THIS: Stops parsing mentions
+                });
 
                 await LootDrop.create({ ...data, messageId: msg.id, guildId });
+
+                // AUTO-CLOSE TIMER
+                if (expireMins) {
+                    setTimeout(async () => {
+                        const checkDrop = await LootDrop.findOne({ messageId: msg.id });
+                        if (checkDrop && checkDrop.status === 'active') {
+                            checkDrop.status = 'closed';
+                            await checkDrop.save();
+                            const updatedComponents = buildLootContainer(checkDrop.type, checkDrop);
+                            await msg.edit({ components: updatedComponents, flags: MessageFlags.IsComponentsV2 }).catch(() => {});
+                        }
+                    }, expireMins * 60000);
+                }
+
                 return interaction.editReply(`<:yes:1297814648417943565> Role Drop created!`);
             }
 
@@ -226,4 +262,4 @@ module.exports = {
     }
 };
 
-module.exports.buildLootContainer = buildLootContainer; // Exporting for the event listener to reuse
+module.exports.buildLootContainer = buildLootContainer;

@@ -244,9 +244,12 @@ module.exports = {
                         drop.status = 'closed';
                         await drop.save();
                         
-                        // Update message visually to close it
                         const components = buildLootContainer(drop.type, drop);
-                        await interaction.message.edit({ components, flags: MessageFlags.IsComponentsV2 });
+                        await interaction.message.edit({ 
+                            components, 
+                            flags: MessageFlags.IsComponentsV2,
+                            allowedMentions: { parse: [] } // <-- FIX: No ping on expiration
+                        });
                     }
                     return interaction.reply({ content: `<:no:1297814819105144862> This loot drop is no longer available.`, flags: MessageFlags.Ephemeral });
                 }
@@ -285,9 +288,16 @@ module.exports = {
                         await drop.save();
 
                         const components = buildLootContainer(drop.type, drop);
-                        await interaction.message.edit({ components, flags: MessageFlags.IsComponentsV2 });
+                        await interaction.message.edit({ 
+                            components, 
+                            flags: MessageFlags.IsComponentsV2,
+                            allowedMentions: { parse: [] } // <-- FIX: No ping on claim update
+                        });
 
-                        return interaction.editReply(`## 🎉 Loot Claimed\n\nHere’s your **${drop.lootName}**:\n||${prizeLink}||`);
+                        return interaction.editReply({ 
+                            content: `## 🎉 Loot Claimed\n\nHere’s your **${drop.lootName}**:\n||${prizeLink}||`,
+                            allowedMentions: { parse: [] } // <-- FIX: No ping in response
+                        });
                     }
 
                     // === ROLE DROP ===
@@ -304,9 +314,16 @@ module.exports = {
                         await drop.save();
 
                         const components = buildLootContainer(drop.type, drop);
-                        await interaction.message.edit({ components, flags: MessageFlags.IsComponentsV2 });
+                        await interaction.message.edit({ 
+                            components, 
+                            flags: MessageFlags.IsComponentsV2,
+                            allowedMentions: { parse: [] } // <-- FIX: No ping on claim update
+                        });
 
-                        return interaction.editReply(`## 🎉 Loot Claimed\n\n<@&${drop.rolePrizeId}> role is now added to your profile!`);
+                        return interaction.editReply({ 
+                            content: `## 🎉 Loot Claimed\n\n<@&${drop.rolePrizeId}> role is now added to your profile!`,
+                            allowedMentions: { parse: [] } // <-- FIX: No ping in response
+                        });
                     }
                 } catch (error) {
                     console.error(error);
@@ -346,8 +363,10 @@ module.exports = {
                 if (member.roles.cache.has(UNVERIFIED_ROLE_ID)) {
                     await member.roles.remove(UNVERIFIED_ROLE_ID).catch(err => console.error("Could not remove Visitor role:", err));
                 }
+                
+                // Restored from the cutoff in your message:
                 if (member.id !== interaction.guild.ownerId && member.roles.highest.position < interaction.guild.members.me.roles.highest.position) {
-                    await member.setNickname(newNickname);
+                    await member.setNickname(newNickname).catch(() => {});
                 } 
 
                 // 2. Send Log (New Container Style)

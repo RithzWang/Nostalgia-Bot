@@ -16,7 +16,7 @@ const {
 } = require('discord.js');
 
 // --- Import the separated Loot Drop handler ---
-const { handleLootInteraction } = require('../lootDropHandler'); // Adjust path as needed
+const { handleLootInteraction } = require('./lootDropHandler'); // Adjust path as needed
 
 // List of allowed flags as an exact Array
 const ALLOWED_FLAGS = [

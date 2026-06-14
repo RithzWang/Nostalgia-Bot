@@ -12,7 +12,8 @@ const {
     ContainerBuilder
 } = require('discord.js');
 
-const { GuildConfig, LootDrop } = require('../../../src/models/LootDropSchema'); // Adjust path
+// --- ADDED UserLootTracking to the imports ---
+const { GuildConfig, LootDrop, UserLootTracking } = require('../../../src/models/LootDropSchema'); // Adjust path
 
 // Helper function to build the Container
 const buildLootContainer = (type, data) => {
@@ -131,6 +132,13 @@ module.exports = {
             sub.setName('close')
                 .setDescription('Force close a loot drop')
                 .addStringOption(opt => opt.setName('loot_id').setDescription('Message ID of the loot').setRequired(true))
+        )
+
+        // --- 5. RESET CLAIM LIMIT ---
+        .addSubcommand(sub => 
+            sub.setName('reset-claim-limit')
+                .setDescription('Reset the daily claim limit for a specific user')
+                .addUserOption(opt => opt.setName('target').setDescription('The user to reset').setRequired(true))
         ),
 
     async execute(interaction) {
@@ -151,7 +159,21 @@ module.exports = {
                 return interaction.editReply(`<:yes:1297814648417943565> Loot drops channel set to ${channel}`);
             }
 
-            // Fetch Config
+            // RESET CLAIM LIMIT
+            if (sub === 'reset-claim-limit') {
+                const targetUser = interaction.options.getUser('target');
+                
+                // Try to find and delete their tracking record for today
+                const result = await UserLootTracking.findOneAndDelete({ userId: targetUser.id });
+                
+                if (result) {
+                    return interaction.editReply(`<:yes:1297814648417943565> Successfully reset the daily link claim limit for ${targetUser}.`);
+                } else {
+                    return interaction.editReply(`<:yes:1297814648417943565> ${targetUser} didn't have an active limit to reset, they are already good to go!`);
+                }
+            }
+
+            // Fetch Config for the remaining subcommands
             const config = await GuildConfig.findOne({ guildId });
             if (!config) return interaction.editReply(`<:no:1297814819105144862> Please use \`/loot-drops set-channel\` first!`);
             
@@ -209,7 +231,7 @@ module.exports = {
                             await msg.edit({ 
                                 components: updatedComponents, 
                                 flags: MessageFlags.IsComponentsV2,
-                                allowedMentions: { parse: [] } // <-- FIX: No ping on timeout
+                                allowedMentions: { parse: [] } 
                             }).catch(() => {});
                         }
                     }, expireMs);
@@ -261,7 +283,7 @@ module.exports = {
                             await msg.edit({ 
                                 components: updatedComponents, 
                                 flags: MessageFlags.IsComponentsV2,
-                                allowedMentions: { parse: [] } // <-- FIX: No ping on timeout
+                                allowedMentions: { parse: [] } 
                             }).catch(() => {});
                         }
                     }, expireMs);
@@ -287,7 +309,7 @@ module.exports = {
                     await msg.edit({ 
                         components, 
                         flags: MessageFlags.IsComponentsV2,
-                        allowedMentions: { parse: [] } // <-- FIX: No ping on force close
+                        allowedMentions: { parse: [] } 
                     });
                 }
 

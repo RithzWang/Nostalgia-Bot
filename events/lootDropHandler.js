@@ -1,5 +1,5 @@
 const { MessageFlags, ContainerBuilder, TextDisplayBuilder } = require('discord.js');
-const { GuildConfig, LootDrop, UserLootTracking } = require('../models/LootDropSchema'); // Adjust path as needed
+const { GuildConfig, LootDrop, UserLootTracking } = require('../src/models/LootDropSchema'); // Adjust path as needed
 const { buildLootContainer } = require('../commands/slash commands/admin/loot-drops'); // Adjust path as needed
 
 async function handleLootInteraction(interaction) {

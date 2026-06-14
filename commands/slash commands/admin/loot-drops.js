@@ -24,7 +24,7 @@ const buildLootContainer = (data) => {
     desc += `**Loot:** ${data.lootName}\n**Amount:** ${data.maxAmount}\n`;
     if (data.expireTime) desc += `**Expire Time:** <t:${Math.floor(data.expireTime / 1000)}:R>\n`;
     if (data.specialRole) desc += `**Requirement:** <@&${data.specialRole}>\n`;
-    if (data.supporterId) desc += `**Supporter:** <@${data.supporterId}>\n`;
+    if (data.supporterId) desc += `**Sponsor:** <@${data.sponsorId}>\n`;
 
     container.addTextDisplayComponents(new TextDisplayBuilder().setContent(desc))
              .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true));

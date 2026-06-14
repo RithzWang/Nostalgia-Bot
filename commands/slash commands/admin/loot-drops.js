@@ -46,7 +46,7 @@ const buildLootContainer = (type, data) => {
             .setStyle(ButtonStyle.Success)
             .setLabel("Claim Loot")
             .setCustomId("536bd0f667bc4218861e4760b5fff9cd")
-            .setDisabled(isClosed), // Disabled if closed, expired, or fully claimed
+            .setDisabled(isClosed),
         new ButtonBuilder()
             .setStyle(ButtonStyle.Secondary)
             .setLabel(secondaryLabel)
@@ -66,6 +66,7 @@ const buildLootContainer = (type, data) => {
     }
 
     container.addActionRowComponents(actionRow);
+
     return [container];
 };
 

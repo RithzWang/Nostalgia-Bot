@@ -15,8 +15,8 @@ const {
     ThumbnailBuilder
 } = require('discord.js');
 
-// --- ADDED: UserLootTracking imported ---
-const { LootDrop, UserLootTracking } = require('../src/models/LootDropSchema'); 
+// --- ADDED: Loot Drops Imports (Adjust paths as needed) ---
+const { GuildConfig, LootDrop, UserLootTracking } = require('../src/models/LootDropSchema'); 
 const { buildLootContainer } = require('../commands/slash commands/admin/loot-drops'); 
 // ---------------------------------------------------------
 
@@ -64,6 +64,7 @@ module.exports = {
         else if (interaction.isStringSelectMenu() && interaction.customId.startsWith('role_select_')) {
             const restrictionId = interaction.customId.replace('role_select_', '');
             
+            // Check Restriction
             if (restrictionId !== 'public' && restrictionId !== 'menu') {
                 if (!interaction.member.roles.cache.has(restrictionId)) {
                     return interaction.reply({ 
@@ -147,11 +148,13 @@ module.exports = {
                 let roleId, reqRoleId;
                 let isSingleMode = false;
 
+                // 1. PARSE IDs
                 if (isStdMulti) roleId = interaction.customId.replace('btn_role_', '');
                 else if (isStdSingle) { roleId = interaction.customId.replace('btn_single_', ''); isSingleMode = true; }
                 else if (isRestrictedMulti) { const p = interaction.customId.split('_'); reqRoleId = p[2]; roleId = p[3]; }
                 else if (isRestrictedSingle) { const p = interaction.customId.split('_'); reqRoleId = p[2]; roleId = p[3]; isSingleMode = true; }
 
+                // 2. CHECK REQUIREMENT
                 if (reqRoleId && !interaction.member.roles.cache.has(reqRoleId)) {
                     return interaction.reply({ 
                         content: `<:no:1297814819105144862> <@&${reqRoleId}> is required`, 
@@ -159,6 +162,7 @@ module.exports = {
                     });
                 }
 
+                // 3. VALIDATE & EXECUTE
                 const role = interaction.guild.roles.cache.get(roleId);
                 if (!role || role.position >= interaction.guild.members.me.roles.highest.position) {
                     return interaction.reply({ content: '<:no:1297814819105144862> Invalid role configuration.', flags: MessageFlags.Ephemeral });
@@ -170,6 +174,7 @@ module.exports = {
                             await interaction.member.roles.remove(role);
                             return interaction.reply({ content: `<:no:1297814819105144862> **Removed:** ${role.name}`, flags: MessageFlags.Ephemeral });
                         }
+                        // Remove others
                         const rolesToRemove = [];
                         const removedNames = [];
                         const container = interaction.message.components[0];
@@ -194,6 +199,7 @@ module.exports = {
                         return interaction.reply({ content: msg, flags: MessageFlags.Ephemeral });
 
                     } else {
+                        // Multi Toggle
                         if (interaction.member.roles.cache.has(roleId)) {
                             await interaction.member.roles.remove(role);
                             return interaction.reply({ content: `<:no:1297814819105144862> **Removed:** ${role.name}`, flags: MessageFlags.Ephemeral });
@@ -264,21 +270,25 @@ module.exports = {
                     });
                 }
 
-                // 4. --- NEW: Check Daily Limit (Link Drops ONLY) ---
+                // 4. --- Custom Daily Limit (Link Drops ONLY) ---
+                const config = await GuildConfig.findOne({ guildId: interaction.guild.id });
+                
                 let userTracking = null;
                 let logicalDate = null;
-                if (drop.type === 'link') {
-                    // GMT+7 6AM Reset Trick:
-                    // Adding 1 hour to UTC makes the "date string" cleanly roll over exactly at 23:00 UTC (which is 6:00 AM GMT+7)
+                
+                // Only enforce if the limit is set AND greater than 0
+                if (drop.type === 'link' && config && config.dailyClaimLimit > 0) {
+                    // GMT+7 6AM Reset Trick
                     logicalDate = new Date(Date.now() + 3600000).toISOString().split('T')[0];
-                    
                     userTracking = await UserLootTracking.findOne({ userId: interaction.user.id });
                     
                     if (userTracking && userTracking.lastLinkClaimDate === logicalDate) {
-                        return interaction.reply({ 
-                            content: `### <:no:1297814819105144862> You've reached today's claim limit!\nEach user can only claim 1 prize per day.`, 
-                            flags: MessageFlags.Ephemeral 
-                        });
+                        if (userTracking.claimsToday >= config.dailyClaimLimit) {
+                            return interaction.reply({ 
+                                content: `### <:no:1297814819105144862> You've reached today's claim limit!\nEach user can only claim ${config.dailyClaimLimit} prize(s) per day.`, 
+                                flags: MessageFlags.Ephemeral 
+                            });
+                        }
                     }
                 }
 
@@ -292,27 +302,26 @@ module.exports = {
                         
                         drop.claimedCount++;
                         drop.claimedUsers.push(interaction.user.id);
-                        
-                        if (drop.claimedCount >= drop.maxAmount) {
-                            drop.status = 'closed';
-                        }
-
+                        if (drop.claimedCount >= drop.maxAmount) drop.status = 'closed';
                         await drop.save();
 
-                        // Update the user's daily tracker
-                        if (!userTracking) {
-                            await UserLootTracking.create({ userId: interaction.user.id, lastLinkClaimDate: logicalDate });
-                        } else {
-                            userTracking.lastLinkClaimDate = logicalDate;
-                            await userTracking.save();
+                        // Update the user's custom daily tracker
+                        if (config && config.dailyClaimLimit > 0) {
+                            if (!userTracking) {
+                                await UserLootTracking.create({ userId: interaction.user.id, lastLinkClaimDate: logicalDate, claimsToday: 1 });
+                            } else {
+                                if (userTracking.lastLinkClaimDate !== logicalDate) {
+                                    userTracking.lastLinkClaimDate = logicalDate;
+                                    userTracking.claimsToday = 1; // Reset counter for new day
+                                } else {
+                                    userTracking.claimsToday += 1; // Increment today's count
+                                }
+                                await userTracking.save();
+                            }
                         }
 
                         const components = buildLootContainer(drop.type, drop);
-                        await interaction.message.edit({ 
-                            components, 
-                            flags: MessageFlags.IsComponentsV2,
-                            allowedMentions: { parse: [] } 
-                        });
+                        await interaction.message.edit({ components, flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } });
 
                         return interaction.editReply({ 
                             content: `## 🎉 Loot Claimed\n\nHere’s your **${drop.lootName}**:\n||${prizeLink}||`,
@@ -326,19 +335,11 @@ module.exports = {
 
                         drop.claimedCount++;
                         drop.claimedUsers.push(interaction.user.id);
-
-                        if (drop.maxAmount && drop.claimedCount >= drop.maxAmount) {
-                            drop.status = 'closed';
-                        }
-
+                        if (drop.maxAmount && drop.claimedCount >= drop.maxAmount) drop.status = 'closed';
                         await drop.save();
 
                         const components = buildLootContainer(drop.type, drop);
-                        await interaction.message.edit({ 
-                            components, 
-                            flags: MessageFlags.IsComponentsV2,
-                            allowedMentions: { parse: [] } 
-                        });
+                        await interaction.message.edit({ components, flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } });
 
                         return interaction.editReply({ 
                             content: `## 🎉 Loot Claimed\n\n<@&${drop.rolePrizeId}> role is now added to your profile!`,
@@ -361,6 +362,7 @@ module.exports = {
             const name = interaction.fields.getTextInputValue('reg_name');
             const countryInput = interaction.fields.getTextInputValue('reg_country').trim();
 
+            // --- STRICT FLAG VALIDATION (ARRAY CHECK) ---
             if (!ALLOWED_FLAGS.includes(countryInput)) {
                 return interaction.editReply({ 
                     content: `<:no:1297814819105144862> Please fill **Country Flag** with a valid country flag emoji only.` 
@@ -377,6 +379,7 @@ module.exports = {
             if (newNickname.length > 32) return interaction.editReply({ content: `<:no:1297814819105144862> Nickname too long (Max 32 chars).` });
 
             try {
+                // 1. Assign Role & Rename
                 await member.roles.add(REGISTERED_ROLE_ID);
                 if (member.roles.cache.has(UNVERIFIED_ROLE_ID)) {
                     await member.roles.remove(UNVERIFIED_ROLE_ID).catch(err => console.error("Could not remove Visitor role:", err));
@@ -386,8 +389,10 @@ module.exports = {
                     await member.setNickname(newNickname).catch(() => {});
                 } 
 
+                // 2. Send Log (New Container Style)
                 const logChannel = interaction.guild.channels.cache.get(LOG_CHANNEL_ID);
                 if (logChannel) {
+                    // Generate Timestamp (GMT+7)
                     const now = new Date();
                     const timeString = now.toLocaleString('en-GB', { 
                         timeZone: 'Asia/Bangkok', 
@@ -421,6 +426,7 @@ module.exports = {
                     });
                 }
                 
+                // 3. Update Dashboard Counter
                 try {
                     const dashboardMsg = interaction.message; 
                     if (dashboardMsg) {

@@ -133,9 +133,9 @@ async function handleLootInteraction(interaction) {
             
             if (isClaimed) {
                 const userId = drop.claimedUsers[index];
-                return `${index + 1}. ${prize} ✅\n> claimed by: <@${userId}> (ID: ${userId})`;
+                return `${index + 1}. ${prize} <:Yes:1297814648417943565>\n-# claimed by: <@${userId}> (ID: \`${userId}\`)`;
             } else {
-                return `${index + 1}. \`${prize}\``;
+                return `${index + 1}. ${prize}`;
             }
         }).join('\n');
 

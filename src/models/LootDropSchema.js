@@ -17,7 +17,7 @@ const lootDropSchema = new Schema({
     claimedUsers: { type: [String], default: [] },
     expireTime: { type: Number }, 
     specialRole: { type: String },
-    supporterId: { type: String },
+    sponsorId: { type: String },
     createdAt: { type: Number }
 });
 

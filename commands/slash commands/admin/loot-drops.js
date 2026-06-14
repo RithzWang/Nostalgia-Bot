@@ -44,7 +44,8 @@ const buildLootContainer = (type, data) => {
     );
 
     // Disable primary button if closed or max claimed
-    const isClosed = data.status === 'closed' || (data.maxAmount && data.claimedCount >= data.maxAmount);
+    const isClosed = Boolean(data.status === 'closed' || (data.maxAmount && data.claimedCount >= data.maxAmount));
+
     
     let secondaryLabel = data.maxAmount 
         ? `Claimed ${data.claimedCount}/${data.maxAmount}` 

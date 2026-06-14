@@ -24,7 +24,7 @@ const buildLootContainer = (data) => {
     desc += `**Loot:** ${data.lootName}\n**Amount:** ${data.maxAmount}\n`;
     if (data.expireTime) desc += `**Expire Time:** <t:${Math.floor(data.expireTime / 1000)}:R>\n`;
     if (data.specialRole) desc += `**Requirement:** <@&${data.specialRole}>\n`;
-    if (data.supporterId) desc += `**Sponsor:** <@${data.sponsorId}>\n`;
+    if (data.sponsorId) desc += `**Sponsor:** <@${data.sponsorId}>\n`;
 
     container.addTextDisplayComponents(new TextDisplayBuilder().setContent(desc))
              .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true));
@@ -186,7 +186,7 @@ module.exports = {
                 const lootName = interaction.options.getString('loot');
                 const specialRole = interaction.options.getRole('special_role');
                 const expireInput = interaction.options.getString('expire_time');
-                const supporter = interaction.options.getUser('supporter');
+                const sponsor = interaction.options.getUser('sponsor');
 
                 const expireMs = parseDuration(expireInput);
                 if (expireMs === false) return interaction.editReply(`<:no:1297814819105144862> Invalid expire time format! (\`s\`, \`m\`, \`h\`).`);

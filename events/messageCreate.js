@@ -1,4 +1,5 @@
 const Sticky = require('../src/models/StickySchema'); // Adjust path
+const { LootDrop } = require('../src/models/LootDropSchema'); // Adjust path
 const { 
     MessageFlags, 
     ContainerBuilder, 
@@ -11,10 +12,27 @@ module.exports = {
     name: 'messageCreate',
     async execute(message, client) {
         
-        // --- FIX APPLIED HERE ---
-        // Ignore THIS bot so it doesn't loop, but allow OTHER bots to trigger it.
-        if (message.author.id === client.user.id) return;
+        // ==========================================
+        //  SMART BOT FILTERING & LOOP PREVENTION
+        // ==========================================
+        if (message.author.id === client.user.id) {
+            // If THIS bot sent the message, we only want to move the sticky message 
+            // if it's a Loot Drop. 
+            
+            // Wait 1.5 seconds to ensure the slash command finished saving the Loot Drop to the DB
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            const isLootDrop = await LootDrop.findOne({ messageId: message.id });
+            
+            // If it's NOT a loot drop (e.g., it's the sticky message itself), ignore it!
+            if (!isLootDrop) return; 
+        }
+        
+        // NOTE: Since we don't have `if (message.author.bot) return;` here anymore, 
+        // OTHER bots (like Mudae) will pass right through and trigger the sticky message!
 
+        // ==========================================
+        //         STICKY MESSAGE LOGIC
+        // ==========================================
         const stickyData = await Sticky.findOne({ channelId: message.channel.id });
         if (!stickyData) return;
 
@@ -58,6 +76,7 @@ module.exports = {
         // Send new container message
         const newSticky = await message.channel.send(payload);
 
+        // Update database with the new message ID
         stickyData.lastMessageId = newSticky.id;
         await stickyData.save();
     }

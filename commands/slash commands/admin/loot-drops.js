@@ -94,7 +94,7 @@ module.exports = {
                .addStringOption(opt => opt.setName('prize_1').setDescription('First prize link').setRequired(true))
                .addRoleOption(opt => opt.setName('special_role').setDescription('Role requirement (Optional)'))
                .addStringOption(opt => opt.setName('expire_time').setDescription('e.g. 30s, 5m, 2h (Optional)'))
-               .addUserOption(opt => opt.setName('supporter').setDescription('Supporter user (Optional)'));
+               .addUserOption(opt => opt.setName('sponsor').setDescription('Sponsor user (Optional)'));
             for (let i = 2; i <= 15; i++) sub.addStringOption(opt => opt.setName(`prize_${i}`).setDescription(`Prize link ${i} (Optional)`));
             return sub;
         })
@@ -201,7 +201,7 @@ module.exports = {
                     lootName, prizes, maxAmount: prizes.length, claimedCount: 0,
                     expireTime: expireMs ? Date.now() + expireMs : null,
                     specialRole: specialRole ? specialRole.id : null,
-                    supporterId: supporter ? supporter.id : null,
+                    sponsorId: sponsor ? sponsor.id : null,
                     status: 'active',
                     createdAt: Date.now()
                 };

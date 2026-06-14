@@ -1,4 +1,4 @@
-const { MessageFlags } = require('discord.js');
+const { MessageFlags, ContainerBuilder, TextDisplayBuilder } = require('discord.js');
 const { GuildConfig, LootDrop, UserLootTracking } = require('../models/LootDropSchema'); // Adjust path as needed
 const { buildLootContainer } = require('../commands/slash commands/admin/loot-drops'); // Adjust path as needed
 
@@ -22,7 +22,7 @@ async function handleLootInteraction(interaction) {
             if (drop.status !== 'closed') {
                 drop.status = 'closed';
                 await drop.save();
-                const components = buildLootContainer(drop.type, drop);
+                const components = buildLootContainer(drop);
                 await interaction.message.edit({ components, flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } });
             }
             return interaction.reply({ 
@@ -49,7 +49,7 @@ async function handleLootInteraction(interaction) {
         let userTracking = null;
         let logicalDate = null;
         
-        if (drop.type === 'link' && config && config.dailyClaimLimit > 0) {
+        if (config && config.dailyClaimLimit > 0) {
             logicalDate = new Date(Date.now() + 3600000).toISOString().split('T')[0];
             userTracking = await UserLootTracking.findOne({ userId: interaction.user.id });
             
@@ -67,53 +67,34 @@ async function handleLootInteraction(interaction) {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         try {
-            if (drop.type === 'link') {
-                const prizeLink = drop.prizes[drop.claimedCount];
-                drop.claimedCount++;
-                drop.claimedUsers.push(interaction.user.id);
-                if (drop.claimedCount >= drop.maxAmount) drop.status = 'closed';
-                await drop.save();
+            const prizeLink = drop.prizes[drop.claimedCount];
+            drop.claimedCount++;
+            drop.claimedUsers.push(interaction.user.id);
+            if (drop.claimedCount >= drop.maxAmount) drop.status = 'closed';
+            await drop.save();
 
-                if (config && config.dailyClaimLimit > 0) {
-                    if (!userTracking) {
-                        await UserLootTracking.create({ userId: interaction.user.id, lastLinkClaimDate: logicalDate, claimsToday: 1 });
+            if (config && config.dailyClaimLimit > 0) {
+                if (!userTracking) {
+                    await UserLootTracking.create({ userId: interaction.user.id, lastLinkClaimDate: logicalDate, claimsToday: 1 });
+                } else {
+                    if (userTracking.lastLinkClaimDate !== logicalDate) {
+                        userTracking.lastLinkClaimDate = logicalDate;
+                        userTracking.claimsToday = 1; 
                     } else {
-                        if (userTracking.lastLinkClaimDate !== logicalDate) {
-                            userTracking.lastLinkClaimDate = logicalDate;
-                            userTracking.claimsToday = 1; 
-                        } else {
-                            userTracking.claimsToday += 1; 
-                        }
-                        await userTracking.save();
+                        userTracking.claimsToday += 1; 
                     }
+                    await userTracking.save();
                 }
-
-                const components = buildLootContainer(drop.type, drop);
-                await interaction.message.edit({ components, flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } });
-
-                return interaction.editReply({ 
-                    content: `## 🎉 Loot Claimed\n\nHere’s your **${drop.lootName}**:\n||${prizeLink}||`, 
-                    allowedMentions: { parse: [] },
-                    flags: MessageFlags.Ephemeral 
-                });
             }
 
-            if (drop.type === 'role') {
-                await interaction.member.roles.add(drop.rolePrizeId).catch(() => null);
-                drop.claimedCount++;
-                drop.claimedUsers.push(interaction.user.id);
-                if (drop.maxAmount && drop.claimedCount >= drop.maxAmount) drop.status = 'closed';
-                await drop.save();
+            const components = buildLootContainer(drop);
+            await interaction.message.edit({ components, flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } });
 
-                const components = buildLootContainer(drop.type, drop);
-                await interaction.message.edit({ components, flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } });
-
-                return interaction.editReply({ 
-                    content: `## 🎉 Loot Claimed\n\n<@&${drop.rolePrizeId}> role is now added to your profile!`, 
-                    allowedMentions: { parse: [] },
-                    flags: MessageFlags.Ephemeral 
-                });
-            }
+            return interaction.editReply({ 
+                content: `## 🎉 Loot Claimed\n\nHere’s your **${drop.lootName}**:\n||${prizeLink}||`, 
+                allowedMentions: { parse: [] },
+                flags: MessageFlags.Ephemeral 
+            });
         } catch (error) {
             console.error(error);
             return interaction.editReply({ 
@@ -131,7 +112,7 @@ async function handleLootInteraction(interaction) {
         
         if (!allowedUsers.includes(interaction.user.id)) {
             return interaction.reply({ 
-                content: `<:no:1297814819105144862> You do not have permission to view the remaining unclaimed links.`, 
+                content: `<:no:1297814819105144862> You do not have permission to view the prizes.`, 
                 flags: MessageFlags.Ephemeral 
             });
         }
@@ -139,26 +120,43 @@ async function handleLootInteraction(interaction) {
         const messageId = interaction.message.id;
         const drop = await LootDrop.findOne({ messageId });
 
-        if (!drop || drop.type !== 'link') {
+        if (!drop) {
             return interaction.reply({ 
                 content: `<:no:1297814819105144862> This loot drop is invalid.`, 
                 flags: MessageFlags.Ephemeral 
             });
         }
 
-        if (drop.claimedCount >= drop.maxAmount) {
+        // --- 3 Day Hard Stop Check ---
+        const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
+        if (drop.createdAt && Date.now() > drop.createdAt + threeDaysMs) {
+            const components = buildLootContainer(drop);
+            await interaction.message.edit({ components, flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } }).catch(() => {});
+            
             return interaction.reply({ 
-                content: `<:no:1297814819105144862> All prizes have been claimed!`, 
+                content: `<:no:1297814819105144862> The prizes can no longer be viewed as this drop is over 3 days old.`, 
                 flags: MessageFlags.Ephemeral 
             });
         }
 
-        const remainingPrizes = drop.prizes.slice(drop.claimedCount);
-        const prizeList = remainingPrizes.map((p, i) => `**${i + 1}.** ||${p}||`).join('\n');
+        // --- Build the dynamically marked list ---
+        const prizeList = drop.prizes.map((prize, index) => {
+            const isClaimed = index < drop.claimedCount;
+            // Adds the checkmark if the index is lower than the total amount claimed
+            return `${index + 1}. \`${prize}\`${isClaimed ? ' ✅' : ''}`;
+        }).join('\n');
+
+        // --- Build the Container ---
+        const containerComponents = [
+            new ContainerBuilder()
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(`## 💰 Prizes for ${drop.lootName}\n${prizeList}`)
+                )
+        ];
 
         return interaction.reply({ 
-            content: `### 💰 Remaining Prizes for **${drop.lootName}**\n${prizeList}`, 
-            flags: MessageFlags.Ephemeral,
+            components: containerComponents, 
+            flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2, // IsComponentsV2 is required for Containers!
             allowedMentions: { parse: [] }
         });
     }

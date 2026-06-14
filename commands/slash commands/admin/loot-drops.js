@@ -33,10 +33,6 @@ const buildLootContainer = (data) => {
     const isFullyClaimed = Boolean(data.maxAmount && data.claimedCount >= data.maxAmount);
     const isClosed = Boolean(data.status === 'closed' || isFullyClaimed || isExpired);
     
-    // Calculate if 3 days (in milliseconds) have passed
-    const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
-    const isMoneyButtonExpired = data.createdAt ? Date.now() > data.createdAt + threeDaysMs : false;
-    
     let secondaryLabel = data.maxAmount ? `Claimed ${data.claimedCount}/${data.maxAmount}` : `Claimed ${data.claimedCount}`;
 
     const actionRow = new ActionRowBuilder().addComponents(
@@ -54,7 +50,7 @@ const buildLootContainer = (data) => {
             .setStyle(ButtonStyle.Secondary)
             .setEmoji({ name: "💰" })
             .setCustomId("26d2457488434623f04d00ddcb327a48")
-            .setDisabled(isFullyClaimed || isMoneyButtonExpired) 
+            // .setDisabled() removed entirely so it is forever clickable
     );
 
     container.addActionRowComponents(actionRow);

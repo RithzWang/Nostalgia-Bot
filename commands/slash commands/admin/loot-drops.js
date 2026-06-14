@@ -36,36 +36,16 @@ const buildLootContainer = (type, data) => {
              .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true));
 
     const isExpired = data.expireTime ? Date.now() > data.expireTime : false;
-    const isFullyClaimed = Boolean(data.maxAmount && data.claimedCount >= data.maxAmount);
-    const isClosed = Boolean(data.status === 'closed' || isFullyClaimed || isExpired);
+    const isClosed = Boolean(data.status === 'closed' || (data.maxAmount && data.claimedCount >= data.maxAmount) || isExpired);
     
     let secondaryLabel = data.maxAmount ? `Claimed ${data.claimedCount}/${data.maxAmount}` : `Claimed ${data.claimedCount}`;
 
-    const actionRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-            .setStyle(ButtonStyle.Success)
-            .setLabel("Claim Loot")
-            .setCustomId("536bd0f667bc4218861e4760b5fff9cd")
-            .setDisabled(isClosed),
-        new ButtonBuilder()
-            .setStyle(ButtonStyle.Secondary)
-            .setLabel(secondaryLabel)
-            .setDisabled(true)
-            .setCustomId("68df599500984f22fdcfeff6168abdd7") 
+    container.addActionRowComponents(
+        new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setStyle(ButtonStyle.Success).setLabel("Claim Loot").setCustomId("536bd0f667bc4218861e4760b5fff9cd").setDisabled(isClosed),
+            new ButtonBuilder().setStyle(ButtonStyle.Secondary).setLabel(secondaryLabel).setDisabled(true).setCustomId("68df599500984f22fdcfeff6168abdd7") 
+        )
     );
-
-    // Add the 💰 button only if it's a Link drop
-    if (type === 'link') {
-        actionRow.addComponents(
-            new ButtonBuilder()
-                .setStyle(ButtonStyle.Secondary)
-                .setEmoji({ name: "💰" })
-                .setCustomId("26d2457488434623f04d00ddcb327a48")
-                .setDisabled(isFullyClaimed) // Disabled ONLY when completely empty
-        );
-    }
-
-    container.addActionRowComponents(actionRow);
 
     return [container];
 };

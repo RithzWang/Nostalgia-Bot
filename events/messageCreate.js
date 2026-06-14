@@ -10,7 +10,10 @@ const {
 module.exports = {
     name: 'messageCreate',
     async execute(message, client) {
-        if (message.author.bot) return;
+        
+        // --- FIX APPLIED HERE ---
+        // Ignore THIS bot so it doesn't loop, but allow OTHER bots to trigger it.
+        if (message.author.id === client.user.id) return;
 
         const stickyData = await Sticky.findOne({ channelId: message.channel.id });
         if (!stickyData) return;

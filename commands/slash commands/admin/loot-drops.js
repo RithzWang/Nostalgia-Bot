@@ -75,7 +75,7 @@ const buildLootContainer = (type, data) => {
 const parseDuration = (input) => {
     if (!input) return null;
     const match = input.trim().match(/^(\d+)([smh])$/i);
-    if (!match) return false; // Returns false if format is invalid
+    if (!match) return false; 
     
     const value = parseInt(match[1], 10);
     const unit = match[2].toLowerCase();
@@ -206,7 +206,11 @@ module.exports = {
                             checkDrop.status = 'closed';
                             await checkDrop.save();
                             const updatedComponents = buildLootContainer(checkDrop.type, checkDrop);
-                            await msg.edit({ components: updatedComponents, flags: MessageFlags.IsComponentsV2 }).catch(() => {});
+                            await msg.edit({ 
+                                components: updatedComponents, 
+                                flags: MessageFlags.IsComponentsV2,
+                                allowedMentions: { parse: [] } // <-- FIX: No ping on timeout
+                            }).catch(() => {});
                         }
                     }, expireMs);
                 }
@@ -254,7 +258,11 @@ module.exports = {
                             checkDrop.status = 'closed';
                             await checkDrop.save();
                             const updatedComponents = buildLootContainer(checkDrop.type, checkDrop);
-                            await msg.edit({ components: updatedComponents, flags: MessageFlags.IsComponentsV2 }).catch(() => {});
+                            await msg.edit({ 
+                                components: updatedComponents, 
+                                flags: MessageFlags.IsComponentsV2,
+                                allowedMentions: { parse: [] } // <-- FIX: No ping on timeout
+                            }).catch(() => {});
                         }
                     }, expireMs);
                 }
@@ -276,7 +284,11 @@ module.exports = {
                 const msg = await targetChannel.messages.fetch(messageId).catch(() => null);
                 if (msg) {
                     const components = buildLootContainer(drop.type, drop);
-                    await msg.edit({ components, flags: MessageFlags.IsComponentsV2 });
+                    await msg.edit({ 
+                        components, 
+                        flags: MessageFlags.IsComponentsV2,
+                        allowedMentions: { parse: [] } // <-- FIX: No ping on force close
+                    });
                 }
 
                 return interaction.editReply(`<:yes:1297814648417943565> Drop successfully forced closed.`);

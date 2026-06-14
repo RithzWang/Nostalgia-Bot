@@ -9,19 +9,26 @@ const lootDropSchema = new Schema({
     messageId: { type: String, required: true, unique: true },
     guildId: { type: String, required: true },
     type: { type: String, enum: ['link', 'role'], required: true },
-    status: { type: String, default: 'active' }, // 'active' or 'closed'
-    lootName: { type: String }, // For link drops
-    rolePrizeId: { type: String }, // For role drops
-    prizes: { type: Array, default: [] }, // Array of strings (links)
+    status: { type: String, default: 'active' }, 
+    lootName: { type: String }, 
+    rolePrizeId: { type: String }, 
+    prizes: { type: Array, default: [] }, 
     maxAmount: { type: Number },
     claimedCount: { type: Number, default: 0 },
     claimedUsers: { type: Array, default: [] },
-    expireTime: { type: Number }, // Unix timestamp in milliseconds
+    expireTime: { type: Number }, 
     specialRole: { type: String },
     supporterId: { type: String }
 });
 
+// --- ADDED: Tracks when a user last claimed a link drop ---
+const userLootTrackingSchema = new Schema({
+    userId: { type: String, required: true, unique: true },
+    lastLinkClaimDate: { type: String }
+});
+
 module.exports = {
     GuildConfig: model('GuildConfig', guildConfigSchema),
-    LootDrop: model('LootDrop', lootDropSchema)
+    LootDrop: model('LootDrop', lootDropSchema),
+    UserLootTracking: model('UserLootTracking', userLootTrackingSchema) // Export the new model
 };

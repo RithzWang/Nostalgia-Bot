@@ -15,11 +15,6 @@ const {
     ThumbnailBuilder
 } = require('discord.js');
 
-// --- ADDED: Loot Drops Imports (Adjust paths as needed) ---
-const { GuildConfig, LootDrop, UserLootTracking } = require('../src/models/LootDropSchema'); 
-const { buildLootContainer } = require('../commands/slash commands/admin/loot-drops'); 
-// ---------------------------------------------------------
-
 // List of allowed flags as an exact Array
 const ALLOWED_FLAGS = [
     "🇦🇨","🇦🇩","🇦🇪","🇦🇫","🇦🇬","🇦🇮","🇦🇱","🇦🇲","🇦🇴","🇦🇶","🇦🇷","🇦🇸","🇦🇹","🇦🇺","🇦🇼","🇦🇽","🇦🇿",
@@ -105,7 +100,7 @@ module.exports = {
         }
 
         // ===============================================
-        // 3. ROLE BUTTONS & LOOT DROPS
+        // 3. ROLE BUTTONS
         // ===============================================
         else if (interaction.isButton()) {
 
@@ -228,133 +223,10 @@ module.exports = {
                 modal.addComponents(new ActionRowBuilder().addComponents(nameInput), new ActionRowBuilder().addComponents(countryInput));
                 await interaction.showModal(modal);
             }
-
-            // ===============================================
-            // 5. LOOT DROPS (CLAIM BUTTON)
-            // ===============================================
-            if (interaction.customId === '536bd0f667bc4218861e4760b5fff9cd') {
-                const messageId = interaction.message.id;
-                const drop = await LootDrop.findOne({ messageId });
-
-                if (!drop) return interaction.reply({ content: `<:no:1297814819105144862> This loot drop is invalid or missing from the database.`, flags: MessageFlags.Ephemeral });
-
-                // 1. Check if closed or expired
-                if (drop.status === 'closed' || (drop.expireTime && Date.now() > drop.expireTime)) {
-                    if (drop.status !== 'closed') {
-                        drop.status = 'closed';
-                        await drop.save();
-                        
-                        const components = buildLootContainer(drop.type, drop);
-                        await interaction.message.edit({ 
-                            components, 
-                            flags: MessageFlags.IsComponentsV2,
-                            allowedMentions: { parse: [] } 
-                        });
-                    }
-                    return interaction.reply({ content: `<:no:1297814819105144862> This loot drop is no longer available.`, flags: MessageFlags.Ephemeral });
-                }
-
-                // 2. Check if already claimed this exact drop
-                if (drop.claimedUsers.includes(interaction.user.id)) {
-                    return interaction.reply({ 
-                        content: `### <:no:1297814819105144862> You’ve already claimed this loot drop!\nEach user can only claim this loot once.`, 
-                        flags: MessageFlags.Ephemeral 
-                    });
-                }
-
-                // 3. Check special role eligibility
-                if (drop.specialRole && !interaction.member.roles.cache.has(drop.specialRole)) {
-                    return interaction.reply({ 
-                        content: `### <:no:1297814819105144862> You’re not eligible to claim this loot drop!\nOnly users with <@&${drop.specialRole}> can claim this loot drop.`, 
-                        flags: MessageFlags.Ephemeral 
-                    });
-                }
-
-                // 4. --- Custom Daily Limit (Link Drops ONLY) ---
-                const config = await GuildConfig.findOne({ guildId: interaction.guild.id });
-                
-                let userTracking = null;
-                let logicalDate = null;
-                
-                // Only enforce if the limit is set AND greater than 0
-                if (drop.type === 'link' && config && config.dailyClaimLimit > 0) {
-                    // GMT+7 6AM Reset Trick
-                    logicalDate = new Date(Date.now() + 3600000).toISOString().split('T')[0];
-                    userTracking = await UserLootTracking.findOne({ userId: interaction.user.id });
-                    
-                    if (userTracking && userTracking.lastLinkClaimDate === logicalDate) {
-                        if (userTracking.claimsToday >= config.dailyClaimLimit) {
-                            return interaction.reply({ 
-                                content: `### <:no:1297814819105144862> You've reached today's claim limit!\nEach user can only claim ${config.dailyClaimLimit} prize(s) per day.`, 
-                                flags: MessageFlags.Ephemeral 
-                            });
-                        }
-                    }
-                }
-
-                // Process Claim logic
-                await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
-                try {
-                    // === LINK DROP ===
-                    if (drop.type === 'link') {
-                        const prizeLink = drop.prizes[drop.claimedCount];
-                        
-                        drop.claimedCount++;
-                        drop.claimedUsers.push(interaction.user.id);
-                        if (drop.claimedCount >= drop.maxAmount) drop.status = 'closed';
-                        await drop.save();
-
-                        // Update the user's custom daily tracker
-                        if (config && config.dailyClaimLimit > 0) {
-                            if (!userTracking) {
-                                await UserLootTracking.create({ userId: interaction.user.id, lastLinkClaimDate: logicalDate, claimsToday: 1 });
-                            } else {
-                                if (userTracking.lastLinkClaimDate !== logicalDate) {
-                                    userTracking.lastLinkClaimDate = logicalDate;
-                                    userTracking.claimsToday = 1; // Reset counter for new day
-                                } else {
-                                    userTracking.claimsToday += 1; // Increment today's count
-                                }
-                                await userTracking.save();
-                            }
-                        }
-
-                        const components = buildLootContainer(drop.type, drop);
-                        await interaction.message.edit({ components, flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } });
-
-                        return interaction.editReply({ 
-                            content: `## 🎉 Loot Claimed\n\nHere’s your **${drop.lootName}**:\n||${prizeLink}||`,
-                            allowedMentions: { parse: [] } 
-                        });
-                    }
-
-                    // === ROLE DROP ===
-                    if (drop.type === 'role') {
-                        await interaction.member.roles.add(drop.rolePrizeId).catch(() => null);
-
-                        drop.claimedCount++;
-                        drop.claimedUsers.push(interaction.user.id);
-                        if (drop.maxAmount && drop.claimedCount >= drop.maxAmount) drop.status = 'closed';
-                        await drop.save();
-
-                        const components = buildLootContainer(drop.type, drop);
-                        await interaction.message.edit({ components, flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } });
-
-                        return interaction.editReply({ 
-                            content: `## 🎉 Loot Claimed\n\n<@&${drop.rolePrizeId}> role is now added to your profile!`,
-                            allowedMentions: { parse: [] } 
-                        });
-                    }
-                } catch (error) {
-                    console.error(error);
-                    return interaction.editReply(`<:no:1297814819105144862> An error occurred processing your claim.`);
-                }
-            }
         }
 
         // ===============================================
-        // 6. REGISTRATION (PART 2: MODAL SUBMIT)
+        // 5. REGISTRATION (PART 2: MODAL SUBMIT)
         // ===============================================
         else if (interaction.isModalSubmit() && interaction.customId === 'reg_modal_submit') {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });

@@ -300,7 +300,7 @@ module.exports = {
                         const role = interaction.guild.roles.cache.get(REGISTERED_ROLE_ID);
                         const newCount = role ? role.members.size : 'N/A';
                         const newContainer = new ContainerBuilder();
-                        newContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent('# » Registration'));
+                        newContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent('# 📝 Registration'));
                         newContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`To access chat and connect to voice channels, please register below.\n\n**Note:**\n\`Name\` : your desired name.\n\`Country Flag\` : your country’s flag emoji.`));
                         newContainer.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false));
                         const registerBtn = new ButtonBuilder().setCustomId('reg_btn_open').setLabel('Register').setStyle(ButtonStyle.Primary);

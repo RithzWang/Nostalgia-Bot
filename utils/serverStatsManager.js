@@ -129,11 +129,11 @@ async function generateServerStatsPayload(guild, config) {
         if (boostsNeeded > 0) {
             const s = boostsNeeded === 1 ? '' : 's';
             const sRemain = boostsNeeded === 1 ? 's' : '';
-            tagStatusLine = `<:no_boost:1468470028302024776> **${boostsNeeded} Boost${s} Remain${sRemain}**`;
+            tagStatusLine = `<:no_boost:1518693461878902904> **${boostsNeeded} Boost${s} Remain${sRemain}**`;
         } else if (!hasClanFeature && tagAdoptersCount === 0) {
-            tagStatusLine = `<:no_tag:1468470099026510001> **Not Enabled**`;
+            tagStatusLine = `<:no_tag:1518693542460129373> **Not Enabled**`;
         } else {
-            tagStatusLine = `<:greysword:1462853724824404069> **Tag Adopters:** ${tagAdoptersCount}`;
+            tagStatusLine = `<:redheart:1518693682306486493> **Tag Adopters:** ${tagAdoptersCount}`;
         }
 
         container

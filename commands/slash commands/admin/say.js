@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, MessageFlags } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, MessageFlags, TextDisplayBuilder, ContainerBuilder } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -10,7 +10,7 @@ module.exports = {
         // --- SEND SUBCOMMAND ---
         .addSubcommand(sub => sub.setName('send').setDescription('Create a message')
             .addStringOption(opt => opt.setName('content').setDescription('Content').setRequired(true))
-            .addBooleanOption(opt => opt.setName('mention').setDescription('Mention users?').setRequired(true))
+            .addBooleanOption(opt => opt.setName('mention').setDescription('Mention users? (Defaults to True)').setRequired(false))
             .addChannelOption(opt => opt.setName('channel').setDescription('Where to send?').addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
             .addStringOption(opt => opt.setName('image').setDescription('Image Link (URL)'))
         )
@@ -19,7 +19,7 @@ module.exports = {
         .addSubcommand(sub => sub.setName('edit').setDescription('Edit a message')
             .addStringOption(opt => opt.setName('message_id').setDescription('Message ID').setRequired(true))
             .addStringOption(opt => opt.setName('content').setDescription('New content').setRequired(true))
-            .addBooleanOption(opt => opt.setName('mention').setDescription('Mention users?').setRequired(true))
+            .addBooleanOption(opt => opt.setName('mention').setDescription('Mention users? (Defaults to True)').setRequired(false))
             .addChannelOption(opt => opt.setName('channel').setDescription('Channel').addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
             .addStringOption(opt => opt.setName('image').setDescription('New Image Link (URL)'))
         )
@@ -28,9 +28,16 @@ module.exports = {
         .addSubcommand(sub => sub.setName('reply').setDescription('Reply directly to a specific message')
             .addStringOption(opt => opt.setName('message_id').setDescription('The ID of the message to reply to').setRequired(true))
             .addStringOption(opt => opt.setName('content').setDescription('Content').setRequired(true))
-            .addBooleanOption(opt => opt.setName('mention').setDescription('Mention users?').setRequired(true))
+            .addBooleanOption(opt => opt.setName('mention').setDescription('Mention users? (Defaults to True)').setRequired(false))
             .addChannelOption(opt => opt.setName('channel').setDescription('Channel the message is in').addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
             .addStringOption(opt => opt.setName('image').setDescription('Image Link (URL)'))
+        )
+
+        // --- CONTAINER SUBCOMMAND ---
+        .addSubcommand(sub => sub.setName('container').setDescription('Send a message in a container')
+            .addStringOption(opt => opt.setName('content').setDescription('Content').setRequired(true))
+            .addBooleanOption(opt => opt.setName('mention').setDescription('Mention users? (Defaults to True)').setRequired(false))
+            .addChannelOption(opt => opt.setName('channel').setDescription('Where to send?').addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
         )
 
         // --- REACT SUBCOMMAND ---
@@ -52,9 +59,12 @@ module.exports = {
         // 1. Get channel (defaulting to the current one)
         let targetChannel = interaction.options.getChannel('channel') || interaction.channel;
         
-        // 2. Fetch options that only exist on send/edit/reply
+        // 2. Fetch options that only exist on send/edit/reply/container
         const content = interaction.options.getString('content');
-        const shouldMention = interaction.options.getBoolean('mention');
+        
+        // Changed this line to default to true instead of false
+        const shouldMention = interaction.options.getBoolean('mention') ?? true; 
+        
         const image = interaction.options.getString('image');
         
         // 3. Construct Payload (Only if content exists, preventing errors on react/pin)
@@ -101,6 +111,26 @@ module.exports = {
 
                 await targetMessage.reply(payload);
                 await interaction.reply({ content: `<:yes:1297814648417943565> Replied to the message.`, flags: MessageFlags.Ephemeral });
+            }
+
+            // =========================
+            //      CONTAINER LOGIC
+            // =========================
+            else if (subcommand === 'container') {
+                const components = [
+                    new ContainerBuilder()
+                        .addTextDisplayComponents(
+                            new TextDisplayBuilder().setContent(content)
+                        ),
+                ];
+
+                const containerPayload = { 
+                    components: components, 
+                    allowedMentions: payload.allowedMentions 
+                };
+
+                await targetChannel.send(containerPayload);
+                await interaction.reply({ content: `<:yes:1297814648417943565> Container sent to ${targetChannel}.`, flags: MessageFlags.Ephemeral });
             }
 
             // =========================

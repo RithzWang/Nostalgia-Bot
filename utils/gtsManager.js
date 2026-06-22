@@ -119,7 +119,7 @@ async function updateGTSDashboard(client) {
 
         // Build Container 1 (Header + Main Server)
         const container1 = new ContainerBuilder()
-            .addTextDisplayComponents(new TextDisplayBuilder().setContent("# » Server Statistics"))
+            .addTextDisplayComponents(new TextDisplayBuilder().setContent("# 📊 Server Statistics"))
             .addActionRowComponents(
                 new ActionRowBuilder().addComponents(
                     new ButtonBuilder().setStyle(ButtonStyle.Secondary)

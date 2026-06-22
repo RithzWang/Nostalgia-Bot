@@ -23,7 +23,7 @@ function getStatusLine(guild, tagCount) {
         return `<:no_tag:1518693542460129373> **Not Enabled**`;
     }
     
-    return `<:redheart:1518696134883676207> **Tag Adopters:** ${tagCount}`;
+    return `<:greysword:1462853724824404069> **Tag Adopters:** ${tagCount}`;
 }
 
 async function updateGTSDashboard(client) {

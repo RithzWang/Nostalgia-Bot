@@ -133,7 +133,7 @@ async function generateServerStatsPayload(guild, config) {
         } else if (!hasClanFeature && tagAdoptersCount === 0) {
             tagStatusLine = `<:no_tag:1518693542460129373> **Not Enabled**`;
         } else {
-            tagStatusLine = `<:redheart:1518693682306486493> **Tag Adopters:** ${tagAdoptersCount}`;
+            tagStatusLine = `<:redheart:1518696134883676207> **Tag Adopters:** ${tagAdoptersCount}`;
         }
 
         container

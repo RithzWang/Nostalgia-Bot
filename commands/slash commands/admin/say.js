@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, MessageFlags, TextDisplayBuilder, ContainerBuilder } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, MessageFlags, ContainerBuilder, TextDisplayBuilder } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -33,8 +33,8 @@ module.exports = {
             .addStringOption(opt => opt.setName('image').setDescription('Image Link (URL)'))
         )
 
-        // --- CONTAINER SUBCOMMAND ---
-        .addSubcommand(sub => sub.setName('container').setDescription('Send a message in a container')
+        // --- CONTAINER SUBCOMMAND (V2 COMPONENTS) ---
+        .addSubcommand(sub => sub.setName('container').setDescription('Send a message in a V2 container')
             .addStringOption(opt => opt.setName('content').setDescription('Content').setRequired(true))
             .addBooleanOption(opt => opt.setName('mention').setDescription('Mention users? (Defaults to True)').setRequired(false))
             .addChannelOption(opt => opt.setName('channel').setDescription('Where to send?').addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
@@ -59,15 +59,12 @@ module.exports = {
         // 1. Get channel (defaulting to the current one)
         let targetChannel = interaction.options.getChannel('channel') || interaction.channel;
         
-        // 2. Fetch options that only exist on send/edit/reply/container
+        // 2. Fetch options
         const content = interaction.options.getString('content');
-        
-        // Changed this line to default to true instead of false
         const shouldMention = interaction.options.getBoolean('mention') ?? true; 
-        
         const image = interaction.options.getString('image');
         
-        // 3. Construct Payload (Only if content exists, preventing errors on react/pin)
+        // 3. Construct Standard Payload
         let payload = {};
         if (content !== null) {
             const allowedMentions = shouldMention ? { parse: ['users', 'roles', 'everyone'] } : { parse: [] };
@@ -114,7 +111,7 @@ module.exports = {
             }
 
             // =========================
-            //      CONTAINER LOGIC
+            //      CONTAINER LOGIC (V2)
             // =========================
             else if (subcommand === 'container') {
                 const components = [
@@ -126,7 +123,8 @@ module.exports = {
 
                 const containerPayload = { 
                     components: components, 
-                    allowedMentions: payload.allowedMentions 
+                    allowedMentions: payload.allowedMentions,
+                    flags: MessageFlags.IsComponentsV2 // <-- This is the magic flag required for V2 Components!
                 };
 
                 await targetChannel.send(containerPayload);
@@ -141,18 +139,13 @@ module.exports = {
                 const emojiInput = interaction.options.getString('emoji');
                 const targetMessage = await targetChannel.messages.fetch(messageId);
 
-                // Split the input string by spaces so you can process multiple emojis
                 const emojisToReact = emojiInput.split(/\s+/);
-
-                // Defer the reply if you are adding lots of emojis, as it might take >3 seconds
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
                 let successCount = 0;
 
                 for (const rawEmoji of emojisToReact) {
                     if (!rawEmoji) continue;
-
-                    // Regex to check if it's a custom emoji. If it is, extract ONLY the ID.
                     const customMatch = rawEmoji.match(/<a?:.+:(\d+)>/);
                     const resolvedEmoji = customMatch ? customMatch[1] : rawEmoji;
 
@@ -182,7 +175,6 @@ module.exports = {
 
         } catch (error) {
             console.error(error);
-            // If the interaction was already deferred (like in 'react'), we need to use editReply instead of reply
             if (interaction.deferred) {
                 await interaction.editReply({ content: `<:no:1297814819105144862> Error: ${error.message}` });
             } else {

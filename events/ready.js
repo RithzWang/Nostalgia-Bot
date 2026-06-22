@@ -1,13 +1,16 @@
-const { REST, Routes, ActivityType, Collection } = require('discord.js');
+// ✅ NEW: Added MessageFlags, ContainerBuilder, TextDisplayBuilder to the require
+const { REST, Routes, ActivityType, Collection, MessageFlags, ContainerBuilder, TextDisplayBuilder } = require('discord.js');
 const moment = require('moment-timezone');
 const { serverID } = require('../config.json'); 
 
 const { updateServerStatsPanels } = require('../utils/serverStatsManager'); 
-// ✅ NEW: Import the GTS Dashboard updater
 const { updateGTSDashboard } = require('../utils/gtsManager'); 
 
 const fs = require('fs');
 const path = require('path');
+
+// ✅ NEW: Import the Scheduled Message Model (Double check this path matches your folder structure!)
+const ScheduledMessage = require('../src/models/ScheduledMessage'); 
 
 module.exports = {
     name: 'clientReady', 
@@ -45,7 +48,7 @@ module.exports = {
             } catch (e) { console.log('⚠️ Could not cache invites'); }
         }
 
-        // 4. TIMERS (Status + Server Stats + GTS Dashboard)
+        // 3. TIMERS (Status + Server Stats + GTS Dashboard)
         setInterval(() => {
             const now = moment().tz('Asia/Bangkok');
             const formattedTime = now.format('HH:mm');
@@ -70,10 +73,85 @@ module.exports = {
                 // Updates the local Server Stats Dashboard
                 updateServerStatsPanels(client).catch(err => console.error(err));
                 
-                // ✅ NEW: Updates the Global Tags Stats Dashboard every minute
+                // Updates the Global Tags Stats Dashboard every minute
                 updateGTSDashboard(client).catch(err => console.error(err));
             }
 
         }, 5000); 
+
+        // ==========================================
+        // 4. SCHEDULED MESSAGES LOOP (Runs every 10s)
+        // ==========================================
+        setInterval(async () => {
+            try {
+                const now = new Date();
+                
+                // Find all messages where the sendAt time has passed
+                const pendingMessages = await ScheduledMessage.find({ sendAt: { $lte: now } });
+
+                if (pendingMessages.length > 0) {
+                    console.log(`[SCHEDULER] Found ${pendingMessages.length} message(s) ready to send.`);
+                }
+
+                for (const msg of pendingMessages) {
+                    console.log(`[SCHEDULER] Attempting to send ${msg.type} to channel ${msg.channelId}`);
+                    
+                    const channel = await client.channels.fetch(msg.channelId).catch(() => null);
+                    if (!channel) {
+                        console.log(`[SCHEDULER] Channel ${msg.channelId} not found or inaccessible. Deleting schedule.`);
+                        await ScheduledMessage.findByIdAndDelete(msg._id);
+                        continue; 
+                    }
+
+                    const allowedMentions = msg.mention ? { parse: ['users', 'roles', 'everyone'] } : { parse: [] };
+                    
+                    // Build payload based on type
+                    if (msg.type === 'send') {
+                        const payload = { content: msg.content, allowedMentions };
+                        if (msg.image) payload.files = [msg.image];
+                        
+                        await channel.send(payload)
+                            .then(() => console.log(`[SCHEDULER] Successfully sent 'send' message.`))
+                            .catch(err => console.error(`[SCHEDULER] FAILED to send 'send' message:`, err));
+                    } 
+                    else if (msg.type === 'reply') {
+                        const targetMessage = await channel.messages.fetch(msg.replyMessageId).catch(() => null);
+                        if (targetMessage) {
+                            const payload = { content: msg.content, allowedMentions };
+                            if (msg.image) payload.files = [msg.image];
+                            
+                            await targetMessage.reply(payload)
+                                .then(() => console.log(`[SCHEDULER] Successfully sent 'reply' message.`))
+                                .catch(err => console.error(`[SCHEDULER] FAILED to send 'reply':`, err));
+                        } else {
+                            console.log(`[SCHEDULER] Target message ${msg.replyMessageId} to reply to was deleted/not found.`);
+                        }
+                    } 
+                    else if (msg.type === 'container') {
+                        const components = [
+                            new ContainerBuilder()
+                                .addTextDisplayComponents(
+                                    new TextDisplayBuilder().setContent(msg.content)
+                                ),
+                        ];
+                        const containerPayload = { 
+                            components: components, 
+                            allowedMentions: allowedMentions,
+                            flags: MessageFlags.IsComponentsV2 
+                        };
+                        
+                        await channel.send(containerPayload)
+                            .then(() => console.log(`[SCHEDULER] Successfully sent 'container' message.`))
+                            .catch(err => console.error(`[SCHEDULER] FAILED to send 'container':`, err));
+                    }
+
+                    // Remove it from the database after attempting to send
+                    await ScheduledMessage.findByIdAndDelete(msg._id);
+                    console.log(`[SCHEDULER] Deleted message ${msg._id} from database after processing.`);
+                }
+            } catch (error) {
+                console.error("[SCHEDULER ERROR] Error processing scheduled messages:", error);
+            }
+        }, 10000); 
     }
 };

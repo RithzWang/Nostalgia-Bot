@@ -53,7 +53,7 @@ module.exports = {
         // --- BUILD COMPONENTS ---
         // 1. Text Content
         const headerText = new TextDisplayBuilder()
-            .setContent('# » Registration');
+            .setContent('# 📝 Registration');
         
         const descText = new TextDisplayBuilder()
             .setContent(`To access chat and connect to voice channels, please register below.\n\n**Note:**\n\`Name\` : your desired name.\n\`Country Flag\` : your country’s flag emoji.`);

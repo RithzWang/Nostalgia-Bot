@@ -6,24 +6,24 @@ const {
 const { GTSHub, GTSServer } = require('../src/models/GTS');
 
 function getStatusLine(guild, tagCount) {
-    if (!guild) return `<:no_tag:1468470099026510001> **Not Available**`;
+    if (!guild) return `<:no_tag:1518693542460129373> **Not Available**`;
     
     const boostCount = guild.premiumSubscriptionCount || 0;
     const boostsNeeded = 3 - boostCount;
     
     if (boostsNeeded > 0) {
         return boostsNeeded === 1 
-            ? `<:no_boost:1468470028302024776> **1 Boost Remains**` 
-            : `<:no_boost:1468470028302024776> **${boostsNeeded} Boosts Remain**`;
+            ? `<:no_boost:1518693461878902904> **1 Boost Remains**` 
+            : `<:no_boost:1518693461878902904> **${boostsNeeded} Boosts Remain**`;
     }
     
     const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS') || guild.features.includes('MEMBER_VERIFICATION_GATE_ENABLED');
     
     if (!hasClanFeature && tagCount === 0) {
-        return `<:no_tag:1468470099026510001> **Not Enabled**`;
+        return `<:no_tag:1518693542460129373> **Not Enabled**`;
     }
     
-    return `<:greysword:1462853724824404069> **Tag Adopters:** ${tagCount}`;
+    return `<:redheart:1518693682306486493> **Tag Adopters:** ${tagCount}`;
 }
 
 async function updateGTSDashboard(client) {

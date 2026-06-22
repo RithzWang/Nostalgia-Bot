@@ -41,7 +41,7 @@ async function updateGTSDashboard(client) {
     // ==========================================
     let globalTagAdopters = 0;
 
-    // 🟢 MAIN SERVER SWEEP (Count tags & Enforce Main Roles)
+    // 🟢 MAIN SERVER SWEEP
     let mainLocalTags = 0;
     const mainData = allServers.find(s => s.serverId === hub.mainServerId) || {};
     
@@ -52,16 +52,12 @@ async function updateGTSDashboard(client) {
         
         if (identityId === hub.mainServerId) mainLocalTags++;
 
-        // 🛡️ AUTO-SYNC ROLE ENFORCEMENT (Main Server)
-        // If they are wearing ANY recognized tag in our network, check their roles
         if (identityId) {
             const srvData = allServers.find(s => s.serverId === identityId);
             if (srvData) {
-                // 1. Check Global Default Tag Role
                 if (hub.defaultTagRole && !m.roles.cache.has(hub.defaultTagRole)) {
                     m.roles.add(hub.defaultTagRole).catch(() => {});
                 }
-                // 2. Check Specific Server Main Tag Role
                 if (srvData.mainTagRole && !m.roles.cache.has(srvData.mainTagRole)) {
                     m.roles.add(srvData.mainTagRole).catch(() => {});
                 }
@@ -73,7 +69,7 @@ async function updateGTSDashboard(client) {
     const mainStatus = getStatusLine(mainGuild, mainLocalTags);
     const mainInviteUrl = mainData.inviteLink && mainData.inviteLink.startsWith('http') ? mainData.inviteLink : "https://discord.com";
 
-    // 🟢 SATELLITE SERVER SWEEP (Count tags & Enforce Local Roles)
+    // 🟢 SATELLITE SERVER SWEEP
     const satellites = allServers.filter(s => s.serverId !== hub.mainServerId);
     const satellitePayloadData = [];
 
@@ -92,8 +88,6 @@ async function updateGTSDashboard(client) {
             if (identityId === satData.serverId) {
                 satLocalTags++;
 
-                // 🛡️ AUTO-SYNC ROLE ENFORCEMENT (Satellite Server)
-                // If they are wearing THIS satellite's tag, ensure they have the local role
                 if (satData.localTagRole && !m.roles.cache.has(satData.localTagRole)) {
                     m.roles.add(satData.localTagRole).catch(() => {});
                 }
@@ -115,10 +109,13 @@ async function updateGTSDashboard(client) {
     });
 
     // ==========================================
-    // 2. BLUEPRINT RENDER ENGINE
+    // 2. BLUEPRINT RENDER ENGINE (Now requires targetGuildId)
     // ==========================================
-    const renderPayload = () => {
+    const renderPayload = (targetGuildId) => {
         const containers = [];
+
+        // 📌 Check if the Main Server gets the pin
+        const mainPin = mainGuild.id === targetGuildId ? " 📍" : "";
 
         // Build Container 1 (Header + Main Server)
         const container1 = new ContainerBuilder()
@@ -136,7 +133,7 @@ async function updateGTSDashboard(client) {
                 new SectionBuilder()
                     .setButtonAccessory(new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel("Server Link").setURL(mainInviteUrl))
                     .addTextDisplayComponents(
-                        new TextDisplayBuilder().setContent(`## [${mainGuild.name}](${mainInviteUrl})`),
+                        new TextDisplayBuilder().setContent(`## [${mainGuild.name}](${mainInviteUrl})${mainPin}`),
                         new TextDisplayBuilder().setContent(
                             `<:id:1468487725912166596> **ID:** \`${mainGuild.id}\`\n` +
                             `<:badge:1468618581427097724> **Server Tag:** ${mainData.tagText || "None"}\n` +
@@ -152,11 +149,14 @@ async function updateGTSDashboard(client) {
             const container2 = new ContainerBuilder();
 
             satellitePayloadData.forEach((sat, index) => {
+                // 📌 Check if THIS satellite gets the pin
+                const satPin = sat.id === targetGuildId ? " 📍" : "";
+
                 container2.addSectionComponents(
                     new SectionBuilder()
                         .setButtonAccessory(new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel("Server Link").setURL(sat.inviteUrl))
                         .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent(`## [${sat.name}](${sat.inviteUrl})`),
+                            new TextDisplayBuilder().setContent(`## [${sat.name}](${sat.inviteUrl})${satPin}`),
                             new TextDisplayBuilder().setContent(
                                 `<:id:1468487725912166596> **ID:** \`${sat.id}\`\n` +
                                 `<:badge:1468618581427097724> **Server Tag:** ${sat.tagText || "None"}\n` +
@@ -185,18 +185,21 @@ async function updateGTSDashboard(client) {
     // ==========================================
     // 3. BROADCAST DESPATCH
     // ==========================================
-    const sharedPayload = renderPayload();
 
+    // Despatch A: Main Hub
     if (hub.dashboardChannelId) {
         const hubChannel = mainGuild.channels.cache.get(hub.dashboardChannelId) || await client.channels.fetch(hub.dashboardChannelId).catch(() => null);
         if (hubChannel) {
             try {
+                // 🎯 Generate the custom payload specifically for the Main Server
+                const hubPayload = renderPayload(hub.mainServerId);
+
                 let msg = null;
                 if (hub.dashboardMessageId) msg = await hubChannel.messages.fetch(hub.dashboardMessageId).catch(() => null);
                 if (msg && msg.editable) {
-                    await msg.edit({ components: sharedPayload, flags: [MessageFlags.IsComponentsV2] });
+                    await msg.edit({ components: hubPayload, flags: [MessageFlags.IsComponentsV2] });
                 } else {
-                    const newMsg = await hubChannel.send({ components: sharedPayload, flags: [MessageFlags.IsComponentsV2] });
+                    const newMsg = await hubChannel.send({ components: hubPayload, flags: [MessageFlags.IsComponentsV2] });
                     hub.dashboardMessageId = newMsg.id;
                     await hub.save();
                 }
@@ -204,6 +207,7 @@ async function updateGTSDashboard(client) {
         }
     }
 
+    // Despatch B: Satellites
     for (const satData of allServers) {
         if (!satData.localDashboardChannelId) continue; 
 
@@ -214,13 +218,16 @@ async function updateGTSDashboard(client) {
         if (!satChannel) continue;
 
         try {
+            // 🎯 Generate the custom payload specifically for THIS Satellite Server
+            const satPayload = renderPayload(satData.serverId);
+
             let msg = null;
             if (satData.localDashboardMessageId) msg = await satChannel.messages.fetch(satData.localDashboardMessageId).catch(() => null);
             
             if (msg && msg.editable) {
-                await msg.edit({ components: sharedPayload, flags: [MessageFlags.IsComponentsV2] });
+                await msg.edit({ components: satPayload, flags: [MessageFlags.IsComponentsV2] });
             } else {
-                const newMsg = await satChannel.send({ components: sharedPayload, flags: [MessageFlags.IsComponentsV2] });
+                const newMsg = await satChannel.send({ components: satPayload, flags: [MessageFlags.IsComponentsV2] });
                 satData.localDashboardMessageId = newMsg.id;
                 await satData.save();
             }

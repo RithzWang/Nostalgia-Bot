@@ -1,3 +1,4 @@
+// events/gtsInteractions.js
 const { Events, MessageFlags, ModalBuilder, TextInputBuilder, TextInputStyle, LabelBuilder, RoleSelectMenuBuilder, ChannelSelectMenuBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } = require('discord.js');
 const { GTSServer, GTSHub } = require('../src/models/GTS');
 const { updateGTSDashboard } = require('../utils/gtsManager');
@@ -16,6 +17,17 @@ function formatChannel(client, currentGuildId, channelId) {
     const channel = client.channels.cache.get(channelId);
     if (channel && channel.guildId === currentGuildId) return `<#${channelId}>`; 
     return channel ? `**#${channel.name}** (\`${channelId}\`)` : `**Unknown Channel** (\`${channelId}\`)`;
+}
+
+// ✅ NEW: Helper formatting for Badge Packs
+function formatBadgePack(pack) {
+    switch(pack) {
+        case 'creepy_crawlies': return "Creepy Crawlies Badge Packs (2 Boosts)";
+        case 'pet': return "Pet Badge Pack (3 Boosts)";
+        case 'plant': return "Plant Badge Pack (3 Boosts)";
+        case 'flex': return "Flex Badge Pack (5 Boosts)";
+        default: return "Default Badge Pack";
+    }
 }
 
 // --- CONTAINER REBUILDERS ---
@@ -58,17 +70,36 @@ async function buildViewServerUI(client, currentGuildId, srvId) {
     const mainLogStr = formatChannel(client, currentGuildId, srvData.mainLogChannel);
     const localLogStr = formatChannel(client, currentGuildId, srvData.localLogChannel);
     const greetStr = formatChannel(client, currentGuildId, srvData.greetChannel);
+    const badgePackStr = formatBadgePack(srvData.tagBadgePack); // ✅ Get updated pack string
 
     const hasMainRole = !!srvData.mainTagRole; const hasMainLog = !!srvData.mainLogChannel; const hasLocalRole = !!srvData.localTagRole; const hasLocalLog = !!srvData.localLogChannel; const hasGreetChannel = !!srvData.greetChannel;
 
-    const menuOptions = [new StringSelectMenuOptionBuilder().setLabel("Edit Invite Link").setValue("edit_invite").setEmoji("✏️"), new StringSelectMenuOptionBuilder().setLabel("Edit Server Tag Text").setValue("edit_tag").setEmoji("✏️")];
+    // ✅ Cleaned up initial layout selection menu options
+    const menuOptions = [
+        new StringSelectMenuOptionBuilder().setLabel("Edit Invite Link").setValue("edit_invite").setEmoji("✏️"), 
+        new StringSelectMenuOptionBuilder().setLabel("Edit Server Tag Text").setValue("edit_tag").setEmoji("✏️"),
+        new StringSelectMenuOptionBuilder().setLabel("Edit Tag Badge Pack").setValue("edit_badge_pack").setEmoji("🏅") // ✅ Added edit control
+    ];
     if (!hasMainRole) menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Adopters Role (Main)").setValue("set_main_role").setEmoji("⚙️")); else menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Adopters Role (Main)").setValue("edit_main_role").setEmoji("✏️"), new StringSelectMenuOptionBuilder().setLabel("Remove Adopters Role (Main)").setValue("remove_main_role").setEmoji("🗑️"));
     if (!hasMainLog) menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Log Channel (Main)").setValue("set_main_log").setEmoji("⚙️")); else menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Log Channel (Main)").setValue("edit_main_log").setEmoji("✏️"), new StringSelectMenuOptionBuilder().setLabel("Remove Log Channel (Main)").setValue("remove_main_log").setEmoji("🗑️"));
     if (!hasLocalRole) menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Local Adopters Role").setValue("set_local_role").setEmoji("⚙️")); else menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Local Adopters Role").setValue("edit_local_role").setEmoji("✏️"), new StringSelectMenuOptionBuilder().setLabel("Remove Local Adopters Role").setValue("remove_local_role").setEmoji("🗑️"));
     if (!hasLocalLog) menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Local Log Channel").setValue("set_local_log").setEmoji("⚙️")); else menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Local Log Channel").setValue("edit_local_log").setEmoji("✏️"), new StringSelectMenuOptionBuilder().setLabel("Remove Local Log Channel").setValue("remove_local_log").setEmoji("🗑️"));
     if (!hasGreetChannel) menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Greet Channel").setValue("set_greet").setEmoji("⚙️")); else menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Greet Channel").setValue("edit_greet").setEmoji("✏️"), new StringSelectMenuOptionBuilder().setLabel("Remove Greet Channel").setValue("remove_greet").setEmoji("🗑️"));
 
-    return new ContainerBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${guild ? guild.name : "Unknown Server"}`)).addTextDisplayComponents(new TextDisplayBuilder().setContent(`**Invite Link:** \`${srvData.inviteLink || "None"}\`\n**Server Tag Text:** ${srvData.tagText || "None"}\n**Adopters Role:** ${mainRoleStr}\n**Tag Adopted/Removed Log Channel:** ${mainLogStr}\n**Local Adopters Role:** ${localRoleStr}\n**Local Log Channel:** ${localLogStr}\n**Greet Channel:** ${greetStr}`)).addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)).addActionRowComponents(new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId(`gts_edit_menu_${srvId}`).addOptions(menuOptions)));
+    return new ContainerBuilder()
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${guild ? guild.name : "Unknown Server"}`))
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(
+            `**Invite Link:** \`${srvData.inviteLink || "None"}\`\n` +
+            `**Server Tag Text:** \`${srvData.tagText || "None"}\`\n` +
+            `**Server Tag Badge Pack:** **${badgePackStr}**\n` + // ✅ Added info display
+            `**Adopters Role:** ${mainRoleStr}\n` +
+            `**Tag Adopted/Removed Log Channel:** ${mainLogStr}\n` +
+            `**Local Adopters Role:** ${localRoleStr}\n` +
+            `**Local Log Channel:** ${localLogStr}\n` +
+            `**Greet Channel:** ${greetStr}`
+        ))
+        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
+        .addActionRowComponents(new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId(`gts_edit_menu_${srvId}`).addOptions(menuOptions)));
 }
 
 // --- MODAL UTILS ---
@@ -92,10 +123,30 @@ function buildSingleLabelModal(modalId, title, inputId, labelText, type = 'text'
     return modal;
 }
 
+// ✅ NEW: Reusable Badge Pack selection component modal
+function buildBadgePackModal(modalId, title, inputId) {
+    const modal = new ModalBuilder().setCustomId(modalId).setTitle(title);
+    const label = new LabelBuilder().setLabel("Select Badge Pack Bundle");
+    
+    const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId(inputId)
+        .setPlaceholder("Choose badge pack option...")
+        .addOptions(
+            new StringSelectMenuOptionBuilder().setLabel("Default Badge Pack").setValue("default"),
+            new StringSelectMenuOptionBuilder().setLabel("Creepy Crawlies Badge Packs").setDescription("2 Boosts").setValue("creepy_crawlies"),
+            new StringSelectMenuOptionBuilder().setLabel("Pet Badge Pack").setDescription("3 Boosts").setValue("pet"),
+            new StringSelectMenuOptionBuilder().setLabel("Plant Badge Pack").setDescription("3 Boosts").setValue("plant"),
+            new StringSelectMenuOptionBuilder().setLabel("Flex Badge Pack").setDescription("5 Boosts").setValue("flex")
+        );
+        
+    label.setStringSelectMenuComponent(selectMenu);
+    modal.addLabelComponents(label);
+    return modal;
+}
+
 // 🌟 CROSS-SERVER UI BYPASS ENGINE
 async function buildCrossServerDropdownModal(client, srvId, modalId, title, inputId, labelText, type) {
     let targetGuild = client.guilds.cache.get(srvId);
-    
     if (!targetGuild) return buildSingleLabelModal(modalId, title, inputId, labelText + " (Paste ID)", 'text');
 
     const modal = new ModalBuilder().setCustomId(modalId).setTitle(title);
@@ -135,7 +186,6 @@ async function buildCrossServerDropdownModal(client, srvId, modalId, title, inpu
 
     label.setStringSelectMenuComponent(selectMenu);
     modal.addLabelComponents(label);
-    
     return modal;
 }
 
@@ -176,9 +226,10 @@ module.exports = {
 
                 if (choice === 'edit_invite') return interaction.showModal(buildSingleLabelModal(`gts_edit_srv_invite_${srvId}`, 'Edit Invite Link', 'input', 'New Invite Link (URL)', 'text'));
                 if (choice === 'edit_tag') return interaction.showModal(buildSingleLabelModal(`gts_edit_srv_tag_${srvId}`, 'Edit Server Tag', 'input', 'Server Tag Text', 'text'));
+                if (choice === 'edit_badge_pack') return interaction.showModal(buildBadgePackModal(`gts_edit_srv_badgepack_${srvId}`, 'Edit Badge Pack Pack', 'input')); // ✅ Open modal for editing pack configuration
+                
                 if (choice === 'set_main_role' || choice === 'edit_main_role') return interaction.showModal(buildSingleLabelModal(`gts_edit_srv_mainrole_${srvId}`, 'Main Adopters Role', 'input', 'Select Role', 'role'));
                 if (choice === 'set_main_log' || choice === 'edit_main_log') return interaction.showModal(buildSingleLabelModal(`gts_edit_srv_mainlog_${srvId}`, 'Main Log Channel', 'input', 'Select Channel', 'channel'));
-                
                 if (choice === 'set_local_role' || choice === 'edit_local_role') return interaction.showModal(await buildCrossServerDropdownModal(client, srvId, `gts_edit_srv_localrole_${srvId}`, 'Local Adopters Role', 'input', 'Select Role', 'role'));
                 if (choice === 'set_local_log' || choice === 'edit_local_log') return interaction.showModal(await buildCrossServerDropdownModal(client, srvId, `gts_edit_srv_locallog_${srvId}`, 'Local Log Channel', 'input', 'Select Channel', 'channel'));
                 if (choice === 'set_greet' || choice === 'edit_greet') return interaction.showModal(await buildCrossServerDropdownModal(client, srvId, `gts_edit_srv_greet_${srvId}`, 'Edit Greet Channel', 'input', 'Select Channel', 'channel'));
@@ -186,6 +237,19 @@ module.exports = {
 
             // 3. MODAL SUBMISSIONS
             if (interaction.isModalSubmit()) {
+                // ✅ Handle Add Server Modal Submission Flow
+                if (interaction.customId.startsWith('gts_addserver_modal_')) {
+                    await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+                    const srvId = interaction.customId.split('_').pop();
+                    const tagText = getModalValue(interaction, 'tag_text');
+                    const badgePack = getModalValue(interaction, 'badge_pack') || 'default';
+
+                    await GTSServer.findOneAndUpdate({ serverId: srvId }, { tagText, tagBadgePack: badgePack });
+                    await updateGTSDashboard(client);
+                    
+                    return interaction.editReply({ content: `✅ Server initial setups saved successfully!\n- **Tag text:** \`${tagText}\`\n- **Badge Pack:** ${formatBadgePack(badgePack)}\n\n*Configure main and local channels later via your dashboard view panel.*` });
+                }
+
                 await interaction.deferUpdate();
                 
                 // Hub Updates
@@ -206,12 +270,18 @@ module.exports = {
                     const updateQuery = {};
                     if (editType === 'invite') updateQuery.inviteLink = val;
                     if (editType === 'tag') updateQuery.tagText = val;
+                    if (editType === 'badgepack') updateQuery.tagBadgePack = val || 'default'; // ✅ Handles changing badge packs
                     if (editType === 'mainrole') updateQuery.mainTagRole = val;
                     if (editType === 'mainlog') updateQuery.mainLogChannel = val;
                     if (editType === 'localrole') updateQuery.localTagRole = val;
                     if (editType === 'locallog') updateQuery.localLogChannel = val;
                     if (editType === 'greet') updateQuery.greetChannel = val;
+                    
                     await GTSServer.findOneAndUpdate({ serverId: srvId }, updateQuery);
+                    
+                    // Re-render view component dynamically to mirror new updates
+                    const updatedUI = await buildViewServerUI(client, interaction.guildId, srvId);
+                    return interaction.editReply({ components: [updatedUI] });
                 }
 
                 await updateGTSDashboard(client);

@@ -43,6 +43,11 @@ module.exports = {
             .addStringOption(opt => opt.setName('server_id').setDescription('Server ID').setRequired(true))
             .addStringOption(opt => opt.setName('invite_link').setDescription('Invite Link').setRequired(false))
         )
+        // ✅ NEW REMOVE SERVER SUBCOMMAND
+        .addSubcommand(sub => sub.setName('removeserver')
+            .setDescription('Remove a satellite server from the network and database.')
+            .addStringOption(opt => opt.setName('server_id').setDescription('Server ID to remove').setRequired(true))
+        )
         .addSubcommand(sub => sub.setName('view-server')
             .setDescription('View/Edit a specific server.')
             .addStringOption(opt => opt.setName('server_id').setDescription('Server ID').setRequired(true))
@@ -59,7 +64,7 @@ module.exports = {
             .setDescription('Set the default Tag Adopters role.')
             .addRoleOption(opt => opt.setName('role').setDescription('Role').setRequired(true))
         )
-        .addSubcommand(sub => sub.setName('alert-channel') // ✅ NEW SUBCOMMAND
+        .addSubcommand(sub => sub.setName('alert-channel') 
             .setDescription('Set the global alert channel for the GTS Gatekeeper.')
             .addChannelOption(opt => opt.setName('channel').setDescription('Alert Channel').setRequired(true))
         ),
@@ -138,7 +143,40 @@ module.exports = {
         }
 
         // ====================================================
-        // 3. SATELLITE TAGS STATS DASHBOARD
+        // ✅ 3. REMOVE SATELLITE SERVER 
+        // ====================================================
+        if (sub === 'removeserver') {
+            const srvId = interaction.options.getString('server_id');
+
+            if (hub && hub.mainServerId === srvId) {
+                return interaction.reply({ 
+                    content: "❌ **Security Block:** You cannot delete the Main Server with this command. To wipe the network, you must drop the database manually.", 
+                    flags: [MessageFlags.Ephemeral] 
+                });
+            }
+
+            const deletedServer = await GTSServer.findOneAndDelete({ serverId: srvId });
+
+            if (!deletedServer) {
+                return interaction.reply({ 
+                    content: `❌ **Error:** Server ID \`${srvId}\` is not currently registered in the database.`, 
+                    flags: [MessageFlags.Ephemeral] 
+                });
+            }
+
+            await interaction.reply({ 
+                content: `✅ Successfully removed server \`${srvId}\` from the GTS ecosystem. Forcing dashboard update now...`, 
+                flags: [MessageFlags.Ephemeral] 
+            });
+
+            // Instantly wipe it from the dashboards
+            const { updateGTSDashboard } = require('../../../utils/gtsManager');
+            await updateGTSDashboard(interaction.client);
+            return;
+        }
+
+        // ====================================================
+        // 4. SATELLITE TAGS STATS DASHBOARD
         // ====================================================
         if (sub === 'tags-stats') {
             const currentGuildId = interaction.guildId;
@@ -159,7 +197,7 @@ module.exports = {
         }
 
         // ====================================================
-        // 4. VIEW SERVER 
+        // 5. VIEW SERVER 
         // ====================================================
         if (sub === 'view-server') {
             const srvId = interaction.options.getString('server_id');
@@ -220,7 +258,7 @@ module.exports = {
         }
 
         // ====================================================
-        // 5. DASHBOARD GLOBALS 
+        // 6. DASHBOARD GLOBALS 
         // ====================================================
         if (sub === 'dashboard') {
             if (!hub) return interaction.reply({ content: "Hub not setup. Run `/gts setup` first.", flags: [MessageFlags.Ephemeral] });
@@ -234,7 +272,6 @@ module.exports = {
 
             const menuOptions = [new StringSelectMenuOptionBuilder().setLabel("Edit Server Stats Message").setValue("edit_msg").setEmoji("✏️")];
 
-            // Default Role Toggles
             if (!hasDefaultRole) {
                 menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Default Tag Adopters Role").setValue("set_default_role").setEmoji("⚙️"));
             } else {
@@ -244,7 +281,6 @@ module.exports = {
                 );
             }
 
-            // Alert Channel Toggles
             if (!hasAlertChannel) {
                 menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Alert Channel").setValue("set_alert").setEmoji("⚙️"));
             } else {
@@ -259,7 +295,7 @@ module.exports = {
                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(
                     `**Message ID:** \`${hub.dashboardMessageId || "None"}\`\n` +
                     `**Default Tag Adopters Role:** ${defaultRoleStr}\n` +
-                    `**Alert Channel:** ${alertChannelStr}` // ✅ Added to Container Text
+                    `**Alert Channel:** ${alertChannelStr}` 
                 ))
                 .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
                 .addActionRowComponents(new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId("gts_hub_menu").addOptions(menuOptions)));
@@ -268,7 +304,7 @@ module.exports = {
         }
 
         // ====================================================
-        // 6. SINGLE COMMAND SETTERS
+        // 7. SINGLE COMMAND SETTERS
         // ====================================================
         if (sub === 'default-ta-role') {
             const role = interaction.options.getRole('role');

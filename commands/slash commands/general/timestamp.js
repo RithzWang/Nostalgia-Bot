@@ -5,6 +5,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('timestamp')
         .setDescription('Generate Discord timestamp formats from a specific date and time')
+        .setDMPermission(false)
         .addIntegerOption(opt => opt.setName('day')
             .setDescription('Day of the month (1-31)')
             .setRequired(true)

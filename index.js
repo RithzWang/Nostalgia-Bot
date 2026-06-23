@@ -176,7 +176,7 @@ client.on('guildMemberAdd', async (member) => {
                     .addItems(
                         new MediaGalleryItemBuilder()
                             .setURL("attachment://welcome-image.png")
-                            .setDescription(`${member.user.globalName || member.user.username} is here!`)
+                            .setDescription(`${member.user.globalName || member.user.username} just joined!`)
                     )
             );
 

@@ -47,7 +47,7 @@ module.exports = {
             if (greetChannel) {
                 greetChannel.send(
                     `<@${member.id}>, Welcome to **${member.guild.name}** server!\n\n` +
-                    `It seems like you are **__not__** in our **[Main Server](${inviteLink})** yet.\n` +
+                    `It seems like you are **__not__** in our **[Main Server](<${inviteLink}>)** yet.\n` +
                     `You have **10** minutes to join, otherwise you will be **kicked**.`
                 ).catch(() => {});
             }

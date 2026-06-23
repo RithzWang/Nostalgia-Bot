@@ -59,13 +59,11 @@ module.exports = {
             .addStringOption(opt => opt.setName('message_id').setDescription('Message ID to edit (Optional)').setRequired(false))
             .addChannelOption(opt => opt.setName('channel').setDescription('Dashboard Channel (Optional)').setRequired(false))
         )
-        .addSubcommand(sub => sub.setName('default-ta-role')
-            .setDescription('Set the default Tag Adopters role.')
-            .addRoleOption(opt => opt.setName('role').setDescription('Role').setRequired(true))
-        )
-        .addSubcommand(sub => sub.setName('alert-channel') 
-            .setDescription('Set the global alert channel for the GTS Gatekeeper.')
-            .addChannelOption(opt => opt.setName('channel').setDescription('Alert Channel').setRequired(true))
+        // ✅ NEW REORDER SUBCOMMAND ADDED
+        .addSubcommand(sub => sub.setName('reorder')
+            .setDescription('Change a satellite server\'s position on the dashboard.')
+            .addStringOption(opt => opt.setName('server_id').setDescription('Server ID to move').setRequired(true))
+            .addIntegerOption(opt => opt.setName('to').setDescription('New position (1, 2, 3...)').setRequired(true).setMinValue(1))
         ),
 
     async execute(interaction) {
@@ -129,7 +127,6 @@ module.exports = {
 
             await GTSServer.findOneAndUpdate({ serverId: srvId }, { inviteLink: invite }, { upsert: true });
 
-            // ✅ NEW: Layout for Add Server Modal
             const modal = new ModalBuilder()
                 .setCustomId(`gts_addserver_modal_${srvId}`)
                 .setTitle('Configure Server Tags');
@@ -230,7 +227,7 @@ module.exports = {
             const mainLogStr = formatChannel(interaction.client, interaction.guildId, srvData.mainLogChannel);
             const localLogStr = formatChannel(interaction.client, interaction.guildId, srvData.localLogChannel);
             const greetStr = formatChannel(interaction.client, interaction.guildId, srvData.greetChannel); 
-            const specialRoleStr = formatRole(interaction.client, interaction.guildId, srvId, srvData.specialGuestRole); // ✅ Format Special Role
+            const specialRoleStr = formatRole(interaction.client, interaction.guildId, srvId, srvData.specialGuestRole); 
             
             const badgePackStr = srvData.tagBadgePack === 'creepy_crawlies' ? "Creepy Crawlies Badge Packs (2 Boosts)" :
                                  srvData.tagBadgePack === 'pet' ? "Pet Badge Pack (3 Boosts)" :
@@ -242,7 +239,7 @@ module.exports = {
             const hasLocalRole = !!srvData.localTagRole;
             const hasLocalLog = !!srvData.localLogChannel;
             const hasGreetChannel = !!srvData.greetChannel; 
-            const hasSpecialRole = !!srvData.specialGuestRole; // ✅ Track Special Role state
+            const hasSpecialRole = !!srvData.specialGuestRole; 
 
             const menuOptions = [
                 new StringSelectMenuOptionBuilder().setLabel("Edit Invite Link").setValue("edit_invite").setEmoji("✏️"),
@@ -266,7 +263,6 @@ module.exports = {
                 if (!hasGreetChannel) menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Greet Channel").setValue("set_greet").setEmoji("⚙️"));
                 else menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Greet Channel").setValue("edit_greet").setEmoji("✏️"), new StringSelectMenuOptionBuilder().setLabel("Remove Greet Channel").setValue("remove_greet").setEmoji("🗑️"));
 
-                // ✅ Push Special Guest Role options for Satellites
                 if (!hasSpecialRole) menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Special Guest Role").setValue("set_special_role").setEmoji("🌟"));
                 else menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Special Guest Role").setValue("edit_special_role").setEmoji("✏️"), new StringSelectMenuOptionBuilder().setLabel("Remove Special Guest Role").setValue("remove_special_role").setEmoji("🗑️"));
             }
@@ -278,7 +274,6 @@ module.exports = {
                                 `**Tag Adopted/Removed Log Channel:** ${mainLogStr}\n`;
             
             if (!isMainServer) {
-                // ✅ Add Special Guest Role to the display string
                 contentString += `**Local Adopters Role:** ${localRoleStr}\n` +
                                  `**Local Log Channel:** ${localLogStr}\n` +
                                  `**Greet Channel:** ${greetStr}\n` +
@@ -293,8 +288,6 @@ module.exports = {
 
             return interaction.reply({ components: [container], flags: [MessageFlags.IsComponentsV2, MessageFlags.Ephemeral] });
         }
-
-
 
         // ====================================================
         // 6. DASHBOARD GLOBALS 
@@ -343,18 +336,48 @@ module.exports = {
         }
 
         // ====================================================
-        // 7. SINGLE COMMAND SETTERS
+        // 🌟 7. REORDER SATELLITE SERVER
         // ====================================================
-        if (sub === 'default-ta-role') {
-            const role = interaction.options.getRole('role');
-            await GTSHub.findOneAndUpdate({}, { defaultTagRole: role.id });
-            return interaction.reply({ content: `✅ Default Tag Adopter role set to ${role}.`, flags: [MessageFlags.Ephemeral] });
-        }
+        if (sub === 'reorder') {
+            const srvId = interaction.options.getString('server_id');
+            const toPos = interaction.options.getInteger('to');
 
-        if (sub === 'alert-channel') {
-            const channel = interaction.options.getChannel('channel');
-            await GTSHub.findOneAndUpdate({}, { alertChannelId: channel.id });
-            return interaction.reply({ content: `✅ Global Alert Channel set to ${channel}.`, flags: [MessageFlags.Ephemeral] });
+            // 1. Block attempting to move the Main Server
+            if (hub && hub.mainServerId === srvId) {
+                return interaction.reply({ 
+                    content: "❌ **Security Block:** The Main Server is permanently pinned to the top. You can only reorder satellite servers.", 
+                    flags: [MessageFlags.Ephemeral] 
+                });
+            }
+
+            // 2. Fetch all satellites and sort them by current order
+            let satellites = await GTSServer.find({ serverId: { $ne: hub ? hub.mainServerId : null } }).sort({ sortOrder: 1, _id: 1 });
+
+            // 3. Find the server we are moving
+            const targetIndex = satellites.findIndex(s => s.serverId === srvId);
+            if (targetIndex === -1) {
+                return interaction.reply({ content: `❌ **Error:** Server ID \`${srvId}\` is not registered as a satellite.`, flags: [MessageFlags.Ephemeral] });
+            }
+
+            // 4. Extract the server from its current spot
+            const [targetServer] = satellites.splice(targetIndex, 1);
+
+            // 5. Insert it into the new spot (Subtract 1 because arrays are 0-indexed)
+            const insertIndex = Math.max(0, Math.min(toPos - 1, satellites.length));
+            satellites.splice(insertIndex, 0, targetServer);
+
+            await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+
+            // 6. Bulk update the database with the new clean sequence (1, 2, 3...)
+            for (let i = 0; i < satellites.length; i++) {
+                await GTSServer.findByIdAndUpdate(satellites[i]._id, { sortOrder: i + 1 });
+            }
+
+            await interaction.editReply({ content: `✅ Successfully moved server \`${srvId}\` to position **${insertIndex + 1}**! Updating dashboards...` });
+
+            // 7. Force dashboard refresh
+            const { updateGTSDashboard } = require('../../../utils/gtsManager');
+            return updateGTSDashboard(interaction.client);
         }
     }
 };

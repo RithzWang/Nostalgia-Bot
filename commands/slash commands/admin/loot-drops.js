@@ -77,6 +77,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('loot-drops')
         .setDescription('Manage Loot Drops')
+        .setDMPermission(false)
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
 
         // --- 1. SET CHANNEL ---

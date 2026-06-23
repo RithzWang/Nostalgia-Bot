@@ -1,4 +1,3 @@
-// events/gtsInteractions.js
 const { Events, MessageFlags, ModalBuilder, TextInputBuilder, TextInputStyle, LabelBuilder, RoleSelectMenuBuilder, ChannelSelectMenuBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } = require('discord.js');
 const { GTSServer, GTSHub } = require('../src/models/GTS');
 const { updateGTSDashboard } = require('../utils/gtsManager');
@@ -19,7 +18,6 @@ function formatChannel(client, currentGuildId, channelId) {
     return channel ? `**#${channel.name}** (\`${channelId}\`)` : `**Unknown Channel** (\`${channelId}\`)`;
 }
 
-// ✅ NEW: Helper formatting for Badge Packs
 function formatBadgePack(pack) {
     switch(pack) {
         case 'creepy_crawlies': return "Creepy Crawlies Badge Packs (2 Boosts)";
@@ -65,35 +63,49 @@ async function buildViewServerUI(client, currentGuildId, srvId) {
     const guild = client.guilds.cache.get(srvId);
     const hub = await GTSHub.findOne();
     
-    // ✅ Check if the server being viewed is the Main Server
-    const isMainServer = srvId === hub?.mainServerId;
-
+    const isMainServer = srvId === (hub?.mainServerId);
+    
     const mainRoleStr = formatRole(client, currentGuildId, hub?.mainServerId, srvData.mainTagRole);
     const localRoleStr = formatRole(client, currentGuildId, srvId, srvData.localTagRole);
     const mainLogStr = formatChannel(client, currentGuildId, srvData.mainLogChannel);
     const localLogStr = formatChannel(client, currentGuildId, srvData.localLogChannel);
     const greetStr = formatChannel(client, currentGuildId, srvData.greetChannel);
-    const badgePackStr = formatBadgePack(srvData.tagBadgePack);
+    const specialRoleStr = formatRole(client, currentGuildId, srvId, srvData.specialGuestRole); 
+    const badgePackStr = formatBadgePack(srvData.tagBadgePack); 
 
-    const hasMainRole = !!srvData.mainTagRole; const hasMainLog = !!srvData.mainLogChannel; const hasLocalRole = !!srvData.localTagRole; const hasLocalLog = !!srvData.localLogChannel; const hasGreetChannel = !!srvData.greetChannel;
+    const hasMainRole = !!srvData.mainTagRole; 
+    const hasMainLog = !!srvData.mainLogChannel; 
+    const hasLocalRole = !!srvData.localTagRole; 
+    const hasLocalLog = !!srvData.localLogChannel; 
+    const hasGreetChannel = !!srvData.greetChannel; 
+    const hasSpecialRole = !!srvData.specialGuestRole;
 
     const menuOptions = [
         new StringSelectMenuOptionBuilder().setLabel("Edit Invite Link").setValue("edit_invite").setEmoji("✏️"), 
         new StringSelectMenuOptionBuilder().setLabel("Edit Server Tag Text").setValue("edit_tag").setEmoji("✏️"),
         new StringSelectMenuOptionBuilder().setLabel("Edit Tag Badge Pack").setValue("edit_badge_pack").setEmoji("🏅") 
     ];
-
-    if (!hasMainRole) menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Adopters Role (Main)").setValue("set_main_role").setEmoji("⚙️")); else menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Adopters Role (Main)").setValue("edit_main_role").setEmoji("✏️"), new StringSelectMenuOptionBuilder().setLabel("Remove Adopters Role (Main)").setValue("remove_main_role").setEmoji("🗑️"));
-    if (!hasMainLog) menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Log Channel (Main)").setValue("set_main_log").setEmoji("⚙️")); else menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Log Channel (Main)").setValue("edit_main_log").setEmoji("✏️"), new StringSelectMenuOptionBuilder().setLabel("Remove Log Channel (Main)").setValue("remove_main_log").setEmoji("🗑️"));
-
-    // ✅ Only push Local/Greet options if it's NOT the Main Server
+    
+    if (!hasMainRole) menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Adopters Role (Main)").setValue("set_main_role").setEmoji("⚙️")); 
+    else menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Adopters Role (Main)").setValue("edit_main_role").setEmoji("✏️"), new StringSelectMenuOptionBuilder().setLabel("Remove Adopters Role (Main)").setValue("remove_main_role").setEmoji("🗑️"));
+    
+    if (!hasMainLog) menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Log Channel (Main)").setValue("set_main_log").setEmoji("⚙️")); 
+    else menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Log Channel (Main)").setValue("edit_main_log").setEmoji("✏️"), new StringSelectMenuOptionBuilder().setLabel("Remove Log Channel (Main)").setValue("remove_main_log").setEmoji("🗑️"));
+    
     if (!isMainServer) {
-        if (!hasLocalRole) menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Local Adopters Role").setValue("set_local_role").setEmoji("⚙️")); else menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Local Adopters Role").setValue("edit_local_role").setEmoji("✏️"), new StringSelectMenuOptionBuilder().setLabel("Remove Local Adopters Role").setValue("remove_local_role").setEmoji("🗑️"));
-        if (!hasLocalLog) menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Local Log Channel").setValue("set_local_log").setEmoji("⚙️")); else menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Local Log Channel").setValue("edit_local_log").setEmoji("✏️"), new StringSelectMenuOptionBuilder().setLabel("Remove Local Log Channel").setValue("remove_local_log").setEmoji("🗑️"));
-        if (!hasGreetChannel) menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Greet Channel").setValue("set_greet").setEmoji("⚙️")); else menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Greet Channel").setValue("edit_greet").setEmoji("✏️"), new StringSelectMenuOptionBuilder().setLabel("Remove Greet Channel").setValue("remove_greet").setEmoji("🗑️"));
+        if (!hasLocalRole) menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Local Adopters Role").setValue("set_local_role").setEmoji("⚙️")); 
+        else menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Local Adopters Role").setValue("edit_local_role").setEmoji("✏️"), new StringSelectMenuOptionBuilder().setLabel("Remove Local Adopters Role").setValue("remove_local_role").setEmoji("🗑️"));
+        
+        if (!hasLocalLog) menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Local Log Channel").setValue("set_local_log").setEmoji("⚙️")); 
+        else menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Local Log Channel").setValue("edit_local_log").setEmoji("✏️"), new StringSelectMenuOptionBuilder().setLabel("Remove Local Log Channel").setValue("remove_local_log").setEmoji("🗑️"));
+        
+        if (!hasGreetChannel) menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Greet Channel").setValue("set_greet").setEmoji("⚙️")); 
+        else menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Greet Channel").setValue("edit_greet").setEmoji("✏️"), new StringSelectMenuOptionBuilder().setLabel("Remove Greet Channel").setValue("remove_greet").setEmoji("🗑️"));
+        
+        if (!hasSpecialRole) menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Special Guest Role").setValue("set_special_role").setEmoji("🌟")); 
+        else menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Special Guest Role").setValue("edit_special_role").setEmoji("✏️"), new StringSelectMenuOptionBuilder().setLabel("Remove Special Guest Role").setValue("remove_special_role").setEmoji("🗑️"));
     }
 
-    // ✅ Dynamically build the display text
     let contentString = `**Invite Link:** \`${srvData.inviteLink || "None"}\`\n` +
                         `**Server Tag Text:** \`${srvData.tagText || "None"}\`\n` +
                         `**Server Tag Badge Pack:** **${badgePackStr}**\n` + 
@@ -103,7 +115,8 @@ async function buildViewServerUI(client, currentGuildId, srvId) {
     if (!isMainServer) {
         contentString += `**Local Adopters Role:** ${localRoleStr}\n` +
                          `**Local Log Channel:** ${localLogStr}\n` +
-                         `**Greet Channel:** ${greetStr}`;
+                         `**Greet Channel:** ${greetStr}\n` +
+                         `**Special Guest Role:** ${specialRoleStr}`;
     }
 
     return new ContainerBuilder()
@@ -134,7 +147,6 @@ function buildSingleLabelModal(modalId, title, inputId, labelText, type = 'text'
     return modal;
 }
 
-// ✅ NEW: Reusable Badge Pack selection component modal
 function buildBadgePackModal(modalId, title, inputId) {
     const modal = new ModalBuilder().setCustomId(modalId).setTitle(title);
     const label = new LabelBuilder().setLabel("Select Badge Pack Bundle");
@@ -244,11 +256,27 @@ module.exports = {
                 if (choice === 'set_local_role' || choice === 'edit_local_role') return interaction.showModal(await buildCrossServerDropdownModal(client, srvId, `gts_edit_srv_localrole_${srvId}`, 'Local Adopters Role', 'input', 'Select Role', 'role'));
                 if (choice === 'set_local_log' || choice === 'edit_local_log') return interaction.showModal(await buildCrossServerDropdownModal(client, srvId, `gts_edit_srv_locallog_${srvId}`, 'Local Log Channel', 'input', 'Select Channel', 'channel'));
                 if (choice === 'set_greet' || choice === 'edit_greet') return interaction.showModal(await buildCrossServerDropdownModal(client, srvId, `gts_edit_srv_greet_${srvId}`, 'Edit Greet Channel', 'input', 'Select Channel', 'channel'));
+                if (choice === 'set_special_role' || choice === 'edit_special_role') return interaction.showModal(await buildCrossServerDropdownModal(client, srvId, `gts_edit_srv_specialrole_${srvId}`, 'Special Guest Role', 'input', 'Select Role', 'role'));
+
+                // Handle instant removal events
+                if (choice.startsWith('remove_')) {
+                    await interaction.deferUpdate();
+                    const removeQuery = {};
+                    if (choice === 'remove_main_role') removeQuery.mainTagRole = null;
+                    if (choice === 'remove_main_log') removeQuery.mainLogChannel = null;
+                    if (choice === 'remove_local_role') removeQuery.localTagRole = null;
+                    if (choice === 'remove_local_log') removeQuery.localLogChannel = null;
+                    if (choice === 'remove_greet') removeQuery.greetChannel = null;
+                    if (choice === 'remove_special_role') removeQuery.specialGuestRole = null;
+
+                    await GTSServer.findOneAndUpdate({ serverId: srvId }, removeQuery);
+                    const updatedUI = await buildViewServerUI(client, interaction.guildId, srvId);
+                    return interaction.editReply({ components: [updatedUI] });
+                }
             }
 
             // 3. MODAL SUBMISSIONS
             if (interaction.isModalSubmit()) {
-                // ✅ Handle Add Server Modal Submission Flow
                 if (interaction.customId.startsWith('gts_addserver_modal_')) {
                     await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
                     const srvId = interaction.customId.split('_').pop();
@@ -287,10 +315,10 @@ module.exports = {
                     if (editType === 'localrole') updateQuery.localTagRole = val;
                     if (editType === 'locallog') updateQuery.localLogChannel = val;
                     if (editType === 'greet') updateQuery.greetChannel = val;
+                    if (editType === 'specialrole') updateQuery.specialGuestRole = val; 
                     
                     await GTSServer.findOneAndUpdate({ serverId: srvId }, updateQuery);
                     
-                    // Re-render view component dynamically to mirror new updates
                     const updatedUI = await buildViewServerUI(client, interaction.guildId, srvId);
                     return interaction.editReply({ components: [updatedUI] });
                 }

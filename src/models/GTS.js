@@ -1,4 +1,3 @@
-// src/models/GTS.js
 const mongoose = require('mongoose');
 
 const GTSHubSchema = new mongoose.Schema({
@@ -13,13 +12,14 @@ const GTSServerSchema = new mongoose.Schema({
     serverId: { type: String, required: true, unique: true },
     inviteLink: { type: String, default: null },
     tagText: { type: String, default: null },
-    tagBadgePack: { type: String, default: 'default' }, // ✅ NEW: Tracks badge pack selection
+    tagBadgePack: { type: String, default: 'default' }, 
+    sortOrder: { type: Number, default: 999 }, // Tracks dashboard position
     mainTagRole: { type: String, default: null },
     mainLogChannel: { type: String, default: null },
     localTagRole: { type: String, default: null },
     localLogChannel: { type: String, default: null },
     greetChannel: { type: String, default: null },
-    specialGuestRole: { type: String, default: null },
+    specialGuestRole: { type: String, default: null },  
     localDashboardChannelId: { type: String, default: null },
     localDashboardMessageId: { type: String, default: null }
 });

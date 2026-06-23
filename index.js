@@ -152,9 +152,9 @@ client.on('guildMemberAdd', async (member) => {
                         new TextDisplayBuilder().setContent(`### Welcome to ${member.guild.name} Server`),
                         new TextDisplayBuilder().setContent(
                             `-# <@${member.user.id}> \`(${member.user.username})\`\n` +
-                            `-# <:calendar:1456242387243499613> Account Created: ${accountCreated}\n` +
-                            `-# <:users:1456242343303971009> Member Count: \`${member.guild.memberCount}\`\n` +
-                            `-# <:chain:1456242418717556776> Invited by ${inviterId ? `<@${inviterId}>` : '**Unknown**'} \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`
+                            `-# <:calendar:1470475413175144530> Account Created: ${accountCreated}\n` +
+                            `-# <:members:1468470163081924608> Member Count: \`${member.guild.memberCount}\`\n` +
+                            `-# <:connection:1468633345876431021> Invited by ${inviterId ? `<@${inviterId}>` : '**Unknown**'} \`(${inviterName})\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`
                         )
                     )
             )

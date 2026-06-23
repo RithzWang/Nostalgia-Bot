@@ -75,7 +75,7 @@ module.exports = {
         // 5. Build the V2 Component Container
         const components = [
             new ContainerBuilder()
-                .setAccentColor(0x888888);
+                .setAccentColor(0x888888)
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(`## Timestamp (GMT${gmtOffset >= 0 ? '+' : ''}${gmtOffset})`)
                 )

@@ -14,7 +14,7 @@ function getStatusLine(guild, tagCount, badgePack = 'default') {
     if (currentBoosts < 3) {
         const baseNeeded = 3 - currentBoosts;
         const boostGrammar = baseNeeded === 1 ? "1 Boost Remaining" : `${baseNeeded} Boosts Remaining`;
-        return `<:no_boost:1518693461878902904> **${boostGrammar}**\n-# <:tl2:1519042925713952838> to enable **Server Tag** perk`;
+        return `<:no_boost:1518693461878902904> **${boostGrammar}**\n-# <:tl2:1519042925713952838> to enable the **Server Tag** perk`;
     }
     
     // 2. Badge Pack Requirement Check (Requires 3 Base + X Extra Boosts)
@@ -34,7 +34,7 @@ function getStatusLine(guild, tagCount, badgePack = 'default') {
             const packNeeded = totalRequired - currentBoosts;
             const packGrammar = packNeeded === 1 ? "1 Boost Remaining" : `${packNeeded} Boosts Remaining`;
             // Uses the no_tag emoji as requested for badge pack deficits
-            return `<:no_tag:1518693542460129373> **${packGrammar}**\n-# <:tl2:1519042925713952838> to enable **${packName}** pack`;
+            return `<:no_tag:1518693542460129373> **${packGrammar}**\n-# <:tl2:1519042925713952838> to enable the **${packName}** pack`;
         }
     }
     

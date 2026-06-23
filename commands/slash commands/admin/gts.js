@@ -43,7 +43,6 @@ module.exports = {
             .addStringOption(opt => opt.setName('server_id').setDescription('Server ID').setRequired(true))
             .addStringOption(opt => opt.setName('invite_link').setDescription('Invite Link').setRequired(false))
         )
-        // ✅ NEW REMOVE SERVER SUBCOMMAND
         .addSubcommand(sub => sub.setName('removeserver')
             .setDescription('Remove a satellite server from the network and database.')
             .addStringOption(opt => opt.setName('server_id').setDescription('Server ID to remove').setRequired(true))
@@ -130,20 +129,36 @@ module.exports = {
 
             await GTSServer.findOneAndUpdate({ serverId: srvId }, { inviteLink: invite }, { upsert: true });
 
-            const modal = new ModalBuilder().setCustomId(`gts_add_modal_${srvId}`).setTitle('Satellite Server Setup');
+            // ✅ NEW: Layout for Add Server Modal
+            const modal = new ModalBuilder()
+                .setCustomId(`gts_addserver_modal_${srvId}`)
+                .setTitle('Configure Server Tags');
 
-            const tagTextLabel = new LabelBuilder().setLabel("Server Tag Text").setTextInputComponent(new TextInputBuilder().setCustomId('tag_text').setStyle(TextInputStyle.Short).setRequired(true));
-            const mainRoleLabel = new LabelBuilder().setLabel("Tag Role (In Main Server)").setRoleSelectMenuComponent(new RoleSelectMenuBuilder().setCustomId('main_tag_role').setRequired(false));
-            const mainLogLabel = new LabelBuilder().setLabel("Log Channel (In Main)").setChannelSelectMenuComponent(new ChannelSelectMenuBuilder().setCustomId('main_log_channel').setRequired(false));
-            const localRoleLabel = new LabelBuilder().setLabel("Local Tag Role").setRoleSelectMenuComponent(new RoleSelectMenuBuilder().setCustomId('local_tag_role').setRequired(false));
-            const localLogLabel = new LabelBuilder().setLabel("Local Log Channel").setChannelSelectMenuComponent(new ChannelSelectMenuBuilder().setCustomId('local_log_channel').setRequired(false));
-            
-            modal.addLabelComponents(tagTextLabel, mainRoleLabel, mainLogLabel, localRoleLabel, localLogLabel);
+            const textLabel = new LabelBuilder()
+                .setLabel("Server Tag Text")
+                .setTextInputComponent(new TextInputBuilder().setCustomId('tag_text').setStyle(TextInputStyle.Short).setRequired(true));
+
+            const badgeLabel = new LabelBuilder()
+                .setLabel("Server Tag Badge Pack")
+                .setStringSelectMenuComponent(
+                    new StringSelectMenuBuilder()
+                        .setCustomId('badge_pack')
+                        .setPlaceholder('Select a badge pack (Default if skipped)...')
+                        .addOptions(
+                            new StringSelectMenuOptionBuilder().setLabel("Default Badge Pack").setValue("default"),
+                            new StringSelectMenuOptionBuilder().setLabel("Creepy Crawlies Badge Packs").setDescription("2 Boosts").setValue("creepy_crawlies"),
+                            new StringSelectMenuOptionBuilder().setLabel("Pet Badge Pack").setDescription("3 Boosts").setValue("pet"),
+                            new StringSelectMenuOptionBuilder().setLabel("Plant Badge Pack").setDescription("3 Boosts").setValue("plant"),
+                            new StringSelectMenuOptionBuilder().setLabel("Flex Badge Pack").setDescription("5 Boosts").setValue("flex")
+                        )
+                );
+
+            modal.addLabelComponents(textLabel, badgeLabel);
             return interaction.showModal(modal);
         }
 
         // ====================================================
-        // ✅ 3. REMOVE SATELLITE SERVER 
+        // 3. REMOVE SATELLITE SERVER 
         // ====================================================
         if (sub === 'removeserver') {
             const srvId = interaction.options.getString('server_id');
@@ -213,6 +228,11 @@ module.exports = {
             const mainLogStr = formatChannel(interaction.client, interaction.guildId, srvData.mainLogChannel);
             const localLogStr = formatChannel(interaction.client, interaction.guildId, srvData.localLogChannel);
             const greetStr = formatChannel(interaction.client, interaction.guildId, srvData.greetChannel); 
+            
+            const badgePackStr = srvData.tagBadgePack === 'creepy_crawlies' ? "Creepy Crawlies Badge Packs (2 Boosts)" :
+                                 srvData.tagBadgePack === 'pet' ? "Pet Badge Pack (3 Boosts)" :
+                                 srvData.tagBadgePack === 'plant' ? "Plant Badge Pack (3 Boosts)" :
+                                 srvData.tagBadgePack === 'flex' ? "Flex Badge Pack (5 Boosts)" : "Default Badge Pack";
 
             const hasMainRole = !!srvData.mainTagRole;
             const hasMainLog = !!srvData.mainLogChannel;
@@ -222,7 +242,8 @@ module.exports = {
 
             const menuOptions = [
                 new StringSelectMenuOptionBuilder().setLabel("Edit Invite Link").setValue("edit_invite").setEmoji("✏️"),
-                new StringSelectMenuOptionBuilder().setLabel("Edit Server Tag Text").setValue("edit_tag").setEmoji("✏️")
+                new StringSelectMenuOptionBuilder().setLabel("Edit Server Tag Text").setValue("edit_tag").setEmoji("✏️"),
+                new StringSelectMenuOptionBuilder().setLabel("Edit Tag Badge Pack").setValue("edit_badge_pack").setEmoji("🏅")
             ];
 
             if (!hasMainRole) menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Adopters Role (Main)").setValue("set_main_role").setEmoji("⚙️"));
@@ -244,7 +265,8 @@ module.exports = {
                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${srvName}`))
                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(
                     `**Invite Link:** \`${srvData.inviteLink || "None"}\`\n` +
-                    `**Server Tag Text:** ${srvData.tagText || "None"}\n` +
+                    `**Server Tag Text:** \`${srvData.tagText || "None"}\`\n` +
+                    `**Server Tag Badge Pack:** **${badgePackStr}**\n` +
                     `**Adopters Role:** ${mainRoleStr}\n` +
                     `**Tag Adopted/Removed Log Channel:** ${mainLogStr}\n` +
                     `**Local Adopters Role:** ${localRoleStr}\n` +

@@ -223,7 +223,6 @@ module.exports = {
             const srvName = guild ? guild.name : "Unknown Server";
             const mainGuildId = hub ? hub.mainServerId : null;
             
-            // ✅ Check if the server being viewed is the Main Server
             const isMainServer = srvId === mainGuildId;
 
             const mainRoleStr = formatRole(interaction.client, interaction.guildId, mainGuildId, srvData.mainTagRole);
@@ -231,6 +230,7 @@ module.exports = {
             const mainLogStr = formatChannel(interaction.client, interaction.guildId, srvData.mainLogChannel);
             const localLogStr = formatChannel(interaction.client, interaction.guildId, srvData.localLogChannel);
             const greetStr = formatChannel(interaction.client, interaction.guildId, srvData.greetChannel); 
+            const specialRoleStr = formatRole(interaction.client, interaction.guildId, srvId, srvData.specialGuestRole); // ✅ Format Special Role
             
             const badgePackStr = srvData.tagBadgePack === 'creepy_crawlies' ? "Creepy Crawlies Badge Packs (2 Boosts)" :
                                  srvData.tagBadgePack === 'pet' ? "Pet Badge Pack (3 Boosts)" :
@@ -242,6 +242,7 @@ module.exports = {
             const hasLocalRole = !!srvData.localTagRole;
             const hasLocalLog = !!srvData.localLogChannel;
             const hasGreetChannel = !!srvData.greetChannel; 
+            const hasSpecialRole = !!srvData.specialGuestRole; // ✅ Track Special Role state
 
             const menuOptions = [
                 new StringSelectMenuOptionBuilder().setLabel("Edit Invite Link").setValue("edit_invite").setEmoji("✏️"),
@@ -255,7 +256,6 @@ module.exports = {
             if (!hasMainLog) menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Log Channel (Main)").setValue("set_main_log").setEmoji("⚙️"));
             else menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Log Channel (Main)").setValue("edit_main_log").setEmoji("✏️"), new StringSelectMenuOptionBuilder().setLabel("Remove Log Channel (Main)").setValue("remove_main_log").setEmoji("🗑️"));
 
-            // ✅ Only push Local/Greet options if it's NOT the Main Server
             if (!isMainServer) {
                 if (!hasLocalRole) menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Local Adopters Role").setValue("set_local_role").setEmoji("⚙️"));
                 else menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Local Adopters Role").setValue("edit_local_role").setEmoji("✏️"), new StringSelectMenuOptionBuilder().setLabel("Remove Local Adopters Role").setValue("remove_local_role").setEmoji("🗑️"));
@@ -265,9 +265,12 @@ module.exports = {
 
                 if (!hasGreetChannel) menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Greet Channel").setValue("set_greet").setEmoji("⚙️"));
                 else menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Greet Channel").setValue("edit_greet").setEmoji("✏️"), new StringSelectMenuOptionBuilder().setLabel("Remove Greet Channel").setValue("remove_greet").setEmoji("🗑️"));
+
+                // ✅ Push Special Guest Role options for Satellites
+                if (!hasSpecialRole) menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Set Special Guest Role").setValue("set_special_role").setEmoji("🌟"));
+                else menuOptions.push(new StringSelectMenuOptionBuilder().setLabel("Edit Special Guest Role").setValue("edit_special_role").setEmoji("✏️"), new StringSelectMenuOptionBuilder().setLabel("Remove Special Guest Role").setValue("remove_special_role").setEmoji("🗑️"));
             }
 
-            // ✅ Dynamically build the display text
             let contentString = `**Invite Link:** \`${srvData.inviteLink || "None"}\`\n` +
                                 `**Server Tag Text:** \`${srvData.tagText || "None"}\`\n` +
                                 `**Server Tag Badge Pack:** **${badgePackStr}**\n` +
@@ -275,9 +278,11 @@ module.exports = {
                                 `**Tag Adopted/Removed Log Channel:** ${mainLogStr}\n`;
             
             if (!isMainServer) {
+                // ✅ Add Special Guest Role to the display string
                 contentString += `**Local Adopters Role:** ${localRoleStr}\n` +
                                  `**Local Log Channel:** ${localLogStr}\n` +
-                                 `**Greet Channel:** ${greetStr}`;
+                                 `**Greet Channel:** ${greetStr}\n` +
+                                 `**Special Guest Role:** ${specialRoleStr}`;
             }
 
             const container = new ContainerBuilder()
@@ -288,6 +293,7 @@ module.exports = {
 
             return interaction.reply({ components: [container], flags: [MessageFlags.IsComponentsV2, MessageFlags.Ephemeral] });
         }
+
 
 
         // ====================================================

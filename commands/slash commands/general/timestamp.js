@@ -64,17 +64,18 @@ module.exports = {
         // 4. Construct the formatted string with the dynamic Unix timestamp
         const timestampContent = 
             `**Unix:** \`${unix}\`\n\n` +
-            `<t:${unix}:R> - \`<t:${unix}:R>\`\n` +
-            `<t:${unix}:t> - \`<t:${unix}:t>\`\n` +
-            `<t:${unix}:T> - \`<t:${unix}:T>\`\n` +
-            `<t:${unix}:d> - \`<t:${unix}:d>\`\n` +
-            `<t:${unix}:D> - \`<t:${unix}:D>\`\n` +
-            `<t:${unix}:f> - \`<t:${unix}:f>\`\n` +
-            `<t:${unix}:F> - \`<t:${unix}:F>\``;
+            `-# <t:${unix}:R> - \`<t:${unix}:R>\`\n` +
+            `-# <t:${unix}:t> - \`<t:${unix}:t>\`\n` +
+            `-# <t:${unix}:T> - \`<t:${unix}:T>\`\n` +
+            `-# <t:${unix}:d> - \`<t:${unix}:d>\`\n` +
+            `-# <t:${unix}:D> - \`<t:${unix}:D>\`\n` +
+            `-# <t:${unix}:f> - \`<t:${unix}:f>\`\n` +
+            `-# <t:${unix}:F> - \`<t:${unix}:F>\``;
 
         // 5. Build the V2 Component Container
         const components = [
             new ContainerBuilder()
+                .setAccentColor(0x888888);
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(`## Timestamp (GMT${gmtOffset >= 0 ? '+' : ''}${gmtOffset})`)
                 )

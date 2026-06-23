@@ -13,8 +13,8 @@ function getStatusLine(guild, tagCount) {
     
     if (boostsNeeded > 0) {
         return boostsNeeded === 1 
-            ? `<:no_boost:1518693461878902904> **1 Boost Remains**` 
-            : `<:no_boost:1518693461878902904> **${boostsNeeded} Boosts Remain**`;
+            ? `<:no_boost:1518693461878902904> **1 Boost Remains**\n-# <:tl2:1519042925713952838> to unlock the \`server tag\` perk` 
+            : `<:no_boost:1518693461878902904> **${boostsNeeded} Boosts Remain**\n-# <:tl2:1519042925713952838> to unlock the \`server tag\` perk`;
     }
     
     const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS') || guild.features.includes('MEMBER_VERIFICATION_GATE_ENABLED');

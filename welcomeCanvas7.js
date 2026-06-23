@@ -446,7 +446,7 @@ async function createWelcomeImage(member, themeColors = null) {
     // ==========================================
     ctx.restore(); // Restore global context (remove translation)
 
-    const badgeImage = await loadImage('./pics/logo/A2-Q-2026.png').catch(() => null);
+    const badgeImage = await loadImage('./pics/logo/NEW_sign.png').catch(() => null);
 
     if (badgeImage) {
         // Badge Configuration

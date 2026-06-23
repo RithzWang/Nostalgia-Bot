@@ -1,4 +1,5 @@
 const { SlashCommandBuilder, MessageFlags, ContainerBuilder, TextDisplayBuilder } = require('discord.js');
+const moment = require('moment'); // We don't need moment-timezone anymore, just standard moment
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -28,7 +29,12 @@ module.exports = {
             .setDescription('Minute (0-59)')
             .setRequired(true)
             .setMinValue(0)
-            .setMaxValue(59)),
+            .setMaxValue(59))
+        .addIntegerOption(opt => opt.setName('gmt')
+            .setDescription('GMT Offset (e.g., 7 for GMT+7). Defaults to 7.')
+            .setRequired(false)
+            .setMinValue(-12)
+            .setMaxValue(14)),
 
     async execute(interaction) {
         // 1. Fetch the user's inputs
@@ -37,13 +43,23 @@ module.exports = {
         const year = interaction.options.getInteger('year');
         const hour = interaction.options.getInteger('hour');
         const minute = interaction.options.getInteger('minute');
-
-        // 2. Create the Date object
-        // Note: JS months are 0-indexed (0 = Jan, 11 = Dec), so we subtract 1 from the month
-        const date = new Date(year, month - 1, day, hour, minute);
         
-        // 3. Convert to Unix timestamp (seconds)
-        const unix = Math.floor(date.getTime() / 1000);
+        // Fetch the GMT offset. If not provided, default it to 7 (Thailand time)
+        const gmtOffset = interaction.options.getInteger('gmt') ?? 7;
+
+        // 2. Create the Date object and apply the GMT offset
+        // We build the date in UTC first, then use .utcOffset(gmtOffset, true) 
+        // to tell it "Keep the numbers exactly as the user typed them, but stamp it with this timezone".
+        const targetTime = moment.utc({
+            year: year,
+            month: month - 1, 
+            day: day,
+            hour: hour,
+            minute: minute
+        }).utcOffset(gmtOffset, true);
+        
+        // 3. Convert directly to Unix timestamp (seconds)
+        const unix = targetTime.unix();
 
         // 4. Construct the formatted string with the dynamic Unix timestamp
         const timestampContent = 
@@ -59,9 +75,8 @@ module.exports = {
         // 5. Build the V2 Component Container
         const components = [
             new ContainerBuilder()
-                .setAccentColor(0x888888)
                 .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent("## Timestamp")
+                    new TextDisplayBuilder().setContent(`## Timestamp (GMT${gmtOffset >= 0 ? '+' : ''}${gmtOffset})`)
                 )
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(timestampContent)

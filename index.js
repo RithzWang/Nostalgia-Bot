@@ -190,13 +190,20 @@ client.on('guildMemberAdd', async (member) => {
             });
         }
 
-        // ✅ 3. NEW: Ping the member in the registration channel
+                // ✅ 3. NEW: Ghost ping the member in the registration channel
         const registerChannelId = '1456197056250122352';
         const registerChannel = client.channels.cache.get(registerChannelId);
         if (registerChannel) {
-            // Mentioning the member and sending the reminder
-            await registerChannel.send(`<@${member.user.id}>, don’t forget to register!`).catch(err => console.error("Registration Ping Error:", err));
+            registerChannel.send(`<@${member.user.id}>, don’t forget to register!`)
+                .then(msg => {
+                    // Delete the message immediately after sending
+                    setTimeout(() => {
+                        msg.delete().catch(err => console.error("Failed to delete ping message:", err));
+                    }, 500); // 500ms delay ensures Discord processes the ping before deletion
+                })
+                .catch(err => console.error("Registration Ping Error:", err));
         }
+
 
     } catch (e) { console.error("Welcome Error:", e); }
 });

@@ -5,18 +5,40 @@ const {
 } = require('discord.js');
 const { GTSHub, GTSServer } = require('../src/models/GTS');
 
-function getStatusLine(guild, tagCount) {
+function getStatusLine(guild, tagCount, badgePack = 'default') {
     if (!guild) return `<:no_tag:1518693542460129373> **Not Available**`;
     
-    const boostCount = guild.premiumSubscriptionCount || 0;
-    const boostsNeeded = 3 - boostCount;
+    const currentBoosts = guild.premiumSubscriptionCount || 0;
     
-    if (boostsNeeded > 0) {
-        return boostsNeeded === 1 
-            ? `<:no_boost:1518693461878902904> **1 Boost Remains**\n-# <:tl2:1519042925713952838> to enable the \`server tag\` perk` 
-            : `<:no_boost:1518693461878902904> **${boostsNeeded} Boosts Remain**\n-# <:tl2:1519042925713952838> to enable the \`server tag\` perk`;
+    // 1. Base Server Tag Perk (Requires 3 Boosts)
+    if (currentBoosts < 3) {
+        const baseNeeded = 3 - currentBoosts;
+        const boostGrammar = baseNeeded === 1 ? "1 Boost Remaining" : `${baseNeeded} Boosts Remaining`;
+        return `<:no_boost:1518693461878902904> **${boostGrammar}**\n-# <:tl2:1519042925713952838> to enable \`Server Tag\` perk`;
     }
     
+    // 2. Badge Pack Requirement Check (Requires 3 Base + X Extra Boosts)
+    let extraRequired = 0;
+    let packName = "";
+    
+    switch (badgePack) {
+        case 'creepy_crawlies': extraRequired = 2; packName = "Creepy Crawlies Badge"; break;
+        case 'pet': extraRequired = 3; packName = "Pet Badge"; break;
+        case 'plant': extraRequired = 3; packName = "Plant Badge"; break;
+        case 'flex': extraRequired = 5; packName = "Flex Badge"; break;
+    }
+    
+    if (extraRequired > 0) {
+        const totalRequired = 3 + extraRequired;
+        if (currentBoosts < totalRequired) {
+            const packNeeded = totalRequired - currentBoosts;
+            const packGrammar = packNeeded === 1 ? "1 Boost Remaining" : `${packNeeded} Boosts Remaining`;
+            // Uses the no_tag emoji as requested for badge pack deficits
+            return `<:no_tag:1518693542460129373> **${packGrammar}**\n-# <:tl2:1519042925713952838> to enable \`${packName}\` pack`;
+        }
+    }
+    
+    // 3. Fully Enabled (All boost requirements met)
     const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS') || guild.features.includes('MEMBER_VERIFICATION_GATE_ENABLED');
     
     if (!hasClanFeature && tagCount === 0) {
@@ -66,7 +88,8 @@ async function updateGTSDashboard(client) {
     }
     globalTagAdopters += mainLocalTags;
 
-    const mainStatus = getStatusLine(mainGuild, mainLocalTags);
+    // ✅ Pass the tagBadgePack to the status checker
+    const mainStatus = getStatusLine(mainGuild, mainLocalTags, mainData.tagBadgePack);
     const mainInviteUrl = mainData.inviteLink && mainData.inviteLink.startsWith('http') ? mainData.inviteLink : "https://discord.com";
 
     // 🟢 SATELLITE SERVER SWEEP
@@ -95,7 +118,8 @@ async function updateGTSDashboard(client) {
         }
         globalTagAdopters += satLocalTags;
 
-        const satStatus = getStatusLine(guild, satLocalTags);
+        // ✅ Pass the tagBadgePack to the status checker
+        const satStatus = getStatusLine(guild, satLocalTags, satData.tagBadgePack);
         const satInviteUrl = satData.inviteLink && satData.inviteLink.startsWith('http') ? satData.inviteLink : "https://discord.com";
 
         satellitePayloadData.push({

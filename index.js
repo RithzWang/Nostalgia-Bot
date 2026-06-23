@@ -164,7 +164,7 @@ client.on('guildMemberAdd', async (member) => {
                         new ButtonBuilder()
                             .setStyle(ButtonStyle.Link)
                             .setLabel("Register Here")
-                            .setEmoji('📝') // Kept your exact custom emoji
+                            .setEmoji('📝')
                             .setURL("https://discord.com/channels/1456197054782111756/1456197056250122352")
                     )
             )
@@ -189,8 +189,18 @@ client.on('guildMemberAdd', async (member) => {
                 allowedMentions: { users: [member.user.id] } 
             });
         }
+
+        // ✅ 3. NEW: Ping the member in the registration channel
+        const registerChannelId = '1456197056250122352';
+        const registerChannel = client.channels.cache.get(registerChannelId);
+        if (registerChannel) {
+            // Mentioning the member and sending the reminder
+            await registerChannel.send(`<@${member.user.id}>, don’t forget to register!`).catch(err => console.error("Registration Ping Error:", err));
+        }
+
     } catch (e) { console.error("Welcome Error:", e); }
 });
+
 
 (async () => {
     try {

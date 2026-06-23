@@ -55,7 +55,8 @@ async function updateGTSDashboard(client) {
     const mainGuild = client.guilds.cache.get(hub.mainServerId);
     if (!mainGuild) return;
 
-    const allServers = await GTSServer.find();
+    // ✅ NEW: Sorts the servers by your assigned order before processing them!
+    const allServers = await GTSServer.find().sort({ sortOrder: 1, _id: 1 });
     const mainHumanCount = mainGuild.members.cache.filter(m => !m.user.bot).size;
 
     // ==========================================

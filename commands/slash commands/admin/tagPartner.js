@@ -1,7 +1,7 @@
 const { 
     SlashCommandBuilder, PermissionFlagsBits, ChannelType, MessageFlags,
     ContainerBuilder, SectionBuilder, ThumbnailBuilder, TextDisplayBuilder,
-    AttachmentBuilder
+    SeparatorBuilder, SeparatorSpacingSize, AttachmentBuilder
 } = require('discord.js');
 const TagPartner = require('../../../src/models/TagPartner'); 
 
@@ -154,18 +154,24 @@ module.exports = {
                 }
             }
 
-            // 🏗️ Build the V2 Component Container
+            // ====================================================
+            // 🏗️ BUILD THE V2 COMPONENT CONTAINER (UPDATED UI)
+            // ====================================================
             const container = new ContainerBuilder()
+                .setAccentColor(8947848)
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(`## ${emojiDisplay} ${tagText}`)
+                )
+                .addSeparatorComponents(
+                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
+                )
                 .addSectionComponents(
                     new SectionBuilder()
-                        .setThumbnailAccessory(new ThumbnailBuilder().setURL(finalImageURL))
+                        .setThumbnailAccessory(
+                            new ThumbnailBuilder().setURL(finalImageURL)
+                        )
                         .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent(`## ${emojiDisplay} ${tagText}`),
-                            new TextDisplayBuilder().setContent(
-                                `**Server:** ${serverName}\n` +
-                                `**ID:** \`${serverId}\`\n` +
-                                `**Invite:** ${inviteUrl}`
-                            )
+                            new TextDisplayBuilder().setContent(`**Server:** ${serverName}\n-# ${serverId}\n**Invite:** ${inviteUrl}`)
                         )
                 );
 

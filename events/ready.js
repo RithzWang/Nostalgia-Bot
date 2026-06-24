@@ -63,6 +63,7 @@ module.exports = {
                 activities: [{ 
                     name: 'customstatus', 
                     type: ActivityType.Custom, 
+                    emoji: '🐦‍🔥',
                     state: `${timeEmoji} ${formattedTime} (GMT+7)` 
                 }],
                 status: 'dnd'

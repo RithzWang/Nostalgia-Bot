@@ -111,9 +111,9 @@ client.on('messageCreate', async (message) => {
     try { await command.execute(message, args); } catch (error) { console.error(error); }
 });
 
+
 // --- WELCOME LOGIC ---
 const { createWelcomeImage } = require('./welcomeCanvas8.js');
-
 const { fetchAdvancedProfile } = require('./utils/v9Scraper');
 
 client.on('guildMemberAdd', async (member) => {
@@ -137,7 +137,15 @@ client.on('guildMemberAdd', async (member) => {
         const inviterId = usedInvite?.inviter ? usedInvite.inviter.id : null;
         const inviteCode = usedInvite ? usedInvite.code : 'Unknown';
 
-        const buffer = await createWelcomeImage(member);
+        // ✅ FETCH NITRO PROFILE THEME COLORS HERE
+        const v9Data = await fetchAdvancedProfile(member.id);
+        let themeColors = null;
+        if (v9Data && v9Data.user_profile?.theme_colors) {
+            themeColors = v9Data.user_profile.theme_colors; 
+        }
+
+        // ✅ PASS THE COLORS INTO YOUR CANVAS
+        const buffer = await createWelcomeImage(member, themeColors);
         const attachment = new AttachmentBuilder(buffer, { name: 'welcome-image.png' });
         const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
         
@@ -192,7 +200,7 @@ client.on('guildMemberAdd', async (member) => {
             });
         }
 
-                // ✅ 3. NEW: Ghost ping the member in the registration channel
+        // ✅ 3. NEW: Ghost ping the member in the registration channel
         const registerChannelId = '1456197056250122352';
         const registerChannel = client.channels.cache.get(registerChannelId);
         if (registerChannel) {
@@ -206,9 +214,9 @@ client.on('guildMemberAdd', async (member) => {
                 .catch(err => console.error("Registration Ping Error:", err));
         }
 
-
     } catch (e) { console.error("Welcome Error:", e); }
 });
+
 
 
 (async () => {

@@ -112,7 +112,7 @@ client.on('messageCreate', async (message) => {
 });
 
 // --- WELCOME LOGIC ---
-const { createWelcomeImage } = require('./welcomeCanvas7.js');
+const { createWelcomeImage } = require('./welcomeCanvas8.js');
 
 const { fetchAdvancedProfile } = require('./utils/v9Scraper');
 

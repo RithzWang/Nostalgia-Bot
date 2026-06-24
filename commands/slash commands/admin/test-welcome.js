@@ -1,0 +1,112 @@
+const { 
+    SlashCommandBuilder, 
+    MessageFlags, 
+    AttachmentBuilder, 
+    ButtonBuilder, 
+    ButtonStyle, 
+    ContainerBuilder,
+    SectionBuilder,
+    TextDisplayBuilder,
+    ActionRowBuilder, 
+    SeparatorBuilder, 
+    ThumbnailBuilder,           
+    MediaGalleryBuilder,        
+    MediaGalleryItemBuilder,    
+    SeparatorSpacingSize 
+} = require('discord.js');
+
+const { createWelcomeImage } = require('../../../welcomeCanvas8.js'); // Adjust path if needed
+const { fetchAdvancedProfile } = require('../../../utils/v9Scraper'); // Adjust path if needed
+
+module.exports = {
+    data: new SlashCommandBuilder()
+        .setName('test-welcome')
+        .setDescription('Simulate the welcome message and image generator.')
+        .addUserOption(opt => opt.setName('target')
+            .setDescription('Test the welcome image on a specific user (defaults to you)')
+            .setRequired(false)
+        ),
+
+    async execute(interaction) {
+        // 1. Defer the reply because scraping and canvas generation take a few seconds
+        await interaction.deferReply();
+
+        // 2. Get the target member
+        const targetUserOption = interaction.options.getUser('target') || interaction.user;
+        const member = await interaction.guild.members.fetch(targetUserOption.id).catch(() => null);
+
+        if (!member) {
+            return interaction.editReply({ content: "❌ **Error:** Could not find that member in this server." });
+        }
+
+        try {
+            // 3. FETCH NITRO PROFILE THEME COLORS
+            const v9Data = await fetchAdvancedProfile(member.id);
+            let themeColors = null;
+            if (v9Data && v9Data.user_profile?.theme_colors) {
+                themeColors = v9Data.user_profile.theme_colors; 
+            }
+
+            // 4. GENERATE THE IMAGE
+            const buffer = await createWelcomeImage(member, themeColors);
+            const attachment = new AttachmentBuilder(buffer, { name: 'welcome-image.png' });
+            
+            // 5. MOCK DATA FOR THE TEST UI
+            const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
+            const inviterId = interaction.user.id; // Mock inviter
+            const inviteCode = "testCode"; // Mock code
+            
+            // 6. BUILD EXACT SAME CONTAINER
+            const mainContainer = new ContainerBuilder()
+                .setAccentColor(8947848)
+                .addSectionComponents(
+                    new SectionBuilder()
+                        .setThumbnailAccessory(
+                            new ThumbnailBuilder()
+                                .setURL(member.user.displayAvatarURL({ extension: 'png', size: 512 }))
+                        )
+                        .addTextDisplayComponents(
+                            new TextDisplayBuilder().setContent(`### Welcome to ${member.guild.name} Server (TEST)`),
+                            new TextDisplayBuilder().setContent(
+                                `-# <@${member.user.id}> \`(${member.user.username})\`\n` +
+                                `-# <:calendar:1470475413175144530> Account Created: ${accountCreated}\n` +
+                                `-# <:members:1468470163081924608> Member Count: \`${member.guild.memberCount}\`\n` +
+                                `-# <:connection:1468633345876431021> Invited by <@${inviterId}> \`(Test_Inviter)\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`
+                            )
+                        )
+                )
+                .addActionRowComponents(
+                    new ActionRowBuilder()
+                        .addComponents(
+                            new ButtonBuilder()
+                                .setStyle(ButtonStyle.Link)
+                                .setLabel("Register Here")
+                                .setEmoji('📝')
+                                .setURL("https://discord.com/channels/1456197054782111756/1456197056250122352")
+                        )
+                )
+                .addSeparatorComponents(
+                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
+                )
+                .addMediaGalleryComponents(
+                    new MediaGalleryBuilder()
+                        .addItems(
+                            new MediaGalleryItemBuilder()
+                                .setURL("attachment://welcome-image.png")
+                                .setDescription(`${member.user.globalName || member.user.username} just joined!`)
+                        )
+                );
+
+            // 7. SEND THE REPLY
+            await interaction.editReply({ 
+                flags: [MessageFlags.IsComponentsV2],
+                files: [attachment],
+                components: [mainContainer]
+            });
+
+        } catch (error) {
+            console.error("Test Command Error:", error);
+            await interaction.editReply({ content: "❌ **Error:** Something went wrong generating the test welcome." });
+        }
+    }
+};

@@ -40,13 +40,19 @@ module.exports = {
             
             const bioText = v9Data.user_profile?.bio || "No bio set.";
             const badges = v9Data.badges?.map(b => b.description).join(', ') || "None";
-            const bannerColor = v9Data.user_profile?.banner_color || "None";
+            
+            // 👇 UPDATED BANNER COLOR LOGIC 👇
             const accentColorInt = v9Data.user?.accent_color || 3447003; 
+            
+            // We convert the accent_color integer into a Hex string and make it uppercase!
+            const bannerColor = v9Data.user?.accent_color 
+                ? `#${v9Data.user.accent_color.toString(16).padStart(6, '0').toUpperCase()}` 
+                : "None";
             
             let themeText = "None";
             if (v9Data.user_profile?.theme_colors && v9Data.user_profile.theme_colors.length === 2) {
-                const primaryHex = `#${v9Data.user_profile.theme_colors[0].toString(16).padStart(6, '0')}`;
-                const accentHex = `#${v9Data.user_profile.theme_colors[1].toString(16).padStart(6, '0')}`;
+                const primaryHex = `#${v9Data.user_profile.theme_colors[0].toString(16).padStart(6, '0').toUpperCase()}`;
+                const accentHex = `#${v9Data.user_profile.theme_colors[1].toString(16).padStart(6, '0').toUpperCase()}`;
                 themeText = `Primary \`${primaryHex}\` / Accent \`${accentHex}\``;
             }
 
@@ -60,7 +66,13 @@ module.exports = {
 
             const avatarDeco = v9Data.user?.avatar_decoration_data;
             const decoText = avatarDeco && avatarDeco.asset ? `[View Decoration](https://cdn.discordapp.com/avatar-decoration-presets/${avatarDeco.asset}.png)` : "None";
-            const hasProfileEffect = v9Data.user_profile?.profile_effect ? "Active ✨" : "None";
+            
+            const profileEffectData = v9Data.user_profile?.profile_effect;
+            let effectText = "None";
+            if (profileEffectData) {
+                const effectId = profileEffectData.id || profileEffectData;
+                effectText = `Active (ID: \`${effectId}\`) ✨`;
+            }
 
             // ==========================================
             // 2. FETCH LIVE PRESENCE (Native discord.js Cache)
@@ -111,7 +123,7 @@ module.exports = {
                                 `**Banner Color:** \`${bannerColor}\`\n` +
                                 `**Profile Theme:** ${themeText}\n` +
                                 `**Avatar Decoration:** ${decoText}\n` +
-                                `**Profile Effect:** ${hasProfileEffect}\n` +
+                                `**Profile Effect:** ${effectText}\n` +
                                 `**Connections:** ${connectionsText}\n` +
                                 `**Status:** ${statusText}\n` +
                                 `**Device:** ${deviceText}\n` +

@@ -112,7 +112,7 @@ module.exports = {
                 container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)).addTextDisplayComponents(new TextDisplayBuilder().setContent("-# The user is not in this server."));
             }
 
-            container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)).addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# <t:${Math.floor(Date.now()/1000)}:f>`));
+            container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true)).addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# <t:${Math.floor(Date.now()/1000)}:f>`);
 
             await message.reply({ components: [container], flags: [MessageFlags.IsComponentsV2, MessageFlags.SuppressNotifications], allowedMentions: { parse: [], repliedUser: false } });
             if (tempEmoji) setTimeout(() => tempEmoji.delete().catch(() => {}), 5000);

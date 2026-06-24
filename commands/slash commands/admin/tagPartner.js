@@ -72,42 +72,57 @@ module.exports = {
             // 🛠️ SMART INVITE EXTRACTOR
             const rawLink = interaction.options.getString('invite_link').trim();
             const inviteCode = rawLink.split('/').pop().split('?')[0]; 
-            
-            const invite = await interaction.client.fetchInvite(inviteCode).catch(() => null);
-            if (!invite || !invite.guild) return interaction.editReply("❌ Discord rejected the invite code.");
 
             // ====================================================
-            // 🎯 EXTRACT DATA (Strictly using primaryGuild logic)
+            // 🎯 EXTRACT DATA (Using v9 API to bypass server presence)
             // ====================================================
-            let targetGuild = interaction.client.guilds.cache.get(invite.guild.id);
-            if (!targetGuild) {
-                try { targetGuild = await interaction.client.guilds.fetch(invite.guild.id); } catch(e) {}
-            }
-            
-            let tagText = invite.guild.name; 
-            let badgeURL = null; 
+            let tagText = "Unknown Server"; 
+            let badgeURL = null;
+            let serverName = "Unknown";
+            let serverId = "Unknown";
+            const inviteUrl = `https://discord.gg/${inviteCode}`;
 
-            if (targetGuild) {
-                // 🛡️ API FIX: Force fetch members into cache so we can actually find someone with the tag!
-                await targetGuild.members.fetch({ limit: 100 }).catch(() => {});
-
-                // Find ANY member whose primaryGuild matches this server
-                const tagSourceMember = targetGuild.members.cache.find(m => m.user.primaryGuild?.identityGuildId === targetGuild.id);
-
-                if (tagSourceMember && tagSourceMember.user.primaryGuild) {
-                    const guildInfo = tagSourceMember.user.primaryGuild;
-                    if (guildInfo.tag) tagText = guildInfo.tag;
-                    
-                    if (typeof tagSourceMember.user.guildTagBadgeURL === 'function') {
-                        badgeURL = tagSourceMember.user.guildTagBadgeURL({ extension: 'png', size: 256 });
-                    } else if (guildInfo.badge && guildInfo.identityGuildId) {
-                        badgeURL = `https://cdn.discordapp.com/guild-tag-badges/${guildInfo.identityGuildId}/${guildInfo.badge}.png?size=256`;
+            try {
+                // Fetch the invite using the undocumented v9 endpoint
+                const inviteRes = await fetch(`https://discord.com/api/v9/invites/${inviteCode}?with_counts=true`, {
+                    headers: {
+                        'Authorization': process.env.BURNER_TOKEN, 
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Content-Type': 'application/json'
                     }
+                });
+
+                if (!inviteRes.ok) {
+                    return interaction.editReply("❌ Discord's API rejected the invite code. Check your Burner Token or the invite link.");
                 }
+
+                const inviteData = await inviteRes.json();
+                
+                if (!inviteData.guild) {
+                    return interaction.editReply("❌ That invite does not point to a server (might be a group DM).");
+                }
+
+                serverName = inviteData.guild.name;
+                serverId = inviteData.guild.id;
+
+                // 🌟 Check if the server is a Clan
+                if (inviteData.guild.clan) {
+                    tagText = inviteData.guild.clan.tag;
+                    
+                    if (inviteData.guild.clan.badge) {
+                        badgeURL = `https://cdn.discordapp.com/guild-tag-badges/${serverId}/${inviteData.guild.clan.badge}.png?size=256`;
+                    }
+                } else {
+                    // Fallback if it's a normal server without a Clan setup
+                    tagText = serverName;
+                }
+
+            } catch (error) {
+                console.error("v9 Invite Fetch Error:", error);
+                return interaction.editReply("❌ Something went wrong while fetching the invite data.");
             }
 
-            // If we absolutely cannot find a primaryGuild badge, we fallback to a default transparent image.
-            // WE NEVER USE THE SERVER ICON.
+            // If we absolutely cannot find a primaryGuild badge, fallback to default.
             const finalImageURL = badgeURL || "https://cdn.discordapp.com/embed/avatars/0.png";
 
             // ====================================================
@@ -125,9 +140,12 @@ module.exports = {
 
                 if (tempEmojiGuild) {
                     try {
+                        const safeEmojiName = `TagBadge_${serverId}`; 
+                        
+                        // Create a brand new emoji every time
                         tempEmoji = await tempEmojiGuild.emojis.create({ 
                             attachment: badgeURL, 
-                            name: 'TAGICON' 
+                            name: safeEmojiName 
                         });
                         emojiDisplay = `<:${tempEmoji.name}:${tempEmoji.id}>`;
                     } catch (err) {
@@ -144,9 +162,9 @@ module.exports = {
                         .addTextDisplayComponents(
                             new TextDisplayBuilder().setContent(`## ${emojiDisplay} ${tagText}`),
                             new TextDisplayBuilder().setContent(
-                                `**Server:** ${invite.guild.name}\n` +
-                                `**ID:** \`${invite.guild.id}\`\n` +
-                                `**Invite:** https://discord.gg/${invite.code}`
+                                `**Server:** ${serverName}\n` +
+                                `**ID:** \`${serverId}\`\n` +
+                                `**Invite:** ${inviteUrl}`
                             )
                         )
                 );
@@ -173,6 +191,11 @@ module.exports = {
                     if (starterMessage) {
                         await starterMessage.react(tempEmoji).catch(() => {});
                     }
+
+                    // 🗑️ CLEANUP: Delete the temp emoji from the host server
+                    setTimeout(async () => {
+                        await tempEmoji.delete().catch(() => console.error("Failed to delete temp emoji."));
+                    }, 2000); 
                 }
 
                 await interaction.editReply(`✅ Successfully posted and locked **${tagText}** in <#${forumChannel.id}>!`);

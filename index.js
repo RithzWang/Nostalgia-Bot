@@ -114,6 +114,8 @@ client.on('messageCreate', async (message) => {
 // --- WELCOME LOGIC ---
 const { createWelcomeImage } = require('./welcomeCanvas7.js');
 
+const { fetchAdvancedProfile } = require('./utils/v9Scraper');
+
 client.on('guildMemberAdd', async (member) => {
     if (member.user.bot) return;
     if (member.guild.id !== serverID) return;

@@ -4,79 +4,49 @@ const {
     SeparatorBuilder, SeparatorSpacingSize 
 } = require('discord.js');
 
+// 1. Import your private scraper
+const { fetchAdvancedProfile } = require('../../../utils/v9Scraper');
+
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('user')
-        .setDescription('Fetch advanced user information using JAPI.')
+        .setDescription('Fetch advanced user information using our private v9 API.')
         .addUserOption(opt => opt.setName('target')
             .setDescription('The user to lookup (defaults to yourself)')
             .setRequired(false)
         ),
 
     async execute(interaction) {
-        // Defer reply because API requests can sometimes take a second
         await interaction.deferReply();
 
         const targetUser = interaction.options.getUser('target') || interaction.user;
         const userId = targetUser.id;
 
         try {
-            // 🌐 FETCH DATA FROM JAPI
-            const response = await fetch(`https://japi.rest/discord/v1/user/${userId}`);
+            // 2. USE YOUR SCRAPER INSTEAD OF JAPI
+            const v9Data = await fetchAdvancedProfile(userId);
             
-            if (!response.ok) {
-                return interaction.editReply({ content: "❌ **Error:** Could not fetch data from JAPI. The API might be down." });
+            if (!v9Data) {
+                return interaction.editReply({ content: "❌ **Error:** Could not fetch data. The Burner Token might be rate-limited." });
             }
 
-            const json = await response.json();
-            const japiData = json.data;
-            const presence = json.presence;
-
-            // 🛠️ FORMAT EXTRACTED DATA
-            const globalName = japiData.global_name || japiData.username;
-            const username = japiData.tag || japiData.username;
-            const avatarUrl = japiData.avatarURL || targetUser.displayAvatarURL({ size: 1024, forceStatic: false });
+            // 3. EXTRACT THE DATA
+            // The JSON structure from v9 is slightly different than JAPI!
+            const globalName = v9Data.user?.global_name || v9Data.user?.username;
+            const username = v9Data.user?.username;
+            const avatarHash = v9Data.user?.avatar;
+            const avatarUrl = avatarHash 
+                ? `https://cdn.discordapp.com/avatars/${userId}/${avatarHash}.png?size=1024` 
+                : targetUser.displayAvatarURL({ size: 1024, forceStatic: false });
             
-            // The container UI needs the integer, but we will make a Hex string for the text display
-            const accentColorInt = japiData.accent_color || 3447003; 
-            const accentHex = japiData.accent_color ? `#${japiData.accent_color.toString(16).padStart(6, '0')}` : "None";
+            const bannerColor = v9Data.user_profile?.banner_color || "None";
+            const bioText = v9Data.user_profile?.bio || "No bio set.";
+            const badges = v9Data.badges?.map(b => b.description).join(', ') || "None";
             
-            const createdAt = `<t:${Math.floor(japiData.createdTimestamp / 1000)}:f>`;
-            const bannerColor = japiData.banner_color || "None";
-            const clanStr = japiData.clan ? JSON.stringify(japiData.clan) : "None";
+            const accentHex = v9Data.user?.accent_color ? `#${v9Data.user.accent_color.toString(16).padStart(6, '0')}` : "None";
+            const accentColorInt = v9Data.user?.accent_color || 3447003; 
 
-            // Clean up the badges (e.g. "EARLY_VERIFIED_BOT_DEVELOPER" -> "Early Verified Bot Developer")
-            let badges = "None";
-            if (japiData.public_flags_array && japiData.public_flags_array.length > 0) {
-                badges = japiData.public_flags_array.map(flag => 
-                    flag.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ')
-                ).join(', ');
-            }
-
-            // Extract Presence, Device & Custom Status
-            let statusText = "Offline / Invisible";
-            let deviceText = "None";
-            let activityText = "None";
-
-            if (presence && presence.status) {
-                // Capitalize first letter of status
-                statusText = presence.status.charAt(0).toUpperCase() + presence.status.slice(1);
-                
-                // Check if they are on mobile, desktop, or web
-                if (presence.clientStatus && presence.clientStatus.length > 0) {
-                    deviceText = presence.clientStatus.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ');
-                }
-
-                // Look for a custom status (Type 4)
-                const customStatus = presence.activities?.find(act => act.type === 4);
-                if (customStatus) {
-                    const emoji = customStatus.emoji?.name ? `${customStatus.emoji.name} ` : "";
-                    const state = customStatus.state || "";
-                    activityText = `${emoji}${state}`.trim() || "None";
-                }
-            }
-
-            // 🏗️ BUILD THE V2 CONTAINER UI
+            // 4. BUILD YOUR UI
             const container = new ContainerBuilder()
                 .setAccentColor(accentColorInt)
                 .addSectionComponents(
@@ -86,24 +56,21 @@ module.exports = {
                             new TextDisplayBuilder().setContent(`## ${globalName}`),
                             new TextDisplayBuilder().setContent(
                                 `**Username:** ${username}\n` +
-                                `**ID:** \`${japiData.id}\`\n` +
-                                `**Created:** ${createdAt}\n` +
+                                `**ID:** \`${userId}\`\n` +
                                 `**Badges:** ${badges}\n` +
-                                `**Clan:** ${clanStr}\n` +
-                                `**Colors:** Accent \`${accentHex}\` / Banner \`${bannerColor}\`\n` + // <--- HEX CODE HERE
-                                `**Status:** ${statusText}\n` +
-                                `**Device:** ${deviceText}\n` +
-                                `**Activity:** ${activityText}`
+                                `**Colors:** Accent \`${accentHex}\` / Banner \`${bannerColor}\`\n\n` +
+                                `**Bio:**\n${bioText}`
                             )
                         )
                 )
                 .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
-                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# Data provided by JAPI • <t:${Math.floor(Date.now() / 1000)}:R>`));
+                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# Data provided by Private API • <t:${Math.floor(Date.now() / 1000)}:R>`));
 
-            // Attach Banner link to the bottom if they have one
-            if (japiData.bannerURL) {
+            // Attach Banner link if they have one
+            const bannerHash = v9Data.user_profile?.banner;
+            if (bannerHash) {
                 container.addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent(`[View Profile Banner](${japiData.bannerURL})`)
+                    new TextDisplayBuilder().setContent(`[View Profile Banner](https://cdn.discordapp.com/banners/${userId}/${bannerHash}.png?size=1024)`)
                 );
             }
 
@@ -113,8 +80,8 @@ module.exports = {
             });
 
         } catch (error) {
-            console.error("JAPI Fetch Error:", error);
-            await interaction.editReply({ content: "❌ **Error:** Something went wrong while connecting to JAPI." });
+            console.error("Command Error:", error);
+            await interaction.editReply({ content: "❌ **Error:** Something went wrong formatting the data." });
         }
     }
 };

@@ -74,17 +74,17 @@ module.exports = {
             const inviteCode = rawLink.split('/').pop().split('?')[0]; 
 
             // ====================================================
-            // 🎯 EXTRACT DATA (Using v9 API to bypass server presence)
+            // 🎯 EXTRACT DATA (Strict Guild Profile Mode)
             // ====================================================
-            let tagText = "Unknown Server"; 
+            let tagText = null; 
             let badgeURL = null;
             let serverName = "Unknown";
             let serverId = "Unknown";
             const inviteUrl = `https://discord.gg/${inviteCode}`;
 
             try {
-                // Fetch the invite using the undocumented v9 endpoint
-                const inviteRes = await fetch(`https://discord.com/api/v9/invites/${inviteCode}?with_counts=true`, {
+                // Using with_expiration=true forces the v9 API to return the full guild profile if it exists
+                const inviteRes = await fetch(`https://discord.com/api/v9/invites/${inviteCode}?with_counts=true&with_expiration=true`, {
                     headers: {
                         'Authorization': process.env.BURNER_TOKEN, 
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -105,16 +105,24 @@ module.exports = {
                 serverName = inviteData.guild.name;
                 serverId = inviteData.guild.id;
 
-                // 🌟 Check if the server is a Clan
-                if (inviteData.guild.clan) {
-                    tagText = inviteData.guild.clan.tag;
+                // 🌟 Check the correct JSON properties for Server Tags / Guild Profiles
+                const profileData = inviteData.guild_profile || inviteData.guild.guild_profile || inviteData.guild.clan;
+
+                if (profileData && profileData.tag) {
+                    tagText = profileData.tag;
                     
-                    if (inviteData.guild.clan.badge) {
-                        badgeURL = `https://cdn.discordapp.com/guild-tag-badges/${serverId}/${inviteData.guild.clan.badge}.png?size=256`;
+                    // Discord stores the custom image as badge_hash (or sometimes badge if it's stringified)
+                    const badgeHash = profileData.badge_hash || (typeof profileData.badge === 'string' ? profileData.badge : null);
+                    
+                    if (badgeHash) {
+                        badgeURL = `https://cdn.discordapp.com/guild-tag-badges/${serverId}/${badgeHash}.png?size=256`;
+                    } else {
+                        // Stop the command if they have a tag but no custom badge image
+                        return interaction.editReply(`❌ **No Badge Image Found!** The server **${serverName}** has a tag but hasn't uploaded a custom badge image.`);
                     }
                 } else {
-                    // Fallback if it's a normal server without a Clan setup
-                    tagText = serverName;
+                    // Stop the command entirely if there is no tag
+                    return interaction.editReply(`❌ **No Server Tag Found!** The server **${serverName}** does not have an official Server Tag set up.`);
                 }
 
             } catch (error) {
@@ -122,40 +130,38 @@ module.exports = {
                 return interaction.editReply("❌ Something went wrong while fetching the invite data.");
             }
 
-            // If we absolutely cannot find a primaryGuild badge, fallback to default.
-            const finalImageURL = badgeURL || "https://cdn.discordapp.com/embed/avatars/0.png";
-
             // ====================================================
             // 🛠️ TEMPORARY EMOJI CREATION
             // ====================================================
             let tempEmoji = null;
-            let emojiDisplay = "🔰"; 
+            let emojiDisplay = ""; 
             
-            if (badgeURL) {
-                const tempEmojiGuildId = '1490435762372481275';
-                let tempEmojiGuild = interaction.client.guilds.cache.get(tempEmojiGuildId);
-                if (!tempEmojiGuild) {
-                    try { tempEmojiGuild = await interaction.client.guilds.fetch(tempEmojiGuildId); } catch(e) {}
-                }
+            const tempEmojiGuildId = '1490435762372481275';
+            let tempEmojiGuild = interaction.client.guilds.cache.get(tempEmojiGuildId);
+            if (!tempEmojiGuild) {
+                try { tempEmojiGuild = await interaction.client.guilds.fetch(tempEmojiGuildId); } catch(e) {}
+            }
 
-                if (tempEmojiGuild) {
-                    try {
-                        const safeEmojiName = `TagBadge_${serverId}`; 
-                        
-                        // Create a brand new emoji every time
-                        tempEmoji = await tempEmojiGuild.emojis.create({ 
-                            attachment: badgeURL, 
-                            name: safeEmojiName 
-                        });
-                        emojiDisplay = `<:${tempEmoji.name}:${tempEmoji.id}>`;
-                    } catch (err) {
-                        console.error("Could not create temp emoji:", err);
-                    }
+            if (tempEmojiGuild) {
+                try {
+                    const safeEmojiName = `TagBadge_${serverId}`; 
+                    
+                    // Create a brand new emoji every time
+                    tempEmoji = await tempEmojiGuild.emojis.create({ 
+                        attachment: badgeURL, 
+                        name: safeEmojiName 
+                    });
+                    emojiDisplay = `<:${tempEmoji.name}:${tempEmoji.id}>`;
+                } catch (err) {
+                    console.error("Could not create temp emoji:", err);
+                    return interaction.editReply("❌ **Error:** Failed to create the temporary badge emoji.");
                 }
+            } else {
+                return interaction.editReply("❌ **Error:** Could not access the Emoji Host Server.");
             }
 
             // ====================================================
-            // 🏗️ BUILD THE V2 COMPONENT CONTAINER (UPDATED UI)
+            // 🏗️ BUILD THE V2 COMPONENT CONTAINER (MATCHING BLUEPRINT)
             // ====================================================
             const container = new ContainerBuilder()
                 .setAccentColor(8947848)
@@ -168,14 +174,14 @@ module.exports = {
                 .addSectionComponents(
                     new SectionBuilder()
                         .setThumbnailAccessory(
-                            new ThumbnailBuilder().setURL(finalImageURL)
+                            new ThumbnailBuilder().setURL(badgeURL)
                         )
                         .addTextDisplayComponents(
                             new TextDisplayBuilder().setContent(`**Server:** ${serverName}\n-# ${serverId}\n**Invite:** ${inviteUrl}`)
                         )
                 );
 
-            const imageAttachment = new AttachmentBuilder(finalImageURL, { name: 'tag-icon.png' });
+            const imageAttachment = new AttachmentBuilder(badgeURL, { name: 'tag-icon.png' });
 
             try {
                 // 📝 Create the Forum Post

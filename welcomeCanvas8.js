@@ -113,13 +113,15 @@ async function createWelcomeImage(member, themeColors = null) {
     // ==========================================
     // INNER FRAME BORDER (GRADIENT ENHANCED)
     // ==========================================
+    // ==========================================
+    // INNER FRAME BORDER 
+    // ==========================================
     ctx.lineWidth = 40;
-    const isNitro = (user.banner !== null) || (user.avatar && user.avatar.startsWith('a_'));
 
-    let borderStyle = 'rgba(0, 0, 0, 0.3)'; // Default Grey
+    let borderStyle = 'rgba(0, 0, 0, 0.3)'; // Default Grey for non-customized profiles
 
     if (themeColors && Array.isArray(themeColors) && themeColors.length === 2) {
-        // 🏁 OPTION A: NITRO DUAL PROFILE THEME GRADIENT (Primary Top -> Accent Bottom)
+        // 🏁 OPTION A: They have a Nitro Profile Theme set!
         const primaryHex = intToHex(themeColors[0]);
         const accentHex = intToHex(themeColors[1]);
 
@@ -129,12 +131,22 @@ async function createWelcomeImage(member, themeColors = null) {
             gradient.addColorStop(1, accentHex);   // Bottom edge
             borderStyle = gradient;
         }
-    } else if (user.hexAccentColor && isNitro) {
-        // 🏁 OPTION B: SINGLE NATIVE ACCENT GRADIENT FALLBACK
+    } else if (user.hexAccentColor) {
+        // 🏁 OPTION B: No Profile Theme, but they DO have a Banner Color!
+        
+        // --- CHOICE 1: Use the Banner Color as a solid ring ---
+        // borderStyle = user.hexAccentColor; 
+
+        // --- CHOICE 2: Use the Banner Color to make a fake gradient (Recommended) ---
         const gradient = ctx.createLinearGradient(0, 0, 0, dim.height);
-        gradient.addColorStop(0, user.hexAccentColor);
+        
+        // Put their exact Banner Color at the top
+        gradient.addColorStop(0, user.hexAccentColor); 
+        
+        // Automatically darken/lighten the bottom part so it still looks premium
         const isLight = isColorLight(user.hexAccentColor);
         gradient.addColorStop(1, shadeColor(user.hexAccentColor, isLight ? -0.6 : 0.6));
+        
         borderStyle = gradient;
     }
     
@@ -142,6 +154,7 @@ async function createWelcomeImage(member, themeColors = null) {
     ctx.beginPath();
     ctx.roundRect(0, 0, dim.width, dim.height, cornerRadius);
     ctx.stroke();
+
 
     // ==========================================
     // LAYER 2: AVATAR COMPOSITE

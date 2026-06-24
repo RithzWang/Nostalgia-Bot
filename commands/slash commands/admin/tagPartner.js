@@ -74,16 +74,16 @@ module.exports = {
             const inviteCode = rawLink.split('/').pop().split('?')[0]; 
 
             // ====================================================
-            // 🎯 EXTRACT DATA (Strict Guild Profile Mode)
+            // 🎯 EXTRACT DATA (Clean Fallback & Exact JAPI/v9 Match)
             // ====================================================
-            let tagText = null; 
-            let badgeURL = null;
             let serverName = "Unknown";
             let serverId = "Unknown";
             const inviteUrl = `https://discord.gg/${inviteCode}`;
+            
+            let tagText = null; 
+            let badgeURL = null;
 
             try {
-                // Using with_expiration=true forces the v9 API to return the full guild profile if it exists
                 const inviteRes = await fetch(`https://discord.com/api/v9/invites/${inviteCode}?with_counts=true&with_expiration=true`, {
                     headers: {
                         'Authorization': process.env.BURNER_TOKEN, 
@@ -105,24 +105,12 @@ module.exports = {
                 serverName = inviteData.guild.name;
                 serverId = inviteData.guild.id;
 
-                // 🌟 Check the correct JSON properties for Server Tags / Guild Profiles
-                const profileData = inviteData.guild_profile || inviteData.guild.guild_profile || inviteData.guild.clan;
-
-                if (profileData && profileData.tag) {
-                    tagText = profileData.tag;
-                    
-                    // Discord stores the custom image as badge_hash (or sometimes badge if it's stringified)
-                    const badgeHash = profileData.badge_hash || (typeof profileData.badge === 'string' ? profileData.badge : null);
-                    
-                    if (badgeHash) {
-                        badgeURL = `https://cdn.discordapp.com/guild-tag-badges/${serverId}/${badgeHash}.png?size=256`;
-                    } else {
-                        // Stop the command if they have a tag but no custom badge image
-                        return interaction.editReply(`❌ **No Badge Image Found!** The server **${serverName}** has a tag but hasn't uploaded a custom badge image.`);
+                // 🌟 As you found out, Discord stores it perfectly under clan.badge
+                if (inviteData.guild.clan) {
+                    if (inviteData.guild.clan.tag) tagText = inviteData.guild.clan.tag;
+                    if (inviteData.guild.clan.badge) {
+                        badgeURL = `https://cdn.discordapp.com/guild-tag-badges/${serverId}/${inviteData.guild.clan.badge}.png?size=256`;
                     }
-                } else {
-                    // Stop the command entirely if there is no tag
-                    return interaction.editReply(`❌ **No Server Tag Found!** The server **${serverName}** does not have an official Server Tag set up.`);
                 }
 
             } catch (error) {
@@ -130,58 +118,65 @@ module.exports = {
                 return interaction.editReply("❌ Something went wrong while fetching the invite data.");
             }
 
+            // Apply our clean text fallback if they have no tag setup!
+            if (!tagText) tagText = serverName;
+
             // ====================================================
-            // 🛠️ TEMPORARY EMOJI CREATION
+            // 🛠️ TEMPORARY EMOJI CREATION (Only if badge exists!)
             // ====================================================
             let tempEmoji = null;
             let emojiDisplay = ""; 
             
-            const tempEmojiGuildId = '1490435762372481275';
-            let tempEmojiGuild = interaction.client.guilds.cache.get(tempEmojiGuildId);
-            if (!tempEmojiGuild) {
-                try { tempEmojiGuild = await interaction.client.guilds.fetch(tempEmojiGuildId); } catch(e) {}
-            }
-
-            if (tempEmojiGuild) {
-                try {
-                    const safeEmojiName = `TagBadge_${serverId}`; 
-                    
-                    // Create a brand new emoji every time
-                    tempEmoji = await tempEmojiGuild.emojis.create({ 
-                        attachment: badgeURL, 
-                        name: safeEmojiName 
-                    });
-                    emojiDisplay = `<:${tempEmoji.name}:${tempEmoji.id}>`;
-                } catch (err) {
-                    console.error("Could not create temp emoji:", err);
-                    return interaction.editReply("❌ **Error:** Failed to create the temporary badge emoji.");
+            if (badgeURL) {
+                const tempEmojiGuildId = '1490435762372481275'; // Your Emoji Server ID
+                let tempEmojiGuild = interaction.client.guilds.cache.get(tempEmojiGuildId);
+                if (!tempEmojiGuild) {
+                    try { tempEmojiGuild = await interaction.client.guilds.fetch(tempEmojiGuildId); } catch(e) {}
                 }
-            } else {
-                return interaction.editReply("❌ **Error:** Could not access the Emoji Host Server.");
+
+                if (tempEmojiGuild) {
+                    try {
+                        const safeEmojiName = `TagBadge_${serverId}`; 
+                        tempEmoji = await tempEmojiGuild.emojis.create({ 
+                            attachment: badgeURL, 
+                            name: safeEmojiName 
+                        });
+                        emojiDisplay = `<:${tempEmoji.name}:${tempEmoji.id}> `; 
+                    } catch (err) {
+                        console.error("Could not create temp emoji:", err);
+                    }
+                }
             }
 
             // ====================================================
-            // 🏗️ BUILD THE V2 COMPONENT CONTAINER (MATCHING BLUEPRINT)
+            // 🏗️ BUILD THE V2 COMPONENT CONTAINER 
             // ====================================================
+            const section = new SectionBuilder();
+
+            // Only attach the thumbnail if they actually have a custom badge!
+            if (badgeURL) {
+                section.setThumbnailAccessory(new ThumbnailBuilder().setURL(badgeURL));
+            }
+
+            section.addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(`**Server:** ${serverName}\n-# ${serverId}\n**Invite:** ${inviteUrl}`)
+            );
+
             const container = new ContainerBuilder()
                 .setAccentColor(8947848)
                 .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent(`## ${emojiDisplay} ${tagText}`)
+                    new TextDisplayBuilder().setContent(`## ${emojiDisplay}${tagText}`)
                 )
                 .addSeparatorComponents(
                     new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
                 )
-                .addSectionComponents(
-                    new SectionBuilder()
-                        .setThumbnailAccessory(
-                            new ThumbnailBuilder().setURL(badgeURL)
-                        )
-                        .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent(`**Server:** ${serverName}\n-# ${serverId}\n**Invite:** ${inviteUrl}`)
-                        )
-                );
+                .addSectionComponents(section);
 
-            const imageAttachment = new AttachmentBuilder(badgeURL, { name: 'tag-icon.png' });
+            // Only attach the image file if we actually have one
+            const files = [];
+            if (badgeURL) {
+                files.push(new AttachmentBuilder(badgeURL, { name: 'tag-icon.png' }));
+            }
 
             try {
                 // 📝 Create the Forum Post
@@ -189,7 +184,7 @@ module.exports = {
                     name: tagText,
                     message: {
                         components: [container],
-                        files: [imageAttachment],
+                        files: files,
                         flags: [MessageFlags.IsComponentsV2]
                     }
                 });
@@ -204,7 +199,7 @@ module.exports = {
                         await starterMessage.react(tempEmoji).catch(() => {});
                     }
 
-                    // 🗑️ CLEANUP: Delete the temp emoji from the host server
+                    // 🗑️ CLEANUP: Delete the temp emoji from the host server after 2 seconds
                     setTimeout(async () => {
                         await tempEmoji.delete().catch(() => console.error("Failed to delete temp emoji."));
                     }, 2000); 

@@ -65,7 +65,7 @@ module.exports = {
                     type: ActivityType.Custom, 
                     state: `${timeEmoji} ${formattedTime} (GMT+7)` 
                 }],
-                status: 'idle'
+                status: 'dnd'
             });
 
             // This runs roughly at the start of every new minute (when seconds are 0, 1, 2, 3, or 4)

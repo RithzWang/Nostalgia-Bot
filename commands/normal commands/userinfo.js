@@ -10,7 +10,7 @@ const {
     ThumbnailBuilder
 } = require('discord.js');
 
-const { fetchAdvancedProfile } = require('../utils/v9Scraper'); 
+const { fetchAdvancedProfile } = require('../../utils/v9Scraper'); 
 
 module.exports = {
     name: 'userinfo',

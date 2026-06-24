@@ -1,7 +1,7 @@
 const { 
     SlashCommandBuilder, PermissionFlagsBits, ChannelType, MessageFlags,
     ContainerBuilder, SectionBuilder, ThumbnailBuilder, TextDisplayBuilder,
-    SeparatorBuilder, SeparatorSpacingSize, AttachmentBuilder
+    SeparatorBuilder, SeparatorSpacingSize
 } = require('discord.js');
 const TagPartner = require('../../../src/models/TagPartner'); 
 
@@ -74,7 +74,7 @@ module.exports = {
             const inviteCode = rawLink.split('/').pop().split('?')[0]; 
 
             // ====================================================
-            // 🎯 EXTRACT DATA (Clean Fallback & Exact JAPI/v9 Match)
+            // 🎯 EXTRACT DATA (Clean Fallback & Exact API Match)
             // ====================================================
             let serverName = "Unknown";
             let serverId = "Unknown";
@@ -105,20 +105,19 @@ module.exports = {
                 serverName = inviteData.guild.name;
                 serverId = inviteData.guild.id;
 
-                // 🌟 As you found out, Discord stores it perfectly under clan.badge
+                // 🌟 Extract Clan Data
                 if (inviteData.guild.clan) {
                     if (inviteData.guild.clan.tag) tagText = inviteData.guild.clan.tag;
                     if (inviteData.guild.clan.badge) {
                         badgeURL = `https://cdn.discordapp.com/guild-tag-badges/${serverId}/${inviteData.guild.clan.badge}.png?size=256`;
                     }
                 }
-
             } catch (error) {
                 console.error("v9 Invite Fetch Error:", error);
                 return interaction.editReply("❌ Something went wrong while fetching the invite data.");
             }
 
-            // Apply our clean text fallback if they have no tag setup!
+            // Apply clean text fallback if they have no tag setup!
             if (!tagText) tagText = serverName;
 
             // ====================================================
@@ -172,19 +171,16 @@ module.exports = {
                 )
                 .addSectionComponents(section);
 
-            // Only attach the image file if we actually have one
-            const files = [];
-            if (badgeURL) {
-                files.push(new AttachmentBuilder(badgeURL, { name: 'tag-icon.png' }));
-            }
-
             try {
+                // Ensure thread name doesn't exceed Discord's 100-character limit
+                const threadName = tagText.length > 95 ? tagText.substring(0, 95) + "..." : tagText;
+
                 // 📝 Create the Forum Post
                 const thread = await forumChannel.threads.create({
-                    name: tagText,
+                    name: threadName,
                     message: {
+                        content: " ", // Bypass the "empty message" API error
                         components: [container],
-                        files: files,
                         flags: [MessageFlags.IsComponentsV2]
                     }
                 });
@@ -205,10 +201,11 @@ module.exports = {
                     }, 2000); 
                 }
 
-                await interaction.editReply(`✅ Successfully posted and locked **${tagText}** in <#${forumChannel.id}>!`);
+                await interaction.editReply(`✅ Successfully posted and locked **${threadName}** in <#${forumChannel.id}>!`);
             } catch (err) {
-                console.error("Forum Post Error:", err);
-                await interaction.editReply("❌ **Error:** Failed to create the forum post.");
+                // This prints the exact error to your console so you can debug if it fails again
+                console.error("Forum Post Error:", err.rawError || err); 
+                await interaction.editReply("❌ **Error:** Failed to create the forum post. Check your terminal for the exact reason!");
             }
         }
     }

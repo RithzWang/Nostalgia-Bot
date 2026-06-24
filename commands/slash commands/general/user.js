@@ -36,8 +36,14 @@ module.exports = {
             const globalName = japiData.global_name || japiData.username;
             const username = japiData.tag || japiData.username;
             const avatarUrl = japiData.avatarURL || targetUser.displayAvatarURL({ size: 1024, forceStatic: false });
-            const accentColor = japiData.accent_color || 3447003; // Fallback to Discord blue
+            
+            // The container UI needs the integer, but we will make a Hex string for the text display
+            const accentColorInt = japiData.accent_color || 3447003; 
+            const accentHex = japiData.accent_color ? `#${japiData.accent_color.toString(16).padStart(6, '0')}` : "None";
+            
             const createdAt = `<t:${Math.floor(japiData.createdTimestamp / 1000)}:f>`;
+            const bannerColor = japiData.banner_color || "None";
+            const clanStr = japiData.clan ? JSON.stringify(japiData.clan) : "None";
 
             // Clean up the badges (e.g. "EARLY_VERIFIED_BOT_DEVELOPER" -> "Early Verified Bot Developer")
             let badges = "None";
@@ -47,33 +53,32 @@ module.exports = {
                 ).join(', ');
             }
 
-            // Extract Presence & Custom Status
+            // Extract Presence, Device & Custom Status
             let statusText = "Offline / Invisible";
+            let deviceText = "None";
+            let activityText = "None";
+
             if (presence && presence.status) {
                 // Capitalize first letter of status
-                const mainStatus = presence.status.charAt(0).toUpperCase() + presence.status.slice(1);
+                statusText = presence.status.charAt(0).toUpperCase() + presence.status.slice(1);
                 
                 // Check if they are on mobile, desktop, or web
-                const clientTypes = presence.clientStatus && presence.clientStatus.length > 0 
-                    ? ` (${presence.clientStatus.join(', ')})` 
-                    : "";
-                
-                statusText = `**${mainStatus}**${clientTypes}`;
+                if (presence.clientStatus && presence.clientStatus.length > 0) {
+                    deviceText = presence.clientStatus.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ');
+                }
 
                 // Look for a custom status (Type 4)
                 const customStatus = presence.activities?.find(act => act.type === 4);
                 if (customStatus) {
                     const emoji = customStatus.emoji?.name ? `${customStatus.emoji.name} ` : "";
                     const state = customStatus.state || "";
-                    if (emoji || state) {
-                        statusText += `\n**Activity:** ${emoji}${state}`;
-                    }
+                    activityText = `${emoji}${state}`.trim() || "None";
                 }
             }
 
             // 🏗️ BUILD THE V2 CONTAINER UI
             const container = new ContainerBuilder()
-                .setAccentColor(accentColor)
+                .setAccentColor(accentColorInt)
                 .addSectionComponents(
                     new SectionBuilder()
                         .setThumbnailAccessory(new ThumbnailBuilder().setURL(avatarUrl))
@@ -84,7 +89,11 @@ module.exports = {
                                 `**ID:** \`${japiData.id}\`\n` +
                                 `**Created:** ${createdAt}\n` +
                                 `**Badges:** ${badges}\n` +
-                                `**Status:** ${statusText}`
+                                `**Clan:** ${clanStr}\n` +
+                                `**Colors:** Accent \`${accentHex}\` / Banner \`${bannerColor}\`\n` + // <--- HEX CODE HERE
+                                `**Status:** ${statusText}\n` +
+                                `**Device:** ${deviceText}\n` +
+                                `**Activity:** ${activityText}`
                             )
                         )
                 )

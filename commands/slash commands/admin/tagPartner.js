@@ -179,7 +179,7 @@ module.exports = {
                 const thread = await forumChannel.threads.create({
                     name: threadName,
                     message: {
-                        content: " ", // Bypass the "empty message" API error
+                        content: "** **", // The bulletproof invisible text trick
                         components: [container],
                         flags: [MessageFlags.IsComponentsV2]
                     }
@@ -203,9 +203,11 @@ module.exports = {
 
                 await interaction.editReply(`✅ Successfully posted and locked **${threadName}** in <#${forumChannel.id}>!`);
             } catch (err) {
-                // This prints the exact error to your console so you can debug if it fails again
+                // 👇 THIS WILL NOW PRINT THE EXACT ERROR IN DISCORD 👇
+                const errorMessage = err.rawError?.message || err.message || "Unknown API Error";
                 console.error("Forum Post Error:", err.rawError || err); 
-                await interaction.editReply("❌ **Error:** Failed to create the forum post. Check your terminal for the exact reason!");
+                
+                await interaction.editReply(`❌ **API Error:** \`${errorMessage}\`\n*(Send me this error so we can fix it!)*`);
             }
         }
     }

@@ -11,7 +11,7 @@ const {
 } = require('discord.js');
 
 // 🛠️ Make sure this path points to your actual scraper file!
-const { fetchAdvancedProfile } = require('../../../utils/v9Scraper'); 
+const { fetchAdvancedProfile } = require('../../utils/v9Scraper'); 
 
 module.exports = {
     name: 'userinfo',

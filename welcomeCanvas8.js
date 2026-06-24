@@ -4,11 +4,14 @@ const { createCanvas, loadImage } = require('@napi-rs/canvas');
 // HELPERS
 // ==========================================
 
-function intToHex(intColor) {
-    if (intColor === null || intColor === undefined) return null;
-    return '#' + intColor.toString(16).padStart(6, '0');
+// Helper: Convert Integer or String Color to safe Hex format
+function intToHex(color) {
+    if (color === null || color === undefined) return null;
+    if (typeof color === 'string') return color.startsWith('#') ? color : `#${color}`;
+    return '#' + color.toString(16).padStart(6, '0');
 }
 
+// Helper: Darken/Lighten Hex Color
 function shadeColor(color, percent) {
     var f = parseInt(color.slice(1), 16),
         t = percent < 0 ? 0 : 255,
@@ -19,6 +22,7 @@ function shadeColor(color, percent) {
     return "#" + (0x1000000 + (Math.round((t - R) * p) + R) * 0x10000 + (Math.round((t - G) * p) + G) * 0x100 + (Math.round((t - B) * p) + B)).toString(16).slice(1);
 }
 
+// Helper: Check if Color is Light or Dark
 function isColorLight(hex) {
     const r = parseInt(hex.slice(1, 3), 16);
     const g = parseInt(hex.slice(3, 5), 16);
@@ -31,7 +35,12 @@ function isColorLight(hex) {
 // MAIN FUNCTION
 // ==========================================
 
+/**
+ * @param {GuildMember} member - The discord.js GuildMember
+ * @param {Array<number|string>} [themeColors] - Optional: Array of [Primary, Accent] colors from profile API
+ */
 async function createWelcomeImage(member, themeColors = null) {
+    // 1. Setup & Dimensions
     const user = await member.user.fetch(true);
 
     const dim = {
@@ -41,6 +50,7 @@ async function createWelcomeImage(member, themeColors = null) {
     };
 
     const topOffset = 45; 
+
     const canvas = createCanvas(dim.width, dim.height + topOffset);
     const ctx = canvas.getContext('2d');
     
@@ -48,32 +58,41 @@ async function createWelcomeImage(member, themeColors = null) {
     ctx.imageSmoothingQuality = 'high';
 
     // ==========================================
-    // LAYER 1: BACKGROUND
+    // LAYER 1: THE CARD BACKGROUND
     // ==========================================
     ctx.save(); 
     ctx.translate(0, topOffset);
 
+    // Create Card Shape
     const cornerRadius = 80;
     ctx.beginPath();
     ctx.roundRect(0, 0, dim.width, dim.height, cornerRadius);
     ctx.closePath();
     ctx.clip(); 
 
+    // Fetch Images (Banner or Avatar fallback)
     const bannerURL = user.bannerURL({ extension: 'png', size: 2048 });
     const avatarURL = member.displayAvatarURL({ extension: 'png', size: 2048 });
     
     let backgroundBuf = null;
-    if (bannerURL) backgroundBuf = await loadImage(bannerURL).catch(() => null);
-    if (!backgroundBuf) backgroundBuf = await loadImage(avatarURL).catch(() => null);
+    if (bannerURL) {
+        backgroundBuf = await loadImage(bannerURL).catch(() => null);
+    }
+    if (!backgroundBuf) {
+        backgroundBuf = await loadImage(avatarURL).catch(() => null);
+    }
 
+    // Draw Background
     if (backgroundBuf) {
         const canvasRatio = dim.width / dim.height;
         const sHeight = backgroundBuf.width / canvasRatio;
+
         if (backgroundBuf.height > sHeight) {
-            const sy = (backgroundBuf.height - sHeight) / 2;
-            ctx.drawImage(backgroundBuf, 0, sy, backgroundBuf.width, sHeight, 0, 0, dim.width, dim.height);
+            const sourceHeight = backgroundBuf.width / canvasRatio;
+            const sy = (backgroundBuf.height - sourceHeight) / 2;
+            ctx.drawImage(backgroundBuf, 0, sy, backgroundBuf.width, sourceHeight, 0, 0, dim.width, dim.height);
             ctx.filter = bannerURL ? 'blur(3px)' : 'blur(10px)';
-            ctx.drawImage(backgroundBuf, 0, sy, backgroundBuf.width, sHeight, 0, 0, dim.width, dim.height);
+            ctx.drawImage(backgroundBuf, 0, sy, backgroundBuf.width, sourceHeight, 0, 0, dim.width, dim.height);
         } else {
             const sourceWidth = backgroundBuf.height * canvasRatio;
             const sx = (backgroundBuf.width - sourceWidth) / 2;
@@ -87,39 +106,45 @@ async function createWelcomeImage(member, themeColors = null) {
         ctx.fillRect(0, 0, dim.width, dim.height);
     }
 
-    ctx.fillStyle = bannerURL ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.5)';
+    // Dark Overlay
+    ctx.fillStyle = bannerURL ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.5)';
     ctx.fillRect(0, 0, dim.width, dim.height);
 
     // ==========================================
-    // BORDER
+    // INNER FRAME BORDER (GRADIENT ENHANCED)
     // ==========================================
     ctx.lineWidth = 40;
     const isNitro = (user.banner !== null) || (user.avatar && user.avatar.startsWith('a_'));
-    let borderStyle = 'rgba(0,0,0,0.3)';
+
+    let borderStyle = 'rgba(0, 0, 0, 0.3)'; // Default Grey
 
     if (themeColors && Array.isArray(themeColors) && themeColors.length === 2) {
+        // 🏁 OPTION A: NITRO DUAL PROFILE THEME GRADIENT (Primary Top -> Accent Bottom)
         const primaryHex = intToHex(themeColors[0]);
         const accentHex = intToHex(themeColors[1]);
+
         if (primaryHex && accentHex) {
             const gradient = ctx.createLinearGradient(0, 0, 0, dim.height);
-            gradient.addColorStop(0, primaryHex);
-            gradient.addColorStop(1, accentHex);
+            gradient.addColorStop(0, primaryHex);  // Top edge
+            gradient.addColorStop(1, accentHex);   // Bottom edge
             borderStyle = gradient;
         }
     } else if (user.hexAccentColor && isNitro) {
+        // 🏁 OPTION B: SINGLE NATIVE ACCENT GRADIENT FALLBACK
         const gradient = ctx.createLinearGradient(0, 0, 0, dim.height);
         gradient.addColorStop(0, user.hexAccentColor);
         const isLight = isColorLight(user.hexAccentColor);
         gradient.addColorStop(1, shadeColor(user.hexAccentColor, isLight ? -0.6 : 0.6));
         borderStyle = gradient;
     }
+    
     ctx.strokeStyle = borderStyle;
     ctx.beginPath();
     ctx.roundRect(0, 0, dim.width, dim.height, cornerRadius);
     ctx.stroke();
 
     // ==========================================
-    // AVATAR
+    // LAYER 2: AVATAR COMPOSITE
     // ==========================================
     const avatarSize = 400;
     const avatarX = dim.margin + 30;
@@ -165,10 +190,11 @@ async function createWelcomeImage(member, themeColors = null) {
 
     const statusSize = 95; 
     if (statusImage) {
-        const offset = 141;
+        const offset = 141; 
         const holeX = (centerX + offset);
         const holeY = (centerY + offset);
         const invisibleRadius = (statusSize / 2) + 20; 
+
         cCtx.save();
         cCtx.globalCompositeOperation = 'destination-out'; 
         cCtx.beginPath();
@@ -178,12 +204,13 @@ async function createWelcomeImage(member, themeColors = null) {
     }
 
     ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,0.7)';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
     ctx.shadowBlur = 25;
+    ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 12;
     ctx.drawImage(compositeCanvas, 0, 0);
     ctx.restore();
-    ctx.drawImage(compositeCanvas, 0, 0);
+    ctx.drawImage(compositeCanvas, 0, 0); 
 
     if (statusImage) {
         const offset = 141;
@@ -191,6 +218,7 @@ async function createWelcomeImage(member, themeColors = null) {
         const holeY = (centerY + offset);
         const iconX = holeX - (statusSize / 2);
         const iconY = holeY - (statusSize / 2);
+        
         ctx.save();
         ctx.shadowColor = 'rgba(0,0,0,0.3)';
         ctx.shadowBlur = 5;
@@ -200,33 +228,34 @@ async function createWelcomeImage(member, themeColors = null) {
     }
 
     // ==========================================
-    // TEXT LAYER (iOS STYLE SHADOWS)
+    // LAYER 4: TEXT & INFO
     // ==========================================
     const idText = `ID: ${member.id}`;
-    ctx.font = '50px "Prima Sans Regular", sans-serif';
+    ctx.font = '50px "Prima Sans Regular", "ReemKufi Bold", sans-serif';
+    
     const idMetrics = ctx.measureText(idText);
     const idPaddingX = 25; 
     const idBoxHeight = 85; 
     const marginRight = 50;
     const marginBottom = 50;
+    
     const boxCenterAxisY = dim.height - marginBottom - (idBoxHeight / 2);
     const idBoxWidth = idMetrics.width + (idPaddingX * 2);
     const idBoxX = (dim.width - marginRight) - idBoxWidth;
     const idBoxY = boxCenterAxisY - (idBoxHeight / 2);
 
     ctx.save();
-    ctx.fillStyle = 'rgba(0,0,0,0.3)'; 
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; 
     ctx.beginPath();
     ctx.roundRect(idBoxX, idBoxY, idBoxWidth, idBoxHeight, 25);
     ctx.fill();
     ctx.restore();
 
-    // ID Text (iOS shadow)
     ctx.save();
-    ctx.shadowColor = "rgba(0,0,0,0.45)";
-    ctx.shadowBlur = 4;
-    ctx.shadowOffsetX = 2;
-    ctx.shadowOffsetY = 2;
+    ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
+    ctx.shadowBlur = 5;
+    ctx.shadowOffsetX = 5; 
+    ctx.shadowOffsetY = 5; 
     ctx.fillStyle = '#DADADA'; 
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle'; 
@@ -235,50 +264,164 @@ async function createWelcomeImage(member, themeColors = null) {
 
     const textX = avatarX + avatarSize + 70;
     const maxAvailableWidth = dim.width - textX - 50; 
+
+    ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
+    ctx.shadowBlur = 5;
+    ctx.shadowOffsetX = 5; 
+    ctx.shadowOffsetY = 5; 
+
     let currentY = dim.height / 2 - 15;
     const displayName = user.globalName || user.username;
-
-    const fontStack = `"gg sans Bold", "Times Bold", "Thonburi", "Apple Gothic", "Hiragino Sans", sans-serif`;
+    
+    const fontStack = `"gg sans Bold", "Times Bold", "Thonburi", "Apple Gothic", "Hiragino Sans", "Pingfang", "Apple Color Emoji", "Symbol", "Apple Symbols", "Noto Symbol", "Noto Symbol 2", "Noto Math", "Noto Hieroglyphs", "Noto Music", sans-serif`;
     const baseDisplaySize = 115;
-
-    ctx.shadowColor = "rgba(0,0,0,0.45)";
-    ctx.shadowBlur = 6;
-    ctx.shadowOffsetX = 2;
-    ctx.shadowOffsetY = 2;
 
     ctx.font = `bold ${baseDisplaySize}px ${fontStack}`;
     const displayNameWidth = ctx.measureText(displayName).width;
     const displayScale = Math.min(1, maxAvailableWidth / displayNameWidth);
+    
     ctx.font = `bold ${baseDisplaySize * displayScale}px ${fontStack}`;
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
     ctx.fillText(displayName, textX, currentY);
 
-    // Username line
     currentY += 115;
-    ctx.shadowColor = "rgba(0,0,0,0.45)";
-    ctx.shadowBlur = 4;
-    ctx.shadowOffsetX = 2;
-    ctx.shadowOffsetY = 2;
-
+    
     const baseUsernameSize = 95;
+    const baseTagSize = 65;
+    const baseBoxHeight = 95;
+    const baseBadgeSize = 65;
+    const basePadding = 20;  
+    const baseSepPadding = 25; 
+    const baseMarginSep = 25; 
+    const baseContentGap = 15; 
+    const baseRadius = 20;
+
     let tagText = (user.discriminator && user.discriminator !== '0') 
         ? `${user.username}#${user.discriminator}` 
         : `@${user.username}`;
+    
+    const guildInfo = user.primaryGuild;
+    const hasGuild = (guildInfo && guildInfo.tag);
+
     ctx.font = `${baseUsernameSize}px "Prima Sans Regular", sans-serif`;
+    const usernameWidth = ctx.measureText(tagText).width;
+
+    let totalNeededWidth = usernameWidth;
+    let guildTagWidth = 0;
+    let badgeURL = null;
+    let hasBadge = false;
+
+    if (hasGuild) {
+        const dotScaleFactor = 1.25; 
+        ctx.font = `${baseUsernameSize * dotScaleFactor}px "Prima Sans Regular", sans-serif`;
+        const dotWidth = ctx.measureText("•").width;
+
+        ctx.font = `${baseTagSize}px "Prima Sans Regular", ${fontStack}`;
+        guildTagWidth = ctx.measureText(guildInfo.tag).width;
+
+        if (typeof user.guildTagBadgeURL === 'function') {
+             badgeURL = user.guildTagBadgeURL({ extension: 'png', size: 128 });
+        } else if (guildInfo.badge && guildInfo.identityGuildId) {
+             badgeURL = `https://cdn.discordapp.com/guild-tag-badges/${guildInfo.identityGuildId}/${guildInfo.badge}.png?size=128`;
+        }
+        hasBadge = !!(badgeURL && guildInfo.badge);
+
+        let boxWidth = (basePadding * 2) + guildTagWidth;
+        if (hasBadge) boxWidth += baseBadgeSize + baseContentGap;
+        totalNeededWidth += baseSepPadding + dotWidth + baseMarginSep + boxWidth;
+    }
+
+    const totalChars = tagText.length + (hasGuild ? guildInfo.tag.length : 0);
+    const widthScale = maxAvailableWidth / totalNeededWidth;
+    
+    let sizeAdjustmentScale = 1;
+    if (totalChars > 5) {
+        sizeAdjustmentScale = (baseUsernameSize - 5) / baseUsernameSize;
+    }
+
+    const bottomScale = Math.min(sizeAdjustmentScale, widthScale);
+
+    ctx.font = `${baseUsernameSize * bottomScale}px "Prima Sans Regular", sans-serif`;
     ctx.fillStyle = '#dadada'; 
     ctx.fillText(tagText, textX, currentY);
 
-    ctx.restore();
+    if (hasGuild) {
+        const fUsernameWidth = ctx.measureText(tagText).width;
+        const fSepPadding = baseSepPadding * bottomScale;
+        const separatorX = textX + fUsernameWidth + fSepPadding;
+        
+        ctx.save();
+        const sepScale = 1.25; 
+        ctx.font = `${baseUsernameSize * bottomScale * sepScale}px "Prima Sans Regular", sans-serif`;
+        ctx.fillStyle = '#dadada'; 
+        ctx.fillText("•", separatorX, currentY);
+        const fSeparatorWidth = ctx.measureText("•").width;
+        ctx.restore();
 
-    const badgeImage = await loadImage('./pics/logo/A2-Q-2026.png').catch(() => null);
+        const fTagSize = baseTagSize * bottomScale;
+        ctx.font = `${fTagSize}px "Prima Sans Regular", ${fontStack}`;
+        const fTagWidth = ctx.measureText(guildInfo.tag).width;
+        
+        const fPadding = basePadding * bottomScale;
+        const fContentGap = baseContentGap * bottomScale;
+        const fBadgeSize = baseBadgeSize * bottomScale;
+        
+        let fBoxWidth = (fPadding * 2) + fTagWidth;
+        if (hasBadge) fBoxWidth += fBadgeSize + fContentGap;
+
+        const fMarginSep = baseMarginSep * bottomScale;
+        const boxX = separatorX + fSeparatorWidth + fMarginSep;
+        
+        const fBoxHeight = baseBoxHeight * bottomScale;
+        const verticalAdjustment = 30 * bottomScale; 
+        const verticalCenterY = currentY - verticalAdjustment; 
+        const boxY = verticalCenterY - (fBoxHeight / 2);
+
+        ctx.save();
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+        ctx.shadowBlur = 10;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 5;
+        ctx.fillStyle = '#404249'; 
+        ctx.beginPath();
+        ctx.roundRect(boxX, boxY, fBoxWidth, fBoxHeight, baseRadius * bottomScale);
+        ctx.fill();
+        ctx.restore();
+
+        let currentContentX = boxX + fPadding;
+        const contentCenterY = boxY + (fBoxHeight / 2); 
+
+        if (hasBadge) {
+            const badgeImg = await loadImage(badgeURL).catch(err => null);
+            if (badgeImg) {
+                const badgeY = contentCenterY - (fBadgeSize / 2);
+                ctx.drawImage(badgeImg, currentContentX, badgeY, fBadgeSize, fBadgeSize);
+                currentContentX += fBadgeSize + fContentGap;
+            }
+        }
+
+        ctx.fillStyle = '#ffffff'; 
+        ctx.textBaseline = 'middle'; 
+        ctx.fillText(guildInfo.tag, currentContentX, contentCenterY - 4);
+        ctx.textBaseline = 'alphabetic'; 
+    }
+
+    // ==========================================
+    // LAYER 5: CROWN BADGE
+    // ==========================================
+    ctx.restore(); // Restore translation
+
+    const badgeImage = await loadImage('./pics/logo/NEW_sign.png').catch(() => null);
+
     if (badgeImage) {
         const badgeWidth = 160; 
         const badgeHeight = 98;
         const avatarCenterX = dim.margin + 30 + avatarRadius;
         const badgeX = avatarCenterX - badgeWidth;
         const badgeY = topOffset - (badgeHeight / 2) + 10;
+
         ctx.drawImage(badgeImage, badgeX, badgeY, badgeWidth, badgeHeight);
     }
 

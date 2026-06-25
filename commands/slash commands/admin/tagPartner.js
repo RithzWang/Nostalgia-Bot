@@ -57,6 +57,8 @@ module.exports = {
             }
         }
 
+// ... (Previous imports stay the same)
+
         if (sub === 'send') {
             await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
@@ -69,56 +71,50 @@ module.exports = {
                 catch (e) { return interaction.editReply("❌ Cannot find the configured forum channel."); }
             }
 
-            // 🛠️ SMART INVITE EXTRACTOR
             const rawLink = interaction.options.getString('invite_link').trim();
             const inviteCode = rawLink.split('/').pop().split('?')[0]; 
-
-            // ====================================================
-            // 🎯 EXTRACT DATA (Clean Fallback & Exact API Match)
-            // ====================================================
-            let serverName = "Unknown";
-            let serverId = "Unknown";
             const inviteUrl = `https://discord.gg/${inviteCode}`;
-            
+
+            let serverName = "Unknown";
+            let serverId = null;
             let tagText = null; 
             let badgeURL = null;
 
             try {
-                const inviteRes = await fetch(`https://discord.com/api/v9/invites/${inviteCode}?with_counts=true&with_expiration=true`, {
-                    headers: {
-                        'Authorization': process.env.BURNER_TOKEN, 
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                        'Content-Type': 'application/json'
-                    }
+                // STEP 1: Fetch Invite to get Guild ID
+                const inviteRes = await fetch(`https://discord.com/api/v10/invites/${inviteCode}`, {
+                    headers: { 'Authorization': process.env.BURNER_TOKEN }
                 });
-
-                if (!inviteRes.ok) {
-                    return interaction.editReply("❌ Discord's API rejected the invite code. Check your Burner Token or the invite link.");
-                }
-
                 const inviteData = await inviteRes.json();
                 
-                if (!inviteData.guild) {
-                    return interaction.editReply("❌ That invite does not point to a server (might be a group DM).");
-                }
-
-                serverName = inviteData.guild.name;
+                if (!inviteData.guild) return interaction.editReply("❌ That invite is invalid.");
+                
                 serverId = inviteData.guild.id;
+                serverName = inviteData.guild.name;
 
-                // 🌟 Extract Clan Data
-                if (inviteData.guild.clan) {
-                    if (inviteData.guild.clan.tag) tagText = inviteData.guild.clan.tag;
-                    if (inviteData.guild.clan.badge) {
-                        badgeURL = `https://cdn.discordapp.com/guild-tag-badges/${serverId}/${inviteData.guild.clan.badge}.png?size=256`;
+                // STEP 2: Fetch Preview to get Clan/Tag Data
+                const guildRes = await fetch(`https://discord.com/api/v10/guilds/${serverId}/preview`, {
+                    headers: { 'Authorization': process.env.BURNER_TOKEN }
+                });
+                const guildData = await guildRes.json();
+
+                // Extract Clan Data from Preview
+                if (guildData.clan) {
+                    if (guildData.clan.tag) tagText = guildData.clan.tag;
+                    if (guildData.clan.badge) {
+                        badgeURL = `https://cdn.discordapp.com/guild-tag-badges/${serverId}/${guildData.clan.badge}.png?size=256`;
                     }
                 }
             } catch (error) {
-                console.error("v9 Invite Fetch Error:", error);
-                return interaction.editReply("❌ Something went wrong while fetching the invite data.");
+                console.error("Multi-step Fetch Error:", error);
+                return interaction.editReply("❌ Failed to resolve server details.");
             }
 
-            // Apply clean text fallback if they have no tag setup!
+            // Fallback
             if (!tagText) tagText = serverName;
+
+            // ... (Rest of your UI and Thread creation logic remains the same)
+
 
             // ====================================================
             // 🛠️ TEMPORARY EMOJI CREATION (Only if badge exists!)

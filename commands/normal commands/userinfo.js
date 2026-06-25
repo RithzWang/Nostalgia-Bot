@@ -243,7 +243,7 @@ module.exports = {
                     let deviceText = [];
                     if (p.clientStatus?.desktop) deviceText.push('<:desktop:1519456094915792916> **Device:** Desktop');
                     if (p.clientStatus?.mobile) deviceText.push('<:mobile:1519456126276472832> **Device:** Mobile');
-                    if (p.clientStatus?.web) deviceText.push('🌐 **Device:** Web');
+                    if (p.clientStatus?.web) deviceText.push('<:desktop:1519456094915792916> **Device:** Web');
                     
                     container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## <:status:1519456062720446565> Presence Information\n${deviceText.join(' / ') || "Unknown"}`));
 

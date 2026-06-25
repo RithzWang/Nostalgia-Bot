@@ -124,7 +124,6 @@ module.exports = {
                     connectionsText = v9Data.connected_accounts.map(acc => acc.type.charAt(0).toUpperCase() + acc.type.slice(1)).join(', ');
                 }
 
-                // 🛠️ FIX: Fetches premium_type from both possible endpoint locations
                 const premiumType = v9Data.premium_type ?? v9Data.user?.premium_type;
                 if (premiumType === 1) nitroText = "Nitro Classic";
                 else if (premiumType === 2) nitroText = "Nitro";
@@ -252,12 +251,26 @@ module.exports = {
                 if (p && p.status !== 'offline') {
                     container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true));
                     
-                    let deviceText = [];
-                    if (p.clientStatus?.desktop) deviceText.push('<:desktop:1519456094915792916> **Devices:** Desktop');
-                    if (p.clientStatus?.mobile) deviceText.push('<:mobile:1519456126276472832> **Devices:** Mobile');
-                    if (p.clientStatus?.web) deviceText.push('🌐 **Devices:** Web');
+                    let deviceIcons = [];
                     
-                    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## <:status:1519456062720446565> Presence Information\n${deviceText.join(' / ') || "Unknown"}`));
+                    if (p.clientStatus?.desktop) {
+                        if (p.clientStatus.desktop === 'online') deviceIcons.push('<:desktop_online:1519790524024750150>');
+                        else if (p.clientStatus.desktop === 'idle') deviceIcons.push('<:desktop_idle:1519790620930084954>');
+                        else if (p.clientStatus.desktop === 'dnd') deviceIcons.push('<:desktop_dnd:1519790648750768219>');
+                    }
+                    if (p.clientStatus?.mobile) {
+                        if (p.clientStatus.mobile === 'online') deviceIcons.push('<:mobile_online:1519790679096688843>');
+                        else if (p.clientStatus.mobile === 'idle') deviceIcons.push('<:mobile_idle:1519790711258615879>');
+                        else if (p.clientStatus.mobile === 'dnd') deviceIcons.push('<:mobile_dnd:1519790739582881934>');
+                    }
+                    if (p.clientStatus?.web) {
+                        if (p.clientStatus.web === 'online') deviceIcons.push('<:web_online:1519795478089437366>');
+                        else if (p.clientStatus.web === 'idle') deviceIcons.push('<:web_idle:1519795507248103665>');
+                        else if (p.clientStatus.web === 'dnd') deviceIcons.push('<:web_dnd:1519795538512449638>');
+                    }
+                    
+                    const devicesStr = deviceIcons.length > 0 ? deviceIcons.join(' ') : 'Unknown';
+                    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## <:status:1519456062720446565> Presence Information\n<:desktop:1519456094915792916> **Devices:** ${devicesStr}`));
 
                     const activities = p.activities.filter(act => act.type !== 4);
                     if (activities.length > 0) {

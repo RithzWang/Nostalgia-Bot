@@ -52,40 +52,28 @@ function getBadgeEmoji(description, v9Data) {
     if (desc.includes('uses automod')) return '<:uses_automod:1468521528424402976>';
     if (desc.includes('premium app')) return '<:premium_app:1468653351863582842>';
 
-    // 🌟 Dynamic Nitro Tier Calculation
-    if (desc.includes('subscriber since')) {
-        let months = 0;
-        if (v9Data && v9Data.premium_since) {
-            months = Math.floor((Date.now() - new Date(v9Data.premium_since).getTime()) / (1000 * 60 * 60 * 24 * 30.44));
-        }
-        if (months >= 72) return '<:nitroopal:1468521541368152179>';
-        if (months >= 60) return '<:nitroruby:1468521545361002622>';
-        if (months >= 36) return '<:nitroemerald:1468521538193064119>';
-        if (months >= 24) return '<:nitrodiamond:1468521536699895839>';
-        if (months >= 12) return '<:nitroplatinum:1468521543846989947>';
-        if (months >= 6) return '<:nitrogold:1468521540113928194>';
-        if (months >= 3) return '<:nitrosilver:1468521546782867649>';
-        return '<:nitrobronze:1468521534921506841>';
-    }
+    // 🌟 Nitro Badges (Keyword catching for Discord's new text format)
+    if (desc.includes('opal')) return '<:nitroopal:1468521541368152179>';
+    if (desc.includes('ruby')) return '<:nitroruby:1468521545361002622>';
+    if (desc.includes('emerald')) return '<:nitroemerald:1468521538193064119>';
+    if (desc.includes('diamond')) return '<:nitrodiamond:1468521536699895839>';
+    if (desc.includes('platinum')) return '<:nitroplatinum:1468521543846989947>';
+    if (desc.includes('gold')) return '<:nitrogold:1468521540113928194>';
+    if (desc.includes('silver')) return '<:nitrosilver:1468521546782867649>';
+    if (desc.includes('bronze')) return '<:nitrobronze:1468521534921506841>';
 
-    // 🌟 Dynamic Boost Tier Calculation
-    if (desc.includes('server boosting since')) {
-        let months = 0;
-        if (v9Data && v9Data.premium_guild_since) {
-            months = Math.floor((Date.now() - new Date(v9Data.premium_guild_since).getTime()) / (1000 * 60 * 60 * 24 * 30.44));
-        }
-        if (months >= 24) return '<:bost24m:1468521497101340769>';
-        if (months >= 18) return '<:boost18m:1468521485659537577>';
-        if (months >= 15) return '<:boost15m:1468521482949890088>';
-        if (months >= 12) return '<:boost12m:1468521480852733965>';
-        if (months >= 9) return '<:boost9m:1468521495058972672>';
-        if (months >= 6) return '<:boost6m:1468521492500316370>';
-        if (months >= 3) return '<:boost3m:1468521490541707346>';
-        if (months >= 2) return '<:boost2m:1468521488704602268>';
-        return '<:boost1m:1468521487202783346>';
-    }
+    // 🌟 Boosting Badges (Keyword catching for exact months)
+    if (desc.includes('24 month')) return '<:bost24m:1468521497101340769>';
+    if (desc.includes('18 month')) return '<:boost18m:1468521485659537577>';
+    if (desc.includes('15 month')) return '<:boost15m:1468521482949890088>';
+    if (desc.includes('12 month') || desc.includes('1 year')) return '<:boost12m:1468521480852733965>';
+    if (desc.includes('9 month')) return '<:boost9m:1468521495058972672>';
+    if (desc.includes('6 month')) return '<:boost6m:1468521492500316370>';
+    if (desc.includes('3 month')) return '<:boost3m:1468521490541707346>';
+    if (desc.includes('2 month')) return '<:boost2m:1468521488704602268>';
+    if (desc.includes('1 month')) return '<:boost1m:1468521487202783346>';
 
-    // Fallback: If Discord adds a brand new badge we don't recognize yet, return it as clean text
+    // Fallback if Discord adds a brand new badge we don't recognize yet
     return `\`${description}\``; 
 }
 
@@ -102,18 +90,15 @@ module.exports = {
         let tempEmoji = null; 
 
         try {
-            // 2. Resolve User & Member
+            // 2. Resolve User & Member (Fixed silent error resolution)
+            const targetId = message.mentions.users.first()?.id || args[0] || message.author.id;
+            
             let targetUser;
-            if (message.mentions.users.first()) {
-                targetUser = message.mentions.users.first();
-            } else if (args[0]) {
-                try { targetUser = await message.client.users.fetch(args[0], { force: true }); } catch (e) { targetUser = null; }
-            } else {
-                targetUser = message.author;
+            try { 
+                targetUser = await message.client.users.fetch(targetId, { force: true }); 
+            } catch (err) { 
+                return message.reply("❌ User not found."); 
             }
-
-            if (!targetUser) return message.reply("❌ User not found.");
-            targetUser = await message.client.users.fetch(targetUser.id, { force: true });
 
             let targetMember = null;
             try { targetMember = await message.guild.members.fetch(targetUser.id); } catch (err) { targetMember = null; }
@@ -124,20 +109,22 @@ module.exports = {
             let badgesText = null, connectionsText = null, nitroText = null, globalBoostText = null, colorString = null;
 
             if (v9Data) {
-                // 👇 EMOJI MAPPER IN ACTION 👇
+                // Emoji Mapper in Action
                 if (v9Data.badges?.length > 0) {
-                    let emojiArray = [];
-                    for (const b of v9Data.badges) {
-                        emojiArray.push(getBadgeEmoji(b.description, v9Data));
-                    }
-                    badgesText = emojiArray.join(' ');
+                    badgesText = v9Data.badges.map(b => getBadgeEmoji(b.description, v9Data)).join(' ');
                 }
 
-                if (v9Data.connected_accounts?.length > 0) connectionsText = v9Data.connected_accounts.map(acc => acc.type.charAt(0).toUpperCase() + acc.type.slice(1)).join(', ');
+                if (v9Data.connected_accounts?.length > 0) {
+                    connectionsText = v9Data.connected_accounts.map(acc => acc.type.charAt(0).toUpperCase() + acc.type.slice(1)).join(', ');
+                }
+
                 if (v9Data.user?.premium_type === 1) nitroText = "Nitro Classic";
                 else if (v9Data.user?.premium_type === 2) nitroText = "Nitro";
                 else if (v9Data.user?.premium_type === 3) nitroText = "Nitro Basic";
-                if (v9Data.premium_guild_since) globalBoostText = `<t:${Math.floor(new Date(v9Data.premium_guild_since).getTime() / 1000)}:R>`;
+                
+                if (v9Data.premium_guild_since) {
+                    globalBoostText = `<t:${Math.floor(new Date(v9Data.premium_guild_since).getTime() / 1000)}:R>`;
+                }
                 
                 if (v9Data.user_profile?.theme_colors?.length === 2) {
                     colorString = `<:colours:1519455969078411285> **Profile Theme:**\nPrimary: \`#${v9Data.user_profile.theme_colors[0].toString(16).padStart(6, '0').toUpperCase()}\`, Accent: \`#${v9Data.user_profile.theme_colors[1].toString(16).padStart(6, '0').toUpperCase()}\``;
@@ -163,9 +150,13 @@ module.exports = {
                 }
             }
 
-            // 5. Build UI (Global User Section)
+            // ====================================================
+            // 5. BUILD UI: GLOBAL USER SECTION
+            // ====================================================
             const container = new ContainerBuilder();
-            let userInfoText = `<:at:1468487835613925396> <@${targetUser.id}> (\`${targetUser.username}\`)\n` +
+            
+            // Replaced actual mention with @username string to ensure no pinging whatsoever
+            let userInfoText = `<:at:1468487835613925396> **@${targetUser.username}** (\`${targetUser.username}\`)\n` +
                                `<:id:1468487725912166596> **ID:** \`${targetUser.id}\`\n` +
                                `<:identity:1468485794938224807> **Display Name:** \`${targetUser.globalName || targetUser.username}\`\n` +
                                `<:calendar:1470475413175144530> **Account Created:** <t:${Math.floor(targetUser.createdTimestamp / 1000)}:R>`;
@@ -203,7 +194,9 @@ module.exports = {
                     .addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(targetUser.bannerURL())));
             }
 
-            // 6. Build UI (Server Membership Section)
+            // ====================================================
+            // 6. BUILD UI: SERVER MEMBERSHIP SECTION
+            // ====================================================
             if (targetMember) {
                 container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true));
 
@@ -211,12 +204,6 @@ module.exports = {
                 const highestRoleText = targetMember.roles.highest.id === message.guild.id ? "@everyone" : `**@${targetMember.roles.highest.name}**`;
                 const sortedMembers = Array.from(message.guild.members.cache.sort((a,b)=>a.joinedTimestamp-b.joinedTimestamp).values());
                 const joinPosition = sortedMembers.indexOf(targetMember) + 1;
-
-                // 🛠️ DATABASE PLACEHOLDERS
-                const inviteLink = "https://discord.gg/invite"; 
-                const inviterName = "InviterName"; 
-                const msgTotal = 0, msgMonth = 0, msgWeek = 0, msgToday = 0; 
-                const joinMethodText = `[\`Invite Link\`](<${inviteLink}>) (**@${inviterName}**)`;
 
                 container.addSectionComponents(
                     new SectionBuilder()
@@ -227,9 +214,7 @@ module.exports = {
                                 `<:name:1468486108450127915> **Nickname:** ${targetMember.nickname || "None"}\n` +
                                 `<:roles:1468486024089964654> **Roles:** ${targetMember.roles.cache.size - 1} (Highest: ${highestRoleText})\n` +
                                 `<:calendar:1470475413175144530> **Joined:** <t:${Math.floor(targetMember.joinedTimestamp / 1000)}:R>\n` +
-                                `<:location:1468629967956086961> **Join Position:** ${joinPosition}/${message.guild.memberCount}\n` +
-                                `<:position_right:1468488077692502026> **Join Method:** ${joinMethodText}\n` +
-                                `<:talk:1468488155106640066> **Messages:** \`${msgTotal}\` (this month: \`${msgMonth}\` | this week: \`${msgWeek}\` | today: \`${msgToday}\`) (<:time:1468625930074460394> GMT+7)`
+                                `<:location:1468629967956086961> **Join Position:** ${joinPosition}/${message.guild.memberCount}`
                             )
                         )
                 );
@@ -249,7 +234,9 @@ module.exports = {
                         .addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(guildBanner)));
                 }
 
-                // Presence Section
+                // ====================================================
+                // 7. BUILD UI: PRESENCE SECTION
+                // ====================================================
                 container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true));
                 const p = message.guild.presences.cache.get(targetUser.id);
                 
@@ -305,11 +292,14 @@ module.exports = {
                     }
                 }
             } else {
+                // Not in server fallback
                 container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
                          .addTextDisplayComponents(new TextDisplayBuilder().setContent("-# The user is not in this server."));
             }
 
-            // 7. Build UI (Footer)
+            // ====================================================
+            // 8. BUILD UI: FOOTER
+            // ====================================================
             container
                 .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# <t:${Math.floor(Date.now() / 1000)}:f>`));

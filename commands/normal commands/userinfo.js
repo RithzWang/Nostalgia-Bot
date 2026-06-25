@@ -190,6 +190,28 @@ module.exports = {
                 );
             }
 
+            // 🌟 NEW: GLOBAL NAMEPLATE LOGIC
+            let globalNameplateUrl = null;
+            if (typeof targetUser.nameplateURL === 'function') {
+                // If discord.js updates to support it natively
+                globalNameplateUrl = targetUser.nameplateURL({ size: 4096 });
+            } else if (v9Data?.user?.collectibles?.nameplate?.asset) {
+                // Fallback resolver pulling directly from the profile endpoint
+                const npAsset = v9Data.user.collectibles.nameplate.asset;
+                globalNameplateUrl = `https://cdn.discordapp.com/nameplate-presets/${npAsset}.png`;
+            }
+
+            if (globalNameplateUrl) {
+                try {
+                    new URL(globalNameplateUrl); // Ensure it's a valid URL so it doesn't crash the container
+                    container.addSectionComponents(
+                        new SectionBuilder()
+                            .setThumbnailAccessory(new ThumbnailBuilder().setURL(globalNameplateUrl))
+                            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**<:star:1468618619318571029> Nameplate:**`))
+                    );
+                } catch (e) {}
+            }
+
             if (targetUser.bannerURL()) {
                 container
                     .addTextDisplayComponents(new TextDisplayBuilder().setContent("<:discord:1468638005169229940> **Profile Banner:**"))
@@ -234,6 +256,26 @@ module.exports = {
                             .setThumbnailAccessory(new ThumbnailBuilder().setURL(targetMember.avatarDecorationURL({ size: 4096 })))
                             .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**<:star:1468618619318571029> Per-server Avatar Decoration:**`))
                     );
+                }
+
+                // 🌟 NEW: PER-SERVER NAMEPLATE LOGIC
+                let serverNameplateUrl = null;
+                if (typeof targetMember.nameplateURL === 'function') {
+                    serverNameplateUrl = targetMember.nameplateURL({ size: 4096 });
+                } else if (v9Data?.guild_member?.collectibles?.nameplate?.asset) {
+                    const npAsset = v9Data.guild_member.collectibles.nameplate.asset;
+                    serverNameplateUrl = `https://cdn.discordapp.com/nameplate-presets/${npAsset}.png`;
+                }
+
+                if (serverNameplateUrl && serverNameplateUrl !== globalNameplateUrl) {
+                    try {
+                        new URL(serverNameplateUrl); // Ensure validity
+                        container.addSectionComponents(
+                            new SectionBuilder()
+                                .setThumbnailAccessory(new ThumbnailBuilder().setURL(serverNameplateUrl))
+                                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**<:star:1468618619318571029> Per-server Nameplate:**`))
+                        );
+                    } catch (e) {}
                 }
 
                 const guildBanner = targetMember.bannerURL ? targetMember.bannerURL({ size: 4096 }) : null;

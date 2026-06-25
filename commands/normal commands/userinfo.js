@@ -35,9 +35,10 @@ function getBadgeEmoji(description, v9Data) {
     if (desc.includes('moderator program')) return '<:mod_program_alumni:1519677756013547620>';
     if (desc.includes('early supporter')) return '<:early_supporter:1519677695242272929>';
     if (desc.includes('originally known as') || desc.includes('legacy username')) return '<:originally_known_as:1519677872116076576>';
-    if (desc.includes('completed a quest')) return '<:completed_a_quest:1519677842709811240>';
+        if (desc.includes('completed a quest') || desc.includes('quest')) return '<:completed_a_quest:1519677842709811240>';
     if (desc.includes('level') && desc.includes('reached')) return '<:april_fools_2026:1519721189755588679>';
-    if (desc.includes('collected the orb profile badge')) return '<:obs:1519677786728693863>';
+    if (desc.includes('orb')) return '<:orb:1519677786728693863>';
+
 
     // Gifting
     if (desc.includes('patron') || desc.includes('1 gift')) return '<:GiftingBadge_1x:1513283763931582684>';
@@ -115,10 +116,12 @@ module.exports = {
 
             let badgesText = null, connectionsText = null, nitroText = null, globalBoostText = null, colorString = null;
 
-            if (v9Data) {
+                        if (v9Data) {
                 if (v9Data.badges?.length > 0) {
-                    badgesText = v9Data.badges.map(b => getBadgeEmoji(b.description, v9Data)).join(' ');
+                    // 🛠️ FIX: Pass both the description AND the ID to the mapper so it never misses a badge!
+                    badgesText = v9Data.badges.map(b => getBadgeEmoji(b.description || b.id || "", v9Data)).join(' ');
                 }
+
 
                 if (v9Data.connected_accounts?.length > 0) {
                     connectionsText = v9Data.connected_accounts.map(acc => acc.type.charAt(0).toUpperCase() + acc.type.slice(1)).join(', ');

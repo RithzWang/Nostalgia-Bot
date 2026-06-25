@@ -203,7 +203,6 @@ module.exports = {
                 const sortedMembers = Array.from(message.guild.members.cache.sort((a,b)=>a.joinedTimestamp-b.joinedTimestamp).values());
                 const joinPosition = sortedMembers.indexOf(targetMember) + 1;
 
-                // 🛠️ FIX: Safe Builder Logic (Won't crash if Server Icon is null)
                 const membershipSection = new SectionBuilder()
                     .addTextDisplayComponents(
                         new TextDisplayBuilder().setContent("## <:home:1468487632328589458> Server Membership"), 
@@ -278,30 +277,45 @@ module.exports = {
                         container.addSectionComponents(actSection);
                     }
 
+                    // 🛠️ FIX: Bulletproof Custom Status Logic
                     const customStatus = p.activities.find(act => act.type === 4);
                     if (customStatus) {
-                        const statusSection = new SectionBuilder();
                         let statusEmojiUrl = null;
-                        let defaultEmojiText = "";
+                        let defaultEmoji = "";
 
+                        // Resolve Emoji Type
                         if (customStatus.emoji) {
                             if (customStatus.emoji.id) {
                                 statusEmojiUrl = `https://cdn.discordapp.com/emojis/${customStatus.emoji.id}.${customStatus.emoji.animated ? 'gif' : 'png'}`;
                             } else if (customStatus.emoji.name) {
-                                defaultEmojiText = `\n-# **Emoji:** ${customStatus.emoji.name}`;
+                                defaultEmoji = `${customStatus.emoji.name} `;
                             }
                         }
+
+                        let statusText = customStatus.state || "";
                         
-                        if (statusEmojiUrl) statusSection.setThumbnailAccessory(new ThumbnailBuilder().setURL(statusEmojiUrl));
+                        // Combine default emoji + text cleanly onto ONE line to avoid markdown parsing errors
+                        let finalContent = `<:customstatus:1519456000963252294> **Custom Status:**\n-# **State:** ${defaultEmoji}${statusText}`.trim();
 
-                        let stateText = customStatus.state ? `\n-# **State:** ${customStatus.state}` : "";
+                        const statusDisplay = new TextDisplayBuilder().setContent(finalContent);
 
-                        statusSection.addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent(`<:customstatus:1519456000963252294> **Custom Status:**${defaultEmojiText}${stateText}`)
-                        );
-                        container.addSectionComponents(statusSection);
+                        // Only wrap in a SectionBuilder if we have a Custom Image Thumbnail
+                        if (statusEmojiUrl) {
+                            container.addSectionComponents(
+                                new SectionBuilder()
+                                    .setThumbnailAccessory(new ThumbnailBuilder().setURL(statusEmojiUrl))
+                                    .addTextDisplayComponents(statusDisplay)
+                            );
+                        } else {
+                            // If it's just Unicode emoji + text, drop it straight into the container as TextDisplay!
+                            container.addTextDisplayComponents(statusDisplay);
+                        }
                     }
                 }
+            } else {
+                // Not in server fallback
+                container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
+                         .addTextDisplayComponents(new TextDisplayBuilder().setContent("-# The user is not in this server."));
             }
 
             // ====================================================
@@ -319,21 +333,12 @@ module.exports = {
             
             if (tempEmoji) setTimeout(() => tempEmoji.delete().catch(() => {}), 5000);
 
-                } catch (error) {
+        } catch (error) {
             console.error("Userinfo Error:", error?.rawError || error);
-            
-            // 🕵️ Extract the deeply nested validation errors!
-            let deepError = error?.rawError?.message || error?.message || "Unknown Error";
-            if (error?.rawError?.errors) {
-                deepError = JSON.stringify(error.rawError.errors, null, 2);
-                // Slice to prevent hitting Discord's 2000 character limit
-                if (deepError.length > 1800) deepError = deepError.slice(0, 1800) + '\n...';
-            }
-            
-            await message.reply(`❌ **API Error:** \`Received one or more errors\`\n**Exact Reason:**\n\`\`\`json\n${deepError}\n\`\`\``).catch(() => {});
+            const errMessage = error?.rawError?.message || error?.message || "Unknown UI Build Error";
+            await message.reply(`❌ **API Error:** \`${errMessage}\`\n*(Send me this error if it crashes again!)*`).catch(() => {});
             
             if (tempEmoji) tempEmoji.delete().catch(() => {});
         }
-
     }
 };

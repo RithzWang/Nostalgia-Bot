@@ -319,13 +319,21 @@ module.exports = {
             
             if (tempEmoji) setTimeout(() => tempEmoji.delete().catch(() => {}), 5000);
 
-        } catch (error) {
-            // 🚨 EXPOSE THE ERROR SO YOU KNOW WHAT CRASHED! 🚨
+                } catch (error) {
             console.error("Userinfo Error:", error?.rawError || error);
-            const errMessage = error?.rawError?.message || error?.message || "Unknown UI Build Error";
-            await message.reply(`❌ **API Error:** \`${errMessage}\`\n*(Send me this error if it crashes again!)*`).catch(() => {});
+            
+            // 🕵️ Extract the deeply nested validation errors!
+            let deepError = error?.rawError?.message || error?.message || "Unknown Error";
+            if (error?.rawError?.errors) {
+                deepError = JSON.stringify(error.rawError.errors, null, 2);
+                // Slice to prevent hitting Discord's 2000 character limit
+                if (deepError.length > 1800) deepError = deepError.slice(0, 1800) + '\n...';
+            }
+            
+            await message.reply(`❌ **API Error:** \`Received one or more errors\`\n**Exact Reason:**\n\`\`\`json\n${deepError}\n\`\`\``).catch(() => {});
             
             if (tempEmoji) tempEmoji.delete().catch(() => {});
         }
+
     }
 };

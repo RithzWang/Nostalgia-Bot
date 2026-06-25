@@ -124,9 +124,11 @@ module.exports = {
                     connectionsText = v9Data.connected_accounts.map(acc => acc.type.charAt(0).toUpperCase() + acc.type.slice(1)).join(', ');
                 }
 
-                if (v9Data.user?.premium_type === 1) nitroText = "Nitro Classic";
-                else if (v9Data.user?.premium_type === 2) nitroText = "Nitro";
-                else if (v9Data.user?.premium_type === 3) nitroText = "Nitro Basic";
+                // 🛠️ FIX: Fetches premium_type from both possible endpoint locations
+                const premiumType = v9Data.premium_type ?? v9Data.user?.premium_type;
+                if (premiumType === 1) nitroText = "Nitro Classic";
+                else if (premiumType === 2) nitroText = "Nitro";
+                else if (premiumType === 3) nitroText = "Nitro Basic";
                 
                 if (v9Data.premium_guild_since) {
                     globalBoostText = `<t:${Math.floor(new Date(v9Data.premium_guild_since).getTime() / 1000)}:R>`;
@@ -316,7 +318,6 @@ module.exports = {
 
                         if (customStatus.emoji) {
                             if (customStatus.emoji.id) {
-                                // Explicitly define size for custom emojis to guarantee they render
                                 statusEmojiUrl = `https://cdn.discordapp.com/emojis/${customStatus.emoji.id}.${customStatus.emoji.animated ? 'gif' : 'png'}?size=1024`;
                             } else if (customStatus.emoji.name) {
                                 defaultEmoji = `${customStatus.emoji.name} `;
@@ -333,7 +334,6 @@ module.exports = {
                         let stateText = customStatus.state || "";
                         let finalContent = `<:customstatus:1519456000963252294> **Custom Status:**`;
                         
-                        // Prevent ghost text if there is no default emoji and no state text
                         if (defaultEmoji || stateText) {
                             finalContent += `\n-# **State:** ${defaultEmoji}${stateText}`;
                         }

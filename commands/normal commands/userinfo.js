@@ -52,7 +52,7 @@ function getBadgeEmoji(description, v9Data) {
     if (desc.includes('uses automod')) return '<:uses_automod:1468521528424402976>';
     if (desc.includes('premium app')) return '<:premium_app:1468653351863582842>';
 
-    // 🌟 Nitro Badges (Aggressively catches "Subscriber since")
+    // 🌟 Nitro Badges 
     if (desc.includes('subscriber since') || desc.includes('opal') || desc.includes('ruby') || desc.includes('emerald') || desc.includes('diamond') || desc.includes('platinum') || desc.includes('gold') || desc.includes('silver') || desc.includes('bronze')) {
         let months = 0;
         if (v9Data && v9Data.premium_since) {
@@ -69,7 +69,7 @@ function getBadgeEmoji(description, v9Data) {
         return '<:nitrobronze:1468521534921506841>';
     }
 
-    // 🌟 Boosting Badges (Aggressively catches "Server Boosting since")
+    // 🌟 Boosting Badges
     if (desc.includes('server boosting') || desc.includes('boosting since') || desc.includes('booster since') || desc.includes('month') || desc.includes('year')) {
         let months = 0;
         if (v9Data && v9Data.premium_guild_since) {
@@ -256,26 +256,42 @@ module.exports = {
                     
                     container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## <:status:1519456062720446565> Presence Information\n${deviceText.join(' / ') || "Unknown"}`));
 
+                    // 🛠️ FIX: Bulletproof Activity Parsing
                     const activity = p.activities.find(act => act.type !== 4);
                     if (activity) {
                         const actSection = new SectionBuilder();
                         let actImage = null;
                         
-                        if (activity.name === 'Spotify' && activity.assets?.largeImage) {
-                            actImage = `https://i.scdn.co/image/${activity.assets.largeImage.replace('spotify:', '')}`;
-                        } else if (activity.assets?.largeImage) {
-                            const assetId = activity.assets.largeImage.split(':')[1] || activity.assets.largeImage;
-                            actImage = `https://cdn.discordapp.com/app-assets/${activity.applicationId}/${assetId}.png`;
+                        try {
+                            if (activity.name === 'Spotify' && activity.assets?.largeImage) {
+                                actImage = `https://i.scdn.co/image/${activity.assets.largeImage.replace('spotify:', '')}`;
+                            } else if (activity.assets?.largeImage) {
+                                if (activity.assets.largeImage.startsWith('mp:')) {
+                                    // Handle Media Proxy correctly for Custom RPCs!
+                                    actImage = `https://media.discordapp.net/${activity.assets.largeImage.replace('mp:', '')}`;
+                                } else if (activity.applicationId) {
+                                    const assetId = activity.assets.largeImage.split(':')[1] || activity.assets.largeImage;
+                                    actImage = `https://cdn.discordapp.com/app-assets/${activity.applicationId}/${assetId}.png`;
+                                }
+                            }
+                        } catch (e) { 
+                            actImage = null; // Failsafe
                         }
 
-                        if (actImage) actSection.setThumbnailAccessory(new ThumbnailBuilder().setURL(actImage));
+                        // Verify URL is strictly valid before adding thumbnail
+                        if (actImage && actImage.startsWith('http')) {
+                            try {
+                                new URL(actImage); 
+                                actSection.setThumbnailAccessory(new ThumbnailBuilder().setURL(actImage));
+                            } catch (e) {} 
+                        }
 
                         let actTypeString = "Playing";
                         if (activity.type === 2) actTypeString = "Listening to";
                         else if (activity.type === 3) actTypeString = "Watching";
                         else if (activity.type === 5) actTypeString = "Competing in";
 
-                        let actContent = `<:activity:1519456032772980776> **Activity:** (${actTypeString} **${activity.name}**)`;
+                        let actContent = `<:activity:1519456032772980776> **Activity:** ${actTypeString} **${activity.name || "Unknown"}**`;
                         if (activity.details) actContent += `\n-# **${activity.name === 'Spotify' ? 'Song' : 'Details'}:** ${activity.details}`;
                         if (activity.state) actContent += `\n-# **${activity.name === 'Spotify' ? 'Artist' : 'State'}:** ${activity.state}`;
                         if (activity.assets?.largeText && activity.name === 'Spotify') actContent += `\n-# **Album:** ${activity.assets.largeText}`;
@@ -284,30 +300,32 @@ module.exports = {
                         container.addSectionComponents(actSection);
                     }
 
-                    // 🛠️ FIX: Custom Emoji goes to Thumbnail, Default goes to Text
+                    // 🛠️ FIX: Bulletproof Custom Status Parsing
                     const customStatus = p.activities.find(act => act.type === 4);
                     if (customStatus) {
                         const statusSection = new SectionBuilder();
                         let statusEmojiUrl = null;
-                        let defaultEmojiText = "";
+                        let defaultEmoji = "";
 
                         if (customStatus.emoji) {
                             if (customStatus.emoji.id) {
                                 statusEmojiUrl = `https://cdn.discordapp.com/emojis/${customStatus.emoji.id}.${customStatus.emoji.animated ? 'gif' : 'png'}`;
                             } else if (customStatus.emoji.name) {
-                                defaultEmojiText = `\n-# **Emoji:** ${customStatus.emoji.name}`;
+                                defaultEmoji = `\n-# **Emoji:** ${customStatus.emoji.name}`;
                             }
                         }
                         
-                        // Only add a Thumbnail if there is a custom image emoji URL to display
                         if (statusEmojiUrl) {
-                            statusSection.setThumbnailAccessory(new ThumbnailBuilder().setURL(statusEmojiUrl));
+                            try {
+                                new URL(statusEmojiUrl);
+                                statusSection.setThumbnailAccessory(new ThumbnailBuilder().setURL(statusEmojiUrl));
+                            } catch (e) {}
                         }
 
                         let stateText = customStatus.state ? `\n-# **State:** ${customStatus.state}` : "";
 
                         statusSection.addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent(`<:customstatus:1519456000963252294> **Custom Status:**${defaultEmojiText}${stateText}`)
+                            new TextDisplayBuilder().setContent(`<:customstatus:1519456000963252294> **Custom Status:**${defaultEmoji}${stateText}`)
                         );
                         container.addSectionComponents(statusSection);
                     }
@@ -336,7 +354,7 @@ module.exports = {
         } catch (error) {
             console.error("Userinfo Error:", error?.rawError || error);
             
-            // 🕵️ Extract deep error
+            // 🕵️ Extract deep error so we NEVER get left in the dark again
             let deepError = error?.message || "Unknown UI Build Error";
             if (error?.rawError?.errors) {
                 deepError = JSON.stringify(error.rawError.errors, null, 2);

@@ -66,7 +66,8 @@ function getBadgeEmoji(description, v9Data) {
         if (desc.includes('platinum') || months >= 12) return '<:nitroplatinum:1468521543846989947>';
         if (desc.includes('gold') || months >= 6) return '<:nitrogold:1468521540113928194>';
         if (desc.includes('silver') || months >= 3) return '<:nitrosilver:1468521546782867649>';
-        return '<:nitrobronze:1468521534921506841>';
+        if (desc.includes('bronze') || months >= 1) return '<:nitrobronze:1468521534921506841>';
+        return '<:nitro:1468521533659156480>';
     }
 
     // 🌟 Boosting Badges
@@ -256,51 +257,62 @@ module.exports = {
                     
                     container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## <:status:1519456062720446565> Presence Information\n${deviceText.join(' / ') || "Unknown"}`));
 
-                    // 🛠️ FIX: Bulletproof Activity Parsing
-                    const activity = p.activities.find(act => act.type !== 4);
-                    if (activity) {
+                    // 🛠️ MULTIPLE ACTIVITIES LISTER
+                    const activities = p.activities.filter(act => act.type !== 4);
+                    if (activities.length > 0) {
                         const actSection = new SectionBuilder();
-                        let actImage = null;
                         
-                        try {
-                            if (activity.name === 'Spotify' && activity.assets?.largeImage) {
-                                actImage = `https://i.scdn.co/image/${activity.assets.largeImage.replace('spotify:', '')}`;
-                            } else if (activity.assets?.largeImage) {
-                                if (activity.assets.largeImage.startsWith('mp:')) {
-                                    // Handle Media Proxy correctly for Custom RPCs!
-                                    actImage = `https://media.discordapp.net/${activity.assets.largeImage.replace('mp:', '')}`;
-                                } else if (activity.applicationId) {
-                                    const assetId = activity.assets.largeImage.split(':')[1] || activity.assets.largeImage;
-                                    actImage = `https://cdn.discordapp.com/app-assets/${activity.applicationId}/${assetId}.png`;
-                                }
-                            }
-                        } catch (e) { 
-                            actImage = null; // Failsafe
-                        }
-
-                        // Verify URL is strictly valid before adding thumbnail
-                        if (actImage && actImage.startsWith('http')) {
+                        // Grab the thumbnail from the FIRST valid activity that provides one
+                        let actImage = null;
+                        for (const activity of activities) {
                             try {
-                                new URL(actImage); 
-                                actSection.setThumbnailAccessory(new ThumbnailBuilder().setURL(actImage));
-                            } catch (e) {} 
+                                if (activity.name === 'Spotify' && activity.assets?.largeImage) {
+                                    actImage = `https://i.scdn.co/image/${activity.assets.largeImage.replace('spotify:', '')}`;
+                                } else if (activity.assets?.largeImage) {
+                                    if (activity.assets.largeImage.startsWith('mp:')) {
+                                        actImage = `https://media.discordapp.net/${activity.assets.largeImage.replace('mp:', '')}`;
+                                    } else if (activity.applicationId) {
+                                        const assetId = activity.assets.largeImage.split(':')[1] || activity.assets.largeImage;
+                                        actImage = `https://cdn.discordapp.com/app-assets/${activity.applicationId}/${assetId}.png`;
+                                    }
+                                }
+                            } catch (e) {}
+
+                            if (actImage && actImage.startsWith('http')) {
+                                try {
+                                    new URL(actImage); 
+                                    actSection.setThumbnailAccessory(new ThumbnailBuilder().setURL(actImage));
+                                    break; // Found an image, stop searching!
+                                } catch (e) {
+                                    actImage = null;
+                                } 
+                            }
                         }
 
-                        let actTypeString = "Playing";
-                        if (activity.type === 2) actTypeString = "Listening to";
-                        else if (activity.type === 3) actTypeString = "Watching";
-                        else if (activity.type === 5) actTypeString = "Competing in";
+                        // Determine header based on how many activities they are doing
+                        let actContent = `<:activity:1519456032772980776> **${activities.length > 1 ? 'Activities' : 'Activity'}:**`;
 
-                        let actContent = `<:activity:1519456032772980776> **Activity:** ${actTypeString} **${activity.name || "Unknown"}**`;
-                        if (activity.details) actContent += `\n-# **${activity.name === 'Spotify' ? 'Song' : 'Details'}:** ${activity.details}`;
-                        if (activity.state) actContent += `\n-# **${activity.name === 'Spotify' ? 'Artist' : 'State'}:** ${activity.state}`;
-                        if (activity.assets?.largeText && activity.name === 'Spotify') actContent += `\n-# **Album:** ${activity.assets.largeText}`;
+                        // Loop through all non-custom activities and format them
+                        for (const activity of activities) {
+                            let actTypeString = "Playing";
+                            if (activity.type === 2) actTypeString = "Listening to";
+                            else if (activity.type === 3) actTypeString = "Watching";
+                            else if (activity.type === 5) actTypeString = "Competing in";
+
+                            actContent += `\n${actTypeString} **${activity.name || "Unknown"}**`;
+                            
+                            // ONLY extract subtext/details if it is Spotify to prevent Custom RPC Spam!
+                            if (activity.name === 'Spotify') {
+                                if (activity.details) actContent += `\n-# **Song:** ${activity.details}`;
+                                if (activity.state) actContent += `\n-# **Artist:** ${activity.state}`;
+                                if (activity.assets?.largeText) actContent += `\n-# **Album:** ${activity.assets.largeText}`;
+                            }
+                        }
 
                         actSection.addTextDisplayComponents(new TextDisplayBuilder().setContent(actContent));
                         container.addSectionComponents(actSection);
                     }
 
-                    // 🛠️ FIX: Bulletproof Custom Status Parsing
                     const customStatus = p.activities.find(act => act.type === 4);
                     if (customStatus) {
                         const statusSection = new SectionBuilder();
@@ -331,7 +343,6 @@ module.exports = {
                     }
                 }
             } else {
-                // Not in server fallback
                 container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
                          .addTextDisplayComponents(new TextDisplayBuilder().setContent("-# The user is not in this server."));
             }
@@ -354,7 +365,6 @@ module.exports = {
         } catch (error) {
             console.error("Userinfo Error:", error?.rawError || error);
             
-            // 🕵️ Extract deep error so we NEVER get left in the dark again
             let deepError = error?.message || "Unknown UI Build Error";
             if (error?.rawError?.errors) {
                 deepError = JSON.stringify(error.rawError.errors, null, 2);

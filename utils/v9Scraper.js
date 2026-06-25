@@ -10,7 +10,7 @@ async function fetchAdvancedProfile(userId) {
     }
 
     try {
-        const response = await fetch(`https://discord.com/api/v9/users/${userId}/profile`, {
+        const response = await fetch(`https://discord.com/api/v10/users/${userId}/profile`, {
             method: 'GET',
             headers: {
                 'Authorization': userToken,

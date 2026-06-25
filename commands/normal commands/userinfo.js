@@ -149,7 +149,7 @@ module.exports = {
                 if (badgeURL) {
                     const storageGuild = message.client.guilds.cache.get('1490435762372481275');
                     try {
-                        tempEmoji = await storageGuild.emojis.create({ attachment: badgeURL, name: `T${targetUser.id.slice(-5)}` });
+                        tempEmoji = await storageGuild.emojis.create({ attachment: badgeURL, name: `TagBadge` });
                         serverTagLine = `${tempEmoji} ${targetUser.primaryGuild.tag}`;
                     } catch (e) { serverTagLine = targetUser.primaryGuild.tag; }
                 } else {

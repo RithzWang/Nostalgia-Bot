@@ -207,21 +207,25 @@ module.exports = {
                 const sortedMembers = Array.from(message.guild.members.cache.sort((a,b)=>a.joinedTimestamp-b.joinedTimestamp).values());
                 const joinPosition = sortedMembers.indexOf(targetMember) + 1;
 
-                const membershipSection = new SectionBuilder()
-                    .addTextDisplayComponents(
-                        new TextDisplayBuilder().setContent("## <:home:1468487632328589458> Server Membership"), 
-                        new TextDisplayBuilder().setContent(
-                            `<:name:1468486108450127915> **Nickname:** ${targetMember.nickname || "None"}\n` +
-                            `<:roles:1468486024089964654> **Roles:** ${targetMember.roles.cache.size - 1} (Highest: ${highestRoleText})\n` +
-                            `<:calendar:1470475413175144530> **Joined:** <t:${Math.floor(targetMember.joinedTimestamp / 1000)}:R>\n` +
-                            `<:location:1468629967956086961> **Join Position:** ${joinPosition}`
-                        )
-                    );
-                
+                const membershipContent = new TextDisplayBuilder().setContent(
+                    `<:name:1468486108450127915> **Nickname:** ${targetMember.nickname || "None"}\n` +
+                    `<:roles:1468486024089964654> **Roles:** ${targetMember.roles.cache.size - 1} (Highest: ${highestRoleText})\n` +
+                    `<:calendar:1470475413175144530> **Joined:** <t:${Math.floor(targetMember.joinedTimestamp / 1000)}:R>\n` +
+                    `<:location:1468629967956086961> **Join Position:** ${joinPosition}`
+                );
+
                 if (serverIconUrl) {
-                    membershipSection.setThumbnailAccessory(new ThumbnailBuilder().setURL(serverIconUrl));
+                    container.addSectionComponents(
+                        new SectionBuilder()
+                            .setThumbnailAccessory(new ThumbnailBuilder().setURL(serverIconUrl))
+                            .addTextDisplayComponents(new TextDisplayBuilder().setContent("## <:home:1468487632328589458> Server Membership"), membershipContent)
+                    );
+                } else {
+                    container.addTextDisplayComponents(
+                        new TextDisplayBuilder().setContent("## <:home:1468487632328589458> Server Membership"), 
+                        membershipContent
+                    );
                 }
-                container.addSectionComponents(membershipSection);
                 
                 if (targetMember.avatarDecorationURL() && targetMember.avatarDecorationURL() !== targetUser.avatarDecorationURL()) {
                     container.addSectionComponents(
@@ -253,56 +257,50 @@ module.exports = {
                     
                     container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## <:status:1519456062720446565> Presence Information\n${deviceText.join(' / ') || "Unknown"}`));
 
-                    // 🛠️ MULTIPLE ACTIVITIES LISTER & SPOTIFY RESTRICTION
                     const activities = p.activities.filter(act => act.type !== 4);
                     if (activities.length > 0) {
                         const actSection = new SectionBuilder();
                         
-                        // We ONLY fetch a Thumbnail if they are listening to Spotify!
-                        const spotifyAct = activities.find(a => a.name === 'Spotify');
-                        if (spotifyAct && spotifyAct.assets?.largeImage) {
+                        let actImage = null;
+                        for (const activity of activities) {
                             try {
-                                const actImage = `https://i.scdn.co/image/${spotifyAct.assets.largeImage.replace('spotify:', '')}`;
-                                actSection.setThumbnailAccessory(new ThumbnailBuilder().setURL(actImage));
+                                if (activity.name === 'Spotify' && activity.assets?.largeImage) {
+                                    actImage = `https://i.scdn.co/image/${activity.assets.largeImage.replace('spotify:', '')}`;
+                                } else if (activity.assets?.largeImage) {
+                                    if (activity.assets.largeImage.startsWith('mp:')) {
+                                        actImage = `https://media.discordapp.net/${activity.assets.largeImage.replace('mp:', '')}`;
+                                    } else if (activity.applicationId) {
+                                        const assetId = activity.assets.largeImage.split(':')[1] || activity.assets.largeImage;
+                                        actImage = `https://cdn.discordapp.com/app-assets/${activity.applicationId}/${assetId}.png`;
+                                    }
+                                }
                             } catch (e) {}
+
+                            if (actImage && actImage.startsWith('http')) {
+                                try {
+                                    new URL(actImage); 
+                                    actSection.setThumbnailAccessory(new ThumbnailBuilder().setURL(actImage));
+                                    break; 
+                                } catch (e) {
+                                    actImage = null;
+                                } 
+                            }
                         }
 
-                        let actContent = `<:activity:1519456032772980776> **Activities:**`;
+                        let actContent = `<:activity:1519456032772980776> **${activities.length > 1 ? 'Activities' : 'Activity'}:**`;
 
-                        if (activities.length === 1) {
-                            // Format for Single Activity
-                            const act = activities[0];
-                            let typeStr = "Playing";
-                            if (act.type === 2) typeStr = "Listening to";
-                            else if (act.type === 3) typeStr = "Watching";
-                            else if (act.type === 5) typeStr = "Competing in";
+                        for (const activity of activities) {
+                            let actTypeString = "Playing";
+                            if (activity.type === 2) actTypeString = "Listening to";
+                            else if (activity.type === 3) actTypeString = "Watching";
+                            else if (activity.type === 5) actTypeString = "Competing in";
 
-                            actContent += ` ${typeStr} **${act.name || "Unknown"}**`;
-                            if (act.name === 'Spotify') {
-                                if (act.details) actContent += `\n-# **Song:** ${act.details}`;
-                                if (act.state) actContent += `\n-# **Artist:** ${act.state}`;
-                                if (act.assets?.largeText) actContent += `\n-# **Album:** ${act.assets.largeText}`;
-                            }
-                        } else {
-                            // Format for Multiple Activities
-                            actContent += `\n`;
-                            for (let i = 0; i < activities.length; i++) {
-                                const act = activities[i];
-                                let typeStr = "Playing";
-                                if (act.type === 2) typeStr = "Listening to";
-                                else if (act.type === 3) typeStr = "Watching";
-                                else if (act.type === 5) typeStr = "Competing in";
-
-                                actContent += `${i + 1}. ${typeStr} **${act.name || "Unknown"}**`;
-                                
-                                // Only expand details for Spotify
-                                if (act.name === 'Spotify') {
-                                    if (act.details) actContent += `\n-# **Song:** ${act.details}`;
-                                    if (act.state) actContent += `\n-# **Artist:** ${act.state}`;
-                                    if (act.assets?.largeText) actContent += `\n-# **Album:** ${act.assets.largeText}`;
-                                }
-                                
-                                if (i < activities.length - 1) actContent += `\n`;
+                            actContent += `\n${actTypeString} **${activity.name || "Unknown"}**`;
+                            
+                            if (activity.name === 'Spotify') {
+                                if (activity.details) actContent += `\n-# **Song:** ${activity.details}`;
+                                if (activity.state) actContent += `\n-# **Artist:** ${activity.state}`;
+                                if (activity.assets?.largeText) actContent += `\n-# **Album:** ${activity.assets.largeText}`;
                             }
                         }
 
@@ -318,7 +316,8 @@ module.exports = {
 
                         if (customStatus.emoji) {
                             if (customStatus.emoji.id) {
-                                statusEmojiUrl = `https://cdn.discordapp.com/emojis/${customStatus.emoji.id}.${customStatus.emoji.animated ? 'gif' : 'png'}`;
+                                // Explicitly define size for custom emojis to guarantee they render
+                                statusEmojiUrl = `https://cdn.discordapp.com/emojis/${customStatus.emoji.id}.${customStatus.emoji.animated ? 'gif' : 'png'}?size=1024`;
                             } else if (customStatus.emoji.name) {
                                 defaultEmoji = `${customStatus.emoji.name} `;
                             }
@@ -332,11 +331,24 @@ module.exports = {
                         }
 
                         let stateText = customStatus.state || "";
+                        let finalContent = `<:customstatus:1519456000963252294> **Custom Status:**`;
+                        
+                        // Prevent ghost text if there is no default emoji and no state text
+                        if (defaultEmoji || stateText) {
+                            finalContent += `\n-# **State:** ${defaultEmoji}${stateText}`;
+                        }
 
-                        statusSection.addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent(`<:customstatus:1519456000963252294> **Custom Status:**\n-# **State:** ${defaultEmoji}${stateText}`.trim())
-                        );
-                        container.addSectionComponents(statusSection);
+                        const statusDisplay = new TextDisplayBuilder().setContent(finalContent.trim());
+
+                        if (statusEmojiUrl) {
+                            container.addSectionComponents(
+                                new SectionBuilder()
+                                    .setThumbnailAccessory(new ThumbnailBuilder().setURL(statusEmojiUrl))
+                                    .addTextDisplayComponents(statusDisplay)
+                            );
+                        } else {
+                            container.addTextDisplayComponents(statusDisplay);
+                        }
                     }
                 }
             } else {

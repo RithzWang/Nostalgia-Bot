@@ -113,7 +113,7 @@ client.on('messageCreate', async (message) => {
 
 
 // --- WELCOME LOGIC ---
-const { createWelcomeImage } = require('./welcomeCanvas9.js');
+const { createWelcomeImage } = require('./welcomeCanvas10.js');
 const { fetchAdvancedProfile } = require('./utils/v9Scraper');
 
 client.on('guildMemberAdd', async (member) => {

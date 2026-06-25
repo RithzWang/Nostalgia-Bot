@@ -25,19 +25,19 @@ function getBadgeEmoji(description, v9Data) {
     if (desc.includes('events')) return '<:hypesquad_events:1519665848418172968>';
 
     // Bug Hunter
-    if (desc.includes('tier 2') || desc.includes('golden') || desc.includes('gold bug')) return '<:bughuntergold:1468521499160739841>';
-    if (desc.includes('bug hunter')) return '<:bughuntergreen:1468521502377906328>';
+    if (desc.includes('tier 2') || desc.includes('golden') || desc.includes('gold bug')) return '<:golden_bug_hunter:1519677604960141424>';
+    if (desc.includes('bug hunter')) return '<:bug_hunter:1519677633380614327>';
 
     // Developer / Staff / Partner / Legacy
-    if (desc.includes('early verified bot developer')) return '<:earlyverifiedbotdeveloper:1468521505762574485>';
-    if (desc.includes('discord staff')) return '<:discord_staff:1468521557075689556>';
-    if (desc.includes('partnered server owner')) return '<:partner4:1468521552638382292>';
-    if (desc.includes('moderator program')) return '<:modold:1468521531603943476>';
-    if (desc.includes('early supporter')) return '<:earlysupporter:1468521504307150848>';
-    if (desc.includes('originally known as') || desc.includes('legacy username')) return '<:username:1468521559202201623>';
-    if (desc.includes('completed a quest')) return '<:quest:1468521554605379617>';
-    if (desc.includes('level') && desc.includes('reached')) return '<:april_fools_2026:1519423360218697892>';
-    if (desc.includes('collected the orb profile badge')) return '<:orbs:1468521551065256063>';
+    if (desc.includes('early verified bot developer')) return '<:early_verified_bot_dev:1519677724354936832>';
+    if (desc.includes('discord staff')) return '<:discord_staff:1519677661952348240>';
+    if (desc.includes('partnered server owner')) return '<:partnered_server_owner:1519677814381609011>';
+    if (desc.includes('moderator program')) return '<:mod_program_alumni:1519677756013547620>';
+    if (desc.includes('early supporter')) return '<:early_supporter:1519677695242272929>';
+    if (desc.includes('originally known as') || desc.includes('legacy username')) return '<:originally_known_as:1519677872116076576>';
+    if (desc.includes('completed a quest')) return '<:completed_a_quest:1519677842709811240>';
+    if (desc.includes('level') && desc.includes('reached')) return '<:april_fools_2026:1519677568784138361>';
+    if (desc.includes('collected the orb profile badge')) return '<:obs:1519677786728693863>';
 
     // Gifting
     if (desc.includes('patron') || desc.includes('1 gift')) return '<:GiftingBadge_1x:1513283763931582684>';

@@ -361,7 +361,7 @@ module.exports = {
             // ====================================================
             container
                 .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
-                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# <t:${Math.floor(Date.now() / 1000)}:f> • Developed by Ridouan _AKA_ Rithz`));
+                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# <t:${Math.floor(Date.now() / 1000)}:f>`));
 
             await message.reply({ 
                 components: [container], 

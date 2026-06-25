@@ -52,7 +52,7 @@ function getBadgeEmoji(description, v9Data) {
     if (desc.includes('uses automod')) return '<:uses_automod:1468521528424402976>';
     if (desc.includes('premium app')) return '<:premium_app:1468653351863582842>';
 
-    // 🌟 Nitro Badges (Keyword catching for Discord's new text format)
+    // 🌟 Nitro Badges 
     if (desc.includes('opal')) return '<:nitroopal:1468521541368152179>';
     if (desc.includes('ruby')) return '<:nitroruby:1468521545361002622>';
     if (desc.includes('emerald')) return '<:nitroemerald:1468521538193064119>';
@@ -62,18 +62,25 @@ function getBadgeEmoji(description, v9Data) {
     if (desc.includes('silver')) return '<:nitrosilver:1468521546782867649>';
     if (desc.includes('bronze')) return '<:nitrobronze:1468521534921506841>';
 
-    // 🌟 Boosting Badges (Keyword catching for exact months)
-    if (desc.includes('24 month')) return '<:bost24m:1468521497101340769>';
-    if (desc.includes('18 month')) return '<:boost18m:1468521485659537577>';
-    if (desc.includes('15 month')) return '<:boost15m:1468521482949890088>';
-    if (desc.includes('12 month') || desc.includes('1 year')) return '<:boost12m:1468521480852733965>';
-    if (desc.includes('9 month')) return '<:boost9m:1468521495058972672>';
-    if (desc.includes('6 month')) return '<:boost6m:1468521492500316370>';
-    if (desc.includes('3 month')) return '<:boost3m:1468521490541707346>';
-    if (desc.includes('2 month')) return '<:boost2m:1468521488704602268>';
-    if (desc.includes('1 month')) return '<:boost1m:1468521487202783346>';
+    // 🌟 Boosting Badges (Broader keyword catch for standard dynamic text)
+    if (desc.includes('boosting since') || desc.includes('booster since') || desc.includes('month')) {
+        let months = 0;
+        if (v9Data && v9Data.premium_guild_since) {
+            months = Math.floor((Date.now() - new Date(v9Data.premium_guild_since).getTime()) / (1000 * 60 * 60 * 24 * 30.44));
+        }
+        
+        // Safety net fallback for specific string matches just in case
+        if (desc.includes('24 month') || months >= 24) return '<:bost24m:1468521497101340769>';
+        if (desc.includes('18 month') || months >= 18) return '<:boost18m:1468521485659537577>';
+        if (desc.includes('15 month') || months >= 15) return '<:boost15m:1468521482949890088>';
+        if (desc.includes('12 month') || desc.includes('1 year') || months >= 12) return '<:boost12m:1468521480852733965>';
+        if (desc.includes('9 month') || months >= 9) return '<:boost9m:1468521495058972672>';
+        if (desc.includes('6 month') || months >= 6) return '<:boost6m:1468521492500316370>';
+        if (desc.includes('3 month') || months >= 3) return '<:boost3m:1468521490541707346>';
+        if (desc.includes('2 month') || months >= 2) return '<:boost2m:1468521488704602268>';
+        return '<:boost1m:1468521487202783346>';
+    }
 
-    // Fallback if Discord adds a brand new badge we don't recognize yet
     return `\`${description}\``; 
 }
 
@@ -90,15 +97,12 @@ module.exports = {
         let tempEmoji = null; 
 
         try {
-            // 2. Resolve User & Member (Fixed silent error resolution)
+            // 2. Resolve User & Member
             const targetId = message.mentions.users.first()?.id || args[0] || message.author.id;
             
             let targetUser;
-            try { 
-                targetUser = await message.client.users.fetch(targetId, { force: true }); 
-            } catch (err) { 
-                return message.reply("❌ User not found."); 
-            }
+            try { targetUser = await message.client.users.fetch(targetId, { force: true }); } 
+            catch (err) { return message.reply("❌ User not found."); }
 
             let targetMember = null;
             try { targetMember = await message.guild.members.fetch(targetUser.id); } catch (err) { targetMember = null; }
@@ -109,7 +113,6 @@ module.exports = {
             let badgesText = null, connectionsText = null, nitroText = null, globalBoostText = null, colorString = null;
 
             if (v9Data) {
-                // Emoji Mapper in Action
                 if (v9Data.badges?.length > 0) {
                     badgesText = v9Data.badges.map(b => getBadgeEmoji(b.description, v9Data)).join(' ');
                 }
@@ -155,8 +158,8 @@ module.exports = {
             // ====================================================
             const container = new ContainerBuilder();
             
-            // Replaced actual mention with @username string to ensure no pinging whatsoever
-            let userInfoText = `<:at:1468487835613925396> **@${targetUser.username}** (\`${targetUser.username}\`)\n` +
+            // Replaced raw string with raw ping format `<@id>`
+            let userInfoText = `<:at:1468487835613925396> <@${targetUser.id}> (\`${targetUser.username}\`)\n` +
                                `<:id:1468487725912166596> **ID:** \`${targetUser.id}\`\n` +
                                `<:identity:1468485794938224807> **Display Name:** \`${targetUser.globalName || targetUser.username}\`\n` +
                                `<:calendar:1470475413175144530> **Account Created:** <t:${Math.floor(targetUser.createdTimestamp / 1000)}:R>`;
@@ -201,7 +204,10 @@ module.exports = {
                 container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true));
 
                 const serverIconUrl = targetMember.avatar ? targetMember.displayAvatarURL({ size: 1024 }) : message.guild.iconURL({ size: 1024 });
-                const highestRoleText = targetMember.roles.highest.id === message.guild.id ? "@everyone" : `**@${targetMember.roles.highest.name}**`;
+                
+                // Using raw ping tag for the highest role
+                const highestRoleText = targetMember.roles.highest.id === message.guild.id ? "@everyone" : `<@&${targetMember.roles.highest.id}>`;
+                
                 const sortedMembers = Array.from(message.guild.members.cache.sort((a,b)=>a.joinedTimestamp-b.joinedTimestamp).values());
                 const joinPosition = sortedMembers.indexOf(targetMember) + 1;
 
@@ -280,13 +286,23 @@ module.exports = {
                     if (customStatus) {
                         const statusSection = new SectionBuilder();
                         let statusEmojiUrl = null;
-                        if (customStatus.emoji?.id) {
-                            statusEmojiUrl = `https://cdn.discordapp.com/emojis/${customStatus.emoji.id}.${customStatus.emoji.animated ? 'gif' : 'png'}`;
+                        let defaultEmojiText = "";
+
+                        // Added logic to catch Default Unicode emojis
+                        if (customStatus.emoji) {
+                            if (customStatus.emoji.id) {
+                                statusEmojiUrl = `https://cdn.discordapp.com/emojis/${customStatus.emoji.id}.${customStatus.emoji.animated ? 'gif' : 'png'}`;
+                            } else if (customStatus.emoji.name) {
+                                defaultEmojiText = `\n-# **Emoji:** ${customStatus.emoji.name}`;
+                            }
                         }
+                        
                         if (statusEmojiUrl) statusSection.setThumbnailAccessory(new ThumbnailBuilder().setURL(statusEmojiUrl));
 
+                        let stateText = customStatus.state ? `\n-# **State:** ${customStatus.state}` : "";
+
                         statusSection.addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent(`<:customstatus:1519456000963252294> **Custom Status:**\n-# **State:** ${customStatus.state || ""}`)
+                            new TextDisplayBuilder().setContent(`<:customstatus:1519456000963252294> **Custom Status:**${defaultEmojiText}${stateText}`)
                         );
                         container.addSectionComponents(statusSection);
                     }
@@ -304,7 +320,7 @@ module.exports = {
                 .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# <t:${Math.floor(Date.now() / 1000)}:f>`));
 
-            // Send Final Message
+            // Send Final Message (allowedMentions parsing is restricted!)
             await message.reply({ 
                 components: [container], 
                 flags: [MessageFlags.IsComponentsV2, MessageFlags.SuppressNotifications], 

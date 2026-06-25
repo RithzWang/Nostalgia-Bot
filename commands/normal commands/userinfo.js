@@ -19,10 +19,10 @@ function getBadgeEmoji(description, v9Data) {
     const desc = description.toLowerCase();
 
     // Hypesquad
-    if (desc.includes('bravery')) return '<:hypesquadbravery:1468521511353843748>';
-    if (desc.includes('brilliance')) return '<:hypesquadbrilliance:1468521513656258634>';
-    if (desc.includes('balance')) return '<:hypesquadbalance:1468521509462081597>';
-    if (desc.includes('events')) return '<:hypesquadevents:1468521524725157939>';
+    if (desc.includes('bravery')) return '<:hypesquad_bravery:1519665886007660546>';
+    if (desc.includes('brilliance')) return '<:hypesquad_brilliance:1519665948406055023>';
+    if (desc.includes('balance')) return '<:hypesquad_balance:1519665912012341329>';
+    if (desc.includes('events')) return '<:hypesquad_events:1519665848418172968>';
 
     // Bug Hunter
     if (desc.includes('tier 2') || desc.includes('golden') || desc.includes('gold bug')) return '<:bughuntergold:1468521499160739841>';
@@ -48,9 +48,9 @@ function getBadgeEmoji(description, v9Data) {
     if (desc.includes('legend') || desc.includes('20 gift')) return '<:GiftingBadge_20x:1513283772991148173>';
 
     // Bot Application Badges
-    if (desc.includes('supports commands')) return '<:slash:1468653349627891752>';
-    if (desc.includes('uses automod')) return '<:uses_automod:1468521528424402976>';
-    if (desc.includes('premium app')) return '<:premium_app:1468653351863582842>';
+    if (desc.includes('supports commands')) return '<:supports_commands:1519665984363823125>';
+    if (desc.includes('uses automod')) return '<:uses_automod:1519666021185753290>';
+    if (desc.includes('premium app')) return '<:premium_app:1519666071869722796>';
 
     // 🌟 Nitro Badges 
     if (desc.includes('subscriber since') || desc.includes('opal') || desc.includes('ruby') || desc.includes('emerald') || desc.includes('diamond') || desc.includes('platinum') || desc.includes('gold') || desc.includes('silver') || desc.includes('bronze')) {
@@ -59,15 +59,15 @@ function getBadgeEmoji(description, v9Data) {
             months = Math.floor((Date.now() - new Date(v9Data.premium_since).getTime()) / (1000 * 60 * 60 * 24 * 30.44));
         }
         
-        if (desc.includes('opal') || months >= 72) return '<:nitroopal:1468521541368152179>';
-        if (desc.includes('ruby') || months >= 60) return '<:nitroruby:1468521545361002622>';
-        if (desc.includes('emerald') || months >= 36) return '<:nitroemerald:1468521538193064119>';
-        if (desc.includes('diamond') || months >= 24) return '<:nitrodiamond:1468521536699895839>';
-        if (desc.includes('platinum') || months >= 12) return '<:nitroplatinum:1468521543846989947>';
-        if (desc.includes('gold') || months >= 6) return '<:nitrogold:1468521540113928194>';
-        if (desc.includes('silver') || months >= 3) return '<:nitrosilver:1468521546782867649>';
-        if (desc.includes('bronze') || months >= 1) return '<:nitrobronze:1468521534921506841>';
-        return '<:nitro:1468521533659156480>';
+        if (desc.includes('opal') || months >= 72) return '<:nitro_opal:1519655008264650853>';
+        if (desc.includes('ruby') || months >= 60) return '<:nitro_ruby:1519654970754859128>';
+        if (desc.includes('emerald') || months >= 36) return '<:nitro_emerald:1519654908289224945>';
+        if (desc.includes('diamond') || months >= 24) return '<:nitro_diamond:1519654880527126650>';
+        if (desc.includes('platinum') || months >= 12) return '<:nitro_platinum:1519654853046046830>';
+        if (desc.includes('gold') || months >= 6) return '<:nitro_gold:1519654755662561410>';
+        if (desc.includes('silver') || months >= 3) return '<:nitro_silver:1519654713170067516>';
+        if (desc.includes('bronze') || months >= 1) return '<:nitro_bronze:1519654069466173563>';
+        return '<:nitro:1519654030899417128>';
     }
 
     // 🌟 Boosting Badges
@@ -77,15 +77,15 @@ function getBadgeEmoji(description, v9Data) {
             months = Math.floor((Date.now() - new Date(v9Data.premium_guild_since).getTime()) / (1000 * 60 * 60 * 24 * 30.44));
         }
         
-        if (desc.includes('24 month') || desc.includes('2 year') || months >= 24) return '<:bost24m:1468521497101340769>';
-        if (desc.includes('18 month') || months >= 18) return '<:boost18m:1468521485659537577>';
-        if (desc.includes('15 month') || months >= 15) return '<:boost15m:1468521482949890088>';
-        if (desc.includes('12 month') || desc.includes('1 year') || months >= 12) return '<:boost12m:1468521480852733965>';
-        if (desc.includes('9 month') || months >= 9) return '<:boost9m:1468521495058972672>';
-        if (desc.includes('6 month') || months >= 6) return '<:boost6m:1468521492500316370>';
-        if (desc.includes('3 month') || months >= 3) return '<:boost3m:1468521490541707346>';
-        if (desc.includes('2 month') || months >= 2) return '<:boost2m:1468521488704602268>';
-        return '<:boost1m:1468521487202783346>';
+        if (desc.includes('24 month') || desc.includes('2 year') || months >= 24) return '<:boost_24:1519662668171182150>';
+        if (desc.includes('18 month') || months >= 18) return '<:boost_18:1519662637082869810>';
+        if (desc.includes('15 month') || months >= 15) return '<:boost_15m:1519662600265269298>';
+        if (desc.includes('12 month') || desc.includes('1 year') || months >= 12) return '<:boost_12m:1519662567331598446>';
+        if (desc.includes('9 month') || months >= 9) return '<:boost_9m:1519662532728459264>';
+        if (desc.includes('6 month') || months >= 6) return '<:boost_6m:1519662504068776127>';
+        if (desc.includes('3 month') || months >= 3) return '<:boost_3m:1519662459668004905>';
+        if (desc.includes('2 month') || months >= 2) return '<:boost_2m:1519658261760970832>';
+        return '<:boost_1m:1519657990943146096>';
     }
 
     return `\`${description}\``; 

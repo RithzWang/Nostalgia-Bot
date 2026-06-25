@@ -52,24 +52,31 @@ function getBadgeEmoji(description, v9Data) {
     if (desc.includes('uses automod')) return '<:uses_automod:1468521528424402976>';
     if (desc.includes('premium app')) return '<:premium_app:1468653351863582842>';
 
-    // 🌟 Nitro Badges 
-    if (desc.includes('opal')) return '<:nitroopal:1468521541368152179>';
-    if (desc.includes('ruby')) return '<:nitroruby:1468521545361002622>';
-    if (desc.includes('emerald')) return '<:nitroemerald:1468521538193064119>';
-    if (desc.includes('diamond')) return '<:nitrodiamond:1468521536699895839>';
-    if (desc.includes('platinum')) return '<:nitroplatinum:1468521543846989947>';
-    if (desc.includes('gold')) return '<:nitrogold:1468521540113928194>';
-    if (desc.includes('silver')) return '<:nitrosilver:1468521546782867649>';
-    if (desc.includes('bronze')) return '<:nitrobronze:1468521534921506841>';
+    // 🌟 Nitro Badges (Aggressively catches "Subscriber since")
+    if (desc.includes('subscriber since') || desc.includes('opal') || desc.includes('ruby') || desc.includes('emerald') || desc.includes('diamond') || desc.includes('platinum') || desc.includes('gold') || desc.includes('silver') || desc.includes('bronze')) {
+        let months = 0;
+        if (v9Data && v9Data.premium_since) {
+            months = Math.floor((Date.now() - new Date(v9Data.premium_since).getTime()) / (1000 * 60 * 60 * 24 * 30.44));
+        }
+        
+        if (desc.includes('opal') || months >= 72) return '<:nitroopal:1468521541368152179>';
+        if (desc.includes('ruby') || months >= 60) return '<:nitroruby:1468521545361002622>';
+        if (desc.includes('emerald') || months >= 36) return '<:nitroemerald:1468521538193064119>';
+        if (desc.includes('diamond') || months >= 24) return '<:nitrodiamond:1468521536699895839>';
+        if (desc.includes('platinum') || months >= 12) return '<:nitroplatinum:1468521543846989947>';
+        if (desc.includes('gold') || months >= 6) return '<:nitrogold:1468521540113928194>';
+        if (desc.includes('silver') || months >= 3) return '<:nitrosilver:1468521546782867649>';
+        return '<:nitrobronze:1468521534921506841>';
+    }
 
-    // 🌟 Boosting Badges 
-    if (desc.includes('boosting since') || desc.includes('booster since') || desc.includes('month') || desc.includes('year')) {
+    // 🌟 Boosting Badges (Aggressively catches "Server Boosting since")
+    if (desc.includes('server boosting') || desc.includes('boosting since') || desc.includes('booster since') || desc.includes('month') || desc.includes('year')) {
         let months = 0;
         if (v9Data && v9Data.premium_guild_since) {
             months = Math.floor((Date.now() - new Date(v9Data.premium_guild_since).getTime()) / (1000 * 60 * 60 * 24 * 30.44));
         }
         
-        if (desc.includes('24 month') || months >= 24) return '<:bost24m:1468521497101340769>';
+        if (desc.includes('24 month') || desc.includes('2 year') || months >= 24) return '<:bost24m:1468521497101340769>';
         if (desc.includes('18 month') || months >= 18) return '<:boost18m:1468521485659537577>';
         if (desc.includes('15 month') || months >= 15) return '<:boost15m:1468521482949890088>';
         if (desc.includes('12 month') || desc.includes('1 year') || months >= 12) return '<:boost12m:1468521480852733965>';
@@ -80,6 +87,7 @@ function getBadgeEmoji(description, v9Data) {
         return '<:boost1m:1468521487202783346>';
     }
 
+    // Fallback if Discord adds a brand new badge we don't recognize yet
     return `\`${description}\``; 
 }
 
@@ -277,39 +285,28 @@ module.exports = {
                         container.addSectionComponents(actSection);
                     }
 
-                    // 🛠️ FIX: Bulletproof Custom Status Logic
                     const customStatus = p.activities.find(act => act.type === 4);
                     if (customStatus) {
+                        const statusSection = new SectionBuilder();
                         let statusEmojiUrl = null;
-                        let defaultEmoji = "";
+                        let defaultEmojiText = "";
 
-                        // Resolve Emoji Type
                         if (customStatus.emoji) {
                             if (customStatus.emoji.id) {
                                 statusEmojiUrl = `https://cdn.discordapp.com/emojis/${customStatus.emoji.id}.${customStatus.emoji.animated ? 'gif' : 'png'}`;
                             } else if (customStatus.emoji.name) {
-                                defaultEmoji = `${customStatus.emoji.name} `;
+                                defaultEmojiText = `\n-# **Emoji:** ${customStatus.emoji.name}`;
                             }
                         }
-
-                        let statusText = customStatus.state || "";
                         
-                        // Combine default emoji + text cleanly onto ONE line to avoid markdown parsing errors
-                        let finalContent = `<:customstatus:1519456000963252294> **Custom Status:**\n-# **State:** ${defaultEmoji}${statusText}`.trim();
+                        if (statusEmojiUrl) statusSection.setThumbnailAccessory(new ThumbnailBuilder().setURL(statusEmojiUrl));
 
-                        const statusDisplay = new TextDisplayBuilder().setContent(finalContent);
+                        let stateText = customStatus.state ? `\n-# **State:** ${customStatus.state}` : "";
 
-                        // Only wrap in a SectionBuilder if we have a Custom Image Thumbnail
-                        if (statusEmojiUrl) {
-                            container.addSectionComponents(
-                                new SectionBuilder()
-                                    .setThumbnailAccessory(new ThumbnailBuilder().setURL(statusEmojiUrl))
-                                    .addTextDisplayComponents(statusDisplay)
-                            );
-                        } else {
-                            // If it's just Unicode emoji + text, drop it straight into the container as TextDisplay!
-                            container.addTextDisplayComponents(statusDisplay);
-                        }
+                        statusSection.addTextDisplayComponents(
+                            new TextDisplayBuilder().setContent(`<:customstatus:1519456000963252294> **Custom Status:**${defaultEmojiText}${stateText}`)
+                        );
+                        container.addSectionComponents(statusSection);
                     }
                 }
             } else {

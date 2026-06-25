@@ -63,7 +63,7 @@ function getBadgeEmoji(description, v9Data) {
     if (desc.includes('bronze')) return '<:nitrobronze:1468521534921506841>';
 
     // 🌟 Boosting Badges 
-    if (desc.includes('boosting since') || desc.includes('booster since') || desc.includes('month')) {
+    if (desc.includes('boosting since') || desc.includes('booster since') || desc.includes('month') || desc.includes('year')) {
         let months = 0;
         if (v9Data && v9Data.premium_guild_since) {
             months = Math.floor((Date.now() - new Date(v9Data.premium_guild_since).getTime()) / (1000 * 60 * 60 * 24 * 30.44));
@@ -90,13 +90,11 @@ module.exports = {
     description: 'Displays information about a user',
 
     async execute(message, args) {
-        // 1. Show Typing indicator
         await message.channel.sendTyping();
 
         let tempEmoji = null; 
 
         try {
-            // 2. Resolve User & Member
             const targetId = message.mentions.users.first()?.id || args[0] || message.author.id;
             
             let targetUser;
@@ -106,7 +104,6 @@ module.exports = {
             let targetMember = null;
             try { targetMember = await message.guild.members.fetch(targetUser.id); } catch (err) { targetMember = null; }
 
-            // 3. Fetch V9 Advanced Data
             const v9Data = await fetchAdvancedProfile(targetUser.id).catch(() => null);
 
             let badgesText = null, connectionsText = null, nitroText = null, globalBoostText = null, colorString = null;
@@ -135,7 +132,6 @@ module.exports = {
                 }
             }
 
-            // 4. Server Tag Logic
             let serverTagLine = null;
             if (targetUser.primaryGuild?.tag) {
                 let badgeURL = targetUser.guildTagBadgeURL?.({ extension: 'png', size: 128 }) || 
@@ -153,7 +149,7 @@ module.exports = {
             }
 
             // ====================================================
-            // 5. BUILD UI: GLOBAL USER SECTION
+            // BUILD UI: GLOBAL USER SECTION
             // ====================================================
             const container = new ContainerBuilder();
             
@@ -196,13 +192,12 @@ module.exports = {
             }
 
             // ====================================================
-            // 6. BUILD UI: SERVER MEMBERSHIP SECTION
+            // BUILD UI: SERVER MEMBERSHIP SECTION
             // ====================================================
             if (targetMember) {
                 container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true));
 
                 const serverIconUrl = targetMember.avatar ? targetMember.displayAvatarURL({ size: 1024 }) : message.guild.iconURL({ size: 1024 });
-                
                 const highestRoleText = targetMember.roles.highest.id === message.guild.id ? "@everyone" : `<@&${targetMember.roles.highest.id}>`;
                 
                 const sortedMembers = Array.from(message.guild.members.cache.sort((a,b)=>a.joinedTimestamp-b.joinedTimestamp).values());
@@ -217,7 +212,7 @@ module.exports = {
                                 `<:name:1468486108450127915> **Nickname:** ${targetMember.nickname || "None"}\n` +
                                 `<:roles:1468486024089964654> **Roles:** ${targetMember.roles.cache.size - 1} (Highest: ${highestRoleText})\n` +
                                 `<:calendar:1470475413175144530> **Joined:** <t:${Math.floor(targetMember.joinedTimestamp / 1000)}:R>\n` +
-                                `<:location:1468629967956086961> **Join Position:** ${joinPosition}/${message.guild.memberCount}`
+                                `<:location:1468629967956086961> **Join Position:** ${joinPosition}`
                             )
                         )
                 );
@@ -238,19 +233,20 @@ module.exports = {
                 }
 
                 // ====================================================
-                // 7. BUILD UI: PRESENCE SECTION
+                // BUILD UI: PRESENCE SECTION (Online Conditional)
                 // ====================================================
-                container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true));
                 const p = message.guild.presences.cache.get(targetUser.id);
                 
-                let deviceText = [];
-                if (p?.clientStatus?.desktop) deviceText.push('<:desktop:1519456094915792916> **Device:** Desktop');
-                if (p?.clientStatus?.mobile) deviceText.push('<:mobile:1519456126276472832> **Device:** Mobile');
-                if (p?.clientStatus?.web) deviceText.push('<:desktop:1519456094915792916> **Device:** Web');
-                
-                container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## <:status:1519456062720446565> Presence Information\n${deviceText.join(' / ') || "Offline"}`));
+                if (p && p.status !== 'offline') {
+                    container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true));
+                    
+                    let deviceText = [];
+                    if (p.clientStatus?.desktop) deviceText.push('<:desktop:1519456094915792916> **Device:** Desktop');
+                    if (p.clientStatus?.mobile) deviceText.push('<:mobile:1519456126276472832> **Device:** Mobile');
+                    if (p.clientStatus?.web) deviceText.push('🌐 **Device:** Web');
+                    
+                    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## <:status:1519456062720446565> Presence Information\n${deviceText.join(' / ') || "Unknown"}`));
 
-                if (p) {
                     const activity = p.activities.find(act => act.type !== 4);
                     if (activity) {
                         const actSection = new SectionBuilder();
@@ -285,7 +281,6 @@ module.exports = {
                         let statusEmojiUrl = null;
                         let defaultEmojiText = "";
 
-                        // Default emoji goes to text, custom emoji goes to Thumbnail
                         if (customStatus.emoji) {
                             if (customStatus.emoji.id) {
                                 statusEmojiUrl = `https://cdn.discordapp.com/emojis/${customStatus.emoji.id}.${customStatus.emoji.animated ? 'gif' : 'png'}`;
@@ -304,20 +299,15 @@ module.exports = {
                         container.addSectionComponents(statusSection);
                     }
                 }
-            } else {
-                // Not in server fallback
-                container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
-                         .addTextDisplayComponents(new TextDisplayBuilder().setContent("-# The user is not in this server."));
             }
 
             // ====================================================
-            // 8. BUILD UI: FOOTER
+            // BUILD UI: FOOTER
             // ====================================================
             container
                 .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# <t:${Math.floor(Date.now() / 1000)}:f>`));
 
-            // Send Final Message (Mentions parsing disabled)
             await message.reply({ 
                 components: [container], 
                 flags: [MessageFlags.IsComponentsV2, MessageFlags.SuppressNotifications], 

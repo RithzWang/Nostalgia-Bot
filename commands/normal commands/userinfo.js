@@ -37,7 +37,7 @@ function getBadgeEmoji(description, v9Data) {
     if (desc.includes('originally known as') || desc.includes('legacy username')) return '<:username:1468521559202201623>';
     if (desc.includes('completed a quest')) return '<:quest:1468521554605379617>';
     if (desc.includes('level') && desc.includes('reached')) return '<:april_fools_2026:1519423360218697892>';
-    if (desc.includes('orb')) return '<:orbs:1468521551065256063>';
+    if (desc.includes('collected the orb profile badge')) return '<:orbs:1468521551065256063>';
 
     // Gifting
     if (desc.includes('patron') || desc.includes('1 gift')) return '<:GiftingBadge_1x:1513283763931582684>';

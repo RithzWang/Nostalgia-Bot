@@ -62,14 +62,13 @@ function getBadgeEmoji(description, v9Data) {
     if (desc.includes('silver')) return '<:nitrosilver:1468521546782867649>';
     if (desc.includes('bronze')) return '<:nitrobronze:1468521534921506841>';
 
-    // 🌟 Boosting Badges (Broader keyword catch for standard dynamic text)
+    // 🌟 Boosting Badges 
     if (desc.includes('boosting since') || desc.includes('booster since') || desc.includes('month')) {
         let months = 0;
         if (v9Data && v9Data.premium_guild_since) {
             months = Math.floor((Date.now() - new Date(v9Data.premium_guild_since).getTime()) / (1000 * 60 * 60 * 24 * 30.44));
         }
         
-        // Safety net fallback for specific string matches just in case
         if (desc.includes('24 month') || months >= 24) return '<:bost24m:1468521497101340769>';
         if (desc.includes('18 month') || months >= 18) return '<:boost18m:1468521485659537577>';
         if (desc.includes('15 month') || months >= 15) return '<:boost15m:1468521482949890088>';
@@ -158,10 +157,9 @@ module.exports = {
             // ====================================================
             const container = new ContainerBuilder();
             
-            // Replaced raw string with raw ping format `<@id>`
             let userInfoText = `<:at:1468487835613925396> <@${targetUser.id}> (\`${targetUser.username}\`)\n` +
                                `<:id:1468487725912166596> **ID:** \`${targetUser.id}\`\n` +
-                               `<:identity:1468485794938224807> **Display Name:** \`${targetUser.globalName || targetUser.username}\`\n` +
+                               `<:identity:1468485794938224807> **Display Name:** ${targetUser.globalName || targetUser.username}\n` +
                                `<:calendar:1470475413175144530> **Account Created:** <t:${Math.floor(targetUser.createdTimestamp / 1000)}:R>`;
 
             if (badgesText) {
@@ -205,7 +203,6 @@ module.exports = {
 
                 const serverIconUrl = targetMember.avatar ? targetMember.displayAvatarURL({ size: 1024 }) : message.guild.iconURL({ size: 1024 });
                 
-                // Using raw ping tag for the highest role
                 const highestRoleText = targetMember.roles.highest.id === message.guild.id ? "@everyone" : `<@&${targetMember.roles.highest.id}>`;
                 
                 const sortedMembers = Array.from(message.guild.members.cache.sort((a,b)=>a.joinedTimestamp-b.joinedTimestamp).values());
@@ -249,7 +246,7 @@ module.exports = {
                 let deviceText = [];
                 if (p?.clientStatus?.desktop) deviceText.push('<:desktop:1519456094915792916> **Device:** Desktop');
                 if (p?.clientStatus?.mobile) deviceText.push('<:mobile:1519456126276472832> **Device:** Mobile');
-                if (p?.clientStatus?.web) deviceText.push('🌐 **Device:** Web');
+                if (p?.clientStatus?.web) deviceText.push('<:desktop:1519456094915792916> **Device:** Web');
                 
                 container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## <:status:1519456062720446565> Presence Information\n${deviceText.join(' / ') || "Offline"}`));
 
@@ -288,7 +285,7 @@ module.exports = {
                         let statusEmojiUrl = null;
                         let defaultEmojiText = "";
 
-                        // Added logic to catch Default Unicode emojis
+                        // Default emoji goes to text, custom emoji goes to Thumbnail
                         if (customStatus.emoji) {
                             if (customStatus.emoji.id) {
                                 statusEmojiUrl = `https://cdn.discordapp.com/emojis/${customStatus.emoji.id}.${customStatus.emoji.animated ? 'gif' : 'png'}`;
@@ -320,7 +317,7 @@ module.exports = {
                 .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# <t:${Math.floor(Date.now() / 1000)}:f>`));
 
-            // Send Final Message (allowedMentions parsing is restricted!)
+            // Send Final Message (Mentions parsing disabled)
             await message.reply({ 
                 components: [container], 
                 flags: [MessageFlags.IsComponentsV2, MessageFlags.SuppressNotifications], 

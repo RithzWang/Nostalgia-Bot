@@ -203,19 +203,22 @@ module.exports = {
                 const sortedMembers = Array.from(message.guild.members.cache.sort((a,b)=>a.joinedTimestamp-b.joinedTimestamp).values());
                 const joinPosition = sortedMembers.indexOf(targetMember) + 1;
 
-                container.addSectionComponents(
-                    new SectionBuilder()
-                        .setThumbnailAccessory(serverIconUrl ? new ThumbnailBuilder().setURL(serverIconUrl) : null)
-                        .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent("## <:home:1468487632328589458> Server Membership"), 
-                            new TextDisplayBuilder().setContent(
-                                `<:name:1468486108450127915> **Nickname:** ${targetMember.nickname || "None"}\n` +
-                                `<:roles:1468486024089964654> **Roles:** ${targetMember.roles.cache.size - 1} (Highest: ${highestRoleText})\n` +
-                                `<:calendar:1470475413175144530> **Joined:** <t:${Math.floor(targetMember.joinedTimestamp / 1000)}:R>\n` +
-                                `<:location:1468629967956086961> **Join Position:** ${joinPosition}`
-                            )
+                // 🛠️ FIX: Safe Builder Logic (Won't crash if Server Icon is null)
+                const membershipSection = new SectionBuilder()
+                    .addTextDisplayComponents(
+                        new TextDisplayBuilder().setContent("## <:home:1468487632328589458> Server Membership"), 
+                        new TextDisplayBuilder().setContent(
+                            `<:name:1468486108450127915> **Nickname:** ${targetMember.nickname || "None"}\n` +
+                            `<:roles:1468486024089964654> **Roles:** ${targetMember.roles.cache.size - 1} (Highest: ${highestRoleText})\n` +
+                            `<:calendar:1470475413175144530> **Joined:** <t:${Math.floor(targetMember.joinedTimestamp / 1000)}:R>\n` +
+                            `<:location:1468629967956086961> **Join Position:** ${joinPosition}`
                         )
-                );
+                    );
+                
+                if (serverIconUrl) {
+                    membershipSection.setThumbnailAccessory(new ThumbnailBuilder().setURL(serverIconUrl));
+                }
+                container.addSectionComponents(membershipSection);
                 
                 if (targetMember.avatarDecorationURL() && targetMember.avatarDecorationURL() !== targetUser.avatarDecorationURL()) {
                     container.addSectionComponents(
@@ -243,7 +246,7 @@ module.exports = {
                     let deviceText = [];
                     if (p.clientStatus?.desktop) deviceText.push('<:desktop:1519456094915792916> **Device:** Desktop');
                     if (p.clientStatus?.mobile) deviceText.push('<:mobile:1519456126276472832> **Device:** Mobile');
-                    if (p.clientStatus?.web) deviceText.push('<:desktop:1519456094915792916> **Device:** Web');
+                    if (p.clientStatus?.web) deviceText.push('🌐 **Device:** Web');
                     
                     container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## <:status:1519456062720446565> Presence Information\n${deviceText.join(' / ') || "Unknown"}`));
 
@@ -315,8 +318,13 @@ module.exports = {
             });
             
             if (tempEmoji) setTimeout(() => tempEmoji.delete().catch(() => {}), 5000);
+
         } catch (error) {
-            console.error("Userinfo Error:", error);
+            // 🚨 EXPOSE THE ERROR SO YOU KNOW WHAT CRASHED! 🚨
+            console.error("Userinfo Error:", error?.rawError || error);
+            const errMessage = error?.rawError?.message || error?.message || "Unknown UI Build Error";
+            await message.reply(`❌ **API Error:** \`${errMessage}\`\n*(Send me this error if it crashes again!)*`).catch(() => {});
+            
             if (tempEmoji) tempEmoji.delete().catch(() => {});
         }
     }

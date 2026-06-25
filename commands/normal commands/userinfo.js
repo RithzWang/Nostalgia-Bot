@@ -52,24 +52,31 @@ function getBadgeEmoji(description, v9Data) {
     if (desc.includes('uses automod')) return '<:uses_automod:1468521528424402976>';
     if (desc.includes('premium app')) return '<:premium_app:1468653351863582842>';
 
-    // 🌟 Nitro Badges 
-    if (desc.includes('opal')) return '<:nitroopal:1468521541368152179>';
-    if (desc.includes('ruby')) return '<:nitroruby:1468521545361002622>';
-    if (desc.includes('emerald')) return '<:nitroemerald:1468521538193064119>';
-    if (desc.includes('diamond')) return '<:nitrodiamond:1468521536699895839>';
-    if (desc.includes('platinum')) return '<:nitroplatinum:1468521543846989947>';
-    if (desc.includes('gold')) return '<:nitrogold:1468521540113928194>';
-    if (desc.includes('silver')) return '<:nitrosilver:1468521546782867649>';
-    if (desc.includes('bronze')) return '<:nitrobronze:1468521534921506841>';
+    // 🌟 Nitro Badges (Aggressively catches "Subscriber since")
+    if (desc.includes('subscriber since') || desc.includes('opal') || desc.includes('ruby') || desc.includes('emerald') || desc.includes('diamond') || desc.includes('platinum') || desc.includes('gold') || desc.includes('silver') || desc.includes('bronze')) {
+        let months = 0;
+        if (v9Data && v9Data.premium_since) {
+            months = Math.floor((Date.now() - new Date(v9Data.premium_since).getTime()) / (1000 * 60 * 60 * 24 * 30.44));
+        }
+        
+        if (desc.includes('opal') || months >= 72) return '<:nitroopal:1468521541368152179>';
+        if (desc.includes('ruby') || months >= 60) return '<:nitroruby:1468521545361002622>';
+        if (desc.includes('emerald') || months >= 36) return '<:nitroemerald:1468521538193064119>';
+        if (desc.includes('diamond') || months >= 24) return '<:nitrodiamond:1468521536699895839>';
+        if (desc.includes('platinum') || months >= 12) return '<:nitroplatinum:1468521543846989947>';
+        if (desc.includes('gold') || months >= 6) return '<:nitrogold:1468521540113928194>';
+        if (desc.includes('silver') || months >= 3) return '<:nitrosilver:1468521546782867649>';
+        return '<:nitrobronze:1468521534921506841>';
+    }
 
-    // 🌟 Boosting Badges 
-    if (desc.includes('boosting since') || desc.includes('booster since') || desc.includes('month') || desc.includes('year')) {
+    // 🌟 Boosting Badges (Aggressively catches "Server Boosting since")
+    if (desc.includes('server boosting') || desc.includes('boosting since') || desc.includes('booster since') || desc.includes('month') || desc.includes('year')) {
         let months = 0;
         if (v9Data && v9Data.premium_guild_since) {
             months = Math.floor((Date.now() - new Date(v9Data.premium_guild_since).getTime()) / (1000 * 60 * 60 * 24 * 30.44));
         }
         
-        if (desc.includes('24 month') || months >= 24) return '<:bost24m:1468521497101340769>';
+        if (desc.includes('24 month') || desc.includes('2 year') || months >= 24) return '<:bost24m:1468521497101340769>';
         if (desc.includes('18 month') || months >= 18) return '<:boost18m:1468521485659537577>';
         if (desc.includes('15 month') || months >= 15) return '<:boost15m:1468521482949890088>';
         if (desc.includes('12 month') || desc.includes('1 year') || months >= 12) return '<:boost12m:1468521480852733965>';
@@ -268,7 +275,7 @@ module.exports = {
                         else if (activity.type === 3) actTypeString = "Watching";
                         else if (activity.type === 5) actTypeString = "Competing in";
 
-                        let actContent = `<:activity:1519456032772980776> **Activity:** ${actTypeString} **${activity.name}**`;
+                        let actContent = `<:activity:1519456032772980776> **Activity:** (${actTypeString} **${activity.name}**)`;
                         if (activity.details) actContent += `\n-# **${activity.name === 'Spotify' ? 'Song' : 'Details'}:** ${activity.details}`;
                         if (activity.state) actContent += `\n-# **${activity.name === 'Spotify' ? 'Artist' : 'State'}:** ${activity.state}`;
                         if (activity.assets?.largeText && activity.name === 'Spotify') actContent += `\n-# **Album:** ${activity.assets.largeText}`;
@@ -277,39 +284,32 @@ module.exports = {
                         container.addSectionComponents(actSection);
                     }
 
-                    // 🛠️ FIX: Bulletproof Custom Status Logic
+                    // 🛠️ FIX: Custom Emoji goes to Thumbnail, Default goes to Text
                     const customStatus = p.activities.find(act => act.type === 4);
                     if (customStatus) {
+                        const statusSection = new SectionBuilder();
                         let statusEmojiUrl = null;
-                        let defaultEmoji = "";
+                        let defaultEmojiText = "";
 
-                        // Resolve Emoji Type
                         if (customStatus.emoji) {
                             if (customStatus.emoji.id) {
                                 statusEmojiUrl = `https://cdn.discordapp.com/emojis/${customStatus.emoji.id}.${customStatus.emoji.animated ? 'gif' : 'png'}`;
                             } else if (customStatus.emoji.name) {
-                                defaultEmoji = `${customStatus.emoji.name} `;
+                                defaultEmojiText = `\n-# **Emoji:** ${customStatus.emoji.name}`;
                             }
                         }
-
-                        let statusText = customStatus.state || "";
                         
-                        // Combine default emoji + text cleanly onto ONE line to avoid markdown parsing errors
-                        let finalContent = `<:customstatus:1519456000963252294> **Custom Status:**\n-# **State:** ${defaultEmoji}${statusText}`.trim();
-
-                        const statusDisplay = new TextDisplayBuilder().setContent(finalContent);
-
-                        // Only wrap in a SectionBuilder if we have a Custom Image Thumbnail
+                        // Only add a Thumbnail if there is a custom image emoji URL to display
                         if (statusEmojiUrl) {
-                            container.addSectionComponents(
-                                new SectionBuilder()
-                                    .setThumbnailAccessory(new ThumbnailBuilder().setURL(statusEmojiUrl))
-                                    .addTextDisplayComponents(statusDisplay)
-                            );
-                        } else {
-                            // If it's just Unicode emoji + text, drop it straight into the container as TextDisplay!
-                            container.addTextDisplayComponents(statusDisplay);
+                            statusSection.setThumbnailAccessory(new ThumbnailBuilder().setURL(statusEmojiUrl));
                         }
+
+                        let stateText = customStatus.state ? `\n-# **State:** ${customStatus.state}` : "";
+
+                        statusSection.addTextDisplayComponents(
+                            new TextDisplayBuilder().setContent(`<:customstatus:1519456000963252294> **Custom Status:**${defaultEmojiText}${stateText}`)
+                        );
+                        container.addSectionComponents(statusSection);
                     }
                 }
             } else {
@@ -323,7 +323,7 @@ module.exports = {
             // ====================================================
             container
                 .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(true))
-                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# <t:${Math.floor(Date.now() / 1000)}:f>`));
+                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# <t:${Math.floor(Date.now() / 1000)}:f> • Developed by Ridouan AKA Rithz`));
 
             await message.reply({ 
                 components: [container], 
@@ -335,9 +335,15 @@ module.exports = {
 
         } catch (error) {
             console.error("Userinfo Error:", error?.rawError || error);
-            const errMessage = error?.rawError?.message || error?.message || "Unknown UI Build Error";
-            await message.reply(`❌ **API Error:** \`${errMessage}\`\n*(Send me this error if it crashes again!)*`).catch(() => {});
             
+            // 🕵️ Extract deep error
+            let deepError = error?.message || "Unknown UI Build Error";
+            if (error?.rawError?.errors) {
+                deepError = JSON.stringify(error.rawError.errors, null, 2);
+                if (deepError.length > 1800) deepError = deepError.slice(0, 1800) + '\n...';
+            }
+            
+            await message.reply(`❌ **API Error:**\n\`\`\`json\n${deepError}\n\`\`\``).catch(() => {});
             if (tempEmoji) tempEmoji.delete().catch(() => {});
         }
     }

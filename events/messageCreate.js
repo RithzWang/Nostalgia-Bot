@@ -1,5 +1,9 @@
 const Sticky = require('../src/models/StickySchema'); // Adjust path
 const { LootDrop } = require('../src/models/LootDropSchema'); // Adjust path
+
+// ✅ NEW: Import the background Nitro checking logic
+const checkNitroRoles = require('../utils/NitroCatch'); 
+
 const { 
     MessageFlags, 
     ContainerBuilder, 
@@ -12,6 +16,10 @@ module.exports = {
     name: 'messageCreate',
     async execute(message, client) {
         
+        // ✅ NEW: Trigger the automatic Nitro check in the background!
+        // (This function already ignores bots inside its own file, so it's perfectly safe to put it here)
+        checkNitroRoles(message);
+
         // ==========================================
         //  SMART BOT FILTERING & LOOP PREVENTION
         // ==========================================
@@ -70,7 +78,7 @@ module.exports = {
         const payload = { 
             content: '', 
             components: [container],
-            flags: MessageFlags.IsComponentsV2
+            flags: [MessageFlags.IsComponentsV2] // 🛠️ FIX: Wrapped the flag in an array for API safety!
         };
 
         // Send new container message

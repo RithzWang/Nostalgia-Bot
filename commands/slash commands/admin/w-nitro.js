@@ -1,12 +1,12 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const NitroConfig = require('../../../src/models/NitroConfig'); 
-const { fetchAdvancedProfile } = require('../../../utils/v9Scraper'); // ✅ Import your scraper!
+const { fetchAdvancedProfile } = require('../../../utils/v9Scraper'); 
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('w-nitro')
-        .setDescription('Configure or check Nitro role assignments.')
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+        .setDescription('Configure or run a mass Nitro role check.')
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         
         // 1. SET Subcommand
         .addSubcommand(subcommand =>
@@ -32,16 +32,11 @@ module.exports = {
                 .setDescription('Clear the Nitro role configuration.')
         )
         
-        // 3. CHECK Subcommand (The new manual trigger)
+        // 3. CHECK Subcommand (Mass Sync)
         .addSubcommand(subcommand =>
             subcommand
                 .setName('check')
-                .setDescription('Manually check a user and apply the correct Nitro roles.')
-                .addUserOption(option =>
-                    option.setName('target')
-                        .setDescription('The user to check (leave blank to check yourself)')
-                        .setRequired(false)
-                )
+                .setDescription('Check ALL members one-by-one and sync their Nitro roles safely.')
         ),
 
     async execute(interaction) {
@@ -73,7 +68,7 @@ module.exports = {
         }
 
         // ==============================
-        // ACTION: CHECK (Manual Sync)
+        // ACTION: CHECK (Mass Sync)
         // ==============================
         if (sub === 'check') {
             // 1. Fetch Config
@@ -82,51 +77,64 @@ module.exports = {
                 return interaction.editReply("⚠️ You need to set up the roles first! Run `/w-nitro set`.");
             }
 
-            // 2. Fetch Target Member
-            const targetUser = interaction.options.getUser('target') || interaction.user;
-            const targetMember = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
+            // 2. Fetch all members and filter out Bots (Bots can't buy Nitro)
+            const allMembers = await interaction.guild.members.fetch();
+            const humanMembers = allMembers.filter(m => !m.user.bot);
+            
+            // Calculate estimated time (2 seconds per member)
+            const estimatedMinutes = Math.ceil((humanMembers.size * 2) / 60);
 
-            if (!targetMember) {
-                return interaction.editReply("❌ That user is not in this server.");
+            await interaction.editReply(`⏳ **Starting Mass Nitro Sync...**\n> I am preparing to check **${humanMembers.size}** members.\n> This will take approximately **${estimatedMinutes} minute(s)** to complete safely to avoid API bans.\n\n*I will ping you in this channel when I am finished!*`);
+
+            let nitroFoundCount = 0;
+            let changesMade = 0;
+
+            // 3. Loop through everyone ONE BY ONE
+            for (const [id, member] of humanMembers) {
+                try {
+                    // Hit the API
+                    const v10Data = await fetchAdvancedProfile(member.id).catch(() => null);
+                    
+                    if (v10Data) {
+                        const hasNitro = !!(v10Data.premium_type || v10Data.premium_since);
+                        const hasNitroRole = member.roles.cache.has(config.withNitroRoleId);
+                        const hasNoNitroRole = member.roles.cache.has(config.noNitroRoleId);
+
+                        if (hasNitro) {
+                            nitroFoundCount++;
+                            if (!hasNitroRole) { 
+                                await member.roles.add(config.withNitroRoleId).catch(() => {}); 
+                                changesMade++;
+                            }
+                            if (hasNoNitroRole) { 
+                                await member.roles.remove(config.noNitroRoleId).catch(() => {}); 
+                            }
+                        } else {
+                            if (!hasNoNitroRole) { 
+                                await member.roles.add(config.noNitroRoleId).catch(() => {}); 
+                                changesMade++;
+                            }
+                            if (hasNitroRole) { 
+                                await member.roles.remove(config.withNitroRoleId).catch(() => {}); 
+                            }
+                        }
+                    }
+
+                    // ⚠️ CRITICAL: 2-Second Sleep Timer
+                    // This pauses the loop for 2000 milliseconds before checking the next user.
+                    // DO NOT remove this, or your burner account will be banned for API abuse!
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+
+                } catch (error) {
+                    console.error(`Failed to sync ${member.user.tag}:`, error);
+                }
             }
 
-            // 3. Check the Burner Account API
-            const v10Data = await fetchAdvancedProfile(targetUser.id).catch(() => null);
-            if (!v10Data) {
-                return interaction.editReply(`❌ Failed to fetch profile data for **${targetUser.username}**.`);
-            }
-
-            // 4. Determine Status & Apply Logic
-            const hasNitro = !!(v10Data.premium_type || v10Data.premium_since);
-            const hasNitroRole = targetMember.roles.cache.has(config.withNitroRoleId);
-            const hasNoNitroRole = targetMember.roles.cache.has(config.noNitroRoleId);
-
-            let addedRole = "None";
-            let removedRole = "None";
-
-            if (hasNitro) {
-                if (!hasNitroRole) { 
-                    await targetMember.roles.add(config.withNitroRoleId).catch(() => {}); 
-                    addedRole = `<@&${config.withNitroRoleId}>`; 
-                }
-                if (hasNoNitroRole) { 
-                    await targetMember.roles.remove(config.noNitroRoleId).catch(() => {}); 
-                    removedRole = `<@&${config.noNitroRoleId}>`; 
-                }
-
-                return interaction.editReply(`✅ **${targetUser.username}** has Nitro!\n> **Added:** ${addedRole}\n> **Removed:** ${removedRole}`);
-            } else {
-                if (!hasNoNitroRole) { 
-                    await targetMember.roles.add(config.noNitroRoleId).catch(() => {}); 
-                    addedRole = `<@&${config.noNitroRoleId}>`; 
-                }
-                if (hasNitroRole) { 
-                    await targetMember.roles.remove(config.withNitroRoleId).catch(() => {}); 
-                    removedRole = `<@&${config.withNitroRoleId}>`; 
-                }
-
-                return interaction.editReply(`⛔ **${targetUser.username}** does not have Nitro.\n> **Added:** ${addedRole}\n> **Removed:** ${removedRole}`);
-            }
+            // 4. Send the final completion message!
+            // We use channel.send instead of editReply just in case the process took longer than 15 minutes.
+            return interaction.channel.send({
+                content: `✅ <@${interaction.user.id}>, **Mass Nitro Sync Complete!**\n> Checked: **${humanMembers.size}** members.\n> Total Nitro Users Found: **${nitroFoundCount}**\n> Roles Updated: **${changesMade}**`
+            }).catch(() => {});
         }
     }
 };

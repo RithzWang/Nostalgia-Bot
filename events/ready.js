@@ -129,21 +129,24 @@ module.exports = {
                         }
                     } 
                     else if (msg.type === 'container') {
-                        const components = [
-                            new ContainerBuilder()
-                                .addTextDisplayComponents(
-                                    new TextDisplayBuilder().setContent(msg.content)
-                                ),
-                        ];
+                        // 🛠️ FIX: Cleaned up array building and added proper image handling
+                        const container = new ContainerBuilder()
+                            .addTextDisplayComponents(
+                                new TextDisplayBuilder().setContent(msg.content)
+                            );
+                            
                         const containerPayload = { 
-                            components: components, 
+                            components: [container], 
                             allowedMentions: allowedMentions,
-                            flags: MessageFlags.IsComponentsV2 
+                            flags: [MessageFlags.IsComponentsV2] // 🛠️ FIX: Wrapped in an array for API safety
                         };
+
+                        // 🛠️ FIX: Added support for sending images alongside scheduled containers
+                        if (msg.image) containerPayload.files = [msg.image];
                         
                         await channel.send(containerPayload)
                             .then(() => console.log(`[SCHEDULER] Successfully sent 'container' message.`))
-                            .catch(err => console.error(`[SCHEDULER] FAILED to send 'container':`, err));
+                            .catch(err => console.error(`[SCHEDULER] FAILED to send 'container':`, err?.rawError || err));
                     }
 
                     // Remove it from the database after attempting to send

@@ -1,7 +1,7 @@
 // File Location: ./utils/NitroCatch.js
 
 const { fetchAdvancedProfile } = require('./v9Scraper');
-const NitroConfig = require('../models/NitroConfig');
+const NitroConfig = require('../src/models/NitroConfig');
 
 // Cooldown memory stays here so it persists in the background
 const recentChecks = new Set(); 

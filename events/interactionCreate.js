@@ -277,7 +277,7 @@ module.exports = {
                                 )
                                 .addTextDisplayComponents(
                                     new TextDisplayBuilder().setContent("## New Registration"),
-                                    new TextDisplayBuilder().setContent(`${member} \`(${member.user.username})\`\n**ID:** \`${member.id}\`\n**Name:** ${name}\n**Country:** ${countryInput}`),
+                                    new TextDisplayBuilder().setContent(`${member} \`${member.user.username}\`\n**ID:** \`${member.id}\`\n**Name:** ${name}\n**Country:** ${countryInput}`),
                                 ),
                         )
                         .addSeparatorComponents(

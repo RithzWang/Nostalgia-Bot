@@ -33,12 +33,11 @@ function getStatusLine(guild, tagCount, badgePack = 'default') {
         if (currentBoosts < totalRequired) {
             const packNeeded = totalRequired - currentBoosts;
             const packGrammar = packNeeded === 1 ? "1 Boost Remaining" : `${packNeeded} Boosts Remaining`;
-            // Uses the no_tag emoji as requested for badge pack deficits
             return `<:no_tag:1518693542460129373> **${packGrammar}**\n-# <:tl2:1519042925713952838> to enable the **${packName}** pack`;
         }
     }
     
-    // 3. Fully Enabled (All boost requirements met)
+    // 3. Fully Enabled
     const hasClanFeature = guild.features.includes('CLAN') || guild.features.includes('GUILD_TAGS') || guild.features.includes('MEMBER_VERIFICATION_GATE_ENABLED');
     
     if (!hasClanFeature && tagCount === 0) {
@@ -55,7 +54,6 @@ async function updateGTSDashboard(client) {
     const mainGuild = client.guilds.cache.get(hub.mainServerId);
     if (!mainGuild) return;
 
-    // ✅ NEW: Sorts the servers by your assigned order before processing them!
     const allServers = await GTSServer.find().sort({ sortOrder: 1, _id: 1 });
     const mainHumanCount = mainGuild.members.cache.filter(m => !m.user.bot).size;
 
@@ -64,7 +62,7 @@ async function updateGTSDashboard(client) {
     // ==========================================
     let globalTagAdopters = 0;
 
-    // 🟢 MAIN SERVER SWEEP
+    // 🟢 MAIN SERVER SWEEP (Enhanced Synchronization)
     let mainLocalTags = 0;
     const mainData = allServers.find(s => s.serverId === hub.mainServerId) || {};
     
@@ -72,28 +70,36 @@ async function updateGTSDashboard(client) {
         if (m.user.bot) continue;
         
         const identityId = m.user.primaryGuild?.identityGuildId;
+        const activeSrvData = identityId ? allServers.find(s => s.serverId === identityId) : null;
         
         if (identityId === hub.mainServerId) mainLocalTags++;
 
-        if (identityId) {
-            const srvData = allServers.find(s => s.serverId === identityId);
-            if (srvData) {
-                if (hub.defaultTagRole && !m.roles.cache.has(hub.defaultTagRole)) {
-                    m.roles.add(hub.defaultTagRole).catch(() => {});
-                }
-                if (srvData.mainTagRole && !m.roles.cache.has(srvData.mainTagRole)) {
-                    m.roles.add(srvData.mainTagRole).catch(() => {});
-                }
-            }
-        }
-    }
-    globalTagAdopters += mainLocalTags;
+        // Determine the roles this member SHOULD have right now
+        const expectedDefaultRole = activeSrvData ? hub.defaultTagRole : null;
+        const expectedMainRole = activeSrvData ? activeSrvData.mainTagRole : null;
 
-    // ✅ Pass the tagBadgePack to the status checker
+        // Add missing roles
+        if (expectedDefaultRole && !m.roles.cache.has(expectedDefaultRole)) m.roles.add(expectedDefaultRole).catch(() => {});
+        if (expectedMainRole && !m.roles.cache.has(expectedMainRole)) m.roles.add(expectedMainRole).catch(() => {});
+
+        // Cleanup: Remove default role if they dropped their tag entirely
+        if (!expectedDefaultRole && hub.defaultTagRole && m.roles.cache.has(hub.defaultTagRole)) {
+            m.roles.remove(hub.defaultTagRole).catch(() => {});
+        }
+
+        // Cleanup: Scan all tracked mainTagRoles. If they have one that doesn't match their current tag, strip it.
+        allServers.forEach(srv => {
+            if (srv.mainTagRole && srv.mainTagRole !== expectedMainRole && m.roles.cache.has(srv.mainTagRole)) {
+                m.roles.remove(srv.mainTagRole).catch(() => {});
+            }
+        });
+    }
+    
+    globalTagAdopters += mainLocalTags;
     const mainStatus = getStatusLine(mainGuild, mainLocalTags, mainData.tagBadgePack);
     const mainInviteUrl = mainData.inviteLink && mainData.inviteLink.startsWith('http') ? mainData.inviteLink : "https://discord.com";
 
-    // 🟢 SATELLITE SERVER SWEEP
+    // 🟢 SATELLITE SERVER SWEEP (Enhanced Synchronization)
     const satellites = allServers.filter(s => s.serverId !== hub.mainServerId);
     const satellitePayloadData = [];
 
@@ -111,15 +117,19 @@ async function updateGTSDashboard(client) {
             
             if (identityId === satData.serverId) {
                 satLocalTags++;
-
+                // Add role if missing
                 if (satData.localTagRole && !m.roles.cache.has(satData.localTagRole)) {
                     m.roles.add(satData.localTagRole).catch(() => {});
+                }
+            } else {
+                // Cleanup: Remove role if they dropped the tag or swapped to a different server's tag
+                if (satData.localTagRole && m.roles.cache.has(satData.localTagRole)) {
+                    m.roles.remove(satData.localTagRole).catch(() => {});
                 }
             }
         }
         globalTagAdopters += satLocalTags;
 
-        // ✅ Pass the tagBadgePack to the status checker
         const satStatus = getStatusLine(guild, satLocalTags, satData.tagBadgePack);
         const satInviteUrl = satData.inviteLink && satData.inviteLink.startsWith('http') ? satData.inviteLink : "https://discord.com";
 
@@ -134,15 +144,12 @@ async function updateGTSDashboard(client) {
     });
 
     // ==========================================
-    // 2. BLUEPRINT RENDER ENGINE (Now requires targetGuildId)
+    // 2. BLUEPRINT RENDER ENGINE
     // ==========================================
     const renderPayload = (targetGuildId) => {
         const containers = [];
-
-        // 📌 Check if the Main Server gets the pin
         const mainPin = mainGuild.id === targetGuildId ? " 📍" : "";
 
-        // Build Container 1 (Header + Main Server)
         const container1 = new ContainerBuilder()
             .addTextDisplayComponents(new TextDisplayBuilder().setContent("# 📊 Server Statistics"))
             .addActionRowComponents(
@@ -169,12 +176,10 @@ async function updateGTSDashboard(client) {
             );
         containers.push(container1);
 
-        // Build Container 2 (Satellites)
         if (satellitePayloadData.length > 0) {
             const container2 = new ContainerBuilder();
 
             satellitePayloadData.forEach((sat, index) => {
-                // 📌 Check if THIS satellite gets the pin
                 const satPin = sat.id === targetGuildId ? " 📍" : "";
 
                 container2.addSectionComponents(
@@ -210,15 +215,11 @@ async function updateGTSDashboard(client) {
     // ==========================================
     // 3. BROADCAST DESPATCH
     // ==========================================
-
-    // Despatch A: Main Hub
     if (hub.dashboardChannelId) {
         const hubChannel = mainGuild.channels.cache.get(hub.dashboardChannelId) || await client.channels.fetch(hub.dashboardChannelId).catch(() => null);
         if (hubChannel) {
             try {
-                // 🎯 Generate the custom payload specifically for the Main Server
                 const hubPayload = renderPayload(hub.mainServerId);
-
                 let msg = null;
                 if (hub.dashboardMessageId) msg = await hubChannel.messages.fetch(hub.dashboardMessageId).catch(() => null);
                 if (msg && msg.editable) {
@@ -232,7 +233,6 @@ async function updateGTSDashboard(client) {
         }
     }
 
-    // Despatch B: Satellites
     for (const satData of allServers) {
         if (!satData.localDashboardChannelId) continue; 
 
@@ -243,9 +243,7 @@ async function updateGTSDashboard(client) {
         if (!satChannel) continue;
 
         try {
-            // 🎯 Generate the custom payload specifically for THIS Satellite Server
             const satPayload = renderPayload(satData.serverId);
-
             let msg = null;
             if (satData.localDashboardMessageId) msg = await satChannel.messages.fetch(satData.localDashboardMessageId).catch(() => null);
             

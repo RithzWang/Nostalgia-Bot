@@ -28,7 +28,7 @@ function buildAlertPayload(type, user, serverName, reason, extraData = null) {
         section.addTextDisplayComponents(
             new TextDisplayBuilder().setContent("## Timer Started"),
             new TextDisplayBuilder().setContent(
-                `**${globalName}** (${username})\n` +
+                `**${globalName}** \`${username}\`\n` +
                 `**ID:** \`${userId}\`\n` +
                 `**Server:** ${serverName}\n` +
                 `**Reason:** ${reason}\n` +
@@ -48,7 +48,7 @@ function buildAlertPayload(type, user, serverName, reason, extraData = null) {
         section.addTextDisplayComponents(
             new TextDisplayBuilder().setContent("## Timers Cancelled"),
             new TextDisplayBuilder().setContent(
-                `**${globalName}** (${username})\n` +
+                `**${globalName}** \`${username}\`\n` +
                 `**ID:** \`${userId}\`\n` +
                 `**Reason:** ${reason}\n` +
                 `**Saved From:** **${savedCount}** ${kickGrammar}`
@@ -65,7 +65,7 @@ function buildAlertPayload(type, user, serverName, reason, extraData = null) {
         section.addTextDisplayComponents(
             new TextDisplayBuilder().setContent("## Member Kicked"),
             new TextDisplayBuilder().setContent(
-                `**${globalName}** (${username})\n` +
+                `**${globalName}** \`${username}\`\n` +
                 `**ID:** \`${userId}\`\n` +
                 `**Server:** ${serverName}\n` +
                 `**Reason:** ${reason}`

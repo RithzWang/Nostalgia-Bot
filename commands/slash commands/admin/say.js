@@ -71,6 +71,12 @@ module.exports = {
         .addSubcommand(sub => sub.setName('pin').setDescription('Pin a message in the channel')
             .addStringOption(opt => opt.setName('message_id').setDescription('Message ID').setRequired(true))
             .addChannelOption(opt => opt.setName('channel').setDescription('Channel the message is in').addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
+        )
+        
+        // --- STICKER SUBCOMMAND ---
+        .addSubcommand(sub => sub.setName('sticker').setDescription('Send a sticker to the channel')
+            .addStringOption(opt => opt.setName('sticker_id').setDescription('The ID of the sticker to send').setRequired(true))
+            .addChannelOption(opt => opt.setName('channel').setDescription('Where to send?').addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
         ),
 
     async execute(interaction) {
@@ -89,7 +95,6 @@ module.exports = {
         }
 
         // --- TIMER DATABASE LOGIC ---
-        // If a valid timer was provided on send, reply, or container, save to DB and stop here.
         if (delayMs && delayMs > 0 && ['send', 'reply', 'container'].includes(subcommand)) {
             const sendAtTime = new Date(Date.now() + delayMs);
             const messageIdOpt = interaction.options.getString('message_id');
@@ -105,7 +110,6 @@ module.exports = {
                 sendAt: sendAtTime
             });
 
-            // Calculate UNIX timestamp for Discord's built-in relative time display
             const unixTime = Math.floor(sendAtTime.getTime() / 1000);
             return interaction.reply({ 
                 content: `<:yes:1297814648417943565> Scheduled to trigger <t:${unixTime}:R>.`, 
@@ -114,7 +118,6 @@ module.exports = {
         }
 
         // --- IMMEDIATE EXECUTION LOGIC ---
-        // If no timer was provided, execute instantly.
         let payload = {};
         if (content !== null) {
             const allowedMentions = shouldMention ? { parse: ['users', 'roles', 'everyone'] } : { parse: [] };
@@ -194,6 +197,13 @@ module.exports = {
                 const targetMessage = await targetChannel.messages.fetch(messageId);
                 await targetMessage.pin();
                 await interaction.reply({ content: `<:yes:1297814648417943565> Message pinned successfully.`, flags: MessageFlags.Ephemeral });
+            }
+            else if (subcommand === 'sticker') {
+                const stickerId = interaction.options.getString('sticker_id');
+                
+                // Discord.js accepts an array of sticker IDs in the send payload
+                await targetChannel.send({ stickers: [stickerId] });
+                await interaction.reply({ content: `<:yes:1297814648417943565> Sticker sent to ${targetChannel}.`, flags: MessageFlags.Ephemeral });
             }
 
         } catch (error) {

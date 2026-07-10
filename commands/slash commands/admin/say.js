@@ -66,7 +66,8 @@ module.exports = {
         // --- REACT SUBCOMMAND ---
         .addSubcommand(sub => sub.setName('react').setDescription('Add reactions to a message')
             .addStringOption(opt => opt.setName('message_id').setDescription('Message ID').setRequired(true))
-            .addStringOption(opt => opt.setName('emoji').setDescription('Standard emojis (👍) or custom emojis (<:name:id>) separated by spaces').setRequired(true))
+            .addStringOption(opt => opt.setName('normal_react').setDescription('Standard or custom emojis separated by spaces').setRequired(true))
+            .addStringOption(opt => opt.setName('super_react').setDescription('Super emojis (Note: Bots cannot send these)').setRequired(false))
             .addChannelOption(opt => opt.setName('channel').setDescription('Channel the message is in').addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
         )
 
@@ -177,29 +178,39 @@ module.exports = {
             }
             else if (subcommand === 'react') {
                 const messageId = interaction.options.getString('message_id');
-                const emojiInput = interaction.options.getString('emoji');
+                const normalReactInput = interaction.options.getString('normal_react');
+                const superReactInput = interaction.options.getString('super_react');
                 const targetMessage = await targetChannel.messages.fetch(messageId);
 
-                const emojisToReact = emojiInput.split(/\s+/);
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
                 let successCount = 0;
-                for (const rawEmoji of emojisToReact) {
-                    if (!rawEmoji) continue;
-                    const customMatch = rawEmoji.match(/<a?:.+:(\d+)>/);
-                    const resolvedEmoji = customMatch ? customMatch[1] : rawEmoji;
+                let responseMsg = '';
 
-                    try {
-                        await targetMessage.react(resolvedEmoji);
-                        successCount++;
-                    } catch (err) {
-                        console.error(`Failed to react with ${resolvedEmoji}`);
+                // Handle the normal reactions
+                if (normalReactInput) {
+                    const emojisToReact = normalReactInput.split(/\s+/);
+                    for (const rawEmoji of emojisToReact) {
+                        if (!rawEmoji) continue;
+                        const customMatch = rawEmoji.match(/<a?:.+:(\d+)>/);
+                        const resolvedEmoji = customMatch ? customMatch[1] : rawEmoji;
+
+                        try {
+                            await targetMessage.react(resolvedEmoji);
+                            successCount++;
+                        } catch (err) {
+                            console.error(`Failed to react with ${resolvedEmoji}`);
+                        }
                     }
+                    responseMsg += `<:yes:1297814648417943565> Successfully added ${successCount} normal reaction(s).\n`;
                 }
 
-                await interaction.editReply({ 
-                    content: `<:yes:1297814648417943565> Successfully added ${successCount} reaction(s).` 
-                });
+                // Acknowledge the super reactions but inform the user they were skipped
+                if (superReactInput) {
+                    responseMsg += `⚠️ **Note:** Skipped super reactions. Bots do not have Nitro and cannot send Super Reactions via the API.`;
+                }
+
+                await interaction.editReply({ content: responseMsg.trim() });
             }
             else if (subcommand === 'pin') {
                 const messageId = interaction.options.getString('message_id');

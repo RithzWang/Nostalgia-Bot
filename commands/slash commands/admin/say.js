@@ -30,7 +30,8 @@ module.exports = {
             .addBooleanOption(opt => opt.setName('mention').setDescription('Mention users? (Defaults to True)').setRequired(false))
             .addStringOption(opt => opt.setName('timer').setDescription('Delay (e.g., 10s, 2m, 1h)').setRequired(false))
             .addChannelOption(opt => opt.setName('channel').setDescription('Where to send?').addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
-            .addAttachmentOption(opt => opt.setName('image').setDescription('Upload an image file'))
+            .addAttachmentOption(opt => opt.setName('image_attachment').setDescription('Upload an image file'))
+            .addStringOption(opt => opt.setName('image_link').setDescription('Or paste an Image Link (URL)'))
         )
         
         // --- EDIT SUBCOMMAND ---
@@ -39,7 +40,8 @@ module.exports = {
             .addStringOption(opt => opt.setName('content').setDescription('New content').setRequired(true))
             .addBooleanOption(opt => opt.setName('mention').setDescription('Mention users? (Defaults to True)').setRequired(false))
             .addChannelOption(opt => opt.setName('channel').setDescription('Channel').addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
-            .addAttachmentOption(opt => opt.setName('image').setDescription('Upload a new image file'))
+            .addAttachmentOption(opt => opt.setName('image_attachment').setDescription('Upload a new image file'))
+            .addStringOption(opt => opt.setName('image_link').setDescription('Or paste a new Image Link (URL)'))
         )
 
         // --- REPLY SUBCOMMAND ---
@@ -49,7 +51,8 @@ module.exports = {
             .addBooleanOption(opt => opt.setName('mention').setDescription('Mention users? (Defaults to True)').setRequired(false))
             .addStringOption(opt => opt.setName('timer').setDescription('Delay (e.g., 10s, 2m, 1h)').setRequired(false))
             .addChannelOption(opt => opt.setName('channel').setDescription('Channel the message is in').addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
-            .addAttachmentOption(opt => opt.setName('image').setDescription('Upload an image file'))
+            .addAttachmentOption(opt => opt.setName('image_attachment').setDescription('Upload an image file'))
+            .addStringOption(opt => opt.setName('image_link').setDescription('Or paste an Image Link (URL)'))
         )
 
         // --- CONTAINER SUBCOMMAND (V2 COMPONENTS) ---
@@ -88,9 +91,12 @@ module.exports = {
         const shouldMention = interaction.options.getBoolean('mention') ?? true; 
         const timerInput = interaction.options.getString('timer');
         
-        // Handle image file attachments vs text string
-        const imageAttachment = interaction.options.getAttachment('image');
-        const image = imageAttachment ? imageAttachment.url : null;
+        // Handle both attachment and link options
+        const imageAttachment = interaction.options.getAttachment('image_attachment');
+        const imageLink = interaction.options.getString('image_link');
+        
+        // Prefer the attachment if provided, otherwise fallback to the link, otherwise null
+        const image = imageAttachment ? imageAttachment.url : (imageLink || null);
         
         const delayMs = parseTimer(timerInput);
         if (delayMs === -1) {

@@ -30,7 +30,7 @@ module.exports = {
             .addBooleanOption(opt => opt.setName('mention').setDescription('Mention users? (Defaults to True)').setRequired(false))
             .addStringOption(opt => opt.setName('timer').setDescription('Delay (e.g., 10s, 2m, 1h)').setRequired(false))
             .addChannelOption(opt => opt.setName('channel').setDescription('Where to send?').addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
-            .addStringOption(opt => opt.setName('image').setDescription('Image Link (URL)'))
+            .addAttachmentOption(opt => opt.setName('image').setDescription('Upload an image file'))
         )
         
         // --- EDIT SUBCOMMAND ---
@@ -39,7 +39,7 @@ module.exports = {
             .addStringOption(opt => opt.setName('content').setDescription('New content').setRequired(true))
             .addBooleanOption(opt => opt.setName('mention').setDescription('Mention users? (Defaults to True)').setRequired(false))
             .addChannelOption(opt => opt.setName('channel').setDescription('Channel').addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
-            .addStringOption(opt => opt.setName('image').setDescription('New Image Link (URL)'))
+            .addAttachmentOption(opt => opt.setName('image').setDescription('Upload a new image file'))
         )
 
         // --- REPLY SUBCOMMAND ---
@@ -49,7 +49,7 @@ module.exports = {
             .addBooleanOption(opt => opt.setName('mention').setDescription('Mention users? (Defaults to True)').setRequired(false))
             .addStringOption(opt => opt.setName('timer').setDescription('Delay (e.g., 10s, 2m, 1h)').setRequired(false))
             .addChannelOption(opt => opt.setName('channel').setDescription('Channel the message is in').addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
-            .addStringOption(opt => opt.setName('image').setDescription('Image Link (URL)'))
+            .addAttachmentOption(opt => opt.setName('image').setDescription('Upload an image file'))
         )
 
         // --- CONTAINER SUBCOMMAND (V2 COMPONENTS) ---
@@ -86,8 +86,11 @@ module.exports = {
         
         const content = interaction.options.getString('content');
         const shouldMention = interaction.options.getBoolean('mention') ?? true; 
-        const image = interaction.options.getString('image');
         const timerInput = interaction.options.getString('timer');
+        
+        // Handle image file attachments vs text string
+        const imageAttachment = interaction.options.getAttachment('image');
+        const image = imageAttachment ? imageAttachment.url : null;
         
         const delayMs = parseTimer(timerInput);
         if (delayMs === -1) {
@@ -201,7 +204,6 @@ module.exports = {
             else if (subcommand === 'sticker') {
                 const stickerId = interaction.options.getString('sticker_id');
                 
-                // Discord.js accepts an array of sticker IDs in the send payload
                 await targetChannel.send({ stickers: [stickerId] });
                 await interaction.reply({ content: `<:yes:1297814648417943565> Sticker sent to ${targetChannel}.`, flags: MessageFlags.Ephemeral });
             }

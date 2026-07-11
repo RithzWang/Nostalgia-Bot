@@ -349,7 +349,7 @@ async function createWelcomeImage(member, themeColors = null) {
     const guildInfo = user.primaryGuild;
     const hasGuild = (guildInfo && guildInfo.tag);
 
-    ctx.font = `${baseUsernameSize}px "Prima Sans Regular", sans-serif`;
+    ctx.font = `${baseUsernameSize}px "Prima Sans Regular", "Thonburi", "Apple Gothic", "Hiragino Sans", "Pingfang", "Apple Color Emoji", "Symbol", "Apple Symbols", "Noto Symbol", "Noto Symbol 2", "Noto Math", "Noto Hieroglyphs", "Noto Music", sans-serif`;
     const usernameWidth = ctx.measureText(tagText).width;
 
     let totalNeededWidth = usernameWidth;

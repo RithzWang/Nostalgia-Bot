@@ -27,15 +27,25 @@ module.exports = {
         .addUserOption(opt => opt.setName('target')
             .setDescription('Test the welcome image on a specific user (defaults to you)')
             .setRequired(false)
+        )
+        .addBooleanOption(opt => opt.setName('avatar_nsfw')
+            .setDescription('Simulate flagging the avatar as inappropriate')
+            .setRequired(false)
+        )
+        .addBooleanOption(opt => opt.setName('banner_nsfw')
+            .setDescription('Simulate flagging the banner as inappropriate')
+            .setRequired(false)
         ),
 
     async execute(interaction) {
         // 1. Defer the reply because scraping and canvas generation take a few seconds
         await interaction.deferReply();
 
-        // 2. Get the target member
+        // 2. Get the target member and flags
         const targetUserOption = interaction.options.getUser('target') || interaction.user;
         const member = await interaction.guild.members.fetch(targetUserOption.id).catch(() => null);
+        const isAvatarNsfw = interaction.options.getBoolean('avatar_nsfw') || false;
+        const isBannerNsfw = interaction.options.getBoolean('banner_nsfw') || false;
 
         if (!member) {
             return interaction.editReply({ content: "❌ **Error:** Could not find that member in this server." });
@@ -52,9 +62,19 @@ module.exports = {
                 containerColor = themeColors[0]; // ✅ Primary color from the Nitro theme
             }
 
-            // 4. GENERATE THE IMAGE
-            const buffer = await createWelcomeImage(member, themeColors);
-            const attachment = new AttachmentBuilder(buffer, { name: 'welcome-image.png' });
+            // 4. GENERATE THE IMAGE & GET AVATAR STATE
+            // Destructure both the main welcome canvas and the resolved avatar asset, passing the new safety flags!
+            const { welcomeImage, avatarAsset, isFallback } = await createWelcomeImage(member, themeColors, isAvatarNsfw, isBannerNsfw);
+            
+            const files = [new AttachmentBuilder(welcomeImage, { name: 'welcome-image.png' })];
+            let thumbnailURL = member.user.displayAvatarURL({ extension: 'png', size: 512 });
+
+            // If the avatar failed to load OR was flagged as NSFW, use the generated fallback/blurred buffer for the embed thumbnail
+            if (isFallback && avatarAsset) {
+                const avatarAttachment = new AttachmentBuilder(avatarAsset, { name: 'avatar-target.png' });
+                files.push(avatarAttachment);
+                thumbnailURL = 'attachment://avatar-target.png';
+            }
             
             // 5. MOCK DATA FOR THE TEST UI
             const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
@@ -68,7 +88,7 @@ module.exports = {
                     new SectionBuilder()
                         .setThumbnailAccessory(
                             new ThumbnailBuilder()
-                                .setURL(member.user.displayAvatarURL({ extension: 'png', size: 512 }))
+                                .setURL(thumbnailURL) // ✅ Dynamically switches to attachment if error/blur occurred
                         )
                         .addTextDisplayComponents(
                             new TextDisplayBuilder().setContent(`### Welcome to ${member.guild.name} Server (TEST)`),
@@ -105,7 +125,7 @@ module.exports = {
             // 7. SEND THE REPLY
             await interaction.editReply({ 
                 flags: [MessageFlags.IsComponentsV2],
-                files: [attachment],
+                files: files,
                 components: [mainContainer]
             });
 

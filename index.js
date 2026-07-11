@@ -113,7 +113,7 @@ client.on('messageCreate', async (message) => {
 
 
 // --- WELCOME LOGIC ---
-const { createWelcomeImage } = require('./welcomeCanvas10.js');
+const { createWelcomeImage } = require('./welcomeCanvas12.js');
 const { fetchAdvancedProfile } = require('./utils/v9Scraper');
 
 client.on('guildMemberAdd', async (member) => {
@@ -143,22 +143,34 @@ client.on('guildMemberAdd', async (member) => {
 
         if (v9Data && v9Data.user_profile?.theme_colors) {
             themeColors = v9Data.user_profile.theme_colors; 
-           
         }
 
-        // ✅ PASS THE COLORS INTO YOUR CANVAS
-        const buffer = await createWelcomeImage(member, themeColors);
-        const attachment = new AttachmentBuilder(buffer, { name: 'welcome-image.png' });
+        // ✅ PASS THE COLORS INTO YOUR CANVAS & HANDLE FALLBACK THUMBNAIL
+        const { welcomeImage, avatarAsset, isFallback } = await createWelcomeImage(member, themeColors);
+        
+        // ✅ DYNAMIC FILE NAMING
+        const welcomeFileName = `${member.user.id}-welcome-image.png`;
+        const files = [new AttachmentBuilder(welcomeImage, { name: welcomeFileName })];
+        
+        let thumbnailURL = member.user.displayAvatarURL({ extension: 'png', size: 512 });
+
+        if (isFallback && avatarAsset) {
+            const avatarFileName = `${member.user.id}-avatar.png`; // Dynamic fallback name
+            const avatarAttachment = new AttachmentBuilder(avatarAsset, { name: avatarFileName });
+            files.push(avatarAttachment);
+            thumbnailURL = `attachment://${avatarFileName}`;
+        }
+
         const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
         
         // ✅ UPDATED CONTAINER BUILDER MATCHING BLUEPRINT
         const mainContainer = new ContainerBuilder()
-            .setAccentColor(0x888888) // ✅ Dynamically applied here!
+            .setAccentColor(0x888888) 
             .addSectionComponents(
                 new SectionBuilder()
                     .setThumbnailAccessory(
                         new ThumbnailBuilder()
-                            .setURL(member.user.displayAvatarURL({ extension: 'png', size: 512 }))
+                            .setURL(thumbnailURL) 
                     )
                     .addTextDisplayComponents(
                         new TextDisplayBuilder().setContent(`### Welcome to ${member.guild.name}`),
@@ -187,7 +199,7 @@ client.on('guildMemberAdd', async (member) => {
                 new MediaGalleryBuilder()
                     .addItems(
                         new MediaGalleryItemBuilder()
-                            .setURL("attachment://welcome-image.png")
+                            .setURL(`attachment://${welcomeFileName}`) // ✅ Dynamically linked attachment URL
                             .setDescription(`${member.user.globalName || member.user.username} just joined!`)
                     )
             );
@@ -196,7 +208,7 @@ client.on('guildMemberAdd', async (member) => {
         if (channel) {
             await channel.send({ 
                 flags: [MessageFlags.IsComponentsV2],
-                files: [attachment],
+                files: files, 
                 components: [mainContainer],
                 allowedMentions: { users: [member.user.id] } 
             });

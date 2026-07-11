@@ -6,7 +6,6 @@ const { fetchAdvancedProfile } = require('./utils/v9Scraper');
 // ==========================================
 
 // Helper: Safely load images with a strict timeout.
-// If Discord's CDN lags or errors (e.g. during a join raid), it aborts instantly and uses fallbacks.
 async function safeLoadImage(url, timeoutMs = 2500) {
     if (!url) return null;
     return Promise.race([
@@ -33,6 +32,15 @@ function shadeColor(color, percent) {
     return "#" + (0x1000000 + (Math.round((t - R) * p) + R) * 0x10000 + (Math.round((t - G) * p) + G) * 0x100 + (Math.round((t - B) * p) + B)).toString(16).slice(1);
 }
 
+// Helper: Check if Color is Light or Dark
+function isColorLight(hex) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+    return yiq >= 128;
+}
+
 // ==========================================
 // MAIN FUNCTION
 // ==========================================
@@ -40,8 +48,10 @@ function shadeColor(color, percent) {
 /**
  * @param {GuildMember} member - The discord.js GuildMember
  * @param {Array<number|string>} [themeColors] - Optional: Array of [Primary, Accent] colors from profile API
+ * @param {boolean} [isAvatarInappropriate=false] - Flag to blur avatar for NSFW protection
+ * @param {boolean} [isBannerInappropriate=false] - Flag to blur banner for NSFW protection
  */
-async function createWelcomeImage(member, themeColors = null) {
+async function createWelcomeImage(member, themeColors = null, isAvatarInappropriate = false, isBannerInappropriate = false) {
     // 1. Setup & Dimensions
     const user = await member.user.fetch(true);
 
@@ -59,6 +69,24 @@ async function createWelcomeImage(member, themeColors = null) {
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
+    // 2. FETCH ALL ASSETS CONCURRENTLY FOR MAXIMUM SPEED
+    const status = member.presence ? member.presence.status : 'offline';
+    const statusMap = {
+        online: './pics/discord status/statusonline.png',
+        idle: './pics/discord status/statusidle.png',
+        dnd: './pics/discord status/statusdnd.png',
+        streaming: './pics/discord status/statusstreaming.png',
+        invisible: './pics/discord status/statusinvisible.png',
+        offline: './pics/discord status/statusinvisible.png'
+    };
+
+    const [rawBanner, rawAvatar, statusImage, decoImage] = await Promise.all([
+        safeLoadImage(user.bannerURL({ extension: 'png', size: 2048 }), 2000),
+        safeLoadImage(user.displayAvatarURL({ extension: 'png', size: 512 }), 2000),
+        safeLoadImage(statusMap[status] || statusMap.offline, 1500),
+        user.avatarDecorationURL() ? safeLoadImage(user.avatarDecorationURL({ extension: 'png', size: 512 }), 2000) : null
+    ]);
+
     // ==========================================
     // LAYER 1: THE CARD BACKGROUND
     // ==========================================
@@ -71,16 +99,20 @@ async function createWelcomeImage(member, themeColors = null) {
     ctx.roundRect(0, 0, dim.width, dim.height, cornerRadius);
     ctx.closePath();
     ctx.clip(); 
-
-    // Fetch Images with strict timeouts for performance
-    const bannerURL = user.bannerURL({ extension: 'png', size: 2048 });
-    const avatarURL = user.displayAvatarURL({ extension: 'png', size: 2048 });
     
+    // ✅ NEW BACKGROUND LOGIC: Independent Banner and Avatar safety checks
     let backgroundBuf = null;
-    if (bannerURL) backgroundBuf = await safeLoadImage(bannerURL, 2000);
-    if (!backgroundBuf && avatarURL) backgroundBuf = await safeLoadImage(avatarURL, 2000);
+    let bgBlurAmount = 'blur(10px)'; // Default fallback blur
 
-    // Draw Background or Fallback
+    if (rawBanner) {
+        backgroundBuf = rawBanner;
+        bgBlurAmount = isBannerInappropriate ? 'blur(40px)' : 'blur(3px)';
+    } else if (rawAvatar) {
+        backgroundBuf = rawAvatar;
+        bgBlurAmount = isAvatarInappropriate ? 'blur(40px)' : 'blur(10px)';
+    }
+
+    // Draw Background
     if (backgroundBuf) {
         const canvasRatio = dim.width / dim.height;
         const sHeight = backgroundBuf.width / canvasRatio;
@@ -89,23 +121,23 @@ async function createWelcomeImage(member, themeColors = null) {
             const sourceHeight = backgroundBuf.width / canvasRatio;
             const sy = (backgroundBuf.height - sourceHeight) / 2;
             ctx.drawImage(backgroundBuf, 0, sy, backgroundBuf.width, sourceHeight, 0, 0, dim.width, dim.height);
-            ctx.filter = bannerURL ? 'blur(3px)' : 'blur(10px)';
+            ctx.filter = bgBlurAmount; // Applies calculated blur safely
             ctx.drawImage(backgroundBuf, 0, sy, backgroundBuf.width, sourceHeight, 0, 0, dim.width, dim.height);
         } else {
             const sourceWidth = backgroundBuf.height * canvasRatio;
             const sx = (backgroundBuf.width - sourceWidth) / 2;
             ctx.drawImage(backgroundBuf, sx, 0, sourceWidth, backgroundBuf.height, 0, 0, dim.width, dim.height);
-            ctx.filter = bannerURL ? 'blur(3px)' : 'blur(10px)';
+            ctx.filter = bgBlurAmount; // Applies calculated blur safely
             ctx.drawImage(backgroundBuf, sx, 0, sourceWidth, backgroundBuf.height, 0, 0, dim.width, dim.height);
         }
         ctx.filter = 'none'; 
     } else {
-        // ✅ FALLBACK: Uses the user's Profile Accent Color, or dark grey if none exists
-        ctx.fillStyle = user.hexAccentColor || '#1e1e1e';
+        // Strict #888888 grey if no images loaded
+        ctx.fillStyle = '#888888';
         ctx.fillRect(0, 0, dim.width, dim.height);
     }
 
-    // Dark Overlay (Ensures text is always readable over bright fallback colors)
+    // Dark Overlay
     ctx.fillStyle = backgroundBuf ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.5)';
     ctx.fillRect(0, 0, dim.width, dim.height);
 
@@ -143,23 +175,6 @@ async function createWelcomeImage(member, themeColors = null) {
     const centerX = avatarX + avatarRadius;
     const centerY = avatarY + avatarRadius;
 
-    const status = member.presence ? member.presence.status : 'offline';
-    const statusMap = {
-        online: './pics/discord status/statusonline.png',
-        idle: './pics/discord status/statusidle.png',
-        dnd: './pics/discord status/statusdnd.png',
-        streaming: './pics/discord status/statusstreaming.png',
-        invisible: './pics/discord status/statusinvisible.png',
-        offline: './pics/discord status/statusinvisible.png'
-    };
-
-    // Load images concurrently with safe timeouts
-    const [mainAvatar, statusImage, decoImage] = await Promise.all([
-        safeLoadImage(user.displayAvatarURL({ extension: 'png', size: 512 }), 2500),
-        safeLoadImage(statusMap[status] || statusMap.offline, 1500),
-        user.avatarDecorationURL() ? safeLoadImage(user.avatarDecorationURL({ extension: 'png', size: 512 }), 2000) : null
-    ]);
-
     const compositeCanvas = createCanvas(dim.width, dim.height);
     const cCtx = compositeCanvas.getContext('2d');
     cCtx.imageSmoothingEnabled = true;
@@ -169,22 +184,45 @@ async function createWelcomeImage(member, themeColors = null) {
     cCtx.beginPath();
     cCtx.arc(centerX, centerY, avatarRadius, 0, Math.PI * 2);
     cCtx.clip();
-    
-    // ✅ FALLBACK: If avatar errors or times out, draw initial in colored circle
-    if (mainAvatar) {
-        cCtx.drawImage(mainAvatar, avatarX, avatarY, avatarSize, avatarSize);
+
+    // ✅ INDEPENDENT AVATAR LOGIC: Safety Blur & Image Failure Fallbacks
+    let avatarAssetBuffer = null;
+    let needsCustomThumbnail = false;
+
+    const thumbCanvas = createCanvas(avatarSize, avatarSize);
+    const tCtx = thumbCanvas.getContext('2d');
+
+    if (rawAvatar) {
+        if (isAvatarInappropriate) {
+            needsCustomThumbnail = true;
+            // Draw heavily blurred avatar
+            tCtx.filter = 'blur(30px)';
+            tCtx.drawImage(rawAvatar, 0, 0, avatarSize, avatarSize);
+            tCtx.filter = 'none';
+        } else {
+            tCtx.drawImage(rawAvatar, 0, 0, avatarSize, avatarSize);
+        }
     } else {
-        cCtx.fillStyle = user.hexAccentColor || '#5865F2'; // Discord Blurple fallback
-        cCtx.fillRect(avatarX, avatarY, avatarSize, avatarSize);
-        
-        cCtx.fillStyle = '#ffffff';
-        cCtx.font = `bold ${avatarSize * 0.5}px "Prima Sans Regular", sans-serif`;
-        cCtx.textAlign = 'center';
-        cCtx.textBaseline = 'middle';
-        const initial = (user.globalName || user.username).charAt(0).toUpperCase();
-        cCtx.fillText(initial, centerX, centerY);
+        // Strict #888888 fallback if avatar totally failed to load
+        needsCustomThumbnail = true;
+        tCtx.fillStyle = '#888888'; 
+        tCtx.fillRect(0, 0, avatarSize, avatarSize);
     }
+
+    // Draw the generated thumb onto the main canvas
+    cCtx.drawImage(thumbCanvas, avatarX, avatarY, avatarSize, avatarSize);
     cCtx.restore();
+
+    // Export the custom thumbnail (cropped to a perfect circle) for the embed
+    if (needsCustomThumbnail) {
+        const exportCanvas = createCanvas(avatarSize, avatarSize);
+        const eCtx = exportCanvas.getContext('2d');
+        eCtx.beginPath();
+        eCtx.arc(avatarSize / 2, avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+        eCtx.clip();
+        eCtx.drawImage(thumbCanvas, 0, 0, avatarSize, avatarSize);
+        avatarAssetBuffer = exportCanvas.toBuffer('image/png');
+    }
 
     if (decoImage) {
         const scaledDeco = avatarSize * 1.2;
@@ -238,7 +276,6 @@ async function createWelcomeImage(member, themeColors = null) {
     const v9Data = await fetchAdvancedProfile(member.id).catch(() => null);
     if (v9Data && v9Data.badges && v9Data.badges.length > 0) {
         const badgeUrls = v9Data.badges.map(b => `https://cdn.discordapp.com/badge-icons/${b.icon}.png`);
-        // Uses safeLoadImage with short 1.5s timeout for badges
         const loadedBadges = await Promise.all(badgeUrls.map(url => safeLoadImage(url, 1500)));
         const validBadges = loadedBadges.filter(img => img !== null);
 
@@ -431,7 +468,6 @@ async function createWelcomeImage(member, themeColors = null) {
         const contentCenterY = boxY + (fBoxHeight / 2); 
 
         if (hasBadge) {
-            // Uses safeLoadImage with short timeout
             const badgeImg = await safeLoadImage(badgeURL, 2000);
             if (badgeImg) {
                 const badgeY = contentCenterY - (fBadgeSize / 2);
@@ -451,7 +487,6 @@ async function createWelcomeImage(member, themeColors = null) {
     // ==========================================
     ctx.restore(); 
 
-    // Uses safeLoadImage (though local files load instantly)
     const badgeImage = await safeLoadImage('./pics/logo/NEW_sign.png', 1000);
 
     if (badgeImage) {
@@ -464,7 +499,12 @@ async function createWelcomeImage(member, themeColors = null) {
         ctx.drawImage(badgeImage, badgeX, badgeY, badgeWidth, badgeHeight);
     }
 
-    return canvas.toBuffer('image/png');
+    // ✅ RETURN BOTH BUFFERS FOR THE EVENT HANDLER
+    return {
+        welcomeImage: canvas.toBuffer('image/png'),
+        avatarAsset: avatarAssetBuffer,
+        isFallback: needsCustomThumbnail
+    };
 }
 
 module.exports = { createWelcomeImage };

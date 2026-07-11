@@ -16,7 +16,7 @@ const {
     PermissionFlagsBits 
 } = require('discord.js');
 
-const { createWelcomeImage } = require('../../../welcomeCanvas10.js'); // Adjust path if needed
+const { createWelcomeImage } = require('../../../welcomeCanvas11.js'); // Adjust path if needed
 const { fetchAdvancedProfile } = require('../../../utils/v9Scraper'); // Adjust path if needed
 
 module.exports = {

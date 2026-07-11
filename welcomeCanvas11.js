@@ -1,5 +1,5 @@
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
-const { fetchAdvancedProfile } = require('./utils/v9Scraper'); // ✅ Imported to fetch badges directly
+const { fetchAdvancedProfile } = require('./utils/v9Scraper'); 
 
 // ==========================================
 // HELPERS
@@ -157,7 +157,6 @@ async function createWelcomeImage(member, themeColors = null) {
         offline: './pics/discord status/statusinvisible.png'
     };
 
-    // Strictly forcing the Global Avatar here as well
     const [mainAvatar, statusImage, decoImage] = await Promise.all([
         loadImage(user.displayAvatarURL({ extension: 'png', size: 512 })),
         loadImage(statusMap[status] || statusMap.offline).catch(() => null),
@@ -227,16 +226,15 @@ async function createWelcomeImage(member, themeColors = null) {
     // ==========================================
     const v9Data = await fetchAdvancedProfile(member.id).catch(() => null);
     if (v9Data && v9Data.badges && v9Data.badges.length > 0) {
-        // Fetch badge image streams concurrently
         const badgeUrls = v9Data.badges.map(b => `https://cdn.discordapp.com/badge-icons/${b.icon}.png`);
         const loadedBadges = await Promise.all(badgeUrls.map(url => loadImage(url).catch(() => null)));
         const validBadges = loadedBadges.filter(img => img !== null);
 
         if (validBadges.length > 0) {
-            const badgeSize = 65;      // ✅ Increased size from 50 to 65
-            const badgePaddingX = 25;
-            const badgeGap = 8;        // ✅ Tightened gap from 15 to 8
-            const badgeBoxHeight = 95; // ✅ Aligned neatly with layout scale
+            const badgeSize = 65;      
+            const badgePaddingX = 40;  
+            const badgeGap = 8;        
+            const badgeBoxHeight = 95; 
             const marginRight = 50;
             const marginTop = 50;
 
@@ -245,15 +243,15 @@ async function createWelcomeImage(member, themeColors = null) {
             const badgeBoxY = marginTop;
             const boxCenterAxisY = badgeBoxY + (badgeBoxHeight / 2);
 
-            // Frame Background Box
+            // Frame Background Box (Transparent Pill Shape)
             ctx.save();
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; 
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.45)'; // ✅ Semi-transparent overlay
             ctx.beginPath();
-            ctx.roundRect(badgeBoxX, badgeBoxY, badgeBoxWidth, badgeBoxHeight, 25);
+            ctx.roundRect(badgeBoxX, badgeBoxY, badgeBoxWidth, badgeBoxHeight, badgeBoxHeight / 2); 
             ctx.fill();
             ctx.restore();
 
-            // Render Badges with exact same ID drop shadow alignment
+            // Render Badges
             ctx.save();
             ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
             ctx.shadowBlur = 5;
@@ -277,7 +275,7 @@ async function createWelcomeImage(member, themeColors = null) {
     ctx.font = '50px "Prima Sans Regular", "ReemKufi Bold", sans-serif';
     
     const idMetrics = ctx.measureText(idText);
-    const idPaddingX = 25; 
+    const idPaddingX = 40; 
     const idBoxHeight = 85; 
     const marginRight = 50;
     const marginBottom = 50;
@@ -287,10 +285,11 @@ async function createWelcomeImage(member, themeColors = null) {
     const idBoxX = (dim.width - marginRight) - idBoxWidth;
     const idBoxY = boxCenterAxisY - (idBoxHeight / 2);
 
+    // Frame Background Box (Transparent Pill Shape)
     ctx.save();
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; 
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)'; // ✅ Semi-transparent overlay
     ctx.beginPath();
-    ctx.roundRect(idBoxX, idBoxY, idBoxWidth, idBoxHeight, 25);
+    ctx.roundRect(idBoxX, idBoxY, idBoxWidth, idBoxHeight, idBoxHeight / 2); 
     ctx.fill();
     ctx.restore();
 
@@ -335,11 +334,11 @@ async function createWelcomeImage(member, themeColors = null) {
     const baseTagSize = 65;
     const baseBoxHeight = 95;
     const baseBadgeSize = 65;
-    const basePadding = 20;  
+    const basePadding = 40;  
     const baseSepPadding = 25; 
     const baseMarginSep = 25; 
     const baseContentGap = 15; 
-    const baseRadius = 20;
+    const baseRadius = baseBoxHeight / 2; 
 
     let tagText = (user.discriminator && user.discriminator !== '0') 
         ? `${user.username}#${user.discriminator}` 
@@ -422,14 +421,15 @@ async function createWelcomeImage(member, themeColors = null) {
         const verticalCenterY = currentY - verticalAdjustment; 
         const boxY = verticalCenterY - (fBoxHeight / 2);
 
+        // Frame Background Box (Transparent Pill Shape)
         ctx.save();
         ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
         ctx.shadowBlur = 10;
         ctx.shadowOffsetX = 0;
         ctx.shadowOffsetY = 5;
-        ctx.fillStyle = '#404249'; 
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.45)'; // ✅ Semi-transparent overlay
         ctx.beginPath();
-        ctx.roundRect(boxX, boxY, fBoxWidth, fBoxHeight, baseRadius * bottomScale);
+        ctx.roundRect(boxX, boxY, fBoxWidth, fBoxHeight, fBoxHeight / 2); 
         ctx.fill();
         ctx.restore();
 

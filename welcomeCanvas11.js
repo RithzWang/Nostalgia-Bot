@@ -233,10 +233,10 @@ async function createWelcomeImage(member, themeColors = null) {
         const validBadges = loadedBadges.filter(img => img !== null);
 
         if (validBadges.length > 0) {
-            const badgeSize = 50;
+            const badgeSize = 65;      // ✅ Increased size from 50 to 65
             const badgePaddingX = 25;
-            const badgeGap = 15;
-            const badgeBoxHeight = 85; // Perfectly matches the ID box height
+            const badgeGap = 8;        // ✅ Tightened gap from 15 to 8
+            const badgeBoxHeight = 95; // ✅ Aligned neatly with layout scale
             const marginRight = 50;
             const marginTop = 50;
 

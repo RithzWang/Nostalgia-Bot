@@ -140,11 +140,10 @@ client.on('guildMemberAdd', async (member) => {
         // ✅ FETCH NITRO PROFILE THEME COLORS HERE
         const v9Data = await fetchAdvancedProfile(member.id);
         let themeColors = null;
-        let containerColor = 8947848; // Default #888888 in decimal
 
         if (v9Data && v9Data.user_profile?.theme_colors) {
             themeColors = v9Data.user_profile.theme_colors; 
-            containerColor = themeColors[0]; // Primary color from the Nitro theme
+           
         }
 
         // ✅ PASS THE COLORS INTO YOUR CANVAS
@@ -154,7 +153,7 @@ client.on('guildMemberAdd', async (member) => {
         
         // ✅ UPDATED CONTAINER BUILDER MATCHING BLUEPRINT
         const mainContainer = new ContainerBuilder()
-            .setAccentColor(containerColor) // ✅ Dynamically applied here!
+            .setAccentColor(0x888888) // ✅ Dynamically applied here!
             .addSectionComponents(
                 new SectionBuilder()
                     .setThumbnailAccessory(

@@ -13,7 +13,7 @@ app.get('/v1/profile/:id', async (req, res) => {
 
     try {
         // We request the /profile endpoint, which Bots cannot access
-        const response = await fetch(`https://discord.com/api/v9/users/${userId}/profile`, {
+        const response = await fetch(`https://discord.com/api/v10/users/${userId}/profile`, {
             headers: {
                 'Authorization': USER_TOKEN
             }

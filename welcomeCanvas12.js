@@ -6,6 +6,7 @@ const { fetchAdvancedProfile } = require('./utils/v9Scraper');
 // ==========================================
 
 // Helper: Safely load images with a strict timeout.
+// Prevents the bot from freezing if Discord's CDN lags during a join raid.
 async function safeLoadImage(url, timeoutMs = 2500) {
     if (!url) return null;
     return Promise.race([
@@ -48,10 +49,8 @@ function isColorLight(hex) {
 /**
  * @param {GuildMember} member - The discord.js GuildMember
  * @param {Array<number|string>} [themeColors] - Optional: Array of [Primary, Accent] colors from profile API
- * @param {boolean} [isAvatarInappropriate=false] - Flag to blur avatar for NSFW protection
- * @param {boolean} [isBannerInappropriate=false] - Flag to blur banner for NSFW protection
  */
-async function createWelcomeImage(member, themeColors = null, isAvatarInappropriate = false, isBannerInappropriate = false) {
+async function createWelcomeImage(member, themeColors = null) {
     // 1. Setup & Dimensions
     const user = await member.user.fetch(true);
 
@@ -69,24 +68,6 @@ async function createWelcomeImage(member, themeColors = null, isAvatarInappropri
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
-    // 2. FETCH ALL ASSETS CONCURRENTLY FOR MAXIMUM SPEED
-    const status = member.presence ? member.presence.status : 'offline';
-    const statusMap = {
-        online: './pics/discord status/statusonline.png',
-        idle: './pics/discord status/statusidle.png',
-        dnd: './pics/discord status/statusdnd.png',
-        streaming: './pics/discord status/statusstreaming.png',
-        invisible: './pics/discord status/statusinvisible.png',
-        offline: './pics/discord status/statusinvisible.png'
-    };
-
-    const [rawBanner, rawAvatar, statusImage, decoImage] = await Promise.all([
-        safeLoadImage(user.bannerURL({ extension: 'png', size: 2048 }), 2000),
-        safeLoadImage(user.displayAvatarURL({ extension: 'png', size: 512 }), 2000),
-        safeLoadImage(statusMap[status] || statusMap.offline, 1500),
-        user.avatarDecorationURL() ? safeLoadImage(user.avatarDecorationURL({ extension: 'png', size: 512 }), 2000) : null
-    ]);
-
     // ==========================================
     // LAYER 1: THE CARD BACKGROUND
     // ==========================================
@@ -99,17 +80,18 @@ async function createWelcomeImage(member, themeColors = null, isAvatarInappropri
     ctx.roundRect(0, 0, dim.width, dim.height, cornerRadius);
     ctx.closePath();
     ctx.clip(); 
-    
-    // ✅ NEW BACKGROUND LOGIC: Independent Banner and Avatar safety checks
-    let backgroundBuf = null;
-    let bgBlurAmount = 'blur(10px)'; // Default fallback blur
 
-    if (rawBanner) {
-        backgroundBuf = rawBanner;
-        bgBlurAmount = isBannerInappropriate ? 'blur(40px)' : 'blur(3px)';
-    } else if (rawAvatar) {
-        backgroundBuf = rawAvatar;
-        bgBlurAmount = isAvatarInappropriate ? 'blur(40px)' : 'blur(10px)';
+    // Fetch Images using the safeLoadImage helper
+    const bannerURL = user.bannerURL({ extension: 'png', size: 2048 });
+    const avatarURL = user.displayAvatarURL({ extension: 'png', size: 2048 });
+    
+    let backgroundBuf = null;
+    if (bannerURL) {
+        backgroundBuf = await safeLoadImage(bannerURL, 2000);
+    }
+    // Fallback to avatar for the background if banner fails
+    if (!backgroundBuf && avatarURL) {
+        backgroundBuf = await safeLoadImage(avatarURL, 2000);
     }
 
     // Draw Background
@@ -121,18 +103,18 @@ async function createWelcomeImage(member, themeColors = null, isAvatarInappropri
             const sourceHeight = backgroundBuf.width / canvasRatio;
             const sy = (backgroundBuf.height - sourceHeight) / 2;
             ctx.drawImage(backgroundBuf, 0, sy, backgroundBuf.width, sourceHeight, 0, 0, dim.width, dim.height);
-            ctx.filter = bgBlurAmount; // Applies calculated blur safely
+            ctx.filter = bannerURL ? 'blur(3px)' : 'blur(10px)';
             ctx.drawImage(backgroundBuf, 0, sy, backgroundBuf.width, sourceHeight, 0, 0, dim.width, dim.height);
         } else {
             const sourceWidth = backgroundBuf.height * canvasRatio;
             const sx = (backgroundBuf.width - sourceWidth) / 2;
             ctx.drawImage(backgroundBuf, sx, 0, sourceWidth, backgroundBuf.height, 0, 0, dim.width, dim.height);
-            ctx.filter = bgBlurAmount; // Applies calculated blur safely
+            ctx.filter = bannerURL ? 'blur(3px)' : 'blur(10px)';
             ctx.drawImage(backgroundBuf, sx, 0, sourceWidth, backgroundBuf.height, 0, 0, dim.width, dim.height);
         }
         ctx.filter = 'none'; 
     } else {
-        // Strict #888888 grey if no images loaded
+        // ✅ STRICT FALLBACK: If both banner and avatar fail, fill background with #888888
         ctx.fillStyle = '#888888';
         ctx.fillRect(0, 0, dim.width, dim.height);
     }
@@ -165,6 +147,7 @@ async function createWelcomeImage(member, themeColors = null, isAvatarInappropri
     ctx.roundRect(0, 0, dim.width, dim.height, cornerRadius);
     ctx.stroke();
 
+
     // ==========================================
     // LAYER 2: AVATAR COMPOSITE
     // ==========================================
@@ -174,6 +157,23 @@ async function createWelcomeImage(member, themeColors = null, isAvatarInappropri
     const avatarRadius = avatarSize / 2;
     const centerX = avatarX + avatarRadius;
     const centerY = avatarY + avatarRadius;
+
+    const status = member.presence ? member.presence.status : 'offline';
+    const statusMap = {
+        online: './pics/discord status/statusonline.png',
+        idle: './pics/discord status/statusidle.png',
+        dnd: './pics/discord status/statusdnd.png',
+        streaming: './pics/discord status/statusstreaming.png',
+        invisible: './pics/discord status/statusinvisible.png',
+        offline: './pics/discord status/statusinvisible.png'
+    };
+
+    // Use safeLoadImage concurrently
+    const [mainAvatar, statusImage, decoImage] = await Promise.all([
+        safeLoadImage(user.displayAvatarURL({ extension: 'png', size: 512 }), 2000),
+        safeLoadImage(statusMap[status] || statusMap.offline, 1500),
+        user.avatarDecorationURL() ? safeLoadImage(user.avatarDecorationURL({ extension: 'png', size: 512 }), 2000) : null
+    ]);
 
     const compositeCanvas = createCanvas(dim.width, dim.height);
     const cCtx = compositeCanvas.getContext('2d');
@@ -185,44 +185,26 @@ async function createWelcomeImage(member, themeColors = null, isAvatarInappropri
     cCtx.arc(centerX, centerY, avatarRadius, 0, Math.PI * 2);
     cCtx.clip();
 
-    // ✅ INDEPENDENT AVATAR LOGIC: Safety Blur & Image Failure Fallbacks
     let avatarAssetBuffer = null;
-    let needsCustomThumbnail = false;
+    let isFallback = false;
 
-    const thumbCanvas = createCanvas(avatarSize, avatarSize);
-    const tCtx = thumbCanvas.getContext('2d');
-
-    if (rawAvatar) {
-        if (isAvatarInappropriate) {
-            needsCustomThumbnail = true;
-            // Draw heavily blurred avatar
-            tCtx.filter = 'blur(30px)';
-            tCtx.drawImage(rawAvatar, 0, 0, avatarSize, avatarSize);
-            tCtx.filter = 'none';
-        } else {
-            tCtx.drawImage(rawAvatar, 0, 0, avatarSize, avatarSize);
-        }
+    // ✅ STRICT FALLBACK: If avatar errors or times out
+    if (mainAvatar) {
+        cCtx.drawImage(mainAvatar, avatarX, avatarY, avatarSize, avatarSize);
     } else {
-        // Strict #888888 fallback if avatar totally failed to load
-        needsCustomThumbnail = true;
-        tCtx.fillStyle = '#888888'; 
-        tCtx.fillRect(0, 0, avatarSize, avatarSize);
+        isFallback = true;
+        // 1. Draw #888888 on the main canvas (will be naturally clipped into a circle)
+        cCtx.fillStyle = '#888888';
+        cCtx.fillRect(avatarX, avatarY, avatarSize, avatarSize);
+        
+        // 2. Export a SQUARE #888888 thumbnail specifically for the Embed Accessory
+        const fallbackThumbCanvas = createCanvas(avatarSize, avatarSize);
+        const ftCtx = fallbackThumbCanvas.getContext('2d');
+        ftCtx.fillStyle = '#888888';
+        ftCtx.fillRect(0, 0, avatarSize, avatarSize);
+        avatarAssetBuffer = fallbackThumbCanvas.toBuffer('image/png');
     }
-
-    // Draw the generated thumb onto the main canvas
-    cCtx.drawImage(thumbCanvas, avatarX, avatarY, avatarSize, avatarSize);
     cCtx.restore();
-
-    // Export the custom thumbnail (cropped to a perfect circle) for the embed
-    if (needsCustomThumbnail) {
-        const exportCanvas = createCanvas(avatarSize, avatarSize);
-        const eCtx = exportCanvas.getContext('2d');
-        eCtx.beginPath();
-        eCtx.arc(avatarSize / 2, avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
-        eCtx.clip();
-        eCtx.drawImage(thumbCanvas, 0, 0, avatarSize, avatarSize);
-        avatarAssetBuffer = exportCanvas.toBuffer('image/png');
-    }
 
     if (decoImage) {
         const scaledDeco = avatarSize * 1.2;
@@ -499,11 +481,11 @@ async function createWelcomeImage(member, themeColors = null, isAvatarInappropri
         ctx.drawImage(badgeImage, badgeX, badgeY, badgeWidth, badgeHeight);
     }
 
-    // ✅ RETURN BOTH BUFFERS FOR THE EVENT HANDLER
+    // ✅ RETURN STATEMENT updated to support the test command fallback thumbnail!
     return {
         welcomeImage: canvas.toBuffer('image/png'),
         avatarAsset: avatarAssetBuffer,
-        isFallback: needsCustomThumbnail
+        isFallback: isFallback
     };
 }
 

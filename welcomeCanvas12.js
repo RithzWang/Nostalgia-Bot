@@ -45,7 +45,7 @@ async function createWelcomeImage(member, themeColors = null) {
     ctx.imageSmoothingQuality = 'high';
 
     // ✅ PRE-LOAD THE CUSTOM FALLBACK IMAGE CONCURRENTLY
-    const fallbackUrl = 'https://nftcalendar.io/storage/uploads/2022/02/21/image-not-found_0221202211372462137974b6c1a.png';
+    const fallbackUrl = 'https://cdn.discordapp.com/embed/avatars/0.png';
     const fallbackImgPromise = safeLoadImage(fallbackUrl, 3000);
 
     // ==========================================

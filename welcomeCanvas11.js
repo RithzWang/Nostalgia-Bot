@@ -333,9 +333,9 @@ async function createWelcomeImage(member, themeColors = null) {
     
     // ✅ CHANGED: Tag text reduced, Badge size increased, Frame size completely untouched
     const baseUsernameSize = 95;
-    const baseTagSize = 55;       // ✅ Reduced size of the server tag name text
+    const baseTagSize = 60;       // ✅ Reduced size of the server tag name text
     const baseBoxHeight = 105;    // Frame size kept exactly the same
-    const baseBadgeSize = 85;     // ✅ Increased size of the server tag icon
+    const baseBadgeSize = 80;     // ✅ Increased size of the server tag icon
     const basePadding = 25;       
     const baseSepPadding = 25; 
     const baseMarginSep = 25; 

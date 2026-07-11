@@ -13,9 +13,9 @@ const {
     TextDisplayBuilder,
     ActionRowBuilder, 
     SeparatorBuilder, 
-    ThumbnailBuilder,           // ✅ Added
-    MediaGalleryBuilder,        // ✅ Added
-    MediaGalleryItemBuilder,    // ✅ Added
+    ThumbnailBuilder,           
+    MediaGalleryBuilder,        
+    MediaGalleryItemBuilder,    
     MessageFlags,
     SeparatorSpacingSize 
 } = require('discord.js');
@@ -35,7 +35,7 @@ const welcomeLog = '1456197056250122355';
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
-      GatewayIntentBits.GuildVoiceStates,
+        GatewayIntentBits.GuildVoiceStates,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent, 
         GatewayIntentBits.GuildMembers,
@@ -140,8 +140,11 @@ client.on('guildMemberAdd', async (member) => {
         // ✅ FETCH NITRO PROFILE THEME COLORS HERE
         const v9Data = await fetchAdvancedProfile(member.id);
         let themeColors = null;
+        let containerColor = 8947848; // Default #888888 in decimal
+
         if (v9Data && v9Data.user_profile?.theme_colors) {
             themeColors = v9Data.user_profile.theme_colors; 
+            containerColor = themeColors[0]; // Primary color from the Nitro theme
         }
 
         // ✅ PASS THE COLORS INTO YOUR CANVAS
@@ -151,7 +154,7 @@ client.on('guildMemberAdd', async (member) => {
         
         // ✅ UPDATED CONTAINER BUILDER MATCHING BLUEPRINT
         const mainContainer = new ContainerBuilder()
-            .setAccentColor(8947848)
+            .setAccentColor(containerColor) // ✅ Dynamically applied here!
             .addSectionComponents(
                 new SectionBuilder()
                     .setThumbnailAccessory(
@@ -217,8 +220,6 @@ client.on('guildMemberAdd', async (member) => {
 
     } catch (e) { console.error("Welcome Error:", e); }
 });
-
-
 
 (async () => {
     try {

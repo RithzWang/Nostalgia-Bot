@@ -1,5 +1,5 @@
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
-const { fetchAdvancedProfile } = require('./utils/v9Scraper'); // ✅ Imported to fetch badges directly
+const { fetchAdvancedProfile } = require('./utils/v9Scraper'); 
 
 // ==========================================
 // HELPERS
@@ -331,16 +331,16 @@ async function createWelcomeImage(member, themeColors = null) {
 
     currentY += 115;
     
-    // ✅ CHANGED: Adjusted strictly for the Server Tag layout (Non-bold, taller frame, larger icon)
+    // ✅ CHANGED: Tag text reduced, Badge size increased, Frame size completely untouched
     const baseUsernameSize = 95;
-    const baseTagSize = 70;       
-    const baseBoxHeight = 105;    
-    const baseBadgeSize = 70;     
+    const baseTagSize = 55;       // ✅ Reduced size of the server tag name text
+    const baseBoxHeight = 105;    // Frame size kept exactly the same
+    const baseBadgeSize = 85;     // ✅ Increased size of the server tag icon
     const basePadding = 25;       
     const baseSepPadding = 25; 
     const baseMarginSep = 25; 
     const baseContentGap = 18;    
-    const baseRadius = 22;        // ✅ Rounded rectangle corner (Not pill)
+    const baseRadius = 22;        // Rounded rectangle corner (Not pill)
 
     let tagText = (user.discriminator && user.discriminator !== '0') 
         ? `${user.username}#${user.discriminator}` 
@@ -362,7 +362,7 @@ async function createWelcomeImage(member, themeColors = null) {
         ctx.font = `${baseUsernameSize * dotScaleFactor}px "Prima Sans Regular", sans-serif`;
         const dotWidth = ctx.measureText("•").width;
 
-        ctx.font = `${baseTagSize}px "Prima Sans Regular", ${fontStack}`; // ✅ Kept original non-bold format
+        ctx.font = `${baseTagSize}px "Prima Sans Regular", ${fontStack}`; 
         guildTagWidth = ctx.measureText(guildInfo.tag).width;
 
         if (typeof user.guildTagBadgeURL === 'function') {
@@ -405,7 +405,7 @@ async function createWelcomeImage(member, themeColors = null) {
         ctx.restore();
 
         const fTagSize = baseTagSize * bottomScale;
-        ctx.font = `${fTagSize}px "Prima Sans Regular", ${fontStack}`; // ✅ Kept original non-bold format
+        ctx.font = `${fTagSize}px "Prima Sans Regular", ${fontStack}`; 
         const fTagWidth = ctx.measureText(guildInfo.tag).width;
         
         const fPadding = basePadding * bottomScale;
@@ -428,9 +428,9 @@ async function createWelcomeImage(member, themeColors = null) {
         ctx.shadowBlur = 10;
         ctx.shadowOffsetX = 0;
         ctx.shadowOffsetY = 5;
-        ctx.fillStyle = '#404249'; // ✅ Kept the exact same color requested
+        ctx.fillStyle = '#404249'; 
         ctx.beginPath();
-        ctx.roundRect(boxX, boxY, fBoxWidth, fBoxHeight, baseRadius * bottomScale); // ✅ Modified edge rounding
+        ctx.roundRect(boxX, boxY, fBoxWidth, fBoxHeight, baseRadius * bottomScale); 
         ctx.fill();
         ctx.restore();
 

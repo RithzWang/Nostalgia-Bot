@@ -114,8 +114,8 @@ async function createWelcomeImage(member, themeColors = null) {
         }
         ctx.filter = 'none'; 
     } else {
-        // ✅ STRICT FALLBACK: If both banner and avatar fail, fill background with #888888
-        ctx.fillStyle = '#888888';
+        // ✅ STRICT FALLBACK: If both banner and avatar fail, fill background with #4d4d4d
+        ctx.fillStyle = '#4d4d4d';
         ctx.fillRect(0, 0, dim.width, dim.height);
     }
 
@@ -193,14 +193,14 @@ async function createWelcomeImage(member, themeColors = null) {
         cCtx.drawImage(mainAvatar, avatarX, avatarY, avatarSize, avatarSize);
     } else {
         isFallback = true;
-        // 1. Draw #888888 on the main canvas (will be naturally clipped into a circle)
-        cCtx.fillStyle = '#888888';
+        // 1. Draw #4d4d4d on the main canvas (will be naturally clipped into a circle)
+        cCtx.fillStyle = '#4d4d4d';
         cCtx.fillRect(avatarX, avatarY, avatarSize, avatarSize);
         
-        // 2. Export a SQUARE #888888 thumbnail specifically for the Embed Accessory
+        // 2. Export a SQUARE #4d4d4d thumbnail specifically for the Embed Accessory
         const fallbackThumbCanvas = createCanvas(avatarSize, avatarSize);
         const ftCtx = fallbackThumbCanvas.getContext('2d');
-        ftCtx.fillStyle = '#888888';
+        ftCtx.fillStyle = '#4d4d4d';
         ftCtx.fillRect(0, 0, avatarSize, avatarSize);
         avatarAssetBuffer = fallbackThumbCanvas.toBuffer('image/png');
     }
@@ -481,7 +481,6 @@ async function createWelcomeImage(member, themeColors = null) {
         ctx.drawImage(badgeImage, badgeX, badgeY, badgeWidth, badgeHeight);
     }
 
-    // ✅ RETURN STATEMENT updated to support the test command fallback thumbnail!
     return {
         welcomeImage: canvas.toBuffer('image/png'),
         avatarAsset: avatarAssetBuffer,

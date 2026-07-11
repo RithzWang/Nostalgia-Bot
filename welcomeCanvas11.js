@@ -233,7 +233,7 @@ async function createWelcomeImage(member, themeColors = null) {
         const validBadges = loadedBadges.filter(img => img !== null);
 
         if (validBadges.length > 0) {
-            const badgeSize = 80;      
+            const badgeSize = 75;      
             const badgePaddingX = 25;  
             const badgeGap = 2;        
             const badgeBoxHeight = 95; 
@@ -331,16 +331,14 @@ async function createWelcomeImage(member, themeColors = null) {
 
     currentY += 115;
     
-    // ✅ CHANGED: Tag text reduced, Badge size increased, Frame size completely untouched
     const baseUsernameSize = 95;
-    const baseTagSize = 63;       // ✅ Reduced size of the server tag name text
-    const baseBoxHeight = 105;    // Frame size kept exactly the same
-    const baseBadgeSize = 77;     // ✅ Increased size of the server tag icon
+    const baseTagSize = 63;       
+    const baseBoxHeight = 105;    
+    const baseBadgeSize = 77;     
     const basePadding = 25;       
-    const baseSepPadding = 25; 
-    const baseMarginSep = 25; 
+    const baseMarginSep = 25; // Removed separator padding, just keeping standard margin between name and box
     const baseContentGap = 18;    
-    const baseRadius = 22;        // Rounded rectangle corner (Not pill)
+    const baseRadius = 22;        
 
     let tagText = (user.discriminator && user.discriminator !== '0') 
         ? `${user.username}#${user.discriminator}` 
@@ -358,10 +356,6 @@ async function createWelcomeImage(member, themeColors = null) {
     let hasBadge = false;
 
     if (hasGuild) {
-        const dotScaleFactor = 1.25; 
-        ctx.font = `${baseUsernameSize * dotScaleFactor}px "Prima Sans Regular", sans-serif`;
-        const dotWidth = ctx.measureText("•").width;
-
         ctx.font = `${baseTagSize}px "Prima Sans Regular", ${fontStack}`; 
         guildTagWidth = ctx.measureText(guildInfo.tag).width;
 
@@ -374,7 +368,9 @@ async function createWelcomeImage(member, themeColors = null) {
 
         let boxWidth = (basePadding * 2) + guildTagWidth;
         if (hasBadge) boxWidth += baseBadgeSize + baseContentGap;
-        totalNeededWidth += baseSepPadding + dotWidth + baseMarginSep + boxWidth;
+        
+        // Removed dot calculation and separator padding from the width equation
+        totalNeededWidth += baseMarginSep + boxWidth;
     }
 
     const totalChars = tagText.length + (hasGuild ? guildInfo.tag.length : 0);
@@ -393,17 +389,7 @@ async function createWelcomeImage(member, themeColors = null) {
 
     if (hasGuild) {
         const fUsernameWidth = ctx.measureText(tagText).width;
-        const fSepPadding = baseSepPadding * bottomScale;
-        const separatorX = textX + fUsernameWidth + fSepPadding;
         
-        ctx.save();
-        const sepScale = 1.25; 
-        ctx.font = `${baseUsernameSize * bottomScale * sepScale}px "Prima Sans Regular", sans-serif`;
-        ctx.fillStyle = '#dadada'; 
-        ctx.fillText("•", separatorX, currentY);
-        const fSeparatorWidth = ctx.measureText("•").width;
-        ctx.restore();
-
         const fTagSize = baseTagSize * bottomScale;
         ctx.font = `${fTagSize}px "Prima Sans Regular", ${fontStack}`; 
         const fTagWidth = ctx.measureText(guildInfo.tag).width;
@@ -415,8 +401,9 @@ async function createWelcomeImage(member, themeColors = null) {
         let fBoxWidth = (fPadding * 2) + fTagWidth;
         if (hasBadge) fBoxWidth += fBadgeSize + fContentGap;
 
+        // Calculate box position directly after the username plus margin
         const fMarginSep = baseMarginSep * bottomScale;
-        const boxX = separatorX + fSeparatorWidth + fMarginSep;
+        const boxX = textX + fUsernameWidth + fMarginSep;
         
         const fBoxHeight = baseBoxHeight * bottomScale;
         const verticalAdjustment = 30 * bottomScale; 

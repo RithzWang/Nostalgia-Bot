@@ -12,7 +12,8 @@ const {
     ThumbnailBuilder,           
     MediaGalleryBuilder,        
     MediaGalleryItemBuilder,    
-    SeparatorSpacingSize 
+    SeparatorSpacingSize,
+    PermissionFlagsBits 
 } = require('discord.js');
 
 const { createWelcomeImage } = require('../../../welcomeCanvas10.js'); // Adjust path if needed
@@ -22,6 +23,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('test-welcome')
         .setDescription('Simulate the welcome message and image generator.')
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator) // ✅ Locked to Admins
         .addUserOption(opt => opt.setName('target')
             .setDescription('Test the welcome image on a specific user (defaults to you)')
             .setRequired(false)
@@ -43,8 +45,11 @@ module.exports = {
             // 3. FETCH NITRO PROFILE THEME COLORS
             const v9Data = await fetchAdvancedProfile(member.id);
             let themeColors = null;
+            let containerColor = 8947848; // ✅ Default #888888 in decimal
+
             if (v9Data && v9Data.user_profile?.theme_colors) {
                 themeColors = v9Data.user_profile.theme_colors; 
+                containerColor = themeColors[0]; // ✅ Primary color from the Nitro theme
             }
 
             // 4. GENERATE THE IMAGE
@@ -58,7 +63,7 @@ module.exports = {
             
             // 6. BUILD EXACT SAME CONTAINER
             const mainContainer = new ContainerBuilder()
-                .setAccentColor(8947848)
+                .setAccentColor(containerColor) // ✅ Dynamically applied here!
                 .addSectionComponents(
                     new SectionBuilder()
                         .setThumbnailAccessory(

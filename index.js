@@ -162,10 +162,10 @@ client.on('guildMemberAdd', async (member) => {
                         new TextDisplayBuilder().setContent(`### Welcome to ${member.guild.name}`),
                         new TextDisplayBuilder().setContent(
                             `-# <@${member.user.id}> \`${member.user.username}\`\n` +
-                            `-# <:calendar:1470475413175144530> Account Created: ${accountCreated}\n` +
-                            `-# <:members:1468470163081924608> Member Count: \`${member.guild.memberCount}\`\n` +
+                            `-# <:calendar:1470475413175144530> Discord Since: ${accountCreated}\n` +
+                            `-# <:members:1468470163081924608> You’re member \`#${member.guild.memberCount}\`\n` +
                             `-# <:connection:1468633345876431021> Invited by ${inviterId ? `<@${inviterId}>` : '**Unknown**'} \`${inviterName}\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite\n` + 
-                            `\`\`\`\nI hope you enjoy your stay\`\`\``
+                            `\`\`\`\nhere you can find friends\n\`\`\``
                         )
                     )
             )

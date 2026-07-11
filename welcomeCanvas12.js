@@ -5,8 +5,6 @@ const { fetchAdvancedProfile } = require('./utils/v9Scraper');
 // HELPERS
 // ==========================================
 
-// Helper: Safely load images with a strict timeout.
-// Prevents the bot from freezing if Discord's CDN lags during a join raid.
 async function safeLoadImage(url, timeoutMs = 2500) {
     if (!url) return null;
     return Promise.race([
@@ -15,31 +13,10 @@ async function safeLoadImage(url, timeoutMs = 2500) {
     ]);
 }
 
-// Helper: Convert Integer or String Color to safe Hex format
 function intToHex(color) {
     if (color === null || color === undefined) return null;
     if (typeof color === 'string') return color.startsWith('#') ? color : `#${color}`;
     return '#' + color.toString(16).padStart(6, '0');
-}
-
-// Helper: Darken/Lighten Hex Color
-function shadeColor(color, percent) {
-    var f = parseInt(color.slice(1), 16),
-        t = percent < 0 ? 0 : 255,
-        p = percent < 0 ? percent * -1 : percent,
-        R = f >> 16,
-        G = f >> 8 & 0x00FF,
-        B = f & 0x0000FF;
-    return "#" + (0x1000000 + (Math.round((t - R) * p) + R) * 0x10000 + (Math.round((t - G) * p) + G) * 0x100 + (Math.round((t - B) * p) + B)).toString(16).slice(1);
-}
-
-// Helper: Check if Color is Light or Dark
-function isColorLight(hex) {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-    return yiq >= 128;
 }
 
 // ==========================================
@@ -51,7 +28,6 @@ function isColorLight(hex) {
  * @param {Array<number|string>} [themeColors] - Optional: Array of [Primary, Accent] colors from profile API
  */
 async function createWelcomeImage(member, themeColors = null) {
-    // 1. Setup & Dimensions
     const user = await member.user.fetch(true);
 
     const dim = {
@@ -68,6 +44,10 @@ async function createWelcomeImage(member, themeColors = null) {
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
+    // ✅ PRE-LOAD THE CUSTOM FALLBACK IMAGE CONCURRENTLY
+    const fallbackUrl = 'https://nftcalendar.io/storage/uploads/2022/02/21/image-not-found_0221202211372462137974b6c1a.png';
+    const fallbackImgPromise = safeLoadImage(fallbackUrl, 3000);
+
     // ==========================================
     // LAYER 1: THE CARD BACKGROUND
     // ==========================================
@@ -81,7 +61,6 @@ async function createWelcomeImage(member, themeColors = null) {
     ctx.closePath();
     ctx.clip(); 
 
-    // Fetch Images using the safeLoadImage helper
     const bannerURL = user.bannerURL({ extension: 'png', size: 2048 });
     const avatarURL = user.displayAvatarURL({ extension: 'png', size: 2048 });
     
@@ -89,10 +68,11 @@ async function createWelcomeImage(member, themeColors = null) {
     if (bannerURL) {
         backgroundBuf = await safeLoadImage(bannerURL, 2000);
     }
-    // Fallback to avatar for the background if banner fails
     if (!backgroundBuf && avatarURL) {
         backgroundBuf = await safeLoadImage(avatarURL, 2000);
     }
+
+    const fallbackImg = await fallbackImgPromise; // Await the custom error image
 
     // Draw Background
     if (backgroundBuf) {
@@ -114,9 +94,30 @@ async function createWelcomeImage(member, themeColors = null) {
         }
         ctx.filter = 'none'; 
     } else {
-        // ✅ STRICT FALLBACK: If both banner and avatar fail, fill background with #4d4d4d
-        ctx.fillStyle = '#4d4d4d';
-        ctx.fillRect(0, 0, dim.width, dim.height);
+        // ✅ NEW LOGIC: Use your Custom URL as the background if everything errors!
+        if (fallbackImg) {
+            const canvasRatio = dim.width / dim.height;
+            const sHeight = fallbackImg.width / canvasRatio;
+
+            if (fallbackImg.height > sHeight) {
+                const sourceHeight = fallbackImg.width / canvasRatio;
+                const sy = (fallbackImg.height - sourceHeight) / 2;
+                ctx.drawImage(fallbackImg, 0, sy, fallbackImg.width, sourceHeight, 0, 0, dim.width, dim.height);
+                ctx.filter = 'blur(10px)';
+                ctx.drawImage(fallbackImg, 0, sy, fallbackImg.width, sourceHeight, 0, 0, dim.width, dim.height);
+            } else {
+                const sourceWidth = fallbackImg.height * canvasRatio;
+                const sx = (fallbackImg.width - sourceWidth) / 2;
+                ctx.drawImage(fallbackImg, sx, 0, sourceWidth, fallbackImg.height, 0, 0, dim.width, dim.height);
+                ctx.filter = 'blur(10px)';
+                ctx.drawImage(fallbackImg, sx, 0, sourceWidth, fallbackImg.height, 0, 0, dim.width, dim.height);
+            }
+            ctx.filter = 'none';
+        } else {
+            // Absolute last resort if nftcalendar.io goes down
+            ctx.fillStyle = '#4d4d4d';
+            ctx.fillRect(0, 0, dim.width, dim.height);
+        }
     }
 
     // Dark Overlay
@@ -147,7 +148,6 @@ async function createWelcomeImage(member, themeColors = null) {
     ctx.roundRect(0, 0, dim.width, dim.height, cornerRadius);
     ctx.stroke();
 
-
     // ==========================================
     // LAYER 2: AVATAR COMPOSITE
     // ==========================================
@@ -168,7 +168,6 @@ async function createWelcomeImage(member, themeColors = null) {
         offline: './pics/discord status/statusinvisible.png'
     };
 
-    // Use safeLoadImage concurrently
     const [mainAvatar, statusImage, decoImage] = await Promise.all([
         safeLoadImage(user.displayAvatarURL({ extension: 'png', size: 512 }), 2000),
         safeLoadImage(statusMap[status] || statusMap.offline, 1500),
@@ -188,21 +187,36 @@ async function createWelcomeImage(member, themeColors = null) {
     let avatarAssetBuffer = null;
     let isFallback = false;
 
-    // ✅ STRICT FALLBACK: If avatar errors or times out
     if (mainAvatar) {
         cCtx.drawImage(mainAvatar, avatarX, avatarY, avatarSize, avatarSize);
     } else {
         isFallback = true;
-        // 1. Draw #4d4d4d on the main canvas (will be naturally clipped into a circle)
-        cCtx.fillStyle = '#4d4d4d';
-        cCtx.fillRect(avatarX, avatarY, avatarSize, avatarSize);
         
-        // 2. Export a SQUARE #4d4d4d thumbnail specifically for the Embed Accessory
-        const fallbackThumbCanvas = createCanvas(avatarSize, avatarSize);
-        const ftCtx = fallbackThumbCanvas.getContext('2d');
-        ftCtx.fillStyle = '#4d4d4d';
-        ftCtx.fillRect(0, 0, avatarSize, avatarSize);
-        avatarAssetBuffer = fallbackThumbCanvas.toBuffer('image/png');
+        if (fallbackImg) {
+            // ✅ CENTER-CROP MATH: Ensures your custom rectangular image isn't squeezed into the circle!
+            const minDim = Math.min(fallbackImg.width, fallbackImg.height);
+            const cropX = (fallbackImg.width - minDim) / 2;
+            const cropY = (fallbackImg.height - minDim) / 2;
+
+            // 1. Draw perfectly cropped placeholder onto Canvas
+            cCtx.drawImage(fallbackImg, cropX, cropY, minDim, minDim, avatarX, avatarY, avatarSize, avatarSize);
+            
+            // 2. Export perfectly cropped placeholder for Thumbnail Accessory
+            const fallbackThumbCanvas = createCanvas(avatarSize, avatarSize);
+            const ftCtx = fallbackThumbCanvas.getContext('2d');
+            ftCtx.drawImage(fallbackImg, cropX, cropY, minDim, minDim, 0, 0, avatarSize, avatarSize);
+            avatarAssetBuffer = fallbackThumbCanvas.toBuffer('image/png');
+        } else {
+            // Absolute last resort
+            cCtx.fillStyle = '#4d4d4d';
+            cCtx.fillRect(avatarX, avatarY, avatarSize, avatarSize);
+            
+            const fallbackThumbCanvas = createCanvas(avatarSize, avatarSize);
+            const ftCtx = fallbackThumbCanvas.getContext('2d');
+            ftCtx.fillStyle = '#4d4d4d';
+            ftCtx.fillRect(0, 0, avatarSize, avatarSize);
+            avatarAssetBuffer = fallbackThumbCanvas.toBuffer('image/png');
+        }
     }
     cCtx.restore();
 

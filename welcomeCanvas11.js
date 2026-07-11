@@ -1,5 +1,5 @@
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
-const { fetchAdvancedProfile } = require('./utils/v9Scraper'); // ✅ Imported to fetch badges directly
+const { fetchAdvancedProfile } = require('./utils/v9Scraper'); 
 
 // ==========================================
 // HELPERS
@@ -157,7 +157,6 @@ async function createWelcomeImage(member, themeColors = null) {
         offline: './pics/discord status/statusinvisible.png'
     };
 
-    // Strictly forcing the Global Avatar here as well
     const [mainAvatar, statusImage, decoImage] = await Promise.all([
         loadImage(user.displayAvatarURL({ extension: 'png', size: 512 })),
         loadImage(statusMap[status] || statusMap.offline).catch(() => null),
@@ -227,16 +226,15 @@ async function createWelcomeImage(member, themeColors = null) {
     // ==========================================
     const v9Data = await fetchAdvancedProfile(member.id).catch(() => null);
     if (v9Data && v9Data.badges && v9Data.badges.length > 0) {
-        // Fetch badge image streams concurrently
         const badgeUrls = v9Data.badges.map(b => `https://cdn.discordapp.com/badge-icons/${b.icon}.png`);
         const loadedBadges = await Promise.all(badgeUrls.map(url => loadImage(url).catch(() => null)));
         const validBadges = loadedBadges.filter(img => img !== null);
 
         if (validBadges.length > 0) {
-            const badgeSize = 75;      // ✅ Increased from 65 to 75 (fills the box better)
-            const badgePaddingX = 25;  // ✅ Kept the exact same so the box padding doesn't stretch
-            const badgeGap = 2;        // ✅ Reduced from 8 to 2 so they sit very close together
-            const badgeBoxHeight = 95; // ✅ Kept the exact same so the frame doesn't get taller
+            const badgeSize = 75;      
+            const badgePaddingX = 25;  
+            const badgeGap = 2;        
+            const badgeBoxHeight = 95; 
             const marginRight = 50;
             const marginTop = 50;
 
@@ -245,15 +243,15 @@ async function createWelcomeImage(member, themeColors = null) {
             const badgeBoxY = marginTop;
             const boxCenterAxisY = badgeBoxY + (badgeBoxHeight / 2);
 
-            // Frame Background Box
+            // Frame Background Box (Transparent Pill Shape)
             ctx.save();
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; 
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.45)'; 
             ctx.beginPath();
-            ctx.roundRect(badgeBoxX, badgeBoxY, badgeBoxWidth, badgeBoxHeight, 25);
+            ctx.roundRect(badgeBoxX, badgeBoxY, badgeBoxWidth, badgeBoxHeight, badgeBoxHeight / 2); 
             ctx.fill();
             ctx.restore();
 
-            // Render Badges with exact same ID drop shadow alignment
+            // Render Badges
             ctx.save();
             ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
             ctx.shadowBlur = 5;
@@ -277,7 +275,7 @@ async function createWelcomeImage(member, themeColors = null) {
     ctx.font = '50px "Prima Sans Regular", "ReemKufi Bold", sans-serif';
     
     const idMetrics = ctx.measureText(idText);
-    const idPaddingX = 25; 
+    const idPaddingX = 40; 
     const idBoxHeight = 85; 
     const marginRight = 50;
     const marginBottom = 50;
@@ -287,10 +285,11 @@ async function createWelcomeImage(member, themeColors = null) {
     const idBoxX = (dim.width - marginRight) - idBoxWidth;
     const idBoxY = boxCenterAxisY - (idBoxHeight / 2);
 
+    // Frame Background Box (Transparent Pill Shape)
     ctx.save();
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; 
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)'; 
     ctx.beginPath();
-    ctx.roundRect(idBoxX, idBoxY, idBoxWidth, idBoxHeight, 25);
+    ctx.roundRect(idBoxX, idBoxY, idBoxWidth, idBoxHeight, idBoxHeight / 2); 
     ctx.fill();
     ctx.restore();
 
@@ -331,15 +330,16 @@ async function createWelcomeImage(member, themeColors = null) {
 
     currentY += 115;
     
+    // ✅ NEW: Specific metrics for the Server Tag to match the screenshot
     const baseUsernameSize = 95;
-    const baseTagSize = 65;
-    const baseBoxHeight = 95;
-    const baseBadgeSize = 65;
-    const basePadding = 20;  
+    const baseTagSize = 70;       // Boxier, bolder font scale
+    const baseBoxHeight = 105;    // Taller box to comfortably fit the big icon
+    const baseBadgeSize = 70;     // Icon properly upscaled to match text cap height
+    const basePadding = 25;       // Tighter padding to edges
     const baseSepPadding = 25; 
     const baseMarginSep = 25; 
-    const baseContentGap = 15; 
-    const baseRadius = 20;
+    const baseContentGap = 18;    // Tight gap between icon and text
+    const baseRadius = 22;        // ✅ Rounded rectangle corners (Not a pill shape)
 
     let tagText = (user.discriminator && user.discriminator !== '0') 
         ? `${user.username}#${user.discriminator}` 
@@ -361,7 +361,7 @@ async function createWelcomeImage(member, themeColors = null) {
         ctx.font = `${baseUsernameSize * dotScaleFactor}px "Prima Sans Regular", sans-serif`;
         const dotWidth = ctx.measureText("•").width;
 
-        ctx.font = `${baseTagSize}px "Prima Sans Regular", ${fontStack}`;
+        ctx.font = `bold ${baseTagSize}px "Prima Sans Regular", ${fontStack}`; // Added bold weight
         guildTagWidth = ctx.measureText(guildInfo.tag).width;
 
         if (typeof user.guildTagBadgeURL === 'function') {
@@ -404,7 +404,7 @@ async function createWelcomeImage(member, themeColors = null) {
         ctx.restore();
 
         const fTagSize = baseTagSize * bottomScale;
-        ctx.font = `${fTagSize}px "Prima Sans Regular", ${fontStack}`;
+        ctx.font = `bold ${fTagSize}px "Prima Sans Regular", ${fontStack}`; // Added bold weight
         const fTagWidth = ctx.measureText(guildInfo.tag).width;
         
         const fPadding = basePadding * bottomScale;
@@ -422,14 +422,15 @@ async function createWelcomeImage(member, themeColors = null) {
         const verticalCenterY = currentY - verticalAdjustment; 
         const boxY = verticalCenterY - (fBoxHeight / 2);
 
+        // Frame Background Box (Rounded Rectangle)
         ctx.save();
         ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
         ctx.shadowBlur = 10;
         ctx.shadowOffsetX = 0;
         ctx.shadowOffsetY = 5;
-        ctx.fillStyle = '#404249'; 
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
         ctx.beginPath();
-        ctx.roundRect(boxX, boxY, fBoxWidth, fBoxHeight, baseRadius * bottomScale);
+        ctx.roundRect(boxX, boxY, fBoxWidth, fBoxHeight, baseRadius * bottomScale); // ✅ Specific corner rounding
         ctx.fill();
         ctx.restore();
 

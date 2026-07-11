@@ -276,12 +276,12 @@ async function createWelcomeImage(member, themeColors = null) {
         const validBadges = loadedBadges.filter(img => img !== null);
 
         if (validBadges.length > 0) {
-            const badgeSize = 75;      
+            const badgeSize = 80;      
             const badgePaddingX = 25;  
             const badgeGap = 2;        
             const badgeBoxHeight = 95; 
-            const marginRight = 50;
-            const marginTop = 50;
+            const marginRight = 25;
+            const marginTop = 25;
 
             const badgeBoxWidth = (badgePaddingX * 2) + (validBadges.length * badgeSize) + ((validBadges.length - 1) * badgeGap);
             const badgeBoxX = (dim.width - marginRight) - badgeBoxWidth;

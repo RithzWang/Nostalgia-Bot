@@ -41,12 +41,12 @@ function getBadgeEmoji(description, v9Data) {
 
 
     // Gifting
-    if (desc.includes('patron') || desc.includes('1 gift')) return '<:GiftingBadge_1x:1513283763931582684>';
-    if (desc.includes('champion') || desc.includes('2 gift')) return '<:GiftingBadge_2x:1513283765844185301>';
-    if (desc.includes('luminary') || desc.includes('3 gift')) return '<:GiftingBadge_3x:1513283767878287400>';
-    if (desc.includes('icon') || desc.includes('6 gift')) return '<:GiftingBadge_6x:1513283769736626196>';
-    if (desc.includes('hero') || desc.includes('10 gift')) return '<:GiftingBadge_10x:1513283771401502770>';
-    if (desc.includes('legend') || desc.includes('20 gift')) return '<:GiftingBadge_20x:1513283772991148173>';
+    if (desc.includes('patron') || desc.includes('gifted 1x')) return '<:GiftingBadge_1x:1513283763931582684>';
+    if (desc.includes('champion') || desc.includes('gifted 2x')) return '<:GiftingBadge_2x:1513283765844185301>';
+    if (desc.includes('luminary') || desc.includes('gifted 3x')) return '<:GiftingBadge_3x:1513283767878287400>';
+    if (desc.includes('icon') || desc.includes('gifted 6x')) return '<:GiftingBadge_6x:1513283769736626196>';
+    if (desc.includes('hero') || desc.includes('gifted 10x')) return '<:GiftingBadge_10x:1513283771401502770>';
+    if (desc.includes('legend') || desc.includes('gifted 20x')) return '<:GiftingBadge_20x:1513283772991148173>';
 
     // Bot Application Badges
     if (desc.includes('supports commands')) return '<:supports_commands:1519665984363823125>';

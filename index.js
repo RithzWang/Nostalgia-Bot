@@ -150,7 +150,7 @@ client.on('guildMemberAdd', async (member) => {
         const mainContainer = new ContainerBuilder()
             .setAccentColor(8947848) 
             .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent("### السلام عليكم ورحمة الله وبركاته"),
+                new TextDisplayBuilder().setContent("## السلام عليكم ورحمة الله وبركاته"),
                 new TextDisplayBuilder().setContent(`Welcome <@${member.user.id}> to **${member.guild.name}**\nWe hope you enjoy your stay here!`)
             )
             .addActionRowComponents(

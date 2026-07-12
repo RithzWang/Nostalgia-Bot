@@ -83,7 +83,7 @@ if (fs.existsSync(eventsPath)) {
 }
 
 // ✅ 4. CACHE INVITES ON READY
-client.once('ready', async () => {
+client.once('clientReady', async () => {
     console.log(`Logged in as ${client.user.tag}`);
 
     const guild = client.guilds.cache.get(serverID);
@@ -128,12 +128,11 @@ client.on('guildMemberAdd', async (member) => {
     // 2. Invite Tracker & Image
     try {
         const newInvites = await member.guild.invites.fetch().catch(() => new Collection());
-        // Track logic remains active in background, though inviter info is no longer used in layout
         const usedInvite = newInvites.find(inv => inv.uses > (client.invitesCache.get(inv.code) || 0));
         newInvites.each(inv => client.invitesCache.set(inv.code, inv.uses));
 
         // ✅ FETCH NITRO PROFILE THEME COLORS HERE
-        const v9Data = await fetchAdvancedProfile(member.id);
+        const v9Data = await fetchAdvancedProfile(member.id).catch(() => null);
         let themeColors = null;
 
         if (v9Data && v9Data.user_profile?.theme_colors) {
@@ -147,13 +146,11 @@ client.on('guildMemberAdd', async (member) => {
         const welcomeFileName = `${member.user.id}-welcome-image.png`;
         const files = [new AttachmentBuilder(welcomeImage, { name: welcomeFileName })];
         
-        // ✅ NEW CONTAINER BUILDER MATCHING YOUR EXACT REQUEST
+        // ✅ FIXED CONTAINER BUILDER: Grouped Text Displays into one call!
         const mainContainer = new ContainerBuilder()
             .setAccentColor(8947848) 
             .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent("### السلام عليكم ورحمة الله وبركاته")
-            )
-            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent("### السلام عليكم ورحمة الله وبركاته"),
                 new TextDisplayBuilder().setContent(`Welcome <@${member.user.id}> to **${member.guild.name}**\nWe hope you enjoy your stay here!`)
             )
             .addActionRowComponents(
@@ -178,7 +175,7 @@ client.on('guildMemberAdd', async (member) => {
                 new MediaGalleryBuilder()
                     .addItems(
                         new MediaGalleryItemBuilder()
-                            .setURL(`attachment://${welcomeFileName}`) // ✅ Dynamically linked attachment URL
+                            .setURL(`attachment://${welcomeFileName}`) 
                     )
             );
 
@@ -198,7 +195,6 @@ client.on('guildMemberAdd', async (member) => {
         if (registerChannel) {
             registerChannel.send(`<@${member.user.id}>, don’t forget to register!`)
                 .then(msg => {
-                    // Delete the message immediately after sending
                     setTimeout(() => {
                         msg.delete().catch(err => console.error("Failed to delete ping message:", err));
                     }, 500); 

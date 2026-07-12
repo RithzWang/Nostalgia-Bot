@@ -9,11 +9,9 @@ const {
     ButtonBuilder, 
     ButtonStyle, 
     ContainerBuilder,
-    SectionBuilder,
     TextDisplayBuilder,
     ActionRowBuilder, 
     SeparatorBuilder, 
-    ThumbnailBuilder,           
     MediaGalleryBuilder,        
     MediaGalleryItemBuilder,    
     MessageFlags,
@@ -85,7 +83,7 @@ if (fs.existsSync(eventsPath)) {
 }
 
 // ✅ 4. CACHE INVITES ON READY
-client.once('clientReady', async () => {
+client.once('ready', async () => {
     console.log(`Logged in as ${client.user.tag}`);
 
     const guild = client.guilds.cache.get(serverID);
@@ -130,12 +128,9 @@ client.on('guildMemberAdd', async (member) => {
     // 2. Invite Tracker & Image
     try {
         const newInvites = await member.guild.invites.fetch().catch(() => new Collection());
+        // Track logic remains active in background, though inviter info is no longer used in layout
         const usedInvite = newInvites.find(inv => inv.uses > (client.invitesCache.get(inv.code) || 0));
         newInvites.each(inv => client.invitesCache.set(inv.code, inv.uses));
-
-        const inviterName = usedInvite?.inviter ? usedInvite.inviter.username : 'Unknown';
-        const inviterId = usedInvite?.inviter ? usedInvite.inviter.id : null;
-        const inviteCode = usedInvite ? usedInvite.code : 'Unknown';
 
         // ✅ FETCH NITRO PROFILE THEME COLORS HERE
         const v9Data = await fetchAdvancedProfile(member.id);
@@ -145,50 +140,34 @@ client.on('guildMemberAdd', async (member) => {
             themeColors = v9Data.user_profile.theme_colors; 
         }
 
-        // ✅ PASS THE COLORS INTO YOUR CANVAS & HANDLE FALLBACK THUMBNAIL
-        const { welcomeImage, avatarAsset, isFallback } = await createWelcomeImage(member, themeColors);
+        // ✅ PASS THE COLORS INTO YOUR CANVAS
+        const { welcomeImage } = await createWelcomeImage(member, themeColors);
         
         // ✅ DYNAMIC FILE NAMING
         const welcomeFileName = `${member.user.id}-welcome-image.png`;
         const files = [new AttachmentBuilder(welcomeImage, { name: welcomeFileName })];
         
-        let thumbnailURL = member.user.displayAvatarURL({ extension: 'png', size: 512 });
-
-        if (isFallback && avatarAsset) {
-            const avatarFileName = `${member.user.id}-avatar.png`; // Dynamic fallback name
-            const avatarAttachment = new AttachmentBuilder(avatarAsset, { name: avatarFileName });
-            files.push(avatarAttachment);
-            thumbnailURL = `attachment://${avatarFileName}`;
-        }
-
-        const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
-        
-        // ✅ UPDATED CONTAINER BUILDER MATCHING BLUEPRINT
+        // ✅ NEW CONTAINER BUILDER MATCHING YOUR EXACT REQUEST
         const mainContainer = new ContainerBuilder()
-            .setAccentColor(0x888888) 
-            .addSectionComponents(
-                new SectionBuilder()
-                    .setThumbnailAccessory(
-                        new ThumbnailBuilder()
-                            .setURL(thumbnailURL) 
-                    )
-                    .addTextDisplayComponents(
-                        new TextDisplayBuilder().setContent(`### Welcome to ${member.guild.name}`),
-                        new TextDisplayBuilder().setContent(
-                            `-# <@${member.user.id}> \`${member.user.username}\`\n` +
-                            `-# <:calendar:1470475413175144530> Discord Since: ${accountCreated}\n` +
-                            `-# <:members:1468470163081924608> You’re member \`#${member.guild.memberCount}\`\n` +
-                            `-# <:connection:1468633345876431021> Invited by ${inviterId ? `<@${inviterId}>` : '**Unknown**'} \`${inviterName}\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`
-                        )
-                    )
+            .setAccentColor(8947848) 
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent("### السلام عليكم ورحمة الله وبركاته")
+            )
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(`Welcome <@${member.user.id}> to **${member.guild.name}**\nWe hope you enjoy your stay here!`)
             )
             .addActionRowComponents(
                 new ActionRowBuilder()
                     .addComponents(
                         new ButtonBuilder()
                             .setStyle(ButtonStyle.Link)
-                            .setLabel("Register Here")
-                            .setEmoji('📝')
+                            .setLabel("Our Tags")
+                            .setEmoji({ name: "🏷️" })
+                            .setURL("https://discord.com/channels/1456197054782111756/1456197056250122353"),
+                        new ButtonBuilder()
+                            .setStyle(ButtonStyle.Link)
+                            .setLabel("Register")
+                            .setEmoji({ name: "📝" })
                             .setURL("https://discord.com/channels/1456197054782111756/1456197056250122352")
                     )
             )
@@ -200,7 +179,6 @@ client.on('guildMemberAdd', async (member) => {
                     .addItems(
                         new MediaGalleryItemBuilder()
                             .setURL(`attachment://${welcomeFileName}`) // ✅ Dynamically linked attachment URL
-                            .setDescription(`${member.user.globalName || member.user.username} just joined!`)
                     )
             );
 
@@ -214,7 +192,7 @@ client.on('guildMemberAdd', async (member) => {
             });
         }
 
-        // ✅ 3. NEW: Ghost ping the member in the registration channel
+        // ✅ 3. Ghost ping the member in the registration channel
         const registerChannelId = '1456197056250122352';
         const registerChannel = client.channels.cache.get(registerChannelId);
         if (registerChannel) {
@@ -223,7 +201,7 @@ client.on('guildMemberAdd', async (member) => {
                     // Delete the message immediately after sending
                     setTimeout(() => {
                         msg.delete().catch(err => console.error("Failed to delete ping message:", err));
-                    }, 500); // 500ms delay ensures Discord processes the ping before deletion
+                    }, 500); 
                 })
                 .catch(err => console.error("Registration Ping Error:", err));
         }

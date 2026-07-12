@@ -45,11 +45,10 @@ module.exports = {
             // 3. FETCH NITRO PROFILE THEME COLORS
             const v9Data = await fetchAdvancedProfile(member.id);
             let themeColors = null;
-            let containerColor = 5066061; // ✅ Default #4d4d4d in decimal
 
             if (v9Data && v9Data.user_profile?.theme_colors) {
                 themeColors = v9Data.user_profile.theme_colors; 
-                containerColor = themeColors[0]; // ✅ Primary color from the Nitro theme
+               
             }
 
             // 4. GENERATE THE IMAGE & GET AVATAR STATE
@@ -72,7 +71,7 @@ module.exports = {
             
             // 6. BUILD EXACT SAME CONTAINER
             const mainContainer = new ContainerBuilder()
-                .setAccentColor(containerColor) 
+                .setAccentColor(0x888888) 
                 .addSectionComponents(
                     new SectionBuilder()
                         .setThumbnailAccessory(
@@ -80,9 +79,9 @@ module.exports = {
                                 .setURL(thumbnailURL) // ✅ Dynamically switches to the #4d4d4d square attachment if needed
                         )
                         .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent(`### Welcome to ${member.guild.name} Server (TEST)`),
+                            new TextDisplayBuilder().setContent(`### السلام عليكم`),
                             new TextDisplayBuilder().setContent(
-                                `-# <@${member.user.id}> \`(${member.user.username})\`\n` +
+                                `Welcome <@${member.user.id}> \`${member.user.username}\` to our **${member.guild.name}**!\n` +
                                 `-# <:calendar:1470475413175144530> Account Created: ${accountCreated}\n` +
                                 `-# <:members:1468470163081924608> Member Count: \`${member.guild.memberCount}\`\n` +
                                 `-# <:connection:1468633345876431021> Invited by <@${inviterId}> \`(Test_Inviter)\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`

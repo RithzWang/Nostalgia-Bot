@@ -55,19 +55,18 @@ module.exports = {
             // ✅ DYNAMIC FILE NAMING (Matches your main event logic)
             const welcomeFileName = `${member.user.id}-welcome-image.png`;
             const files = [new AttachmentBuilder(welcomeImage, { name: welcomeFileName })];
-
-            // ⛔ REMOVED the thumbnail fallback logic. Since the thumbnail is removed from 
-            // the layout, pushing an extra file to the array would crash the V2 Component!
             
             // 5. BUILD EXACT SAME CONTAINER
             const mainContainer = new ContainerBuilder()
-                .setAccentColor(0x888888) 
+                .setAccentColor(8947848) 
                 .addSectionComponents(
                     new SectionBuilder()
                         .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent(`### السلام عليكم ورحمة الله وبركاته`),
+                            new TextDisplayBuilder().setContent(`### السلام عليكم ورحمة الله وبركاته`)
+                        )
+                        .addTextDisplayComponents(
                             new TextDisplayBuilder().setContent(
-                                `Welcome <@${member.user.id}> to **${member.guild.name}**!\nWe hope you enjoy your stay here!`
+                                `Welcome <@${member.user.id}> to **${member.guild.name}**\nWe hope you enjoy your stay here!`
                             )
                         )
                 )
@@ -76,8 +75,13 @@ module.exports = {
                         .addComponents(
                             new ButtonBuilder()
                                 .setStyle(ButtonStyle.Link)
-                                .setLabel("Register Here")
-                                .setEmoji('📝')
+                                .setLabel("Our Tags")
+                                .setEmoji({ name: '🏷️' })
+                                .setURL("https://discord.com/channels/1456197054782111756/1456197056250122353"),
+                            new ButtonBuilder()
+                                .setStyle(ButtonStyle.Link)
+                                .setLabel("Register")
+                                .setEmoji({ name: '📝' })
                                 .setURL("https://discord.com/channels/1456197054782111756/1456197056250122352")
                         )
                 )
@@ -89,7 +93,6 @@ module.exports = {
                         .addItems(
                             new MediaGalleryItemBuilder()
                                 .setURL(`attachment://${welcomeFileName}`) // ✅ Dynamically linked
-                                .setDescription(`${member.user.globalName || member.user.username} just joined!`)
                         )
                 );
 

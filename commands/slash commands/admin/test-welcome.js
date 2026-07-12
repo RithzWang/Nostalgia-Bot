@@ -79,12 +79,9 @@ module.exports = {
                                 .setURL(thumbnailURL) // ✅ Dynamically switches to the #4d4d4d square attachment if needed
                         )
                         .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent(`### السلام عليكم`),
+                            new TextDisplayBuilder().setContent(`## السلام عليكم ورحمة الله وبركاته`),
                             new TextDisplayBuilder().setContent(
-                                `Welcome <@${member.user.id}> \`${member.user.username}\` to our **${member.guild.name}**!\n` +
-                                `-# <:calendar:1470475413175144530> Account Created: ${accountCreated}\n` +
-                                `-# <:members:1468470163081924608> Member Count: \`${member.guild.memberCount}\`\n` +
-                                `-# <:connection:1468633345876431021> Invited by <@${inviterId}> \`(Test_Inviter)\` using [\`${inviteCode}\`](https://discord.gg/${inviteCode}) invite`
+                                `Welcome <@${member.user.id}> to **${member.guild.name}**!\nWe hope you enjoy your stay here!`
                             )
                         )
                 )

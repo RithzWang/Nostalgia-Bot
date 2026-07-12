@@ -276,7 +276,7 @@ async function createWelcomeImage(member, themeColors = null) {
         const validBadges = loadedBadges.filter(img => img !== null);
 
         if (validBadges.length > 0) {
-            const badgeSize = 80;      
+            const badgeSize = 90;      
             const badgePaddingX = 20;  
             const badgeGap = 2;        
             const badgeBoxHeight = 95; 
@@ -289,7 +289,7 @@ async function createWelcomeImage(member, themeColors = null) {
             const boxCenterAxisY = badgeBoxY + (badgeBoxHeight / 2);
 
             ctx.save();
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; 
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.45)'; 
             ctx.beginPath();
             ctx.roundRect(badgeBoxX, badgeBoxY, badgeBoxWidth, badgeBoxHeight, 25);
             ctx.fill();
@@ -329,7 +329,7 @@ async function createWelcomeImage(member, themeColors = null) {
     const idBoxY = boxCenterAxisY - (idBoxHeight / 2);
 
     ctx.save();
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; 
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)'; 
     ctx.beginPath();
     ctx.roundRect(idBoxX, idBoxY, idBoxWidth, idBoxHeight, 25);
     ctx.fill();

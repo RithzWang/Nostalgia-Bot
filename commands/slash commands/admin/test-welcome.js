@@ -5,7 +5,6 @@ const {
     ButtonBuilder, 
     ButtonStyle, 
     ContainerBuilder,
-    SectionBuilder,
     TextDisplayBuilder,
     ActionRowBuilder, 
     SeparatorBuilder, 
@@ -22,7 +21,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('test-welcome')
         .setDescription('Simulate the welcome message and image generator.')
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator) 
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator) // ✅ Locked to Admins
         .addUserOption(opt => opt.setName('target')
             .setDescription('Test the welcome image on a specific user (defaults to you)')
             .setRequired(false)
@@ -39,7 +38,6 @@ module.exports = {
         }
 
         try {
-            // ✅ FIX 1: Added .catch(() => null) to prevent API crashes
             const v9Data = await fetchAdvancedProfile(member.id).catch(() => null);
             let themeColors = null;
 
@@ -52,15 +50,15 @@ module.exports = {
             const welcomeFileName = `${member.user.id}-welcome-image.png`;
             const files = [new AttachmentBuilder(welcomeImage, { name: welcomeFileName })];
             
+            // ✅ EXACT BLUEPRINT REPLICATION
+            // Removed SectionBuilder entirely and chained the components one by one
             const mainContainer = new ContainerBuilder()
                 .setAccentColor(8947848) 
-                .addSectionComponents(
-                    new SectionBuilder()
-                        // ✅ FIX 2: Grouped both text displays into a single method call
-                        .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent(`### السلام عليكم ورحمة الله وبركاته`),
-                            new TextDisplayBuilder().setContent(`Welcome <@${member.user.id}> to **${member.guild.name}**\nWe hope you enjoy your stay here!`)
-                        )
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent("### السلام عليكم ورحمة الله وبركاته")
+                )
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(`Welcome <@${member.user.id}> to **${member.guild.name}**\nWe hope you enjoy your stay here!`)
                 )
                 .addActionRowComponents(
                     new ActionRowBuilder()

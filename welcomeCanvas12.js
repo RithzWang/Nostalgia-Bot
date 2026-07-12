@@ -454,7 +454,7 @@ async function createWelcomeImage(member, themeColors = null) {
         ctx.shadowBlur = 10;
         ctx.shadowOffsetX = 0;
         ctx.shadowOffsetY = 5;
-        ctx.fillStyle = '#404249'; 
+        ctx.fillStyle = '#666666'; 
         ctx.beginPath();
         ctx.roundRect(boxX, boxY, fBoxWidth, fBoxHeight, baseRadius * bottomScale); 
         ctx.fill();

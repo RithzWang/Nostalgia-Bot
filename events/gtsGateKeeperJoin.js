@@ -42,11 +42,11 @@ module.exports = {
         const greetChannel = srvData.greetChannel ? member.guild.channels.cache.get(srvData.greetChannel) : null;
 
         if (inMain) {
-            if (greetChannel) greetChannel.send(`<@${member.id}>, Welcome to **${member.guild.name}** server!`).catch(() => {});
+            if (greetChannel) greetChannel.send(`<@${member.id}>, Welcome to **${member.guild.name}**!`).catch(() => {});
         } else {
             if (greetChannel) {
                 greetChannel.send(
-                    `<@${member.id}>, Welcome to **${member.guild.name}** server!\n\n` +
+                    `<@${member.id}>, Welcome to **${member.guild.name}**!\n\n` +
                     `It seems like you are **__not__** in our **[Main Server](<${inviteLink}>)** yet.\n` +
                     `You have **10** minutes to join, otherwise you will be **kicked**.`
                 ).catch(() => {});

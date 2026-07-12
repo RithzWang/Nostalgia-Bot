@@ -74,12 +74,12 @@ module.exports = {
                 .setAccentColor(0x888888) 
                 .addSectionComponents(
                     new SectionBuilder()
-                        .setThumbnailAccessory(
+                       // .setThumbnailAccessory(
                             new ThumbnailBuilder()
                                 .setURL(thumbnailURL) // ✅ Dynamically switches to the #4d4d4d square attachment if needed
                         )
                         .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent(`## السلام عليكم ورحمة الله وبركاته`),
+                            new TextDisplayBuilder().setContent(`### السلام عليكم ورحمة الله وبركاته`),
                             new TextDisplayBuilder().setContent(
                                 `Welcome <@${member.user.id}> to **${member.guild.name}**!\nWe hope you enjoy your stay here!`
                             )

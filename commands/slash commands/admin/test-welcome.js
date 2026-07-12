@@ -75,8 +75,8 @@ module.exports = {
                 .addSectionComponents(
                     new SectionBuilder()
                        // .setThumbnailAccessory(
-                            new ThumbnailBuilder()
-                                .setURL(thumbnailURL) // ✅ Dynamically switches to the #4d4d4d square attachment if needed
+                          //  new ThumbnailBuilder()
+                              //  .setURL(thumbnailURL) // ✅ Dynamically switches to the #4d4d4d square attachment if needed
                         )
                         .addTextDisplayComponents(
                             new TextDisplayBuilder().setContent(`### السلام عليكم ورحمة الله وبركاته`),

@@ -22,17 +22,15 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('test-welcome')
         .setDescription('Simulate the welcome message and image generator.')
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator) // ✅ Locked to Admins
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator) 
         .addUserOption(opt => opt.setName('target')
             .setDescription('Test the welcome image on a specific user (defaults to you)')
             .setRequired(false)
         ),
 
     async execute(interaction) {
-        // 1. Defer the reply because scraping and canvas generation take a few seconds
         await interaction.deferReply();
 
-        // 2. Get the target member
         const targetUserOption = interaction.options.getUser('target') || interaction.user;
         const member = await interaction.guild.members.fetch(targetUserOption.id).catch(() => null);
 
@@ -41,33 +39,27 @@ module.exports = {
         }
 
         try {
-            // 3. FETCH NITRO PROFILE THEME COLORS
-            const v9Data = await fetchAdvancedProfile(member.id);
+            // ✅ FIX 1: Added .catch(() => null) to prevent API crashes
+            const v9Data = await fetchAdvancedProfile(member.id).catch(() => null);
             let themeColors = null;
 
             if (v9Data && v9Data.user_profile?.theme_colors) {
                 themeColors = v9Data.user_profile.theme_colors; 
             }
 
-            // 4. GENERATE THE IMAGE
             const { welcomeImage } = await createWelcomeImage(member, themeColors);
             
-            // ✅ DYNAMIC FILE NAMING (Matches your main event logic)
             const welcomeFileName = `${member.user.id}-welcome-image.png`;
             const files = [new AttachmentBuilder(welcomeImage, { name: welcomeFileName })];
             
-            // 5. BUILD EXACT SAME CONTAINER
             const mainContainer = new ContainerBuilder()
                 .setAccentColor(8947848) 
                 .addSectionComponents(
                     new SectionBuilder()
+                        // ✅ FIX 2: Grouped both text displays into a single method call
                         .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent(`### السلام عليكم ورحمة الله وبركاته`)
-                        )
-                        .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent(
-                                `Welcome <@${member.user.id}> to **${member.guild.name}**\nWe hope you enjoy your stay here!`
-                            )
+                            new TextDisplayBuilder().setContent(`### السلام عليكم ورحمة الله وبركاته`),
+                            new TextDisplayBuilder().setContent(`Welcome <@${member.user.id}> to **${member.guild.name}**\nWe hope you enjoy your stay here!`)
                         )
                 )
                 .addActionRowComponents(
@@ -92,11 +84,10 @@ module.exports = {
                     new MediaGalleryBuilder()
                         .addItems(
                             new MediaGalleryItemBuilder()
-                                .setURL(`attachment://${welcomeFileName}`) // ✅ Dynamically linked
+                                .setURL(`attachment://${welcomeFileName}`) 
                         )
                 );
 
-            // 6. SEND THE REPLY
             await interaction.editReply({ 
                 flags: [MessageFlags.IsComponentsV2],
                 files: files,
@@ -105,7 +96,7 @@ module.exports = {
 
         } catch (error) {
             console.error("Test Command Error:", error);
-            await interaction.editReply({ content: "❌ **Error:** Something went wrong generating the test welcome." });
+            await interaction.editReply({ content: "❌ **Error:** Something went wrong generating the test welcome. Check the console!" });
         }
     }
 };

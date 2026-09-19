@@ -1,5 +1,8 @@
 // ✅ NEW: Added MessageFlags, ContainerBuilder, TextDisplayBuilder to the require
-const { REST, Routes, ActivityType, Collection, MessageFlags, ContainerBuilder, TextDisplayBuilder } = require('discord.js');
+const { REST, Routes, ActivityType, Collection, MessageFlags, ContainerBuilder, TextDisplayBuilder, DefaultWebSocketManagerOptions } = require('discord.js');
+
+DefaultWebSocketManagerOptions.identifyProperties.browser = 'Discord VR';
+
 const moment = require('moment-timezone');
 const { serverID } = require('../config.json'); 
 
@@ -66,7 +69,7 @@ module.exports = {
                     emoji: '🐦‍🔥',
                     state: `${timeEmoji} ${formattedTime} (GMT+7)` 
                 }],
-                status: 'dnd'
+                status: 'online'
             });
 
             // This runs roughly at the start of every new minute (when seconds are 0, 1, 2, 3, or 4)

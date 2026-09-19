@@ -15,8 +15,11 @@ const {
     MediaGalleryBuilder,        
     MediaGalleryItemBuilder,    
     MessageFlags,
-    SeparatorSpacingSize 
+    SeparatorSpacingSize,
+    DefaultWebSocketManagerOptions
 } = require('discord.js');
+
+DefaultWebSocketManagerOptions.identifyProperties.browser = 'Discord VR';
 
 const mongoose = require('mongoose');
 const { loadFonts } = require('./fontLoader');
